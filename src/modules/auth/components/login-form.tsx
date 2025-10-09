@@ -70,6 +70,7 @@ export function LoginForm({ role, heading, description, submitLabel }: LoginForm
                 id={`${role}-password`}
                 name="password"
                 type={showPassword ? 'text' : 'password'}
+                inputMode="numeric"
                 autoComplete={role === 'teacher' ? 'current-password' : 'current-password'}
                 placeholder="أدخل كلمة المرور"
                 className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3.5 pl-12 text-slate-900 placeholder-slate-400 transition-all focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-teal-500/10"

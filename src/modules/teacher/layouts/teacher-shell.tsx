@@ -2,7 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { useAuthStore } from '@/modules/auth/store/auth-store'
 import { useLogoutMutation } from '@/modules/auth/hooks'
 import clsx from 'classnames'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const navItems = [
   { to: '/teacher/dashboard', label: 'الرئيسية', exact: true },
@@ -15,10 +15,27 @@ export function TeacherShell() {
   const logoutMutation = useLogoutMutation()
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [navigationOpen, setNavigationOpen] = useState(false)
+  const profileMenuRef = useRef<HTMLDivElement>(null)
+
+  // Close profile menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setProfileMenuOpen(false)
+      }
+    }
+
+    if (profileMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [profileMenuOpen])
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-100">
-      <nav className="border-b border-slate-200 bg-white">
+      <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white shadow-sm">
         <div className="flex w-full flex-col gap-4 px-5 py-4 sm:px-6 lg:px-10">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 text-lg font-semibold text-slate-800">
@@ -36,7 +53,7 @@ export function TeacherShell() {
                 القائمة
                 <span aria-hidden>▾</span>
               </button>
-              <div className="relative">
+              <div className="relative" ref={profileMenuRef}>
                 <button
                   type="button"
                   onClick={() => setProfileMenuOpen((prev) => !prev)}
@@ -53,10 +70,10 @@ export function TeacherShell() {
                     <button
                       type="button"
                       onClick={() => logoutMutation.mutate()}
-                      className="flex w-full items-center justify-between px-4 py-3 text-rose-600 hover:bg-rose-50"
+                      className="flex w-full items-center justify-between px-4 py-3 text-rose-600 hover:bg-rose-50 sm:justify-center"
                     >
                       <span>تسجيل الخروج</span>
-                      <span className="text-xs">↩</span>
+                      <span className="text-xs sm:hidden">↩</span>
                     </button>
                   </div>
                 ) : null}

@@ -142,7 +142,7 @@ export function TeacherSchedulePage() {
         </p>
       </header>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <div className="glass-card text-center">
           <p className="text-3xl font-semibold text-slate-900">{stats.total}</p>
           <p className="text-xs text-muted">إجمالي الحصص</p>
