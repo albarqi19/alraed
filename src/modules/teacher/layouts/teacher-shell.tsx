@@ -40,7 +40,7 @@ export function TeacherShell() {
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 text-lg font-semibold text-slate-800">
               <span className="grid h-10 w-10 place-items-center rounded-2xl bg-slate-900/5 text-base font-bold text-slate-900">
-                م
+                <i className="bi bi-book"></i>
               </span>
               لوحة تحكم المعلم
             </div>
