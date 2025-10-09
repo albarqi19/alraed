@@ -7,6 +7,29 @@ import {
   usePreviewImportStudentsMutation,
 } from '../hooks'
 import type { ImportStudentsPreview, ImportSummary, ImportTeachersSummary } from '../types'
+import { useToast } from '@/shared/feedback/use-toast'
+
+interface PlatformImportButtonProps {
+  platform: 'noor' | 'madrasati'
+  label: string
+  logo: string
+  onClick: () => void
+}
+
+function PlatformImportButton({ label, logo, onClick }: Omit<PlatformImportButtonProps, 'platform'>) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex items-center gap-3 rounded-2xl border-2 border-slate-200 bg-white p-4 shadow-sm transition-all hover:border-teal-400 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+    >
+      <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-2 ring-2 ring-slate-100 transition-all group-hover:ring-teal-400">
+        <img src={logo} alt={label} className="h-full w-full object-contain" />
+      </div>
+      <p className="text-base font-bold text-slate-900">{label}</p>
+    </button>
+  )
+}
 
 interface UploadCardProps {
   title: string
@@ -312,6 +335,7 @@ function ImportSummaryCard({ summary, title }: { summary: ImportSummary; title: 
 }
 
 export function AdminImportPage() {
+  const showToast = useToast()
   const [studentFile, setStudentFile] = useState<File | null>(null)
   const [studentPreview, setStudentPreview] = useState<ImportStudentsPreview | null>(null)
   const [studentOptions, setStudentOptions] = useState<{ update_existing: boolean; delete_missing: boolean }>(
@@ -405,14 +429,45 @@ export function AdminImportPage() {
   const isStudentBusy = previewStudentsMutation.isPending || importStudentsMutation.isPending
   const isTeacherBusy = importTeachersMutation.isPending
 
+  const handlePlatformImport = (platform: 'noor' | 'madrasati') => {
+    showToast({
+      title: `الاستيراد من ${platform === 'noor' ? 'نظام نور' : 'منصة مدرستي'}`,
+      description: 'سيتم تفعيل هذه الميزة قريباً',
+      type: 'info',
+    })
+  }
+
   return (
     <section className="space-y-8">
       <header className="space-y-2">
-        <h1 className="text-3xl font-bold text-slate-900">مركز استيراد البيانات</h1>
+        <h1 className="text-3xl font-bold text-slate-900">استيراد البيانات</h1>
         <p className="text-sm text-muted">
           قم برفع ملفات Excel أو CSV للطلاب والمعلمين مع معاينة ذكية قبل التنفيذ وخيارات مخصصة للتحديث والحذف.
         </p>
       </header>
+
+      {/* Platform Import Buttons */}
+      <div className="glass-card">
+        <header className="mb-6">
+          <p className="text-xs font-semibold uppercase tracking-widest text-teal-600">استيراد سريع</p>
+          <h2 className="text-xl font-bold text-slate-900">استيراد من المنصات التعليمية</h2>
+          <p className="mt-1 text-sm text-muted">
+            اختر المنصة التي تريد الاستيراد منها لتحميل البيانات مباشرة
+          </p>
+        </header>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <PlatformImportButton
+            label="استيراد من نظام نور"
+            logo="https://noor.moe.gov.sa/Noor/images/home_login/noor_logo.png"
+            onClick={() => handlePlatformImport('noor')}
+          />
+          <PlatformImportButton
+            label="استيراد من منصة مدرستي"
+            logo="https://object.moe.gov.sa/nasaq/edu/files/logo-2-638593241344546491.png"
+            onClick={() => handlePlatformImport('madrasati')}
+          />
+        </div>
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Students Import Section */}
