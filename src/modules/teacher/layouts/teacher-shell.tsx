@@ -35,7 +35,7 @@ export function TeacherShell() {
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-100">
-      <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white shadow-sm">
+      <nav className="sticky top-0 z-50 border-b border-white/20 bg-white/80 shadow-sm backdrop-blur-md">
         <div className="flex w-full flex-col gap-4 px-5 py-4 sm:px-6 lg:px-10">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 text-lg font-semibold text-slate-800">
