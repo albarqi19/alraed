@@ -48,7 +48,7 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
       { to: '/admin/teachers', label: 'إدارة المعلمين', icon: Users },
       { to: '/admin/students', label: 'إدارة الطلاب', icon: GraduationCap },
       { to: '/admin/subjects', label: 'إدارة المواد', icon: BookOpen },
-      { to: '/admin/import', label: 'استيراد الملفات', icon: Upload },
+      { to: '/admin/import', label: 'استيراد البيانات', icon: Upload },
     ],
   },
   {
