@@ -1,0 +1,142 @@
+import { Navigate, useRoutes } from 'react-router-dom'
+import { RootLayout } from '../layouts/root-layout'
+import { LandingPage } from '@/modules/core/pages/landing-page'
+import { TeacherLoginPage } from '@/modules/auth/pages/teacher-login-page'
+import { AdminLoginPage } from '@/modules/auth/pages/admin-login-page'
+import { TeacherDashboardPage } from '@/modules/teacher/pages/teacher-dashboard-page'
+import { TeacherMessagesPage } from '@/modules/teacher/pages/teacher-messages-page'
+import { AdminDashboardPage } from '@/modules/admin/pages/admin-dashboard-page'
+import { AdminTeachersPage } from '@/modules/admin/pages/admin-teachers-page'
+import { AdminStudentsPage } from '@/modules/admin/pages/admin-students-page'
+import { AdminSubjectsPage } from '@/modules/admin/pages/admin-subjects-page'
+import { AdminClassSessionsPage } from '@/modules/admin/pages/admin-class-sessions-page'
+import { AdminClassSchedulesPage } from '@/modules/admin/pages/admin-class-schedules-page'
+import { AdminSchedulesPage } from '@/modules/admin/pages/admin-schedules-page'
+import { AdminImportPage } from '@/modules/admin/pages/admin-import-page'
+import { AdminAttendancePage } from '@/modules/admin/pages/admin-attendance-page'
+import { AdminApprovalPage } from '@/modules/admin/pages/admin-approval-page'
+import { AdminLateArrivalsPage } from '@/modules/admin/pages/admin-late-arrivals-page'
+import { AdminTeacherMessagesPage } from '@/modules/admin/pages/admin-teacher-messages-page'
+import { AdminSettingsPage } from '@/modules/admin/pages/admin-settings-page'
+import { WhatsappHubPage } from '@/modules/admin/pages/whatsapp-hub-page'
+import { AttendanceReportPage } from '@/modules/admin/pages/attendance-report-page'
+import { StudentCasesPage } from '@/modules/admin/pages/student-cases-page'
+import { TreatmentPlansPage } from '@/modules/admin/pages/treatment-plans-page'
+import { PointsProgramPage } from '@/modules/admin/pages/points-program-page'
+import { GuidanceProgramsPage } from '@/modules/admin/pages/guidance-programs-page'
+import { SummonsPage } from '@/modules/admin/pages/summons-page'
+import { WhatsAppSendPage } from '@/modules/admin/pages/whatsapp-send-page'
+import { WhatsAppTemplatesPage } from '@/modules/admin/pages/whatsapp-templates-page'
+import { StudentCasesListPage } from '@/modules/admin/pages/student-cases-list-page'
+import { StudentCaseDetailsPage } from '@/modules/admin/pages/student-case-details-page'
+import { StudentCaseFormPage } from '@/modules/admin/pages/student-case-form-page'
+import { NotFoundPage } from '@/modules/core/pages/not-found-page'
+import { RequireAuth, RedirectIfAuthenticated } from '@/modules/auth/components/route-guards'
+import { TeacherShell } from '@/modules/teacher/layouts/teacher-shell'
+import { TeacherSchedulePage } from '@/modules/teacher/pages/teacher-schedule-page'
+import { AdminShell } from '@/modules/admin/layouts/admin-shell'
+import { TeacherSessionAttendancePage } from '@/modules/teacher/pages/teacher-session-attendance-page'
+import {
+  GuidanceAccessPage,
+  GuidanceDashboardPage,
+  GuidanceCasesPage,
+  GuidanceCaseDetailsPage,
+  TreatmentPlansPage as GuidanceTreatmentPlansPage,
+  TreatmentPlanFormPage,
+  TreatmentPlanDetailsPage,
+} from '@/modules/guidance/pages'
+
+const appRoutes = [
+  {
+    path: '/',
+    element: <RootLayout />,
+    children: [
+      { index: true, element: <LandingPage /> },
+      {
+        path: 'auth/teacher',
+        element: (
+          <RedirectIfAuthenticated>
+            <TeacherLoginPage />
+          </RedirectIfAuthenticated>
+        ),
+      },
+      {
+        path: 'auth/admin',
+        element: (
+          <RedirectIfAuthenticated>
+            <AdminLoginPage />
+          </RedirectIfAuthenticated>
+        ),
+      },
+      {
+        path: 'teacher',
+        element: (
+          <RequireAuth role="teacher">
+            <TeacherShell />
+          </RequireAuth>
+        ),
+        children: [
+          { index: true, element: <Navigate to="/teacher/dashboard" replace /> },
+          { path: 'dashboard', element: <TeacherDashboardPage /> },
+          { path: 'schedule', element: <TeacherSchedulePage /> },
+          { path: 'messages', element: <TeacherMessagesPage /> },
+          { path: 'sessions/:sessionId', element: <TeacherSessionAttendancePage /> },
+        ],
+      },
+      {
+        path: 'admin',
+        element: (
+          <RequireAuth role="admin">
+            <AdminShell />
+          </RequireAuth>
+        ),
+        children: [
+          { index: true, element: <Navigate to="/admin/dashboard" replace /> },
+          { path: 'dashboard', element: <AdminDashboardPage /> },
+          { path: 'teachers', element: <AdminTeachersPage /> },
+          { path: 'students', element: <AdminStudentsPage /> },
+          { path: 'subjects', element: <AdminSubjectsPage /> },
+          { path: 'class-sessions', element: <AdminClassSessionsPage /> },
+          { path: 'class-schedules', element: <AdminClassSchedulesPage /> },
+          { path: 'schedules', element: <AdminSchedulesPage /> },
+          { path: 'import', element: <AdminImportPage /> },
+          { path: 'attendance', element: <AdminAttendancePage /> },
+          { path: 'approval', element: <AdminApprovalPage /> },
+          { path: 'late-arrivals', element: <AdminLateArrivalsPage /> },
+          { path: 'teacher-messages', element: <AdminTeacherMessagesPage /> },
+          { path: 'student-cases', element: <StudentCasesPage /> },
+          { path: 'student-cases/list', element: <StudentCasesListPage /> },
+          { path: 'student-cases/new', element: <StudentCaseFormPage /> },
+          { path: 'student-cases/:caseId', element: <StudentCaseDetailsPage /> },
+          { path: 'treatment-plans', element: <TreatmentPlansPage /> },
+          { path: 'points-program', element: <PointsProgramPage /> },
+          { path: 'guidance-programs', element: <GuidanceProgramsPage /> },
+          { path: 'summons', element: <SummonsPage /> },
+          { path: 'settings', element: <AdminSettingsPage /> },
+          { path: 'whatsapp', element: <WhatsappHubPage /> },
+          { path: 'whatsapp-send', element: <WhatsAppSendPage /> },
+          { path: 'whatsapp-templates', element: <WhatsAppTemplatesPage /> },
+          { path: 'attendance-report', element: <AttendanceReportPage /> },
+        ],
+      },
+      {
+        path: 'guidance',
+        children: [
+          { index: true, element: <GuidanceAccessPage /> },
+          { path: 'dashboard', element: <GuidanceDashboardPage /> },
+          { path: 'cases', element: <GuidanceCasesPage /> },
+          { path: 'cases/:id', element: <GuidanceCaseDetailsPage /> },
+          { path: 'treatment-plans', element: <GuidanceTreatmentPlansPage /> },
+          { path: 'treatment-plans/new', element: <TreatmentPlanFormPage /> },
+          { path: 'treatment-plans/:id', element: <TreatmentPlanDetailsPage /> },
+        ],
+      },
+      { path: '*', element: <NotFoundPage /> },
+    ],
+  },
+]
+
+export function AppRouter() {
+  const element = useRoutes(appRoutes)
+  return element
+}

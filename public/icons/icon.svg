@@ -1,0 +1,17 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="#218081"/>
+  <g fill="#ffffff">
+    <!-- School building icon -->
+    <path d="M256 64L128 128v32h256v-32L256 64z"/>
+    <rect x="160" y="160" width="192" height="224"/>
+    <rect x="192" y="192" width="48" height="48" fill="#218081"/>
+    <rect x="272" y="192" width="48" height="48" fill="#218081"/>
+    <rect x="192" y="272" width="48" height="48" fill="#218081"/>
+    <rect x="272" y="272" width="48" height="48" fill="#218081"/>
+    <rect x="224" y="336" width="64" height="48" fill="#218081"/>
+    <!-- Flag on top -->
+    <rect x="248" y="32" width="16" height="64"/>
+    <path d="M264 32h48v32h-48z"/>
+  </g>
+  <text x="256" y="460" font-family="Arial, sans-serif" font-size="48" fill="#ffffff" text-anchor="middle" font-weight="bold">نظام الرائد</text>
+</svg>

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مولد أيقونات PWA</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            direction: rtl;
+        }
+        button {
+            background: #218081;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #1a6566;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+        }
+        canvas {
+            display: none;
+        }
+        .icon-preview {
+            display: inline-block;
+            margin: 10px;
+            text-align: center;
+        }
+        .icon-preview img {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>مولد أيقونات PWA</h1>
+    <p>هذه الصفحة ستقوم بتحويل ملف icon.svg إلى ملفات PNG بأحجام مختلفة</p>
+    
+    <button onclick="generateIcons()">إنشاء الأيقونات</button>
+    
+    <div id="status"></div>
+    <div id="previews"></div>
+    
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+        
+        async function generateIcons() {
+            const status = document.getElementById('status');
+            const previews = document.getElementById('previews');
+            status.innerHTML = 'جاري إنشاء الأيقونات...';
+            previews.innerHTML = '';
+            
+            try {
+                // Load SVG
+                const response = await fetch('./icon.svg');
+                const svgText = await response.text();
+                
+                const img = new Image();
+                const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
+                const url = URL.createObjectURL(svgBlob);
+                
+                img.onload = function() {
+                    sizes.forEach(size => {
+                        const canvas = document.getElementById('canvas');
+                        canvas.width = size;
+                        canvas.height = size;
+                        
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, size, size);
+                        
+                        canvas.toBlob(function(blob) {
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `icon-${size}x${size}.png`;
+                            a.click();
+                            
+                            // Preview
+                            const preview = document.createElement('div');
+                            preview.className = 'icon-preview';
+                            const previewImg = document.createElement('img');
+                            previewImg.src = url;
+                            previewImg.width = 100;
+                            previewImg.height = 100;
+                            const label = document.createElement('div');
+                            label.textContent = `${size}x${size}`;
+                            preview.appendChild(previewImg);
+                            preview.appendChild(label);
+                            previews.appendChild(preview);
+                        });
+                    });
+                    
+                    status.innerHTML = 'تم إنشاء جميع الأيقونات بنجاح! يرجى حفظ الملفات التي تم تحميلها في مجلد public/icons';
+                    URL.revokeObjectURL(url);
+                };
+                
+                img.src = url;
+            } catch (error) {
+                status.innerHTML = 'حدث خطأ: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

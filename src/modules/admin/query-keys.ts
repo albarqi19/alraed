@@ -1,0 +1,52 @@
+export const adminQueryKeys = {
+  root: ['admin'] as const,
+  dashboard: () => ['admin', 'dashboard', 'stats'] as const,
+  teachers: {
+    all: () => ['admin', 'teachers', 'list'] as const,
+    detail: (id: number) => ['admin', 'teachers', id] as const,
+  },
+  students: {
+    all: () => ['admin', 'students', 'list'] as const,
+    detail: (id: number) => ['admin', 'students', id] as const,
+  },
+  subjects: {
+    all: () => ['admin', 'subjects', 'list'] as const,
+    detail: (id: number) => ['admin', 'subjects', id] as const,
+  },
+  classSessions: {
+    all: () => ['admin', 'class-sessions', 'list'] as const,
+    summary: () => ['admin', 'class-schedules', 'summary'] as const,
+    schedule: (grade: string, className: string) => ['admin', 'class-schedules', grade, className] as const,
+  },
+  schedules: {
+    all: () => ['admin', 'schedules', 'list'] as const,
+    detail: (id: number) => ['admin', 'schedules', id] as const,
+    templates: () => ['admin', 'schedules', 'templates'] as const,
+  },
+  attendance: {
+    reports: (filters: Record<string, unknown>) => ['admin', 'attendance', 'reports', filters] as const,
+    pending: () => ['admin', 'attendance', 'pending'] as const,
+    sessionDetails: (attendanceId: number) => ['admin', 'attendance', 'session-details', attendanceId] as const,
+    reportMatrix: (filters: Record<string, unknown>) => ['admin', 'attendance', 'report-matrix', filters] as const,
+  },
+  lateArrivals: {
+    list: (filters: Record<string, unknown>) => ['admin', 'late-arrivals', 'list', filters] as const,
+    stats: () => ['admin', 'late-arrivals', 'stats'] as const,
+  },
+  import: {
+    studentsPreview: () => ['admin', 'import', 'students', 'preview'] as const,
+    summary: () => ['admin', 'import', 'summary'] as const,
+  },
+  settings: () => ['admin', 'settings'] as const,
+  whatsapp: {
+    statistics: () => ['admin', 'whatsapp', 'statistics'] as const,
+    queue: () => ['admin', 'whatsapp', 'queue'] as const,
+    history: () => ['admin', 'whatsapp', 'history'] as const,
+    templates: () => ['admin', 'whatsapp', 'templates'] as const,
+    settings: () => ['admin', 'whatsapp', 'settings'] as const,
+    students: {
+      all: () => ['admin', 'whatsapp', 'students', 'all'] as const,
+      absent: (days: number) => ['admin', 'whatsapp', 'students', 'absent', days] as const,
+    },
+  },
+}
