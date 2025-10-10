@@ -71,15 +71,13 @@ export function AdminShell() {
 
   return (
     <div className="flex min-h-screen w-full" style={{ backgroundColor: 'var(--color-background)' }}>
-      <aside className="admin-sidebar-wrapper fixed right-0 top-0 hidden h-screen w-72 border-l border-slate-700/20 shadow-md md:flex" style={{ backgroundColor: 'var(--color-sidebar)' }}>
-        <div className="admin-sidebar flex h-full w-full flex-col overflow-y-auto text-right" style={{ direction: 'ltr' }}>
-          <div style={{ direction: 'rtl' }} className="flex h-full w-full flex-col">
-            {/* Header with Logo */}
-            <div className="border-b border-white/20 px-6 py-6 text-center">
-              <p className="text-1g font-bold text-white" style={{ fontFamily: 'IBM Plex Sans Arabic, sans-serif' }}>نظام الرائد</p>
-            </div>
+      <aside className="admin-sidebar fixed right-0 top-0 hidden h-screen w-72 flex-col overflow-y-auto border-l border-slate-700/20 text-right shadow-md md:flex" style={{ backgroundColor: 'var(--color-sidebar)' }}>
+        {/* Header with Logo */}
+        <div className="border-b border-white/20 px-6 py-6 text-center">
+          <p className="text-1g font-bold text-white" style={{ fontFamily: 'IBM Plex Sans Arabic, sans-serif' }}>نظام الرائد</p>
+        </div>
 
-            <div className="flex-1 space-y-1 p-4">
+        <div className="flex-1 space-y-1 p-4">
           {primaryAdminNavGroups.map((group, index) => {
             const isExpanded = expandedGroups[group.title] ?? true
             const panelId = `admin-nav-group-${index}`
@@ -294,7 +292,6 @@ export function AdminShell() {
               )
             })()}
           </div>
-        </div>
         </div>
       </aside>
 
