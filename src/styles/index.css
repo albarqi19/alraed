@@ -5,15 +5,23 @@
 @layer base {
   :root {
     color-scheme: light;
-    --color-background: #f5f7fb;
-    --color-surface: #ffffff;
-    --color-primary: #1d6f70;
-    --color-primary-dark: #155151;
-    --color-primary-light: #2a8e8f;
-    --color-accent: #f2b94c;
-    --color-danger: #c33e40;
-    --color-success: #1f9d55;
-    --color-muted: #62707a;
+    /* نظام الألوان المحسّن والمتناسق */
+    --color-background: #F8F5F0;
+    --color-surface: #FFFFFF;
+    --color-primary: #4CAF50;
+    --color-primary-dark: #3F6F55;
+    --color-primary-light: #66BB6A;
+    --color-accent: #E2D9C9;
+    --color-danger: #E57373;
+    --color-success: #66BB6A;
+    --color-warning: #D4AF37;
+    --color-muted: #777777;
+    --color-text-primary: #333333;
+    --color-text-secondary: #777777;
+    --color-border: #D6CEC2;
+    --color-sidebar: #2F4E3A;
+    --color-header: #3F6F55;
+    --color-sidebar-text: #FDFCFB;
     --radius-base: 14px;
     font-family: "Tajawal", "Cairo", "Segoe UI", Tahoma, Arial, sans-serif;
   }
@@ -28,7 +36,7 @@
   html {
     font-size: 16px;
     background-color: var(--color-background);
-    color: #15323b;
+    color: var(--color-text-primary);
   }
 
   body {
@@ -48,18 +56,18 @@
   }
 
   ::selection {
-    background-color: rgba(33, 128, 129, 0.24);
-    color: #0f1f24;
+    background-color: rgba(76, 175, 80, 0.24);
+    color: var(--color-text-primary);
   }
 }
 
 @layer components {
   .glass-card {
     border-radius: 1.25rem;
-    border: 1px solid rgba(15, 23, 42, 0.08);
+    border: 1px solid var(--color-border);
     background-color: var(--color-surface);
     padding: 1.75rem;
-    box-shadow: none;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
     backdrop-filter: none;
   }
 
@@ -80,33 +88,37 @@
 
   .button-primary {
     background-color: var(--color-primary);
-    color: #fdfefe;
+    color: #ffffff;
     border: 1px solid var(--color-primary);
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
   }
 
   .button-primary:hover {
     background-color: var(--color-primary-dark);
     border-color: var(--color-primary-dark);
+    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.15);
   }
 
   .button-primary:focus-visible {
-    outline: 2px solid rgba(29, 111, 112, 0.45);
+    outline: 2px solid rgba(76, 175, 80, 0.45);
     outline-offset: 3px;
   }
 
   .button-secondary {
-    background: white;
-    color: var(--color-primary-dark);
-    border: 1px solid rgba(15, 23, 42, 0.12);
+    background: var(--color-accent);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   }
 
   .button-secondary:hover {
     border-color: var(--color-primary);
     color: var(--color-primary);
+    background: var(--color-surface);
   }
 
   .button-secondary:focus-visible {
-    outline: 2px solid rgba(29, 111, 112, 0.35);
+    outline: 2px solid rgba(76, 175, 80, 0.35);
     outline-offset: 3px;
   }
 
@@ -115,7 +127,7 @@
     align-items: center;
     gap: 0.4rem;
     border-radius: 999px;
-  background-color: rgba(29, 111, 112, 0.1);
+    background-color: rgba(76, 175, 80, 0.12);
     color: var(--color-primary-dark);
     font-size: 0.75rem;
     font-weight: 600;
@@ -154,7 +166,33 @@
 
   .soft-card {
     border-radius: var(--radius-base);
-    background-color: rgba(248, 250, 252, 0.75);
-    border: 1px solid rgba(226, 232, 240, 0.6);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+  }
+
+  /* Custom Scrollbar for Admin Sidebar - RTL */
+  .admin-sidebar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+    direction: rtl;
+  }
+
+  .admin-sidebar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .admin-sidebar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .admin-sidebar::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+    transition: background-color 0.2s ease;
+  }
+
+  .admin-sidebar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.5);
   }
 }

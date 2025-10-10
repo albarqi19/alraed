@@ -33,6 +33,9 @@ export const adminQueryKeys = {
     list: (filters: Record<string, unknown>) => ['admin', 'late-arrivals', 'list', filters] as const,
     stats: () => ['admin', 'late-arrivals', 'stats'] as const,
   },
+  leaveRequests: {
+    list: (filters: Record<string, unknown>) => ['admin', 'leave-requests', 'list', filters] as const,
+  },
   import: {
     studentsPreview: () => ['admin', 'import', 'students', 'preview'] as const,
     summary: () => ['admin', 'import', 'summary'] as const,
@@ -41,7 +44,10 @@ export const adminQueryKeys = {
   whatsapp: {
     statistics: () => ['admin', 'whatsapp', 'statistics'] as const,
     queue: () => ['admin', 'whatsapp', 'queue'] as const,
-    history: () => ['admin', 'whatsapp', 'history'] as const,
+    history: (filters?: Record<string, unknown>) => 
+      filters && Object.keys(filters).length > 0
+        ? (['admin', 'whatsapp', 'history', filters] as const)
+        : (['admin', 'whatsapp', 'history'] as const),
     templates: () => ['admin', 'whatsapp', 'templates'] as const,
     settings: () => ['admin', 'whatsapp', 'settings'] as const,
     students: {

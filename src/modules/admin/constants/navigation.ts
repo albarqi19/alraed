@@ -23,6 +23,9 @@ import {
   UserPlus,
   Send,
   FileEdit,
+  DoorOpen,
+  IdCard,
+  Palette,
 } from 'lucide-react'
 
 export interface AdminNavItem {
@@ -47,6 +50,7 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
       { to: '/admin/dashboard', label: 'نظرة عامة', icon: LayoutDashboard, exact: true },
       { to: '/admin/teachers', label: 'إدارة المعلمين', icon: Users },
       { to: '/admin/students', label: 'إدارة الطلاب', icon: GraduationCap },
+  { to: '/admin/students/profile', label: 'ملف الطالب', icon: IdCard },
       { to: '/admin/subjects', label: 'إدارة المواد', icon: BookOpen },
       { to: '/admin/import', label: 'استيراد البيانات', icon: Upload },
     ],
@@ -68,6 +72,7 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
       { to: '/admin/attendance-report', label: 'كشف الغياب', icon: FileText },
       { to: '/admin/approval', label: 'اعتماد التحضير', icon: UserCheck },
       { to: '/admin/late-arrivals', label: 'إدارة التأخير', icon: Timer },
+      { to: '/admin/leave-requests', label: 'طلبات الاستئذان', icon: DoorOpen },
     ],
   },
   {
@@ -95,6 +100,7 @@ export const settingsAdminNav: AdminNavGroup = {
   icon: Settings,
   items: [
     { to: '/admin/settings', label: 'الإعدادات', icon: Settings },
+    { to: '/admin/theme', label: 'المظهر والألوان', icon: Palette },
     { to: '/admin/support', label: 'الدعم الفني', icon: Headphones, soon: true },
   ],
 }

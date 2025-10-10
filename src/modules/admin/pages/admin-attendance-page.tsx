@@ -21,7 +21,7 @@ const statusMeta: Record<StatusKey, { label: string; tone: string }> = {
   present: { label: 'حاضر', tone: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
   absent: { label: 'غائب', tone: 'bg-rose-50 text-rose-700 border border-rose-200' },
   late: { label: 'متأخر', tone: 'bg-amber-50 text-amber-700 border border-amber-200' },
-  excused: { label: 'مُعذَر', tone: 'bg-sky-50 text-sky-700 border border-sky-200' },
+  excused: { label: 'مستأذن', tone: 'bg-sky-50 text-sky-700 border border-sky-200' },
 }
 
 function formatDate(value?: string | null, options: Intl.DateTimeFormatOptions = { dateStyle: 'medium' }) {
@@ -232,7 +232,7 @@ export function AdminAttendancePage() {
               <option value="present">حاضر</option>
               <option value="absent">غائب</option>
               <option value="late">متأخر</option>
-              <option value="excused">مُعذَر</option>
+              <option value="excused">مستأذن</option>
             </select>
           </div>
 
@@ -385,7 +385,7 @@ export function AdminAttendancePage() {
                             متأخر: {detailsQuery.data.statistics.late_count.toLocaleString('ar-SA')}
                           </span>
                           <span className="rounded-2xl bg-sky-50 px-3 py-2 text-center font-semibold text-sky-700">
-                            مُعذَر: {detailsQuery.data.statistics.excused_count.toLocaleString('ar-SA')}
+                            مستأذن: {detailsQuery.data.statistics.excused_count.toLocaleString('ar-SA')}
                           </span>
                         </div>
                         <p className="text-center text-[11px] text-muted">

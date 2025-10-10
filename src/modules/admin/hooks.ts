@@ -5,7 +5,11 @@ import {
   applyScheduleToClass,
   approveAttendanceRecord,
   approveAttendanceSession,
+  approveLeaveRequest,
+  cancelLeaveRequest,
   createClassSession,
+  createLateArrival,
+  createLeaveRequest,
   createSchedule,
   createStudent,
   createSubject,
@@ -13,6 +17,7 @@ import {
   createWhatsappTemplate,
   deleteClassScheduleSession,
   deleteClassSession,
+  deleteLateArrival,
   deleteSchedule,
   deleteStudent,
   deleteSubject,
@@ -21,18 +26,18 @@ import {
   deleteWhatsappTemplate,
   downloadStudentsTemplate,
   downloadTeachersTemplate,
-  createLateArrival,
   exportAttendanceReport,
-  fetchLateArrivalStats,
-  fetchLateArrivals,
   fetchAdminDashboardStats,
   fetchAdminSettings,
-  fetchAttendanceReports,
   fetchAttendanceReportMatrix,
+  fetchAttendanceReports,
   fetchAttendanceSessionDetails,
   fetchClassSchedule,
   fetchClassScheduleSummary,
   fetchClassSessions,
+  fetchLateArrivalStats,
+  fetchLateArrivals,
+  fetchLeaveRequests,
   fetchPendingApprovals,
   fetchScheduleDetails,
   fetchScheduleSessionData,
@@ -41,21 +46,21 @@ import {
   fetchStudents,
   fetchSubjects,
   fetchTeachers,
-  deleteLateArrival,
-  sendLateArrivalMessage,
+  fetchWhatsappAbsentStudents,
   fetchWhatsappHistory,
   fetchWhatsappQueue,
   fetchWhatsappSettings,
   fetchWhatsappStatistics,
   fetchWhatsappStudents,
-  fetchWhatsappAbsentStudents,
   fetchWhatsappTemplates,
   importStudents,
   importTeachers,
   previewImportStudents,
   rejectAttendanceRecord,
   rejectAttendanceSession,
+  rejectLeaveRequest,
   resetTeacherPassword,
+  sendLateArrivalMessage,
   sendPendingWhatsappMessages,
   sendSingleWhatsappMessage,
   sendWhatsappBulkMessages,
@@ -63,16 +68,17 @@ import {
   testWhatsappConnection,
   updateAdminSettings,
   updateClassSession,
+  updateLeaveRequest,
+  updateSchedule,
   updateStudent,
   updateSubject,
   updateTeacher,
-  updateSchedule,
   updateWhatsappSettings,
   updateWhatsappTemplate,
 } from './api'
 import { adminQueryKeys } from './query-keys'
 import { useToast } from '@/shared/feedback/use-toast'
-import type { AttendanceReportFiltersPayload, ImportStudentsPayload } from './types'
+import type { AttendanceReportFiltersPayload, ImportStudentsPayload, LeaveRequestFilters, LeaveRequestRecord } from './types'
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error) return error.message
@@ -83,6 +89,7 @@ type AttendanceFilters = Record<string, string | number | boolean | undefined>
 type LateArrivalFilters = {
   date?: string
   className?: string
+  studentId?: number
 }
 
 export function useAdminDashboardStatsQuery() {
@@ -618,11 +625,16 @@ export function useExportAttendanceReportMutation() {
   })
 }
 
-export function useLateArrivalsQuery(filters: LateArrivalFilters = {}) {
+export function useLateArrivalsQuery(
+  filters: LateArrivalFilters = {},
+  options: { enabled?: boolean; refetchInterval?: number } = {},
+) {
+  const enabled = options.enabled ?? true
   return useQuery({
     queryKey: adminQueryKeys.lateArrivals.list(filters),
     queryFn: () => fetchLateArrivals(filters),
-    refetchInterval: 60_000,
+    enabled,
+    refetchInterval: enabled ? options.refetchInterval ?? 60_000 : undefined,
   })
 }
 
@@ -684,6 +696,105 @@ export function useCreateLateArrivalMutation() {
     },
     onError: (error) => {
       toast({ type: 'error', title: getErrorMessage(error, 'تعذر تسجيل التأخير') })
+    },
+  })
+}
+
+function invalidateLeaveRequests(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: ['admin', 'leave-requests'] })
+}
+
+export function useLeaveRequestsQuery(filters: LeaveRequestFilters, options: { enabled?: boolean } = {}) {
+  const queryFilters = filters as unknown as Record<string, unknown>
+  const enabled = options.enabled ?? true
+
+  return useQuery({
+    queryKey: adminQueryKeys.leaveRequests.list(queryFilters),
+    queryFn: () => fetchLeaveRequests(filters),
+    enabled,
+  })
+}
+
+export function useCreateLeaveRequestMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation<LeaveRequestRecord, unknown, Parameters<typeof createLeaveRequest>[0]>({
+    mutationFn: createLeaveRequest,
+    onSuccess: (record) => {
+      toast({ type: 'success', title: `تم تسجيل طلب استئذان للطالب ${record.student.name}` })
+      invalidateLeaveRequests(queryClient)
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر إنشاء طلب الاستئذان') })
+    },
+  })
+}
+
+export function useUpdateLeaveRequestMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation<LeaveRequestRecord, unknown, { id: number; payload: Parameters<typeof updateLeaveRequest>[1] }>({
+    mutationFn: ({ id, payload }: { id: number; payload: Parameters<typeof updateLeaveRequest>[1] }) =>
+      updateLeaveRequest(id, payload),
+    onSuccess: () => {
+      toast({ type: 'success', title: 'تم تحديث طلب الاستئذان' })
+      invalidateLeaveRequests(queryClient)
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تحديث طلب الاستئذان') })
+    },
+  })
+}
+
+export function useApproveLeaveRequestMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation<LeaveRequestRecord, unknown, { id: number; decision_notes?: string | null }>({
+    mutationFn: ({ id, decision_notes }: { id: number; decision_notes?: string | null }) =>
+      approveLeaveRequest(id, decision_notes ? { decision_notes } : {}),
+    onSuccess: (record) => {
+      toast({ type: 'success', title: `تمت الموافقة على استئذان ${record.student.name}` })
+      invalidateLeaveRequests(queryClient)
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر الموافقة على الطلب') })
+    },
+  })
+}
+
+export function useRejectLeaveRequestMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation<LeaveRequestRecord, unknown, { id: number; decision_notes: string }>({
+    mutationFn: ({ id, decision_notes }: { id: number; decision_notes: string }) =>
+      rejectLeaveRequest(id, decision_notes),
+    onSuccess: (record) => {
+      toast({ type: 'warning', title: `تم رفض طلب استئذان ${record.student.name}` })
+      invalidateLeaveRequests(queryClient)
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر رفض الطلب') })
+    },
+  })
+}
+
+export function useCancelLeaveRequestMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation<LeaveRequestRecord, unknown, { id: number; decision_notes?: string | null }>({
+    mutationFn: ({ id, decision_notes }: { id: number; decision_notes?: string | null }) =>
+      cancelLeaveRequest(id, decision_notes ? { decision_notes } : {}),
+    onSuccess: () => {
+      toast({ type: 'info', title: 'تم إلغاء طلب الاستئذان' })
+      invalidateLeaveRequests(queryClient)
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر إلغاء الطلب') })
     },
   })
 }
@@ -828,10 +939,16 @@ export function useWhatsappQueueQuery() {
   })
 }
 
-export function useWhatsappHistoryQuery() {
+export function useWhatsappHistoryQuery(
+  filters?: Parameters<typeof fetchWhatsappHistory>[0],
+  options: { enabled?: boolean } = {}
+) {
+  const enabled = options.enabled ?? true
+  
   return useQuery({
-    queryKey: adminQueryKeys.whatsapp.history(),
-    queryFn: fetchWhatsappHistory,
+    queryKey: adminQueryKeys.whatsapp.history(filters ?? {}),
+    queryFn: () => fetchWhatsappHistory(filters),
+    enabled,
   })
 }
 

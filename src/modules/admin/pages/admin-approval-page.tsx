@@ -384,7 +384,7 @@ export function AdminApprovalPage() {
                             متأخر: {detailsQuery.data.statistics.late_count.toLocaleString('ar-SA')}
                           </span>
                           <span className="rounded-2xl bg-sky-50 px-3 py-2 text-center font-semibold text-sky-700">
-                            مُعذَر: {detailsQuery.data.statistics.excused_count.toLocaleString('ar-SA')}
+                            مستأذن: {detailsQuery.data.statistics.excused_count.toLocaleString('ar-SA')}
                           </span>
                         </div>
                         <p className="text-center text-[11px] text-muted">
@@ -412,7 +412,7 @@ export function AdminApprovalPage() {
                                   ? 'غائب'
                                   : student.status === 'late'
                                   ? 'متأخر'
-                                  : 'مُعذَر'}
+                                  : 'مستأذن'}
                               </span>
                             </li>
                           ))}

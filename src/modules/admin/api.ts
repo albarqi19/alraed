@@ -1,5 +1,5 @@
 import { apiClient } from '@/services/api/client'
-import type { ApiResponse } from '@/services/api/types'
+import type { ApiResponse, PaginatedResponse } from '@/services/api/types'
 import type {
   AdminDashboardStats,
   AdminSettings,
@@ -39,9 +39,21 @@ import type {
   WhatsappTemplate,
   WhatsappTargetStudent,
   WhatsappBulkMessagePayload,
+  LeaveRequestRecord,
+  LeaveRequestFilters,
+  LeaveRequestListResult,
+  LeaveRequestCreatePayload,
+  LeaveRequestUpdatePayload,
+  LeaveRequestStatus,
 } from './types'
 
 type Filters = Record<string, string | number | boolean | undefined>
+type PaginationMeta = {
+  current_page: number
+  last_page: number
+  per_page: number
+  total: number
+}
 
 function unwrapResponse<T>(response: ApiResponse<T>, fallbackMessage: string): T {
   if (!response.success) {
@@ -381,6 +393,117 @@ function normalizeWhatsappStudentRecord(raw: unknown): WhatsappTargetStudent | n
   }
 }
 
+function unwrapPaginatedArray<T>(
+  response: PaginatedResponse<T[]>,
+  fallbackMessage: string,
+): { items: T[]; meta: PaginationMeta } {
+  if (!response.success) {
+    throw new Error(response.message ?? fallbackMessage)
+  }
+
+  const items = Array.isArray(response.data) ? response.data : []
+  const meta = response.meta ?? {
+    current_page: 1,
+    last_page: 1,
+    per_page: items.length,
+    total: items.length,
+  }
+
+  return { items, meta }
+}
+
+function normalizeLeaveRequestActor(raw: unknown) {
+  if (!isRecord(raw)) return null
+
+  const idCandidate = coerceNumber(raw.id ?? raw.user_id ?? raw.admin_id, Number.NaN)
+  const name =
+    typeof raw.name === 'string'
+      ? raw.name
+      : typeof raw.full_name === 'string'
+        ? raw.full_name
+        : typeof raw.username === 'string'
+          ? raw.username
+          : null
+
+  if (!Number.isFinite(idCandidate) || !name) return null
+
+  return {
+    id: Math.trunc(idCandidate),
+    name,
+  }
+}
+
+function normalizeStudentRecord(raw: unknown): StudentRecord | null {
+  if (!isRecord(raw)) return null
+
+  const idCandidate = coerceNumber(raw.id ?? raw.student_id, Number.NaN)
+  if (!Number.isFinite(idCandidate)) return null
+
+  const name =
+    typeof raw.name === 'string'
+      ? raw.name
+      : typeof raw.student_name === 'string'
+        ? raw.student_name
+        : null
+  if (!name) return null
+
+  return {
+    id: Math.trunc(idCandidate),
+    name,
+    national_id: typeof raw.national_id === 'string' ? raw.national_id : '',
+    grade: typeof raw.grade === 'string' ? raw.grade : '',
+    class_name: typeof raw.class_name === 'string' ? raw.class_name : '',
+    parent_name: typeof raw.parent_name === 'string' ? raw.parent_name : undefined,
+    parent_phone: typeof raw.parent_phone === 'string' ? raw.parent_phone : undefined,
+    created_at: typeof raw.created_at === 'string' ? raw.created_at : undefined,
+    updated_at: typeof raw.updated_at === 'string' ? raw.updated_at : undefined,
+  }
+}
+
+const LEAVE_REQUEST_STATUS_VALUES: LeaveRequestStatus[] = ['pending', 'approved', 'rejected', 'cancelled']
+
+function normalizeLeaveRequestRecord(raw: unknown): LeaveRequestRecord | null {
+  if (!isRecord(raw)) return null
+
+  const idCandidate = coerceNumber(raw.id, Number.NaN)
+  const student = normalizeStudentRecord(raw.student)
+  const status = typeof raw.status === 'string' ? raw.status : null
+
+  if (!Number.isFinite(idCandidate) || !student) return null
+  if (!status || !LEAVE_REQUEST_STATUS_VALUES.includes(status as LeaveRequestStatus)) return null
+
+  const expectedTime =
+    typeof raw.expected_pickup_time === 'string'
+      ? raw.expected_pickup_time
+      : typeof raw.expected_pickup_at === 'string'
+        ? raw.expected_pickup_at
+        : null
+
+  const submittedByType =
+    raw.submitted_by_type === 'admin' || raw.submitted_by_type === 'guardian' ? raw.submitted_by_type : 'guardian'
+
+  return {
+    id: Math.trunc(idCandidate),
+    student_id: coerceNumber(raw.student_id, student.id),
+    student,
+    status: status as LeaveRequestStatus,
+    reason: typeof raw.reason === 'string' ? raw.reason : '',
+    pickup_person_name: typeof raw.pickup_person_name === 'string' ? raw.pickup_person_name : '',
+    pickup_person_relation: typeof raw.pickup_person_relation === 'string' ? raw.pickup_person_relation : null,
+    pickup_person_phone: typeof raw.pickup_person_phone === 'string' ? raw.pickup_person_phone : null,
+    expected_pickup_time: expectedTime,
+    submitted_by_type: submittedByType,
+    submitted_by_admin: normalizeLeaveRequestActor(raw.submitted_by_admin),
+    guardian_name: typeof raw.guardian_name === 'string' ? raw.guardian_name : null,
+    guardian_phone: typeof raw.guardian_phone === 'string' ? raw.guardian_phone : null,
+    decision_notes: typeof raw.decision_notes === 'string' ? raw.decision_notes : null,
+    decision_at: typeof raw.decision_at === 'string' ? raw.decision_at : null,
+    decision_by_admin: normalizeLeaveRequestActor(raw.decision_by_admin),
+    created_at: typeof raw.created_at === 'string' ? raw.created_at : new Date().toISOString(),
+    updated_at: typeof raw.updated_at === 'string' ? raw.updated_at : typeof raw.created_at === 'string' ? raw.created_at : new Date().toISOString(),
+  }
+}
+
 export async function fetchAdminDashboardStats(): Promise<AdminDashboardStats> {
   const { data } = await apiClient.get<ApiResponse<AdminDashboardStats>>('/admin/dashboard-stats')
   return unwrapResponse(data, 'تعذر تحميل إحصائيات لوحة التحكم')
@@ -650,20 +773,94 @@ export async function exportAttendanceReport(format: 'excel' | 'pdf', filters: F
   return data
 }
 
-export async function fetchLateArrivals(filters: { date?: string; className?: string } = {}): Promise<LateArrivalRecord[]> {
+export async function fetchLateArrivals(
+  filters: { date?: string; className?: string; studentId?: number } = {},
+): Promise<LateArrivalRecord[]> {
   const params: Filters = {}
   if (filters.date) params.date = filters.date
-  if (filters.className) params.class = filters.className
+  if (filters.className) params.className = filters.className
+  if (typeof filters.studentId === 'number') params.student_id = filters.studentId
 
-  const { data } = await apiClient.get<ApiResponse<LateArrivalRecord[]>>('/admin/late-arrivals', {
-    params,
-  })
-  return unwrapResponse(data, 'تعذر تحميل بيانات التأخير')
+  const { data } = await apiClient.get<ApiResponse<LateArrivalRecord[]>>('/admin/late-arrivals', { params })
+  const records = unwrapCollectionResponse<LateArrivalRecord>(data, 'تعذر تحميل سجلات التأخير', ['late_arrivals', 'data'])
+  return records
 }
 
 export async function fetchLateArrivalStats(): Promise<LateArrivalStats> {
   const { data } = await apiClient.get<ApiResponse<LateArrivalStats>>('/admin/late-arrivals/stats')
   return unwrapResponse(data, 'تعذر تحميل إحصائيات التأخير')
+}
+
+export async function fetchLeaveRequests(filters: LeaveRequestFilters = {}): Promise<LeaveRequestListResult> {
+  const params: Filters = {}
+
+  if (filters.status && filters.status !== 'all') params.status = filters.status
+  if (filters.grade) params.grade = filters.grade
+  if (filters.class_name) params.class_name = filters.class_name
+  if (filters.submitted_by_type && filters.submitted_by_type !== 'all') params.submitted_by_type = filters.submitted_by_type
+  if (filters.from_date) params.from_date = filters.from_date
+  if (filters.to_date) params.to_date = filters.to_date
+  if (filters.page) params.page = filters.page
+  if (filters.per_page) params.per_page = filters.per_page
+  if (typeof filters.student_id === 'number' && filters.student_id > 0) params.student_id = filters.student_id
+
+  const { data } = await apiClient.get<PaginatedResponse<unknown[]>>('/admin/leave-requests', {
+    params,
+  })
+
+  const { items, meta } = unwrapPaginatedArray(data, 'تعذر تحميل طلبات الاستئذان')
+  const normalized = (items as unknown[])
+    .map((item) => normalizeLeaveRequestRecord(item))
+    .filter((item): item is LeaveRequestRecord => item !== null)
+
+  return {
+    items: normalized,
+    meta,
+  }
+}
+
+export async function createLeaveRequest(payload: LeaveRequestCreatePayload): Promise<LeaveRequestRecord> {
+  const { data } = await apiClient.post<ApiResponse<LeaveRequestRecord>>('/admin/leave-requests', payload)
+  const record = unwrapResponse(data, 'تعذر إنشاء طلب الاستئذان')
+  return normalizeLeaveRequestRecord(record as unknown) ?? record
+}
+
+export async function updateLeaveRequest(
+  id: number,
+  payload: LeaveRequestUpdatePayload,
+): Promise<LeaveRequestRecord> {
+  const { data } = await apiClient.put<ApiResponse<LeaveRequestRecord>>(`/admin/leave-requests/${id}`, payload)
+  const record = unwrapResponse(data, 'تعذر تحديث طلب الاستئذان')
+  return normalizeLeaveRequestRecord(record as unknown) ?? record
+}
+
+export async function approveLeaveRequest(
+  id: number,
+  payload: { decision_notes?: string | null } = {},
+): Promise<LeaveRequestRecord> {
+  const { data } = await apiClient.post<ApiResponse<LeaveRequestRecord>>(
+    `/admin/leave-requests/${id}/approve`,
+    payload,
+  )
+  const record = unwrapResponse(data, 'تعذر الموافقة على طلب الاستئذان')
+  return normalizeLeaveRequestRecord(record as unknown) ?? record
+}
+
+export async function rejectLeaveRequest(id: number, decision_notes: string): Promise<LeaveRequestRecord> {
+  const { data } = await apiClient.post<ApiResponse<LeaveRequestRecord>>(`/admin/leave-requests/${id}/reject`, {
+    decision_notes,
+  })
+  const record = unwrapResponse(data, 'تعذر رفض طلب الاستئذان')
+  return normalizeLeaveRequestRecord(record as unknown) ?? record
+}
+
+export async function cancelLeaveRequest(
+  id: number,
+  payload: { decision_notes?: string | null } = {},
+): Promise<LeaveRequestRecord> {
+  const { data } = await apiClient.post<ApiResponse<LeaveRequestRecord>>(`/admin/leave-requests/${id}/cancel`, payload)
+  const record = unwrapResponse(data, 'تعذر إلغاء طلب الاستئذان')
+  return normalizeLeaveRequestRecord(record as unknown) ?? record
 }
 
 export async function createLateArrival(payload: {
@@ -807,8 +1004,24 @@ export async function sendSingleWhatsappMessage(id: number): Promise<void> {
   unwrapResponse(data, 'تعذر إرسال الرسالة')
 }
 
-export async function fetchWhatsappHistory(): Promise<WhatsappHistoryItem[]> {
-  const { data } = await apiClient.get<ApiResponse<unknown>>('/admin/whatsapp/history')
+export async function fetchWhatsappHistory(filters?: {
+  student_id?: number
+  date_from?: string
+  date_to?: string
+  status?: string
+  per_page?: number
+}): Promise<WhatsappHistoryItem[]> {
+  const params: Record<string, string | number> = {}
+  
+  if (filters?.student_id) params.student_id = filters.student_id
+  if (filters?.date_from) params.date_from = filters.date_from
+  if (filters?.date_to) params.date_to = filters.date_to
+  if (filters?.status) params.status = filters.status
+  if (filters?.per_page) params.per_page = filters.per_page
+
+  const { data } = await apiClient.get<ApiResponse<unknown>>('/admin/whatsapp/history', {
+    params: Object.keys(params).length > 0 ? params : undefined
+  })
   return unwrapCollectionResponse<WhatsappHistoryItem>(data, 'تعذر تحميل سجل الواتساب', ['data', 'history', 'items', 'records'])
 }
 

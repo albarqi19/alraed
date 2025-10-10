@@ -8,6 +8,7 @@ import { TeacherMessagesPage } from '@/modules/teacher/pages/teacher-messages-pa
 import { AdminDashboardPage } from '@/modules/admin/pages/admin-dashboard-page'
 import { AdminTeachersPage } from '@/modules/admin/pages/admin-teachers-page'
 import { AdminStudentsPage } from '@/modules/admin/pages/admin-students-page'
+import { AdminStudentProfilePage } from '@/modules/admin/pages/admin-student-profile-page'
 import { AdminSubjectsPage } from '@/modules/admin/pages/admin-subjects-page'
 import { AdminClassSessionsPage } from '@/modules/admin/pages/admin-class-sessions-page'
 import { AdminClassSchedulesPage } from '@/modules/admin/pages/admin-class-schedules-page'
@@ -18,6 +19,7 @@ import { AdminApprovalPage } from '@/modules/admin/pages/admin-approval-page'
 import { AdminLateArrivalsPage } from '@/modules/admin/pages/admin-late-arrivals-page'
 import { AdminTeacherMessagesPage } from '@/modules/admin/pages/admin-teacher-messages-page'
 import { AdminSettingsPage } from '@/modules/admin/pages/admin-settings-page'
+import { AdminThemeSettingsPage } from '@/modules/admin/pages/admin-theme-settings-page'
 import { WhatsappHubPage } from '@/modules/admin/pages/whatsapp-hub-page'
 import { AttendanceReportPage } from '@/modules/admin/pages/attendance-report-page'
 import { StudentCasesPage } from '@/modules/admin/pages/student-cases-page'
@@ -30,6 +32,8 @@ import { WhatsAppTemplatesPage } from '@/modules/admin/pages/whatsapp-templates-
 import { StudentCasesListPage } from '@/modules/admin/pages/student-cases-list-page'
 import { StudentCaseDetailsPage } from '@/modules/admin/pages/student-case-details-page'
 import { StudentCaseFormPage } from '@/modules/admin/pages/student-case-form-page'
+import { AdminLeaveRequestsPage } from '@/modules/admin/pages/admin-leave-requests-page'
+import { GuardianLeaveRequestPage } from '@/modules/guardian/pages/guardian-leave-request-page'
 import { NotFoundPage } from '@/modules/core/pages/not-found-page'
 import { RequireAuth, RedirectIfAuthenticated } from '@/modules/auth/components/route-guards'
 import { TeacherShell } from '@/modules/teacher/layouts/teacher-shell'
@@ -95,6 +99,7 @@ const appRoutes = [
           { path: 'dashboard', element: <AdminDashboardPage /> },
           { path: 'teachers', element: <AdminTeachersPage /> },
           { path: 'students', element: <AdminStudentsPage /> },
+          { path: 'students/profile', element: <AdminStudentProfilePage /> },
           { path: 'subjects', element: <AdminSubjectsPage /> },
           { path: 'class-sessions', element: <AdminClassSessionsPage /> },
           { path: 'class-schedules', element: <AdminClassSchedulesPage /> },
@@ -103,6 +108,7 @@ const appRoutes = [
           { path: 'attendance', element: <AdminAttendancePage /> },
           { path: 'approval', element: <AdminApprovalPage /> },
           { path: 'late-arrivals', element: <AdminLateArrivalsPage /> },
+          { path: 'leave-requests', element: <AdminLeaveRequestsPage /> },
           { path: 'teacher-messages', element: <AdminTeacherMessagesPage /> },
           { path: 'student-cases', element: <StudentCasesPage /> },
           { path: 'student-cases/list', element: <StudentCasesListPage /> },
@@ -113,11 +119,16 @@ const appRoutes = [
           { path: 'guidance-programs', element: <GuidanceProgramsPage /> },
           { path: 'summons', element: <SummonsPage /> },
           { path: 'settings', element: <AdminSettingsPage /> },
+          { path: 'theme', element: <AdminThemeSettingsPage /> },
           { path: 'whatsapp', element: <WhatsappHubPage /> },
           { path: 'whatsapp-send', element: <WhatsAppSendPage /> },
           { path: 'whatsapp-templates', element: <WhatsAppTemplatesPage /> },
           { path: 'attendance-report', element: <AttendanceReportPage /> },
         ],
+      },
+      {
+        path: 'guardian/leave-request',
+        element: <GuardianLeaveRequestPage />,
       },
       {
         path: 'guidance',

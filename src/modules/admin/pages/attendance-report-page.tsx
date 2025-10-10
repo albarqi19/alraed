@@ -78,7 +78,7 @@ const STATUS_CONFIG: Record<
     summaryClass: 'text-amber-600',
   },
   excused: {
-    label: 'الأعذار',
+    label: 'الاستئذان',
     symbol: 'ℹ',
     cellClass: 'bg-sky-50 text-sky-700',
     toggleActiveClass: 'border-sky-300 bg-sky-50 text-sky-700',

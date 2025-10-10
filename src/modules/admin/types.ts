@@ -458,3 +458,72 @@ export interface WhatsappSettings {
   last_sync_at?: string | null
   auto_send_enabled?: boolean
 }
+
+export type LeaveRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled'
+
+export type LeaveRequestSubmittedBy = 'admin' | 'guardian'
+
+export interface LeaveRequestActor {
+  id: number
+  name: string
+}
+
+export interface LeaveRequestRecord {
+  id: number
+  student_id: number
+  student: StudentRecord
+  status: LeaveRequestStatus
+  reason: string
+  pickup_person_name: string
+  pickup_person_relation?: string | null
+  pickup_person_phone?: string | null
+  expected_pickup_time?: string | null
+  submitted_by_type: LeaveRequestSubmittedBy
+  submitted_by_admin?: LeaveRequestActor | null
+  guardian_name?: string | null
+  guardian_phone?: string | null
+  decision_notes?: string | null
+  decision_at?: string | null
+  decision_by_admin?: LeaveRequestActor | null
+  created_at: string
+  updated_at: string
+}
+
+export interface LeaveRequestFilters {
+  status?: LeaveRequestStatus | 'all'
+  grade?: string
+  class_name?: string
+  submitted_by_type?: LeaveRequestSubmittedBy | 'all'
+  from_date?: string
+  to_date?: string
+  page?: number
+  per_page?: number
+  student_id?: number
+}
+
+export interface LeaveRequestListResult {
+  items: LeaveRequestRecord[]
+  meta: {
+    current_page: number
+    last_page: number
+    per_page: number
+    total: number
+  }
+}
+
+export interface LeaveRequestCreatePayload {
+  student_id: number
+  reason: string
+  pickup_person_name: string
+  pickup_person_relation?: string | null
+  pickup_person_phone?: string | null
+  expected_pickup_time?: string | null
+  guardian_name?: string | null
+  guardian_phone?: string | null
+  status?: LeaveRequestStatus
+  decision_notes?: string | null
+}
+
+export interface LeaveRequestUpdatePayload extends Partial<LeaveRequestCreatePayload> {
+  status?: LeaveRequestStatus
+}

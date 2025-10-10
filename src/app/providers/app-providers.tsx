@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { DirectionProvider } from './direction-provider'
 import { ToastProvider } from '@/shared/feedback/toast-provider'
 import { AuthBootstrap } from './auth-bootstrap'
+import { ThemeProvider } from '@/shared/themes'
 
 interface AppProvidersProps {
   children: ReactNode
@@ -31,9 +32,11 @@ export function AppProviders({ children }: AppProvidersProps) {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <DirectionProvider>
-          <ToastProvider>
-            <AuthBootstrap>{children}</AuthBootstrap>
-          </ToastProvider>
+          <ThemeProvider>
+            <ToastProvider>
+              <AuthBootstrap>{children}</AuthBootstrap>
+            </ToastProvider>
+          </ThemeProvider>
         </DirectionProvider>
       </BrowserRouter>
     </QueryClientProvider>
