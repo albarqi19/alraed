@@ -364,7 +364,17 @@ export function PointsProgramPage() {
 
       try {
         // Generate QR code for this specific student
-  const qrPayload = record.card.token ?? String(record.student.id)
+        const qrPayload = record.card.token ?? String(record.student.id)
+        
+        // 🔍 Debug: عرض القيمة التي سيتم وضعها في QR
+        console.log('🔍 Generating QR for student:', {
+          studentId: record.student.id,
+          studentName: record.student.name,
+          cardToken: record.card.token,
+          qrPayload: qrPayload,
+          isUUID: /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(qrPayload),
+        })
+        
         const qrDataUrl = await QRCode.toDataURL(qrPayload, {
           errorCorrectionLevel: 'M',
           margin: 1,
@@ -439,6 +449,15 @@ export function PointsProgramPage() {
         try {
           // Generate QR code for this specific student
           const qrPayload = record.card.token ?? String(record.student.id)
+          
+          // 🔍 Debug: عرض القيمة التي سيتم وضعها في QR (للدفعة)
+          console.log('🔍 [Bulk Export] Generating QR for:', {
+            studentId: record.student.id,
+            studentName: record.student.name,
+            cardToken: record.card.token,
+            qrPayload: qrPayload,
+          })
+          
           const qrDataUrl = await QRCode.toDataURL(qrPayload, {
             errorCorrectionLevel: 'M',
             margin: 1,

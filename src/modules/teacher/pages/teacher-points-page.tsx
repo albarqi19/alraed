@@ -83,7 +83,7 @@ export function TeacherPointsPage() {
   const summary = summaryQuery.data ?? config?.summary
   const settings = config?.settings ?? summary?.settings
   const counter = summary?.counter
-  const students = config?.students ?? []
+  const students = config?.students ?? summary?.students ?? []
   const recentTransactions = summary?.recent_transactions ?? []
 
   const modeEnabled = useMemo(() => {
@@ -211,6 +211,15 @@ export function TeacherPointsPage() {
 
   const handleScanDetected = (token: string) => {
     const trimmed = token.trim()
+    
+    // 🔍 Debug: عرض القيمة الممسوحة في console
+    console.log('🔍 QR Code Scanned:', {
+      raw: token,
+      trimmed: trimmed,
+      length: trimmed.length,
+      isUUID: /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(trimmed),
+    })
+    
     if (!trimmed || !pendingReason) {
       return
     }

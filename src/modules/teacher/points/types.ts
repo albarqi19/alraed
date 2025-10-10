@@ -63,6 +63,7 @@ export interface TeacherPointSummary {
   settings: TeacherPointSettings
   counter: TeacherPointCounter
   recent_transactions: TeacherPointTransaction[]
+  students?: TeacherPointStudent[]
 }
 
 export interface TeacherPointConfigPayload {
