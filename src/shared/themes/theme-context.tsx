@@ -42,6 +42,25 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.style.setProperty('--color-sidebar', colors.sidebar)
     root.style.setProperty('--color-header', colors.header)
     root.style.setProperty('--color-sidebar-text', colors.sidebarText)
+
+    // تحديث PWA theme-color بحسب الثيم
+    const themeColorMeta = document.querySelector('meta[name="theme-color"]')
+    if (themeColorMeta) {
+      themeColorMeta.setAttribute('content', colors.sidebar)
+    }
+
+    // تحديث لون شريط الحالة في iOS
+    const appleStatusBarMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
+    if (appleStatusBarMeta) {
+      // استخدام 'black-translucent' للثيمات الداكنة
+      appleStatusBarMeta.setAttribute('content', 'black-translucent')
+    }
+
+    // تحديث لون Windows tiles
+    const msTileColorMeta = document.querySelector('meta[name="msapplication-TileColor"]')
+    if (msTileColorMeta) {
+      msTileColorMeta.setAttribute('content', colors.sidebar)
+    }
   }, [currentTheme])
 
   const setTheme = (themeId: string) => {
