@@ -151,11 +151,32 @@ export function TeacherPointsPage() {
       return
     }
 
+    // 🔍 Debug: تتبع البيانات عند فتح القائمة اليدوية
+    console.log('🔍 openManualSelection called:', {
+      selectionMode,
+      configSuccess: configQuery.isSuccess,
+      configData: !!config,
+      configStudents: config?.students?.length ?? 0,
+      summaryData: !!summary,
+      summaryStudents: summary?.students?.length ?? 0,
+      finalStudents: students.length,
+      students: students.slice(0, 3), // عرض أول 3 طلاب فقط
+    })
+
+    // التحقق من أن البيانات تم تحميلها بالفعل
+    if (!configQuery.isSuccess) {
+      console.log('⚠️ Config not loaded yet')
+      setCameraErrorMessage('جاري تحميل البيانات، يرجى الانتظار...')
+      return
+    }
+
     if (students.length === 0) {
+      console.log('❌ Students array is empty!')
       setCameraErrorMessage('لا تتوفر قائمة الطلاب للعرض اليدوي في الوقت الحالي. يرجى استخدام المسح بالرمز أو المحاولة لاحقاً.')
       return
     }
 
+    console.log('✅ Opening student picker with', students.length, 'students')
     setCameraErrorMessage(null)
     setManualSelectionMode(selectionMode)
     setStudentPickerOpen(true)
