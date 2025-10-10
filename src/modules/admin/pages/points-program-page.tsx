@@ -364,7 +364,7 @@ export function PointsProgramPage() {
 
       try {
         // Generate QR code for this specific student
-        const qrPayload = record.student.national_id ?? record.card.token ?? String(record.student.id)
+  const qrPayload = record.card.token ?? String(record.student.id)
         const qrDataUrl = await QRCode.toDataURL(qrPayload, {
           errorCorrectionLevel: 'M',
           margin: 1,
@@ -438,7 +438,7 @@ export function PointsProgramPage() {
       for (const record of cards) {
         try {
           // Generate QR code for this specific student
-          const qrPayload = record.student.national_id ?? record.card.token ?? String(record.student.id)
+          const qrPayload = record.card.token ?? String(record.student.id)
           const qrDataUrl = await QRCode.toDataURL(qrPayload, {
             errorCorrectionLevel: 'M',
             margin: 1,
