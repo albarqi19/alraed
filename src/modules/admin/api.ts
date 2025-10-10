@@ -45,15 +45,24 @@ import type {
   LeaveRequestCreatePayload,
   LeaveRequestUpdatePayload,
   LeaveRequestStatus,
+  PointSettingsRecord,
+  PointSettingsUpdatePayload,
+  PointReasonRecord,
+  PointReasonPayload,
+  PointTransactionRecord,
+  PointTransactionFilters,
+  PointTransactionsResponse,
+  PointLeaderboardResponse,
+  PointManualTransactionPayload,
+  PointLeaderboardEntry,
+  PointLeaderboardFilters,
+  PointCardRecord,
+  PointCardFilters,
+  PointCardsResponse,
+  PaginationMeta,
 } from './types'
 
 type Filters = Record<string, string | number | boolean | undefined>
-type PaginationMeta = {
-  current_page: number
-  last_page: number
-  per_page: number
-  total: number
-}
 
 function unwrapResponse<T>(response: ApiResponse<T>, fallbackMessage: string): T {
   if (!response.success) {
@@ -1069,6 +1078,129 @@ export async function fetchWhatsappSettings(): Promise<WhatsappSettings> {
 export async function updateWhatsappSettings(payload: Partial<WhatsappSettings>): Promise<WhatsappSettings> {
   const { data } = await apiClient.put<ApiResponse<WhatsappSettings>>('/admin/whatsapp/settings', payload)
   return unwrapResponse(data, 'تعذر تحديث إعدادات الواتساب')
+}
+
+export async function fetchPointSettings(): Promise<PointSettingsRecord> {
+  const { data } = await apiClient.get<ApiResponse<PointSettingsRecord>>('/admin/points/settings')
+  return unwrapResponse(data, 'تعذر تحميل إعدادات برنامج النقاط')
+}
+
+export async function updatePointSettings(payload: PointSettingsUpdatePayload): Promise<PointSettingsRecord> {
+  const { data } = await apiClient.put<ApiResponse<PointSettingsRecord>>('/admin/points/settings', payload)
+  return unwrapResponse(data, 'تعذر تحديث إعدادات برنامج النقاط')
+}
+
+export async function fetchPointReasons(params?: { type?: 'reward' | 'violation'; only_active?: boolean; search?: string }): Promise<PointReasonRecord[]> {
+  const { data } = await apiClient.get<ApiResponse<PointReasonRecord[]>>('/admin/points/reasons', {
+    params,
+  })
+  return unwrapResponse(data, 'تعذر تحميل أسباب النقاط')
+}
+
+export async function createPointReason(payload: PointReasonPayload): Promise<PointReasonRecord> {
+  const { data } = await apiClient.post<ApiResponse<PointReasonRecord>>('/admin/points/reasons', payload)
+  return unwrapResponse(data, 'تعذر إنشاء سبب النقاط')
+}
+
+export async function updatePointReason(id: number, payload: PointReasonPayload): Promise<PointReasonRecord> {
+  const { data } = await apiClient.put<ApiResponse<PointReasonRecord>>(`/admin/points/reasons/${id}`, payload)
+  return unwrapResponse(data, 'تعذر تحديث سبب النقاط')
+}
+
+export async function deactivatePointReason(id: number): Promise<void> {
+  const { data } = await apiClient.delete<ApiResponse<null>>(`/admin/points/reasons/${id}`)
+  unwrapResponse(data, 'تعذر تعطيل سبب النقاط')
+}
+
+export async function fetchPointTransactions(filters: PointTransactionFilters = {}): Promise<PointTransactionsResponse> {
+  const { data } = await apiClient.get<ApiResponse<unknown>>('/admin/points/transactions', {
+    params: filters,
+  })
+
+  const collection = unwrapCollectionResponse<PointTransactionRecord>(data, 'تعذر تحميل سجل العمليات', ['data', 'items', 'transactions'])
+
+  const metaPayload = isRecord(data) && 'meta' in data ? (data.meta as Record<string, unknown>) : {}
+
+  const meta: PaginationMeta = {
+    current_page: coerceNumber(metaPayload.current_page, 1),
+    last_page: coerceNumber(metaPayload.last_page, 1),
+    per_page: coerceNumber(metaPayload.per_page, filters.per_page ?? 15),
+    total: coerceNumber(metaPayload.total, collection.length),
+  }
+
+  return {
+    items: collection,
+    meta,
+  }
+}
+
+export async function createManualPointTransaction(payload: PointManualTransactionPayload): Promise<PointTransactionRecord> {
+  const { data } = await apiClient.post<ApiResponse<PointTransactionRecord>>('/admin/points/transactions/manual', payload)
+  return unwrapResponse(data, 'تعذر تسجيل العملية اليدوية')
+}
+
+export async function undoPointTransaction(id: number): Promise<PointTransactionRecord> {
+  const { data } = await apiClient.post<ApiResponse<PointTransactionRecord>>(`/admin/points/transactions/${id}/undo`)
+  return unwrapResponse(data, 'تعذر إلغاء العملية')
+}
+
+export async function fetchPointLeaderboard(filters: PointLeaderboardFilters = {}): Promise<PointLeaderboardResponse> {
+  const { data } = await apiClient.get<ApiResponse<unknown>>('/admin/points/leaderboard', {
+    params: filters,
+  })
+
+  const collection = unwrapCollectionResponse<PointLeaderboardEntry>(data, 'تعذر تحميل لوحة الشرف', ['data', 'items', 'leaderboard'])
+
+  const metaPayload = isRecord(data) && 'meta' in data ? (data.meta as Record<string, unknown>) : {}
+
+  const meta: PaginationMeta = {
+    current_page: coerceNumber(metaPayload.current_page, 1),
+    last_page: coerceNumber(metaPayload.last_page, 1),
+    per_page: coerceNumber(metaPayload.per_page, filters.per_page ?? 10),
+    total: coerceNumber(metaPayload.total, collection.length),
+  }
+
+  return {
+    items: collection,
+    meta,
+  }
+}
+
+export async function fetchPointCards(filters: PointCardFilters = {}): Promise<PointCardsResponse> {
+  const { data } = await apiClient.get<ApiResponse<unknown>>('/admin/points/cards', {
+    params: filters,
+  })
+
+  const items = unwrapCollectionResponse<PointCardRecord>(data, 'تعذر تحميل بطاقات الطلاب', ['data', 'items', 'cards'])
+  
+  // Extract pagination metadata
+  const metaPayload = isRecord(data) && 'meta' in data ? (data.meta as Record<string, unknown>) : {}
+
+  const meta: PaginationMeta = {
+    current_page: coerceNumber(metaPayload.current_page, 1),
+    last_page: coerceNumber(metaPayload.last_page, 1),
+    per_page: coerceNumber(metaPayload.per_page, filters.per_page ?? 20),
+    total: coerceNumber(metaPayload.total, items.length),
+  }
+  
+  return { items, meta }
+}
+
+export async function regeneratePointCard(studentId: number): Promise<PointCardRecord['card']> {
+  const { data } = await apiClient.post<ApiResponse<Record<string, unknown>>>('/admin/points/cards/regenerate', {
+    student_id: studentId,
+  })
+
+  const response = unwrapResponse<Record<string, unknown>>(data, 'تعذر توليد البطاقة')
+
+  return {
+    id: coerceNumber(response.id, 0),
+    token: typeof response.token === 'string' ? response.token : '',
+    version: typeof response.version === 'string' ? response.version : 'v1',
+    is_active: Boolean(response.is_active ?? true),
+    issued_at: typeof response.issued_at === 'string' ? response.issued_at : null,
+    revoked_at: typeof response.revoked_at === 'string' ? response.revoked_at : null,
+  }
 }
 
 export async function testWhatsappConnection(): Promise<{ success: boolean; message?: string }> {

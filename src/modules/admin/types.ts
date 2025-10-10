@@ -527,3 +527,149 @@ export interface LeaveRequestCreatePayload {
 export interface LeaveRequestUpdatePayload extends Partial<LeaveRequestCreatePayload> {
   status?: LeaveRequestStatus
 }
+
+export interface PointSettingsRecord {
+  id: number
+  daily_teacher_cap: number
+  per_student_cap: number
+  daily_violation_cap: number
+  rewards_enabled: boolean
+  violations_enabled: boolean
+  require_camera_confirmation: boolean
+  undo_timeout_seconds: number
+  reward_values?: number[] | null
+  violation_values?: number[] | null
+  created_at?: string
+  updated_at?: string
+}
+
+export type PointSettingsUpdatePayload = Omit<PointSettingsRecord, 'id' | 'created_at' | 'updated_at'>
+
+export interface PointReasonRecord {
+  id: number
+  title: string
+  type: 'reward' | 'violation'
+  value: number
+  category?: string | null
+  description?: string | null
+  is_active: boolean
+  display_order: number
+  created_at: string
+  updated_at: string
+}
+
+export type PointReasonPayload = Omit<PointReasonRecord, 'id' | 'created_at' | 'updated_at'>
+
+export interface PointTransactionStudent {
+  id: number
+  name: string
+  grade?: string | null
+  class_name?: string | null
+}
+
+export interface PointTransactionTeacher {
+  id: number
+  name: string
+}
+
+export interface PointTransactionRecord {
+  id: number
+  student_id: number
+  teacher_id?: number | null
+  reason_id?: number | null
+  card_id?: number | null
+  created_by?: number | null
+  type: 'reward' | 'violation'
+  amount: number
+  source: string
+  context?: string | null
+  notes?: string | null
+  metadata?: Record<string, unknown> | null
+  undoable_until?: string | null
+  undone_at?: string | null
+  created_at: string
+  updated_at: string
+  student?: PointTransactionStudent
+  teacher?: PointTransactionTeacher | null
+  reason?: PointReasonRecord | null
+}
+
+export interface PaginationMeta {
+  current_page: number
+  last_page: number
+  per_page: number
+  total: number
+}
+
+export interface PointLeaderboardEntry {
+  id: number
+  student_id: number
+  total_points: number
+  lifetime_rewards?: number
+  lifetime_violations?: number
+  student: StudentRecord
+}
+
+export interface PointCardRecord {
+  student: StudentRecord
+  card: {
+    id: number
+    token: string
+    version: string
+    is_active: boolean
+    issued_at?: string | null
+    revoked_at?: string | null
+  }
+  total_points: number
+}
+
+export interface PointTransactionFilters {
+  type?: 'reward' | 'violation'
+  student_id?: number
+  teacher_id?: number
+  date_from?: string
+  date_to?: string
+  search?: string
+  page?: number
+  per_page?: number
+}
+
+export interface PointLeaderboardFilters {
+  grade?: string
+  class_name?: string
+  page?: number
+  per_page?: number
+}
+
+export interface PointCardFilters {
+  grade?: string
+  class_name?: string
+  search?: string
+  page?: number
+  per_page?: number
+}
+
+export interface PointManualTransactionPayload {
+  student_id: number
+  teacher_id?: number | null
+  reason_id?: number | null
+  type: 'reward' | 'violation'
+  amount: number
+  notes?: string | null
+  context?: string | null
+}
+
+export interface PointTransactionsResponse {
+  items: PointTransactionRecord[]
+  meta: PaginationMeta
+}
+
+export interface PointLeaderboardResponse {
+  items: PointLeaderboardEntry[]
+  meta: PaginationMeta
+}
+
+export interface PointCardsResponse {
+  items: PointCardRecord[]
+  meta: PaginationMeta
+}

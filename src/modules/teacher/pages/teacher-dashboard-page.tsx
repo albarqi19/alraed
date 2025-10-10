@@ -150,12 +150,21 @@ export function TeacherDashboardPage() {
       )}
 
       <section className="space-y-8">
-        <header className="space-y-1 text-right">
-          <h1 className="text-3xl font-bold text-slate-900">حصص اليوم</h1>
-          <p className="text-sm text-muted">
-            {data?.currentDay ?? '—'}{' '}
-            {data?.saudiTime ? `— ${new Date(data.saudiTime).toLocaleString('ar-SA')}` : null}
-          </p>
+        <header className="flex flex-col-reverse gap-3 text-right sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-bold text-slate-900">حصص اليوم</h1>
+            <p className="text-sm text-muted">
+              {data?.currentDay ?? '—'}{' '}
+              {data?.saudiTime ? `— ${new Date(data.saudiTime).toLocaleString('ar-SA')}` : null}
+            </p>
+          </div>
+          <Link
+            to="/teacher/points"
+            className="button-primary inline-flex items-center justify-center gap-2 self-start rounded-full px-5 py-2 text-sm font-semibold sm:self-auto"
+          >
+            <i className="bi bi-stars text-base" aria-hidden></i>
+            نقاطي
+          </Link>
         </header>
 
       {actionableSession ? (

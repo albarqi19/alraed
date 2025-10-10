@@ -75,10 +75,32 @@ import {
   updateTeacher,
   updateWhatsappSettings,
   updateWhatsappTemplate,
+  fetchPointSettings,
+  updatePointSettings,
+  fetchPointReasons,
+  createPointReason,
+  updatePointReason,
+  deactivatePointReason,
+  fetchPointTransactions,
+  createManualPointTransaction,
+  undoPointTransaction,
+  fetchPointLeaderboard,
+  fetchPointCards,
+  regeneratePointCard,
 } from './api'
 import { adminQueryKeys } from './query-keys'
 import { useToast } from '@/shared/feedback/use-toast'
-import type { AttendanceReportFiltersPayload, ImportStudentsPayload, LeaveRequestFilters, LeaveRequestRecord } from './types'
+import type {
+  AttendanceReportFiltersPayload,
+  ImportStudentsPayload,
+  LeaveRequestFilters,
+  LeaveRequestRecord,
+  PointSettingsUpdatePayload,
+  PointReasonPayload,
+  PointTransactionFilters,
+  PointLeaderboardFilters,
+  PointCardFilters,
+} from './types'
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error) return error.message
@@ -1004,6 +1026,157 @@ export function useDeleteWhatsappTemplateMutation() {
     },
     onError: (error) => {
       toast({ type: 'error', title: getErrorMessage(error, 'تعذر حذف القالب') })
+    },
+  })
+}
+
+export function usePointSettingsQuery() {
+  return useQuery({
+    queryKey: adminQueryKeys.points.settings(),
+    queryFn: fetchPointSettings,
+  })
+}
+
+export function useUpdatePointSettingsMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: PointSettingsUpdatePayload) => updatePointSettings(payload),
+    onSuccess: () => {
+      toast({ type: 'success', title: 'تم تحديث إعدادات برنامج النقاط' })
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.points.settings() })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تحديث الإعدادات') })
+    },
+  })
+}
+
+export function usePointReasonsQuery() {
+  return useQuery({
+    queryKey: adminQueryKeys.points.reasons(),
+    queryFn: () => fetchPointReasons(),
+  })
+}
+
+export function useCreatePointReasonMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: PointReasonPayload) => createPointReason(payload),
+    onSuccess: (reason) => {
+      toast({ type: 'success', title: `تم إضافة السبب ${reason.title}` })
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.points.reasons() })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر إضافة السبب') })
+    },
+  })
+}
+
+export function useUpdatePointReasonMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: PointReasonPayload }) => updatePointReason(id, payload),
+    onSuccess: () => {
+      toast({ type: 'success', title: 'تم تحديث سبب النقاط' })
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.points.reasons() })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تحديث السبب') })
+    },
+  })
+}
+
+export function useDeactivatePointReasonMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: deactivatePointReason,
+    onSuccess: () => {
+      toast({ type: 'success', title: 'تم تعطيل السبب' })
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.points.reasons() })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تعطيل السبب') })
+    },
+  })
+}
+
+export function usePointTransactionsQuery(filters: PointTransactionFilters) {
+  return useQuery({
+    queryKey: adminQueryKeys.points.transactions(filters as Record<string, unknown>),
+    queryFn: () => fetchPointTransactions(filters),
+  })
+}
+
+export function useCreateManualPointTransactionMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: createManualPointTransaction,
+    onSuccess: () => {
+      toast({ type: 'success', title: 'تم تسجيل العملية اليدوية' })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'points', 'transactions'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'points', 'leaderboard'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'points', 'cards'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تسجيل العملية') })
+    },
+  })
+}
+
+export function useUndoPointTransactionMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: undoPointTransaction,
+    onSuccess: () => {
+      toast({ type: 'info', title: 'تم إلغاء العملية' })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'points', 'transactions'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'points', 'leaderboard'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'points', 'cards'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر إلغاء العملية') })
+    },
+  })
+}
+
+export function usePointLeaderboardQuery(filters: PointLeaderboardFilters) {
+  return useQuery({
+    queryKey: adminQueryKeys.points.leaderboard(filters as Record<string, unknown>),
+    queryFn: () => fetchPointLeaderboard(filters),
+  })
+}
+
+export function usePointCardsQuery(filters: PointCardFilters) {
+  return useQuery({
+    queryKey: adminQueryKeys.points.cards(filters as Record<string, unknown>),
+    queryFn: () => fetchPointCards(filters),
+  })
+}
+
+export function useRegeneratePointCardMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: regeneratePointCard,
+    onSuccess: () => {
+      toast({ type: 'success', title: 'تم توليد بطاقة جديدة' })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'points', 'cards'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر توليد البطاقة') })
     },
   })
 }

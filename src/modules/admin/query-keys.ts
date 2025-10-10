@@ -41,6 +41,13 @@ export const adminQueryKeys = {
     summary: () => ['admin', 'import', 'summary'] as const,
   },
   settings: () => ['admin', 'settings'] as const,
+  points: {
+    settings: () => ['admin', 'points', 'settings'] as const,
+    reasons: () => ['admin', 'points', 'reasons'] as const,
+    transactions: (filters: Record<string, unknown>) => ['admin', 'points', 'transactions', filters] as const,
+    leaderboard: (filters: Record<string, unknown>) => ['admin', 'points', 'leaderboard', filters] as const,
+    cards: (filters: Record<string, unknown>) => ['admin', 'points', 'cards', filters] as const,
+  },
   whatsapp: {
     statistics: () => ['admin', 'whatsapp', 'statistics'] as const,
     queue: () => ['admin', 'whatsapp', 'queue'] as const,

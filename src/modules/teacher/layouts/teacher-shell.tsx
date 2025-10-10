@@ -8,6 +8,7 @@ const navItems = [
   { to: '/teacher/dashboard', label: 'الرئيسية', exact: true },
   { to: '/teacher/schedule', label: 'جدولي الدراسي', exact: false },
   { to: '/teacher/messages', label: 'إرسال رسائل', exact: false },
+  { to: '/teacher/points', label: 'نقاطي', exact: false },
 ]
 
 export function TeacherShell() {
