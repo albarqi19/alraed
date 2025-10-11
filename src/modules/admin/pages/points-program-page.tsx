@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { apiClient } from '@/services/api/client'
 import {
   Activity,
   CreditCard,
@@ -172,6 +174,17 @@ export function PointsProgramPage() {
   const deactivateReasonMutation = useDeactivatePointReasonMutation()
   const createManualTransactionMutation = useCreateManualPointTransactionMutation()
   const undoTransactionMutation = useUndoPointTransactionMutation()
+  const queryClient = useQueryClient()
+  const deleteTransactionMutation = useMutation({
+    mutationFn: async (transactionId: number) => {
+      const response = await apiClient.delete(`/admin/points/transactions/${transactionId}`)
+      return response.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'points', 'transactions'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'points', 'leaderboard'] })
+    },
+  })
   const regenerateCardMutation = useRegeneratePointCardMutation()
 
   useEffect(() => {
@@ -1241,15 +1254,30 @@ export function PointsProgramPage() {
                         <td className="px-3 py-3 text-slate-600">{transaction.teacher?.name ?? '—'}</td>
                         <td className="px-3 py-3 text-slate-500">{formatDate(transaction.created_at)}</td>
                         <td className="px-3 py-3">
-                          <button
-                            type="button"
-                            className="inline-flex items-center gap-1 rounded-2xl border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-emerald-400 hover:text-emerald-600"
-                            onClick={() => handleUndoTransaction(transaction)}
-                            disabled={undoTransactionMutation.isPending || Boolean(transaction.undone_at)}
-                          >
-                            <Undo className="h-3.5 w-3.5" />
-                            تراجع
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              className="inline-flex items-center gap-1 rounded-2xl border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-emerald-400 hover:text-emerald-600"
+                              onClick={() => handleUndoTransaction(transaction)}
+                              disabled={undoTransactionMutation.isPending || Boolean(transaction.undone_at)}
+                            >
+                              <Undo className="h-3.5 w-3.5" />
+                              تراجع
+                            </button>
+                            <button
+                              type="button"
+                              className="inline-flex items-center gap-1 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-600 transition hover:border-rose-400 hover:bg-rose-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                              onClick={() => {
+                                if (confirm('هل أنت متأكد من حذف هذا السجل؟ لا يمكن التراجع عن هذا الإجراء.')) {
+                                  deleteTransactionMutation.mutate(transaction.id)
+                                }
+                              }}
+                              disabled={deleteTransactionMutation.isPending}
+                            >
+                              <span>🗑️</span>
+                              حذف
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}

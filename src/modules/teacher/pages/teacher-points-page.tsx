@@ -13,7 +13,7 @@ import {
 } from '@/modules/teacher/points/hooks'
 import type { TeacherPointMode, TeacherPointReason, TeacherPointStudent } from '@/modules/teacher/points/types'
 
-const numberFormatter = new Intl.NumberFormat('ar-SA')
+const numberFormatter = new Intl.NumberFormat('en-US')
 
 function formatNumber(value?: number | null) {
   if (value === undefined || value === null) return '0'
@@ -71,6 +71,7 @@ export function TeacherPointsPage() {
   const [studentPickerOpen, setStudentPickerOpen] = useState(false)
   const [manualSelectionMode, setManualSelectionMode] = useState<TeacherPointMode | null>(null)
   const [cameraErrorMessage, setCameraErrorMessage] = useState<string | null>(null)
+  const [statsSheetOpen, setStatsSheetOpen] = useState(false)
   const lastTokenRef = useRef<string | null>(null)
 
   const configQuery = useTeacherPointConfigQuery()
@@ -309,42 +310,81 @@ export function TeacherPointsPage() {
 
   return (
     <section className="space-y-6">
-      <header className="space-y-2 text-right">
-        <h1 className="text-3xl font-bold text-slate-900">برنامج نقاطي للمعلم</h1>
-        <p className="text-sm text-muted">امنح طلابك نقاطاً إيجابية أو سجّل المخالفات خلال ثوانٍ من جهازك المحمول.</p>
+      <header className="space-y-3 text-right">
+        <div className="flex items-center justify-between gap-3">
+          <div className="space-y-1 flex-1">
+            <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">برنامج نقاطي</h1>
+            <p className="text-sm text-muted">لتعزيز السلوك الإيجابي</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setStatsSheetOpen(true)}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-700 sm:px-4 sm:py-2 sm:text-sm"
+          >
+            <i className="bi bi-bar-chart-line text-sm" aria-hidden></i>
+            <span>الإحصائيات والحدود</span>
+          </button>
+        </div>
       </header>
 
-      {settings ? (
-        <div className="glass-card space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-3xl border border-teal-200 bg-teal-50 p-4 text-right">
-              <p className="text-xs font-semibold text-teal-700">النقاط الإيجابية المتبقية اليوم</p>
-              <p className="mt-2 text-3xl font-bold text-teal-800">{formatNumber(rewardRemaining)}</p>
-              <p className="text-xs text-teal-700">الحد اليومي للمعلم: {formatNumber(settings.daily_teacher_cap)}</p>
+      {/* Stats Sheet Modal */}
+      {statsSheetOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 animate-in fade-in duration-200"
+          onClick={() => setStatsSheetOpen(false)}
+        >
+          <div
+            className="w-full max-w-2xl rounded-t-3xl bg-white pb-8 pt-6 shadow-2xl animate-in slide-in-from-bottom duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between border-b border-slate-200 px-6 pb-4">
+              <h2 className="text-xl font-bold text-slate-900">الإحصائيات والحدود اليومية</h2>
+              <button
+                type="button"
+                onClick={() => setStatsSheetOpen(false)}
+                className="rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+              >
+                <i className="bi bi-x-lg text-lg" aria-hidden></i>
+              </button>
             </div>
-            <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4 text-right">
-              <p className="text-xs font-semibold text-amber-700">المخالفات المتبقية اليوم</p>
-              <p className="mt-2 text-3xl font-bold text-amber-800">{formatNumber(violationRemaining)}</p>
-              <p className="text-xs text-amber-700">الحد اليومي للمخالفات: {formatNumber(settings.daily_violation_cap)}</p>
+            <div className="max-h-[70vh] space-y-4 overflow-y-auto px-6">
+              {settings ? (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-3xl border border-teal-200 bg-teal-50 p-4 text-right">
+                      <p className="text-xs font-semibold text-teal-700">النقاط الإيجابية المتبقية اليوم</p>
+                      <p className="mt-2 text-3xl font-bold text-teal-800">{formatNumber(rewardRemaining)}</p>
+                      <p className="text-xs text-teal-700">الحد اليومي للمعلم: {formatNumber(settings.daily_teacher_cap)}</p>
+                    </div>
+                    <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4 text-right">
+                      <p className="text-xs font-semibold text-amber-700">المخالفات المتبقية اليوم</p>
+                      <p className="mt-2 text-3xl font-bold text-amber-800">{formatNumber(violationRemaining)}</p>
+                      <p className="text-xs text-amber-700">الحد اليومي للمخالفات: {formatNumber(settings.daily_violation_cap)}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-3xl border border-slate-200 bg-white p-4 text-right">
+                      <p className="text-xs font-semibold text-slate-500">عدد الطلاب الذين تمت مكافأتهم اليوم</p>
+                      <p className="mt-2 text-2xl font-bold text-slate-900">{formatNumber(counter?.unique_students_rewarded)}</p>
+                    </div>
+                    <div className="rounded-3xl border border-slate-200 bg-white p-4 text-right">
+                      <p className="text-xs font-semibold text-slate-500">عدد الطلاب الذين سُجلت عليهم مخالفات اليوم</p>
+                      <p className="mt-2 text-2xl font-bold text-slate-900">{formatNumber(counter?.unique_students_penalized)}</p>
+                    </div>
+                  </div>
+                  {settings.per_student_cap ? (
+                    <p className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-muted">
+                      الحد الأعلى لكل طالب من نفس المعلم هو {formatNumber(settings.per_student_cap)} نقطة يومياً. عند تجاوز الحد ستظهر لك رسالة تنبيه.
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <p className="text-center text-sm text-muted">جاري تحميل الإحصائيات...</p>
+              )}
             </div>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-3xl border border-slate-200 bg-white p-4 text-right">
-              <p className="text-xs font-semibold text-slate-500">عدد الطلاب الذين تمت مكافأتهم اليوم</p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">{formatNumber(counter?.unique_students_rewarded)}</p>
-            </div>
-            <div className="rounded-3xl border border-slate-200 bg-white p-4 text-right">
-              <p className="text-xs font-semibold text-slate-500">عدد الطلاب الذين سُجلت عليهم مخالفات اليوم</p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">{formatNumber(counter?.unique_students_penalized)}</p>
-            </div>
-          </div>
-          {settings.per_student_cap ? (
-            <p className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-muted">
-              الحد الأعلى لكل طالب من نفس المعلم هو {formatNumber(settings.per_student_cap)} نقطة يومياً. عند تجاوز الحد ستظهر لك رسالة تنبيه.
-            </p>
-          ) : null}
         </div>
-      ) : null}
+      )}
 
       <div className="glass-card space-y-5">
         <div className="space-y-3">

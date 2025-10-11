@@ -30,12 +30,12 @@ export function ValueSelector({ mode, values, selectedValue, onSelect, disabled 
             className={`snap-start rounded-3xl border px-5 py-3 text-lg font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 ${
               isActive
                 ? mode === 'reward'
-                  ? 'border-teal-500 bg-teal-50 text-teal-700'
-                  : 'border-amber-500 bg-amber-50 text-amber-700'
-                : 'border-slate-200 bg-white text-slate-600 hover:border-teal-200'
+                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                  : 'border-rose-500 bg-rose-50 text-rose-700'
+                : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
             } ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}
           >
-            {value.toLocaleString('ar-SA')}
+            {value.toLocaleString('en-US')}
           </button>
         )
       })}

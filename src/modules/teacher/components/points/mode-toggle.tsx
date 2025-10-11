@@ -15,18 +15,25 @@ export function ModeToggle({ value, onChange }: ModeToggleProps) {
     <div className="grid grid-cols-2 gap-2 rounded-3xl bg-white p-1 shadow-sm">
       {MODES.map((mode) => {
         const isActive = value === mode.key
+        const isReward = mode.key === 'reward'
         return (
           <button
             key={mode.key}
             type="button"
             onClick={() => onChange(mode.key)}
-            className={`flex flex-col items-end rounded-3xl px-4 py-3 text-right transition focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 sm:flex-row sm:items-center sm:justify-between sm:gap-3 ${isActive ? 'bg-gradient-to-l from-teal-500 to-teal-600 text-white shadow-lg' : 'bg-transparent text-slate-600 hover:bg-slate-50'}`}
+            className={`flex flex-col items-end rounded-3xl px-4 py-3 text-right transition focus:outline-none focus-visible:ring-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 ${
+              isActive
+                ? isReward
+                  ? 'bg-emerald-600 text-white shadow-lg focus-visible:ring-emerald-500'
+                  : 'bg-rose-600 text-white shadow-lg focus-visible:ring-rose-500'
+                : 'bg-transparent text-slate-600 hover:bg-slate-50 focus-visible:ring-slate-500'
+            }`}
           >
             <span className="flex items-center gap-2 text-base font-semibold">
               <i className={`bi ${mode.icon} text-lg`} aria-hidden></i>
               {mode.label}
             </span>
-            <span className="text-xs text-current opacity-80">
+            <span className="hidden text-xs text-current opacity-80 sm:block">
               {mode.key === 'reward' ? 'امنح الطلاب تعزيزًا فورياً' : 'سجّل المخالفات بسرعة'}
             </span>
           </button>

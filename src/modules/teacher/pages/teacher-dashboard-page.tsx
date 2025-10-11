@@ -150,21 +150,21 @@ export function TeacherDashboardPage() {
       )}
 
       <section className="space-y-8">
-        <header className="flex flex-col-reverse gap-3 text-right sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-1">
-            <h1 className="text-3xl font-bold text-slate-900">حصص اليوم</h1>
-            <p className="text-sm text-muted">
-              {data?.currentDay ?? '—'}{' '}
-              {data?.saudiTime ? `— ${new Date(data.saudiTime).toLocaleString('ar-SA')}` : null}
-            </p>
+        <header className="space-y-3 text-right">
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">حصص اليوم</h1>
+            <Link
+              to="/teacher/points"
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-700 sm:px-4 sm:py-2 sm:text-sm"
+            >
+              <i className="bi bi-stars text-sm" aria-hidden></i>
+              <span>نقاطي</span>
+            </Link>
           </div>
-          <Link
-            to="/teacher/points"
-            className="button-primary inline-flex items-center justify-center gap-2 self-start rounded-full px-5 py-2 text-sm font-semibold sm:self-auto"
-          >
-            <i className="bi bi-stars text-base" aria-hidden></i>
-            نقاطي
-          </Link>
+          <p className="text-sm text-muted">
+            {data?.currentDay ?? '—'}{' '}
+            {data?.saudiTime ? `— ${new Date(data.saudiTime).toLocaleString('ar-SA')}` : null}
+          </p>
         </header>
 
       {actionableSession ? (
