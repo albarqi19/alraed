@@ -13,7 +13,7 @@ function ToastRegion({ toasts, dismiss }: { toasts: ToastInternal[]; dismiss: (i
   if (toasts.length === 0) return null
 
   return createPortal(
-    <div className="pointer-events-none fixed bottom-6 left-6 z-[1000] flex w-full max-w-sm flex-col gap-3 text-right md:left-auto md:right-6">
+    <div className="pointer-events-none fixed inset-x-4 bottom-4 z-[1000] mx-auto flex w-auto max-w-md flex-col gap-3 text-right sm:inset-x-auto sm:right-6 sm:max-w-sm">
       {toasts.map((toast) => (
         <div
           key={toast.id}
@@ -26,7 +26,7 @@ function ToastRegion({ toasts, dismiss }: { toasts: ToastInternal[]; dismiss: (i
           )}
         >
           <div className="flex items-start justify-between gap-3">
-            <div className="space-y-1">
+            <div className="flex-1 space-y-1">
               <p className="text-sm font-semibold text-slate-900">{toast.title}</p>
               {toast.description ? (
                 <p className="text-xs leading-relaxed text-slate-600">{toast.description}</p>
@@ -35,9 +35,9 @@ function ToastRegion({ toasts, dismiss }: { toasts: ToastInternal[]; dismiss: (i
             <button
               type="button"
               onClick={() => dismiss(toast.id)}
-              className="text-xs text-slate-400 transition hover:text-slate-600"
+              className="shrink-0 text-xs text-slate-400 transition hover:text-slate-600"
             >
-              إغلاق
+              ✕
             </button>
           </div>
         </div>
