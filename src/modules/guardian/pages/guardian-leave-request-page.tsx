@@ -1,11 +1,16 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import {
   useGuardianLeaveRequestSubmissionMutation,
   useGuardianLeaveRequestsQuery,
   useGuardianStudentLookupMutation,
+  useGuardianSettingsQuery,
 } from '../hooks'
 import type { GuardianLeaveRequestRecord, GuardianStudentSummary } from '../types'
+import { AutoCallProvider, useAutoCall } from '@/modules/auto-call'
+import type { AutoCallHistoryEntry, AutoCallQueueEntry } from '@/modules/auto-call'
+import { useToast } from '@/shared/feedback/use-toast'
+import { CheckCircle2, FileText, Loader2, MapPin, Megaphone } from 'lucide-react'
 
 const STATUS_LABELS = {
   pending: 'بانتظار المراجعة',
@@ -64,6 +69,138 @@ function normalizeDateTimeInput(value: string) {
   return `${datePart} ${normalizedHours}:${normalizedMinutes}:00`
 }
 
+function computeDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371000
+  const toRad = (value: number) => (value * Math.PI) / 180
+  const dLat = toRad(lat2 - lat1)
+  const dLon = toRad(lon2 - lon1)
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2)
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
+}
+
+type GeofenceCoordinates = {
+  latitude: number
+  longitude: number
+  radiusMeters: number
+}
+
+function sanitizeGeofenceInput(raw: unknown, source: 'firestore' | 'backend'): { geofence: GeofenceCoordinates | null; reason: string | null } {
+  if (!raw || typeof raw !== 'object') {
+    return { geofence: null, reason: 'لم يتم توفير إحداثيات صالحة.' }
+  }
+
+  const latitude = Number((raw as Record<string, unknown>).latitude ?? (raw as Record<string, unknown>).lat)
+  const longitude = Number((raw as Record<string, unknown>).longitude ?? (raw as Record<string, unknown>).lng)
+  const radiusSource =
+    (raw as Record<string, unknown>).radiusMeters ??
+    (raw as Record<string, unknown>).radius_meters ??
+    (raw as Record<string, unknown>).radius
+  const radiusMeters = Number(radiusSource)
+
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !Number.isFinite(radiusMeters)) {
+    return { geofence: null, reason: 'الإحداثيات أو نصف القطر غير رقمية.' }
+  }
+
+  if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
+    return { geofence: null, reason: 'قيم خطوط الطول أو العرض خارج النطاق المسموح.' }
+  }
+
+  if (radiusMeters <= 0) {
+    return { geofence: null, reason: 'نطاق التغطية يجب أن يكون أكبر من الصفر.' }
+  }
+
+  if (latitude === 0 && longitude === 0) {
+    const message = source === 'firestore' ? 'إحداثيات Firestore تساوي (0,0) ولا تبدو صحيحة.' : 'إحداثيات النظام الخلفي تساوي (0,0) ولا تبدو صحيحة.'
+    return { geofence: null, reason: message }
+  }
+
+  return {
+    geofence: {
+      latitude,
+      longitude,
+      radiusMeters,
+    },
+    reason: null,
+  }
+}
+
+function parseTimeToMinutes(value?: string | null): number | null {
+  if (!value) return null
+  const timeOnly = value.includes('T') ? value.split('T')[1]?.slice(0, 5) : value
+  if (!timeOnly) return null
+  const [hoursString, minutesString = '0'] = timeOnly.split(':')
+  const hours = Number(hoursString)
+  const minutes = Number(minutesString)
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return null
+  }
+  return hours * 60 + minutes
+}
+
+function isWithinTimeWindow(options: { openFrom?: string | null; openUntil?: string | null }, reference: Date = new Date()) {
+  const fromMinutes = parseTimeToMinutes(options.openFrom)
+  const untilMinutes = parseTimeToMinutes(options.openUntil)
+  if (fromMinutes == null && untilMinutes == null) {
+    return true
+  }
+
+  const nowMinutes = reference.getHours() * 60 + reference.getMinutes()
+
+  if (fromMinutes != null && untilMinutes != null) {
+    if (fromMinutes <= untilMinutes) {
+      return nowMinutes >= fromMinutes && nowMinutes <= untilMinutes
+    }
+    // Window crosses midnight
+    return nowMinutes >= fromMinutes || nowMinutes <= untilMinutes
+  }
+
+  if (fromMinutes != null) {
+    return nowMinutes >= fromMinutes
+  }
+
+  if (untilMinutes != null) {
+    return nowMinutes <= untilMinutes
+  }
+
+  return true
+}
+
+function describeTimeWindow(options: { openFrom?: string | null; openUntil?: string | null }) {
+  if (!options.openFrom && !options.openUntil) {
+    return 'النداء متاح طوال اليوم الدراسي'
+  }
+
+  if (options.openFrom && options.openUntil) {
+    return `النداء متاح من ${options.openFrom} حتى ${options.openUntil}`
+  }
+
+  if (options.openFrom) {
+    return `النداء متاح ابتداءً من ${options.openFrom}`
+  }
+
+  if (options.openUntil) {
+    return `النداء متاح حتى ${options.openUntil}`
+  }
+
+  return 'النداء متاح وفق الإعدادات الحالية'
+}
+
+function requestCurrentPosition(settings?: PositionOptions) {
+  return new Promise<GeolocationPosition>((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('خدمة الموقع غير متاحة في هذا المتصفح'))
+      return
+    }
+
+    navigator.geolocation.getCurrentPosition(resolve, reject, settings)
+  })
+}
+
 function StatusBadge({ status }: { status: StatusKey }) {
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLES[status]}`}>
@@ -116,7 +253,26 @@ function RequestsList({ requests }: { requests: GuardianLeaveRequestRecord[] }) 
   )
 }
 
-export function GuardianLeaveRequestPage() {
+type GuardianSettingsQueryResult = ReturnType<typeof useGuardianSettingsQuery>
+type AutoCallContextValue = ReturnType<typeof useAutoCall>
+
+interface GuardianLeaveRequestPageBaseProps {
+  settingsQuery: GuardianSettingsQueryResult
+  autoCall: AutoCallContextValue | null
+  autoCallSchoolId: string | null
+  activePortalSection: 'none' | 'leave-request' | 'auto-call'
+  onPortalSectionChange: (section: 'none' | 'leave-request' | 'auto-call') => void
+  autoCallAvailabilityReason: string | null
+}
+
+function GuardianLeaveRequestPageBase({
+  settingsQuery,
+  autoCall,
+  autoCallSchoolId,
+  activePortalSection,
+  onPortalSectionChange,
+  autoCallAvailabilityReason,
+}: GuardianLeaveRequestPageBaseProps) {
   const [nationalIdInput, setNationalIdInput] = useState('')
   const [currentNationalId, setCurrentNationalId] = useState<string | null>(null)
   const [studentSummary, setStudentSummary] = useState<GuardianStudentSummary | null>(null)
@@ -130,6 +286,167 @@ export function GuardianLeaveRequestPage() {
     expected_pickup_time: '',
   })
   const [formErrors, setFormErrors] = useState<FormErrors>({})
+  const [autoCallStatus, setAutoCallStatus] = useState<'idle' | 'requesting' | 'success' | 'error'>('idle')
+  const [autoCallError, setAutoCallError] = useState<string | null>(null)
+  const [isCheckingLocation, setIsCheckingLocation] = useState(false)
+
+  const toast = useToast()
+  const guardianSettings = settingsQuery.data
+  const autoCallSettings = autoCall?.settings ?? null
+  const autoCallQueue = autoCall?.queue ?? []
+  const autoCallHistory = autoCall?.history ?? []
+  const guardianStatuses = autoCall?.guardianStatuses ?? new Map()
+  const isGuardianBlockedFn = autoCall?.isGuardianBlocked ?? (() => false)
+  const acknowledgeCall = autoCall?.acknowledgeCall
+  const enqueueAutoCall = autoCall?.enqueueCall
+
+  const effectiveTimeWindow = useMemo(
+    () => ({
+      openFrom: autoCallSettings?.openFrom ?? guardianSettings?.auto_call_open_from ?? null,
+      openUntil: autoCallSettings?.openUntil ?? guardianSettings?.auto_call_open_until ?? null,
+    }),
+    [autoCallSettings?.openFrom, autoCallSettings?.openUntil, guardianSettings?.auto_call_open_from, guardianSettings?.auto_call_open_until],
+  )
+
+  const geofenceInfo = useMemo(() => {
+    console.log('🗺️ Geofence resolution:', {
+      'autoCallSettings?.geofence': autoCallSettings?.geofence,
+      'guardianSettings?.auto_call_geofence': guardianSettings?.auto_call_geofence,
+    })
+
+    const reasons: string[] = []
+
+    if (autoCallSettings?.geofence) {
+      const { geofence, reason } = sanitizeGeofenceInput(autoCallSettings.geofence, 'firestore')
+      if (geofence) {
+        console.log('✅ Using geofence from Firestore:', geofence)
+        return { geofence, source: 'firestore' as const, reason: null }
+      }
+      if (reason) {
+        reasons.push(`[firestore] ${reason}`)
+      }
+    }
+
+    if (guardianSettings?.auto_call_geofence) {
+      const backendGeofence = {
+        latitude: guardianSettings.auto_call_geofence.latitude,
+        longitude: guardianSettings.auto_call_geofence.longitude,
+        radiusMeters: guardianSettings.auto_call_geofence.radius_meters,
+      }
+      const { geofence, reason } = sanitizeGeofenceInput(backendGeofence, 'backend')
+      if (geofence) {
+        console.log('✅ Using geofence from backend:', geofence)
+        return { geofence, source: 'backend' as const, reason: null }
+      }
+      if (reason) {
+        reasons.push(`[backend] ${reason}`)
+      }
+    }
+
+    if (reasons.length) {
+      console.warn('⚠️ Geofence configuration invalid:', reasons)
+    } else {
+      console.log('✅ No geofence configured - location check disabled')
+    }
+
+    return {
+      geofence: null,
+      source: null,
+      reason: reasons[0] ?? 'لم يتم ضبط إحداثيات المدرسة لخدمة النداء.',
+    }
+  }, [autoCallSettings?.geofence, guardianSettings?.auto_call_geofence])
+
+  const geofence = geofenceInfo.geofence
+
+  const guardianBlocked = useMemo(() => {
+    if (!currentNationalId) return false
+    return isGuardianBlockedFn(currentNationalId)
+  }, [currentNationalId, isGuardianBlockedFn])
+
+  const guardianStrikeStatus = useMemo(() => {
+    if (!currentNationalId) return null
+    return guardianStatuses.get(currentNationalId) ?? null
+  }, [currentNationalId, guardianStatuses])
+
+  const activeAutoCalls = useMemo(() => {
+    if (!currentNationalId) return [] as AutoCallQueueEntry[]
+    return autoCallQueue.filter(
+      (entry) => entry.studentNationalId === currentNationalId && entry.status !== 'acknowledged' && entry.status !== 'cancelled',
+    )
+  }, [autoCallQueue, currentNationalId])
+
+  const { autoCallEnabled, autoCallDisabledReason } = useMemo(() => {
+    console.log('🔍 Auto-call diagnosis:', {
+      'autoCall exists': !!autoCall,
+      'autoCall.settings': autoCall?.settings,
+      'autoCall.settings.enabled': autoCall?.settings?.enabled,
+      'guardianSettings': guardianSettings,
+      'guardianSettings.auto_call_enabled': guardianSettings?.auto_call_enabled,
+    })
+
+    let enabled: boolean | null = null
+    let reason: string | null = null
+
+    if (!autoCall) {
+      return {
+        autoCallEnabled: false,
+        autoCallDisabledReason: autoCallAvailabilityReason ?? 'جاري تهيئة خدمة النداء الآلي...'
+      }
+    }
+
+    if (autoCall.settings?.enabled !== undefined) {
+      enabled = autoCall.settings.enabled
+      reason = enabled ? null : 'خدمة النداء متوقفة من إعدادات Firestore.'
+      console.log('✅ Using autoCall.settings.enabled from Firestore:', enabled)
+    } else if (guardianSettings?.auto_call_enabled !== undefined && guardianSettings?.auto_call_enabled !== null) {
+      enabled = Boolean(guardianSettings.auto_call_enabled)
+      reason = enabled ? null : 'خدمة النداء غير مفعّلة من إعدادات المدرسة.'
+      console.log('✅ Using guardianSettings.auto_call_enabled from backend:', enabled)
+    } else {
+      enabled = true
+      console.log('⚠️ No explicit enabled setting found, but autoCall provider exists - defaulting to true')
+    }
+
+    if (!enabled) {
+      return { autoCallEnabled: false, autoCallDisabledReason: reason ?? 'خدمة النداء متوقفة حالياً.' }
+    }
+
+    if (!geofence) {
+      console.info('ℹ️ Geofence missing or invalid - location check will be skipped:', geofenceInfo.reason)
+    }
+
+    return { autoCallEnabled: true, autoCallDisabledReason: null }
+  }, [autoCall, autoCallAvailabilityReason, geofence, geofenceInfo.reason, guardianSettings])
+
+  const autoCallWindowDescription = describeTimeWindow(effectiveTimeWindow)
+  const isInsideTimeWindow = isWithinTimeWindow(effectiveTimeWindow)
+  const hasActiveAutoCall = activeAutoCalls.length > 0
+  const studentAcknowledgements = useMemo(() => {
+    if (!currentNationalId) return [] as AutoCallHistoryEntry[]
+    return autoCallHistory
+      .filter((entry) => entry.studentNationalId === currentNationalId && entry.status === 'acknowledged')
+      .slice(0, 5)
+  }, [autoCallHistory, currentNationalId])
+  const historyIsLoading = autoCall?.loading?.history ?? false
+  const autoCallButtonDisabled =
+    !autoCallEnabled ||
+    autoCallStatus === 'requesting' ||
+    isCheckingLocation ||
+    guardianBlocked ||
+    !isInsideTimeWindow ||
+    hasActiveAutoCall
+
+  useEffect(() => {
+    setAutoCallStatus('idle')
+    setAutoCallError(null)
+    onPortalSectionChange('none')
+  }, [currentNationalId, onPortalSectionChange])
+
+  useEffect(() => {
+    if (autoCallStatus === 'success' && !hasActiveAutoCall) {
+      setAutoCallStatus('idle')
+    }
+  }, [autoCallStatus, hasActiveAutoCall])
 
   const lookupMutation = useGuardianStudentLookupMutation()
   const requestsQuery = useGuardianLeaveRequestsQuery(currentNationalId)
@@ -241,6 +558,140 @@ export function GuardianLeaveRequestPage() {
     }))
   }
 
+  const handleAutoCallRequest = useCallback(async () => {
+    if (!autoCall || !autoCallSettings || !enqueueAutoCall) {
+      toast({ type: 'error', title: 'خدمة النداء غير متاحة حالياً. يرجى التواصل مع المدرسة.' })
+      return
+    }
+    if (!autoCallEnabled) {
+      toast({ type: 'error', title: autoCallDisabledReason ?? 'خدمة النداء غير متاحة حالياً.' })
+      return
+    }
+    if (!currentNationalId || !studentSummary) {
+      toast({ type: 'error', title: 'يرجى التحقق من بيانات الطالب قبل طلب النداء.' })
+      return
+    }
+    if (guardianBlocked) {
+      const blockedUntil = guardianStrikeStatus?.blockedUntil
+        ? new Date(guardianStrikeStatus.blockedUntil).toLocaleString('ar-SA')
+        : null
+      toast({
+        type: 'error',
+        title: 'تم إيقاف خدمة النداء لهذا الحساب',
+        description: blockedUntil ? `يمكنك المحاولة مجدداً بعد ${blockedUntil}.` : 'يرجى مراجعة الإدارة المدرسية.',
+      })
+      return
+    }
+    if (activeAutoCalls.length) {
+      toast({ type: 'info', title: 'تم تسجيل النداء مسبقاً', description: 'يرجى الانتظار حتى يتم النداء الحالي.' })
+      return
+    }
+
+    setAutoCallStatus('requesting')
+    setAutoCallError(null)
+
+    try {
+      if (!isWithinTimeWindow(effectiveTimeWindow)) {
+        throw new Error(`خدمة النداء متاحة فقط خلال الأوقات المحددة. ${autoCallWindowDescription}`)
+      }
+
+      if (geofence) {
+        console.log('📍 Checking location against geofence:', geofence)
+        setIsCheckingLocation(true)
+        const position = await requestCurrentPosition({ enableHighAccuracy: true, maximumAge: 30_000, timeout: 15_000 })
+        console.log('📍 Current position:', position.coords)
+
+        const distance = computeDistanceMeters(
+          position.coords.latitude,
+          position.coords.longitude,
+          geofence.latitude,
+          geofence.longitude,
+        )
+
+        console.log('📍 Distance calculation:', {
+          userLat: position.coords.latitude,
+          userLng: position.coords.longitude,
+          schoolLat: geofence.latitude,
+          schoolLng: geofence.longitude,
+          distance: Math.round(distance),
+          allowedRadius: geofence.radiusMeters,
+          withinRange: distance <= geofence.radiusMeters,
+        })
+
+        if (distance > geofence.radiusMeters) {
+          throw new Error(
+            `يجب أن تكون داخل نطاق ${geofence.radiusMeters} متر حول المدرسة لطلب النداء. المسافة الحالية ${Math.round(distance)} متر.`,
+          )
+        }
+      } else {
+        console.log('📍 Geofence missing or invalid - skipping location verification before enqueueing auto-call.')
+      }
+
+      await enqueueAutoCall({
+        studentNationalId: currentNationalId,
+        studentName: studentSummary.name,
+        studentId: studentSummary.student_id,
+        classLabel: `الصف ${studentSummary.grade} • الفصل ${studentSummary.class_name}`,
+        guardianName: formValues.guardian_name.trim() || studentSummary.parent_name,
+        guardianPhone: formValues.guardian_phone.trim() || studentSummary.parent_phone,
+        notes: null,
+        requestedBy: 'guardian',
+      })
+
+      setAutoCallStatus('success')
+      toast({ type: 'success', title: 'تم إرسال طلب المناداة', description: 'سيتم عرض اسم الطالب فوراً على الشاشة.' })
+    } catch (error) {
+      let message = resolveErrorMessage(error, 'تعذر تنفيذ المناداة، يرجى المحاولة لاحقاً')
+      if (typeof error === 'object' && error && 'code' in error && typeof (error as GeolocationPositionError).code === 'number') {
+        const geolocationError = error as GeolocationPositionError
+        if (geolocationError.code === 1) {
+          message = 'يرجى السماح بالوصول إلى الموقع لإتمام المناداة.'
+        } else if (geolocationError.code === 2) {
+          message = 'تعذر تحديد موقعك الحالي. حاول مرة أخرى بالقرب من المدرسة.'
+        } else if (geolocationError.code === 3) {
+          message = 'استغرقت محاولة تحديد الموقع وقتاً طويلاً. يرجى إعادة المحاولة.'
+        }
+      }
+      setAutoCallStatus('error')
+      setAutoCallError(message)
+      toast({ type: 'error', title: message })
+    } finally {
+      setIsCheckingLocation(false)
+    }
+  }, [
+    activeAutoCalls.length,
+      autoCall,
+      autoCallDisabledReason,
+      autoCallEnabled,
+    autoCallSettings,
+    enqueueAutoCall,
+    effectiveTimeWindow,
+    formValues.guardian_name,
+    formValues.guardian_phone,
+      geofence,
+    guardianBlocked,
+    guardianStrikeStatus?.blockedUntil,
+    toast,
+    currentNationalId,
+    studentSummary,
+    autoCallWindowDescription,
+  ])
+
+  const handleGuardianAcknowledge = useCallback(
+    async (callId: string) => {
+      if (!autoCall || !acknowledgeCall) {
+        return
+      }
+      try {
+        await acknowledgeCall(callId, 'guardian')
+        toast({ type: 'success', title: 'تم تأكيد استلام الطالب' })
+      } catch (error) {
+        toast({ type: 'error', title: resolveErrorMessage(error, 'تعذر تأكيد الاستلام') })
+      }
+    },
+    [acknowledgeCall, autoCall, toast],
+  )
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const validation = validateForm()
@@ -285,9 +736,9 @@ export function GuardianLeaveRequestPage() {
   return (
     <section className="space-y-8">
       <header className="space-y-3 text-center">
-        <h1 className="text-3xl font-bold text-slate-900">طلب الاستئذان لولي الأمر</h1>
+        <h1 className="text-3xl font-bold text-slate-900">بوابة ولي الأمر</h1>
         <p className="mx-auto max-w-2xl text-sm text-muted">
-          يمكن لولي الأمر تقديم طلب استئذان للطالب بإدخال رقم الهوية الوطنية، ثم تعبئة تفاصيل الطلب وإرساله للمراجعة.
+          أدخل رقم هوية الطالب للتحقق من البيانات، ثم اختر الخدمة المناسبة بين طلب الاستئذان والنداء الآلي لاستلام الطالب.
         </p>
       </header>
 
@@ -320,126 +771,342 @@ export function GuardianLeaveRequestPage() {
       </div>
 
       {hasStudent ? (
-        <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
-          <form className="glass-card space-y-5" onSubmit={handleSubmit}>
-            <header className="space-y-1">
-              <h2 className="text-xl font-semibold text-slate-900">إرسال طلب جديد</h2>
-              <p className="text-xs text-muted">يرجى تعبئة جميع الحقول الإلزامية لإرسال الطلب.</p>
+        <div className="space-y-6">
+          <div className="glass-card space-y-4">
+            <header className="space-y-1 text-right">
+              <h2 className="text-xl font-semibold text-slate-900">اختر الخدمة المطلوبة</h2>
+              <p className="text-xs text-muted">يمكنك إرسال طلب استئذان أو تفعيل المناداة الآلية عند الوصول للمدرسة.</p>
             </header>
 
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-600">سبب الاستئذان *</label>
-              <textarea
-                className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${formErrors.reason ? 'border-rose-300' : 'border-slate-200'}`}
-                rows={4}
-                value={formValues.reason}
-                onChange={(event) => handleFormChange('reason', event.target.value)}
-                placeholder="مثال: موعد طبي عاجل"
-                disabled={submitMutation.isPending}
-              />
-              {formErrors.reason ? <p className="text-xs text-rose-600">{formErrors.reason}</p> : null}
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-600">اسم ولي الأمر *</label>
-                <input
-                  type="text"
-                  className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${formErrors.guardian_name ? 'border-rose-300' : 'border-slate-200'}`}
-                  value={formValues.guardian_name}
-                  onChange={(event) => handleFormChange('guardian_name', event.target.value)}
-                  disabled={submitMutation.isPending}
-                />
-                {formErrors.guardian_name ? <p className="text-xs text-rose-600">{formErrors.guardian_name}</p> : null}
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-600">هاتف ولي الأمر *</label>
-                <input
-                  type="tel"
-                  className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${formErrors.guardian_phone ? 'border-rose-300' : 'border-slate-200'}`}
-                  value={formValues.guardian_phone}
-                  onChange={(event) => handleFormChange('guardian_phone', event.target.value)}
-                  disabled={submitMutation.isPending}
-                />
-                {formErrors.guardian_phone ? <p className="text-xs text-rose-600">{formErrors.guardian_phone}</p> : null}
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-600">اسم المستلم *</label>
-                <input
-                  type="text"
-                  className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${formErrors.pickup_person_name ? 'border-rose-300' : 'border-slate-200'}`}
-                  value={formValues.pickup_person_name}
-                  onChange={(event) => handleFormChange('pickup_person_name', event.target.value)}
-                  disabled={submitMutation.isPending}
-                />
-                {formErrors.pickup_person_name ? <p className="text-xs text-rose-600">{formErrors.pickup_person_name}</p> : null}
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-600">صلة القرابة</label>
-                <input
-                  type="text"
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  value={formValues.pickup_person_relation}
-                  onChange={(event) => handleFormChange('pickup_person_relation', event.target.value)}
-                  disabled={submitMutation.isPending}
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-600">هاتف المستلم</label>
-                <input
-                  type="tel"
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  value={formValues.pickup_person_phone}
-                  onChange={(event) => handleFormChange('pickup_person_phone', event.target.value)}
-                  disabled={submitMutation.isPending}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-600">موعد الانصراف المتوقع *</label>
-                <input
-                  type="datetime-local"
-                  className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${formErrors.expected_pickup_time ? 'border-rose-300' : 'border-slate-200'}`}
-                  value={formValues.expected_pickup_time}
-                  onChange={(event) => handleFormChange('expected_pickup_time', event.target.value)}
-                  disabled={submitMutation.isPending}
-                />
-                {formErrors.expected_pickup_time ? (
-                  <p className="text-xs text-rose-600">{formErrors.expected_pickup_time}</p>
-                ) : null}
-              </div>
-            </div>
-
-            <footer className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-100 pt-4">
+            <div className="grid gap-3 md:grid-cols-2">
               <button
-                type="submit"
-                className="rounded-2xl bg-emerald-600 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
-                disabled={submitMutation.isPending}
+                type="button"
+                onClick={() => onPortalSectionChange('leave-request')}
+                className={`rounded-2xl border px-4 py-3 text-right transition ${
+                  activePortalSection === 'leave-request'
+                    ? 'border-indigo-500 bg-indigo-50/60 text-indigo-600 shadow-sm'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-indigo-50/40'
+                }`}
               >
-                {submitMutation.isPending ? 'جاري الإرسال...' : 'إرسال الطلب'}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold">طلب الاستئذان</p>
+                    <p className="text-xs text-muted">تعبئة نموذج الاستئذان ومتابعة حالة الطلبات السابقة.</p>
+                  </div>
+                  <FileText className="h-5 w-5" />
+                </div>
               </button>
-            </footer>
-          </form>
 
-          <aside className="glass-card space-y-4">
-            <header>
-              <h2 className="text-lg font-semibold text-slate-900">الطلبات السابقة</h2>
-              <p className="text-xs text-muted">يمكنك متابعة حالة طلبات الاستئذان السابقة.</p>
-            </header>
+              <button
+                type="button"
+                onClick={() => onPortalSectionChange('auto-call')}
+                className={`rounded-2xl border px-4 py-3 text-right transition ${
+                  activePortalSection === 'auto-call'
+                    ? 'border-indigo-500 bg-indigo-50/60 text-indigo-600 shadow-sm'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-indigo-50/40'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold">النداء الآلي</p>
+                    <p className="text-xs text-muted">طلب مناداة فورية لعرض اسم الطالب في لوحة الاستقبال.</p>
+                  </div>
+                  <Megaphone className="h-5 w-5" />
+                </div>
+              </button>
+            </div>
+          </div>
 
-            {isLoadingRequests ? (
-              <p className="text-sm text-muted">جاري تحميل الطلبات...</p>
-            ) : requestsErrorMessage ? (
-              <p className="text-sm text-rose-600">{requestsErrorMessage}</p>
-            ) : (
-              <RequestsList requests={requests} />
-            )}
-          </aside>
+          {activePortalSection === 'none' ? (
+            <div className="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-6 text-center text-sm text-muted">
+              يرجى اختيار الخدمة التي ترغب بمتابعتها.
+            </div>
+          ) : null}
+
+          {activePortalSection === 'leave-request' ? (
+            <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
+              <form className="glass-card space-y-5" onSubmit={handleSubmit}>
+                <header className="space-y-1">
+                  <h2 className="text-xl font-semibold text-slate-900">إرسال طلب جديد</h2>
+                  <p className="text-xs text-muted">يرجى تعبئة جميع الحقول الإلزامية لإرسال الطلب.</p>
+                </header>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-600">سبب الاستئذان *</label>
+                  <textarea
+                    className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${formErrors.reason ? 'border-rose-300' : 'border-slate-200'}`}
+                    rows={4}
+                    value={formValues.reason}
+                    onChange={(event) => handleFormChange('reason', event.target.value)}
+                    placeholder="مثال: موعد طبي عاجل"
+                    disabled={submitMutation.isPending}
+                  />
+                  {formErrors.reason ? <p className="text-xs text-rose-600">{formErrors.reason}</p> : null}
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-slate-600">اسم ولي الأمر *</label>
+                    <input
+                      type="text"
+                      className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${formErrors.guardian_name ? 'border-rose-300' : 'border-slate-200'}`}
+                      value={formValues.guardian_name}
+                      onChange={(event) => handleFormChange('guardian_name', event.target.value)}
+                      disabled={submitMutation.isPending}
+                    />
+                    {formErrors.guardian_name ? <p className="text-xs text-rose-600">{formErrors.guardian_name}</p> : null}
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-slate-600">هاتف ولي الأمر *</label>
+                    <input
+                      type="tel"
+                      className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${formErrors.guardian_phone ? 'border-rose-300' : 'border-slate-200'}`}
+                      value={formValues.guardian_phone}
+                      onChange={(event) => handleFormChange('guardian_phone', event.target.value)}
+                      disabled={submitMutation.isPending}
+                    />
+                    {formErrors.guardian_phone ? <p className="text-xs text-rose-600">{formErrors.guardian_phone}</p> : null}
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-slate-600">اسم المستلم *</label>
+                    <input
+                      type="text"
+                      className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${formErrors.pickup_person_name ? 'border-rose-300' : 'border-slate-200'}`}
+                      value={formValues.pickup_person_name}
+                      onChange={(event) => handleFormChange('pickup_person_name', event.target.value)}
+                      disabled={submitMutation.isPending}
+                    />
+                    {formErrors.pickup_person_name ? <p className="text-xs text-rose-600">{formErrors.pickup_person_name}</p> : null}
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-slate-600">صلة القرابة</label>
+                    <input
+                      type="text"
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      value={formValues.pickup_person_relation}
+                      onChange={(event) => handleFormChange('pickup_person_relation', event.target.value)}
+                      disabled={submitMutation.isPending}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-slate-600">هاتف المستلم</label>
+                    <input
+                      type="tel"
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      value={formValues.pickup_person_phone}
+                      onChange={(event) => handleFormChange('pickup_person_phone', event.target.value)}
+                      disabled={submitMutation.isPending}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-slate-600">موعد الانصراف المتوقع *</label>
+                    <input
+                      type="datetime-local"
+                      className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${formErrors.expected_pickup_time ? 'border-rose-300' : 'border-slate-200'}`}
+                      value={formValues.expected_pickup_time}
+                      onChange={(event) => handleFormChange('expected_pickup_time', event.target.value)}
+                      disabled={submitMutation.isPending}
+                    />
+                    {formErrors.expected_pickup_time ? (
+                      <p className="text-xs text-rose-600">{formErrors.expected_pickup_time}</p>
+                    ) : null}
+                  </div>
+                </div>
+
+                <footer className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-100 pt-4">
+                  <button
+                    type="submit"
+                    className="rounded-2xl bg-emerald-600 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
+                    disabled={submitMutation.isPending}
+                  >
+                    {submitMutation.isPending ? 'جاري الإرسال...' : 'إرسال الطلب'}
+                  </button>
+                </footer>
+              </form>
+
+              <aside className="glass-card space-y-4">
+                <header>
+                  <h2 className="text-lg font-semibold text-slate-900">الطلبات السابقة</h2>
+                  <p className="text-xs text-muted">يمكنك متابعة حالة طلبات الاستئذان السابقة.</p>
+                </header>
+
+                {isLoadingRequests ? (
+                  <p className="text-sm text-muted">جاري تحميل الطلبات...</p>
+                ) : requestsErrorMessage ? (
+                  <p className="text-sm text-rose-600">{requestsErrorMessage}</p>
+                ) : (
+                  <RequestsList requests={requests} />
+                )}
+              </aside>
+            </div>
+          ) : null}
+
+          {activePortalSection === 'auto-call' ? (
+            <section className="glass-card space-y-4">
+              <header className="space-y-1">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900">النداء الآلي لاستلام الطالب</h2>
+                    <p className="text-xs text-muted">يتم عرض اسم الطالب على شاشة الاستقبال حالاً.</p>
+                  </div>
+                  <Megaphone className="h-5 w-5 text-indigo-500" />
+                </div>
+                <p className="text-xs text-slate-500">المدرسة المرتبطة: {guardianSettings?.school_name ?? (autoCallSchoolId ? `مدرسة رقم ${autoCallSchoolId}` : 'مدرسة غير محددة')}</p>
+              </header>
+
+              {settingsQuery.isLoading || (autoCall?.loading?.settings ?? false) ? (
+                <div className="flex items-center gap-2 text-sm text-muted">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>جاري تحميل الإعدادات...</span>
+                </div>
+              ) : !autoCallEnabled ? (
+                <div className="rounded-2xl border border-dashed border-amber-200 bg-amber-50/60 p-4 text-sm text-amber-800">
+                  {autoCallDisabledReason ?? 'خدمة النداء متوقفة حالياً. يرجى التواصل مع إدارة المدرسة.'}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 text-xs text-slate-600">
+                    <p className="font-semibold text-slate-500">أوقات السماح</p>
+                    <p className="mt-1 text-sm text-slate-700">{autoCallWindowDescription}</p>
+                  </div>
+
+                  {geofence ? (
+                    <div className="flex items-start gap-2 rounded-2xl border border-slate-100 bg-slate-50/60 p-3 text-xs text-slate-600">
+                      <MapPin className="mt-0.5 h-4 w-4 text-rose-500" />
+                      <div>
+                        <p className="font-semibold text-slate-500">موقع المدرسة</p>
+                        <p className="mt-1 text-sm text-slate-700">
+                          يجب أن تكون ضمن مسافة {Math.round(geofence.radiusMeters)} م حول الموقع المحدد لإرسال مناداة.
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {guardianBlocked ? (
+                    <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4 text-sm text-rose-700">
+                      لقد تم إيقاف خدمة المناداة لهذا الحساب بسبب عدم تأكيد الاستلام في مرات سابقة.
+                      {guardianStrikeStatus?.blockedUntil ? (
+                        <span className="block text-xs text-rose-600">
+                          يمكنك المحاولة بعد {new Date(guardianStrikeStatus.blockedUntil).toLocaleString('ar-SA')}.
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {activeAutoCalls.length ? (
+                    <div className="space-y-3">
+                      <p className="text-sm font-semibold text-slate-700">النداءات الحالية</p>
+                      <ul className="space-y-2">
+                        {activeAutoCalls.map((call) => (
+                          <li key={call.id} className="flex flex-col gap-2 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-3 text-xs text-slate-700">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-semibold text-indigo-900">{call.studentName}</span>
+                              <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] text-indigo-600">
+                                {call.status === 'announcing' ? 'جاري النداء' : 'بانتظار النداء'}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-600">
+                              <span>عدد مرات النداء: {call.announcedCount}</span>
+                              <span>تم الإنشاء عند {formatDateTime(call.createdAt)}</span>
+                            </div>
+                            {autoCall?.settings?.allowGuardianAcknowledgement ? (
+                              <button
+                                type="button"
+                                onClick={() => handleGuardianAcknowledge(call.id)}
+                                className="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed"
+                              >
+                                تم استلام الطالب
+                              </button>
+                            ) : null}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+
+                  {studentAcknowledgements.length > 0 || historyIsLoading ? (
+                    <div className="space-y-2 rounded-2xl border border-slate-100 bg-white p-3 text-xs text-slate-600">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                          <p className="text-sm font-semibold text-slate-700">آخر من تم استلامهم</p>
+                        </div>
+                        {historyIsLoading ? <Loader2 className="h-4 w-4 animate-spin text-slate-400" /> : null}
+                      </div>
+                      {studentAcknowledgements.length === 0 && !historyIsLoading ? (
+                        <p className="text-xs text-muted">لم يتم تسجيل عمليات استلام لهذا الطالب حتى الآن.</p>
+                      ) : null}
+                      {studentAcknowledgements.length ? (
+                        <ul className="space-y-2">
+                          {studentAcknowledgements.map((entry) => {
+                            const resolvedAt = entry.resolvedAt ?? entry.acknowledgedAt ?? entry.createdAt
+                            return (
+                              <li key={entry.id} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-3 py-2">
+                                <div className="text-right text-slate-700">
+                                  <p className="text-sm font-semibold">{entry.studentName}</p>
+                                  <p className="text-[11px] text-muted">{entry.classLabel ?? '—'}</p>
+                                </div>
+                                <span className="text-[11px] font-semibold text-emerald-600">{formatDateTime(resolvedAt)}</span>
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  <button
+                    type="button"
+                    onClick={handleAutoCallRequest}
+                    disabled={autoCallButtonDisabled}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-300"
+                  >
+                    {autoCallStatus === 'requesting' || isCheckingLocation ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Megaphone className="h-4 w-4" />
+                    )}
+                    {autoCallStatus === 'success' ? 'تم إرسال المناداة' : hasActiveAutoCall ? 'تم تسجيل مناداة' : 'طلب المناداة الآن'}
+                  </button>
+
+                  {!isInsideTimeWindow && autoCallEnabled ? (
+                    <p className="text-xs text-amber-600">
+                      النداء متاح فقط خلال الفترات المحددة. {autoCallWindowDescription}
+                    </p>
+                  ) : null}
+
+                  {hasActiveAutoCall ? (
+                    <p className="text-xs text-indigo-600">يوجد نداء جاري لهذا الطالب. يرجى الانتظار حتى يتم الاستلام.</p>
+                  ) : null}
+
+                  {autoCallError ? (
+                    <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-3 text-xs text-rose-700">
+                      {autoCallError}
+                    </div>
+                  ) : null}
+
+                  {guardianStrikeStatus ? (
+                    <div className="rounded-2xl border border-slate-100 bg-white p-3 text-xs text-slate-600">
+                      <p className="font-semibold text-slate-500">سجل المخالفات</p>
+                      <p className="mt-1 text-sm text-slate-700">
+                        عدد المخالفات: {guardianStrikeStatus.strikeCount}
+                        {autoCall?.settings?.maxStrikesBeforeBlock ? ` / الحد المسموح ${autoCall.settings.maxStrikesBeforeBlock}` : ''}
+                      </p>
+                      {guardianStrikeStatus.lastStrikeReason ? (
+                        <p className="mt-1 text-xs text-slate-500">آخر سبب: {guardianStrikeStatus.lastStrikeReason}</p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </section>
+          ) : null}
         </div>
       ) : (
         <div className="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-6 text-center text-sm text-muted">
@@ -447,5 +1114,59 @@ export function GuardianLeaveRequestPage() {
         </div>
       )}
     </section>
+  )
+}
+
+interface GuardianLeaveRequestAutoCallBridgeProps {
+  settingsQuery: GuardianSettingsQueryResult
+  autoCallSchoolId: string | null
+  activePortalSection: 'none' | 'leave-request' | 'auto-call'
+  onPortalSectionChange: (section: 'none' | 'leave-request' | 'auto-call') => void
+  autoCallAvailabilityReason: string | null
+}
+
+function GuardianLeaveRequestAutoCallBridge({
+  settingsQuery,
+  autoCallSchoolId,
+  activePortalSection,
+  onPortalSectionChange,
+  autoCallAvailabilityReason,
+}: GuardianLeaveRequestAutoCallBridgeProps) {
+  const autoCall = useAutoCall()
+  return (
+    <GuardianLeaveRequestPageBase
+      settingsQuery={settingsQuery}
+      autoCall={autoCall}
+      autoCallSchoolId={autoCallSchoolId}
+      activePortalSection={activePortalSection}
+      onPortalSectionChange={onPortalSectionChange}
+      autoCallAvailabilityReason={autoCallAvailabilityReason}
+    />
+  )
+}
+
+export function GuardianLeaveRequestPage() {
+  const settingsQuery = useGuardianSettingsQuery()
+  const [activePortalSection, setActivePortalSection] = useState<'none' | 'leave-request' | 'auto-call'>('none')
+  const rawSchoolId = settingsQuery.data?.auto_call_school_id
+  const autoCallSchoolId = rawSchoolId != null && rawSchoolId !== '' ? String(rawSchoolId) : null
+
+  const autoCallAvailabilityReason = settingsQuery.isLoading
+    ? 'جاري تحميل بيانات المدرسة...'
+    : settingsQuery.isError
+      ? resolveErrorMessage(settingsQuery.error, 'تعذر تحميل إعدادات المدرسة المرتبطة بخدمة النداء.')
+      : null
+
+  // نمرر schoolIdOverride المسترجع من إعدادات ولي الأمر لضمان ارتباط الصفحة بالمدرسة الصحيحة في بيئة SaaS متعددة المدارس
+  return (
+    <AutoCallProvider schoolIdOverride={autoCallSchoolId} allowFallbackSchoolId={false}>
+      <GuardianLeaveRequestAutoCallBridge
+        settingsQuery={settingsQuery}
+        autoCallSchoolId={autoCallSchoolId}
+        activePortalSection={activePortalSection}
+        onPortalSectionChange={setActivePortalSection}
+        autoCallAvailabilityReason={autoCallAvailabilityReason}
+      />
+    </AutoCallProvider>
   )
 }

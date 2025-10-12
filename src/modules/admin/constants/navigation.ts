@@ -26,6 +26,11 @@ import {
   DoorOpen,
   IdCard,
   Palette,
+  // CreditCard,
+  BellRing,
+  Megaphone,
+  CalendarDays,
+  School,
 } from 'lucide-react'
 
 export interface AdminNavItem {
@@ -86,6 +91,15 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
       { to: '/admin/summons', label: 'الاستدعاءات والتوصيات', icon: UserPlus },
     ],
   },
+  {
+    title: 'أدوات المدرسة',
+  icon: School,
+    items: [
+      { to: '/admin/school-tools/bell', label: 'الجرس المدرسي', icon: BellRing, soon: true },
+      { to: '/admin/school-tools/auto-call', label: 'النداء الآلي', icon: Megaphone, soon: true },
+      { to: '/admin/school-tools/academic-calendar', label: 'التقويم الدراسي', icon: CalendarDays, soon: true },
+    ],
+  },
 ]
 
 export const secondaryAdminNav: AdminNavItem[] = [
@@ -99,6 +113,7 @@ export const settingsAdminNav: AdminNavGroup = {
   title: 'الإعدادات والدعم',
   icon: Settings,
   items: [
+    // { to: '/admin/subscription', label: 'الاشتراك والفوترة', icon: CreditCard },
     { to: '/admin/settings', label: 'الإعدادات', icon: Settings },
     { to: '/admin/theme', label: 'المظهر والألوان', icon: Palette },
     { to: '/admin/support', label: 'الدعم الفني', icon: Headphones, soon: true },

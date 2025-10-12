@@ -16,8 +16,10 @@ export function useLoginMutation() {
       setAuth(data)
       if (data.user.role === 'teacher') {
         navigate('/teacher/dashboard', { replace: true })
-      } else {
+      } else if (data.user.role === 'admin') {
         navigate('/admin/dashboard', { replace: true })
+      } else {
+        navigate('/platform/overview', { replace: true })
       }
       showToast({ type: 'success', title: 'تم تسجيل الدخول بنجاح' })
     },

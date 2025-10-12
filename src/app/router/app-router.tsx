@@ -41,6 +41,19 @@ import { TeacherShell } from '@/modules/teacher/layouts/teacher-shell'
 import { TeacherSchedulePage } from '@/modules/teacher/pages/teacher-schedule-page'
 import { AdminShell } from '@/modules/admin/layouts/admin-shell'
 import { TeacherSessionAttendancePage } from '@/modules/teacher/pages/teacher-session-attendance-page'
+import { SubscriptionPlansPage } from '@/modules/subscription/pages/subscription-plans-page'
+import { SchoolRegistrationPage } from '@/modules/subscription/pages/school-registration-page'
+import { AdminSubscriptionPage } from '@/modules/subscription/pages/admin-subscription-page'
+import { SuperAdminLoginPage } from '@/modules/auth/pages/super-admin-login-page'
+import { SuperAdminShell } from '@/modules/super-admin/layouts/super-admin-shell'
+import { PlatformOverviewPage } from '@/modules/super-admin/pages/platform-overview-page'
+import { PlatformSchoolsPage } from '@/modules/super-admin/pages/platform-schools-page'
+import { PlatformRevenuePage } from '@/modules/super-admin/pages/platform-revenue-page'
+import { PlatformInvoicesPage } from '@/modules/super-admin/pages/platform-invoices-page'
+import { AdminSchoolBellPage } from '@/modules/admin/pages/admin-school-bell-page'
+import { AdminAutoCallPage } from '@/modules/admin/pages/admin-auto-call-page'
+import { AutoCallDisplayPage } from '@/modules/auto-call/pages/auto-call-display-page'
+import { AdminAcademicCalendarPage } from '@/modules/admin/pages/admin-academic-calendar-page'
 import {
   GuidanceAccessPage,
   GuidanceDashboardPage,
@@ -57,6 +70,8 @@ const appRoutes = [
     element: <RootLayout />,
     children: [
       { index: true, element: <LandingPage /> },
+      { path: 'plans', element: <SubscriptionPlansPage /> },
+      { path: 'register', element: <SchoolRegistrationPage /> },
       {
         path: 'auth/teacher',
         element: (
@@ -70,6 +85,14 @@ const appRoutes = [
         element: (
           <RedirectIfAuthenticated>
             <AdminLoginPage />
+          </RedirectIfAuthenticated>
+        ),
+      },
+      {
+        path: 'auth/platform',
+        element: (
+          <RedirectIfAuthenticated>
+            <SuperAdminLoginPage />
           </RedirectIfAuthenticated>
         ),
       },
@@ -116,6 +139,7 @@ const appRoutes = [
           { path: 'student-cases/list', element: <StudentCasesListPage /> },
           { path: 'student-cases/new', element: <StudentCaseFormPage /> },
           { path: 'student-cases/:caseId', element: <StudentCaseDetailsPage /> },
+          { path: 'subscription', element: <AdminSubscriptionPage /> },
           { path: 'treatment-plans', element: <TreatmentPlansPage /> },
           { path: 'points-program', element: <PointsProgramPage /> },
           { path: 'guidance-programs', element: <GuidanceProgramsPage /> },
@@ -126,11 +150,33 @@ const appRoutes = [
           { path: 'whatsapp-send', element: <WhatsAppSendPage /> },
           { path: 'whatsapp-templates', element: <WhatsAppTemplatesPage /> },
           { path: 'attendance-report', element: <AttendanceReportPage /> },
+          { path: 'school-tools/bell', element: <AdminSchoolBellPage /> },
+          { path: 'school-tools/auto-call', element: <AdminAutoCallPage /> },
+          { path: 'school-tools/academic-calendar', element: <AdminAcademicCalendarPage /> },
+        ],
+      },
+      {
+        path: 'platform',
+        element: (
+          <RequireAuth role="super_admin">
+            <SuperAdminShell />
+          </RequireAuth>
+        ),
+        children: [
+          { index: true, element: <Navigate to="/platform/overview" replace /> },
+          { path: 'overview', element: <PlatformOverviewPage /> },
+          { path: 'schools', element: <PlatformSchoolsPage /> },
+          { path: 'revenue', element: <PlatformRevenuePage /> },
+          { path: 'invoices', element: <PlatformInvoicesPage /> },
         ],
       },
       {
         path: 'guardian/leave-request',
         element: <GuardianLeaveRequestPage />,
+      },
+      {
+        path: 'display/auto-call',
+        element: <AutoCallDisplayPage />,
       },
       {
         path: 'guidance',

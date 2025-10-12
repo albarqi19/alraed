@@ -5,6 +5,8 @@ import { DirectionProvider } from './direction-provider'
 import { ToastProvider } from '@/shared/feedback/toast-provider'
 import { AuthBootstrap } from './auth-bootstrap'
 import { ThemeProvider } from '@/shared/themes'
+import { BellManagerProvider } from '@/modules/admin/school-bell/context/bell-manager-context'
+import { AutoCallProvider } from '@/modules/auto-call/context/auto-call-provider'
 
 interface AppProvidersProps {
   children: ReactNode
@@ -34,7 +36,11 @@ export function AppProviders({ children }: AppProvidersProps) {
         <DirectionProvider>
           <ThemeProvider>
             <ToastProvider>
-              <AuthBootstrap>{children}</AuthBootstrap>
+              <AuthBootstrap>
+                <BellManagerProvider>
+                  <AutoCallProvider>{children}</AutoCallProvider>
+                </BellManagerProvider>
+              </AuthBootstrap>
             </ToastProvider>
           </ThemeProvider>
         </DirectionProvider>

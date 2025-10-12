@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { useLoginMutation } from '../hooks'
 
 interface LoginFormProps {
-  role: 'teacher' | 'admin'
+  role: 'teacher' | 'admin' | 'super_admin'
   heading: string
   description: string
   submitLabel: string
@@ -29,7 +29,7 @@ export function LoginForm({ role, heading, description, submitLabel }: LoginForm
 
   const isLoading = loginMutation.isPending
 
-  const roleColor = role === 'admin' ? 'bg-teal-600' : 'bg-teal-600'
+  const roleColor = role === 'super_admin' ? 'bg-indigo-600' : 'bg-teal-600'
 
   return (
     <section className="mx-auto max-w-md">

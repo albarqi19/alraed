@@ -14,12 +14,22 @@ export function RequireAuth({ children, role }: RequireAuthProps) {
   const location = useLocation()
 
   if (!isAuthenticated || !user) {
-    const fallback = role === 'admin' ? '/auth/admin' : '/auth/teacher'
+    let fallback = '/auth/teacher'
+    if (role === 'admin') {
+      fallback = '/auth/admin'
+    } else if (role === 'super_admin') {
+      fallback = '/auth/platform'
+    }
     return <Navigate to={fallback} state={{ from: location }} replace />
   }
 
   if (role && user.role !== role) {
-    const destination = user.role === 'teacher' ? '/teacher/dashboard' : '/admin/dashboard'
+    let destination = '/teacher/dashboard'
+    if (user.role === 'admin') {
+      destination = '/admin/dashboard'
+    } else if (user.role === 'super_admin') {
+      destination = '/platform/overview'
+    }
     return <Navigate to={destination} replace />
   }
 
@@ -31,7 +41,12 @@ export function RedirectIfAuthenticated({ children }: { children: ReactNode }) {
   const user = useAuthStore((state) => state.user)
 
   if (isAuthenticated && user) {
-    const destination = user.role === 'teacher' ? '/teacher/dashboard' : '/admin/dashboard'
+    let destination = '/teacher/dashboard'
+    if (user.role === 'admin') {
+      destination = '/admin/dashboard'
+    } else if (user.role === 'super_admin') {
+      destination = '/platform/overview'
+    }
     return <Navigate to={destination} replace />
   }
 

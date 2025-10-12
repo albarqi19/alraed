@@ -1,18 +1,27 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
+import { GlobalBellWidget } from '@/modules/admin/school-bell/components/global-bell-widget'
 
 const navLinks = [
   { to: '/', label: 'الرئيسية' },
+  // { to: '/plans', label: 'الباقات' },
+  // { to: '/register', label: 'تسجيل مدرسة' },
   { to: '/auth/teacher', label: 'دخول المعلم' },
   { to: '/auth/admin', label: 'دخول الإدارة' },
 ]
 
 const APP_SHELL_PREFIXES = ['/admin', '/teacher']
+const FULLSCREEN_ROUTES = ['/display/auto-call']
 
 export function RootLayout() {
   const location = useLocation()
   const isAppShellRoute = APP_SHELL_PREFIXES.some((prefix) =>
     location.pathname.startsWith(prefix),
   )
+  const isFullscreenRoute = FULLSCREEN_ROUTES.includes(location.pathname)
+
+  if (isFullscreenRoute) {
+    return <Outlet />
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-slate-900">
@@ -58,6 +67,8 @@ export function RootLayout() {
           © {new Date().getFullYear()} نظام الرائد للإدارة المدرسية — جميع الحقوق محفوظة.
         </footer>
       )}
+
+      <GlobalBellWidget />
     </div>
   )
 }

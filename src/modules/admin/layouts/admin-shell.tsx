@@ -69,6 +69,20 @@ export function AdminShell() {
     }))
   }
 
+  const subscriptionPlan = admin?.school?.plan
+  const subscriptionStatus = admin?.school?.subscription_status
+
+  const statusLabelMap: Record<string, string> = {
+    trial: 'تجريبي',
+    active: 'نشط',
+    suspended: 'موقوف',
+    cancelled: 'ملغي',
+    expired: 'منتهي',
+  }
+
+  const planLabel = subscriptionPlan ? subscriptionPlan.toUpperCase() : null
+  const statusLabel = subscriptionStatus ? statusLabelMap[subscriptionStatus] ?? subscriptionStatus : null
+
   return (
     <div className="flex min-h-screen w-full" style={{ backgroundColor: 'var(--color-background)' }}>
       <aside className="admin-sidebar fixed right-0 top-0 hidden h-screen w-72 flex-col overflow-y-auto border-l border-slate-700/20 text-right shadow-md md:flex" style={{ backgroundColor: 'var(--color-sidebar)' }}>
@@ -301,6 +315,18 @@ export function AdminShell() {
             <div>
               <p className="text-xs font-semibold" style={{ color: 'var(--color-sidebar-text)', opacity: 0.8 }}>مدير النظام</p>
               <h1 className="text-lg font-bold" style={{ color: 'var(--color-sidebar-text)' }}>{admin?.name ?? 'الإدارة'}</h1>
+              {planLabel ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                  <span className="rounded-full bg-emerald-100 px-3 py-1 font-semibold text-emerald-700">
+                    خطة {planLabel}
+                  </span>
+                  {statusLabel ? (
+                    <span className="rounded-full bg-white/20 px-3 py-1 font-medium text-white">
+                      حالة الاشتراك: {statusLabel}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
             <button
               type="button"
