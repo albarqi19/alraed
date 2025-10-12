@@ -513,16 +513,26 @@ function GuardianLeaveRequestPageBase({
 
     if (!formValues.guardian_name.trim()) {
       errors.guardian_name = 'هذا الحقل مطلوب'
+    } else if (formValues.guardian_name.trim().length < 3) {
+      errors.guardian_name = 'اسم ولي الأمر يجب أن يكون 3 أحرف على الأقل'
     }
+    
     if (!formValues.guardian_phone.trim()) {
       errors.guardian_phone = 'هذا الحقل مطلوب'
+    } else if (!/^05\d{8}$/.test(formValues.guardian_phone.trim())) {
+      errors.guardian_phone = 'رقم الجوال يجب أن يبدأ بـ 05 ويتكون من 10 أرقام'
     }
+    
     if (!formValues.reason.trim()) {
       errors.reason = 'يرجى كتابة سبب الاستئذان'
+    } else if (formValues.reason.trim().length < 5) {
+      errors.reason = 'سبب الاستئذان يجب أن يكون 5 أحرف على الأقل'
     }
+    
     if (!formValues.pickup_person_name.trim()) {
       errors.pickup_person_name = 'يرجى إدخال اسم الشخص الذي سيستلم الطالب'
     }
+    
     if (!formValues.expected_pickup_time) {
       errors.expected_pickup_time = 'حدد موعد الانصراف المتوقع'
     }

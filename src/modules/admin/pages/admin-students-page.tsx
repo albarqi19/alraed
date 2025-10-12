@@ -132,12 +132,18 @@ function StudentFormDialog({
       nextErrors.class_name = 'الرجاء تحديد الشعبة'
     }
 
-    if (parentPhone && !/^\d{9,15}$/.test(parentPhone)) {
-      nextErrors.parent_phone = 'رقم ولي الأمر يجب أن يحتوي على أرقام فقط (9-15 خانة)'
+    // parent_name is required by backend
+    if (!parentName) {
+      nextErrors.parent_name = 'الرجاء إدخال اسم ولي الأمر'
+    } else if (parentName.length < 2) {
+      nextErrors.parent_name = 'اسم ولي الأمر يجب أن يكون حرفين أو أكثر'
     }
 
-    if (parentName && parentName.length < 3) {
-      nextErrors.parent_name = 'اسم ولي الأمر يجب أن يكون 3 أحرف أو أكثر'
+    // parent_phone is required by backend with specific format
+    if (!parentPhone) {
+      nextErrors.parent_phone = 'الرجاء إدخال رقم جوال ولي الأمر'
+    } else if (!/^05\d{8}$/.test(parentPhone)) {
+      nextErrors.parent_phone = 'رقم الجوال يجب أن يبدأ بـ 05 ويتكون من 10 أرقام'
     }
 
     setErrors(nextErrors)
@@ -264,7 +270,7 @@ function StudentFormDialog({
 
           <div className="grid gap-2 text-right">
             <label htmlFor="student-parent-name" className="text-sm font-medium text-slate-800">
-              اسم ولي الأمر (اختياري)
+              اسم ولي الأمر <span className="text-rose-600">*</span>
             </label>
             <input
               id="student-parent-name"
@@ -275,13 +281,14 @@ function StudentFormDialog({
               className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
               disabled={isSubmitting}
               placeholder="اسم ولي الأمر"
+              required
             />
             {errors.parent_name ? <span className="text-xs font-medium text-rose-600">{errors.parent_name}</span> : null}
           </div>
 
           <div className="grid gap-2 text-right">
             <label htmlFor="student-parent-phone" className="text-sm font-medium text-slate-800">
-              رقم ولي الأمر (اختياري)
+              رقم جوال ولي الأمر <span className="text-rose-600">*</span>
             </label>
             <input
               id="student-parent-phone"
@@ -293,6 +300,7 @@ function StudentFormDialog({
               className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
               disabled={isSubmitting}
               placeholder="05XXXXXXXX"
+              required
             />
             {errors.parent_phone ? <span className="text-xs font-medium text-rose-600">{errors.parent_phone}</span> : null}
           </div>
@@ -443,40 +451,48 @@ export function AdminStudentsPage() {
   }
 
   const handleFormSubmit = (values: StudentFormValues) => {
+    const payload = {
+      name: values.name,
+      national_id: values.national_id,
+      grade: values.grade,
+      class_name: values.class_name,
+      parent_name: values.parent_name,
+      parent_phone: values.parent_phone,
+    }
+    
+    console.log('📝 Submitting student data:', payload)
+    
     if (editingStudent) {
       updateStudentMutation.mutate(
         {
           id: editingStudent.id,
-          payload: {
-            name: values.name,
-            national_id: values.national_id,
-            grade: values.grade,
-            class_name: values.class_name,
-            parent_name: values.parent_name || undefined,
-            parent_phone: values.parent_phone || undefined,
-          },
+          payload,
         },
         {
           onSuccess: () => {
             setIsFormOpen(false)
             setEditingStudent(null)
+          },
+          onError: (error: any) => {
+            console.error('❌ Update error:', error)
+            console.error('Error response:', error.response?.data)
           },
         },
       )
     } else {
       createStudentMutation.mutate(
-        {
-          name: values.name,
-          national_id: values.national_id,
-          grade: values.grade,
-          class_name: values.class_name,
-          parent_name: values.parent_name || undefined,
-          parent_phone: values.parent_phone || undefined,
-        },
+        payload,
         {
           onSuccess: () => {
             setIsFormOpen(false)
             setEditingStudent(null)
+          },
+          onError: (error: any) => {
+            console.error('❌ Create error:', error)
+            console.error('Error response:', error.response?.data)
+            if (error.response?.data?.errors) {
+              console.error('Validation errors:', error.response.data.errors)
+            }
           },
         },
       )
