@@ -11,6 +11,7 @@ const navLinks = [
 
 const APP_SHELL_PREFIXES = ['/admin', '/teacher']
 const FULLSCREEN_ROUTES = ['/display/auto-call']
+const GUARDIAN_PORTAL_PREFIXES = ['/guardian']
 
 export function RootLayout() {
   const location = useLocation()
@@ -18,6 +19,9 @@ export function RootLayout() {
     location.pathname.startsWith(prefix),
   )
   const isFullscreenRoute = FULLSCREEN_ROUTES.includes(location.pathname)
+  const isGuardianPortal = GUARDIAN_PORTAL_PREFIXES.some((prefix) =>
+    location.pathname.startsWith(prefix),
+  )
 
   if (isFullscreenRoute) {
     return <Outlet />
@@ -25,7 +29,7 @@ export function RootLayout() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-slate-900">
-      {isAppShellRoute ? null : (
+      {isAppShellRoute || isGuardianPortal ? null : (
         <header className="sticky top-0 z-50 border-b border-white/20 bg-white/80 shadow-sm backdrop-blur-md">
           <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-5 py-4 md:flex-row md:items-center md:justify-between">
             <Link to="/" className="flex items-center gap-3">
@@ -52,18 +56,32 @@ export function RootLayout() {
         </header>
       )}
 
-      <main className={isAppShellRoute ? 'flex-1' : 'flex flex-1 justify-center px-4 py-10'}>
+      <main
+        className={
+          isAppShellRoute
+            ? 'flex-1'
+            : isGuardianPortal
+              ? 'flex flex-1 justify-center px-4 pb-10 pt-8 sm:py-12'
+              : 'flex flex-1 justify-center px-4 py-10'
+        }
+      >
         {isAppShellRoute ? (
           <Outlet />
         ) : (
-          <div className="w-full max-w-6xl">
+          <div className={isGuardianPortal ? 'w-full max-w-4xl' : 'w-full max-w-6xl'}>
             <Outlet />
           </div>
         )}
       </main>
 
       {isAppShellRoute ? null : (
-        <footer className="border-t border-white/20 bg-white/80 py-6 text-center text-xs text-muted backdrop-blur-md">
+        <footer
+          className={
+            isGuardianPortal
+              ? 'border-t border-transparent bg-transparent py-4 text-center text-[11px] text-muted'
+              : 'border-t border-white/20 bg-white/80 py-6 text-center text-xs text-muted backdrop-blur-md'
+          }
+        >
           © {new Date().getFullYear()} نظام الرائد للإدارة المدرسية — جميع الحقوق محفوظة.
         </footer>
       )}

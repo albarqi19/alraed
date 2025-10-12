@@ -744,15 +744,15 @@ function GuardianLeaveRequestPageBase({
   }
 
   return (
-    <section className="space-y-8">
-      <header className="space-y-3 text-center">
-        <h1 className="text-3xl font-bold text-slate-900">بوابة ولي الأمر</h1>
-        <p className="mx-auto max-w-2xl text-sm text-muted">
+    <section className="guardian-portal-page space-y-6 sm:space-y-8">
+      <header className="space-y-2 text-center sm:space-y-3">
+        <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">بوابة ولي الأمر</h1>
+        <p className="mx-auto max-w-2xl text-sm leading-6 text-muted sm:text-base">
           أدخل رقم هوية الطالب للتحقق من البيانات، ثم اختر الخدمة المناسبة بين طلب الاستئذان والنداء الآلي لاستلام الطالب.
         </p>
       </header>
 
-      <div className="glass-card space-y-6">
+      <div className="glass-card space-y-5 sm:space-y-6">
         <form className="space-y-3" onSubmit={handleLookupSubmit}>
           <label className="block text-right text-xs font-semibold text-slate-600">رقم هوية الطالب</label>
           <div className="flex flex-col gap-3 md:flex-row">
@@ -782,13 +782,13 @@ function GuardianLeaveRequestPageBase({
 
       {hasStudent ? (
         <div className="space-y-6">
-          <div className="glass-card space-y-4">
+          <div className="glass-card space-y-4 sm:space-y-5">
             <header className="space-y-1 text-right">
               <h2 className="text-xl font-semibold text-slate-900">اختر الخدمة المطلوبة</h2>
               <p className="text-xs text-muted">يمكنك إرسال طلب استئذان أو تفعيل المناداة الآلية عند الوصول للمدرسة.</p>
             </header>
 
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
               <button
                 type="button"
                 onClick={() => onPortalSectionChange('leave-request')}
@@ -835,7 +835,7 @@ function GuardianLeaveRequestPageBase({
 
           {activePortalSection === 'leave-request' ? (
             <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
-              <form className="glass-card space-y-5" onSubmit={handleSubmit}>
+              <form className="glass-card space-y-4 sm:space-y-5" onSubmit={handleSubmit}>
                 <header className="space-y-1">
                   <h2 className="text-xl font-semibold text-slate-900">إرسال طلب جديد</h2>
                   <p className="text-xs text-muted">يرجى تعبئة جميع الحقول الإلزامية لإرسال الطلب.</p>
@@ -940,7 +940,7 @@ function GuardianLeaveRequestPageBase({
                 </footer>
               </form>
 
-              <aside className="glass-card space-y-4">
+              <aside className="glass-card space-y-4 sm:space-y-5">
                 <header>
                   <h2 className="text-lg font-semibold text-slate-900">الطلبات السابقة</h2>
                   <p className="text-xs text-muted">يمكنك متابعة حالة طلبات الاستئذان السابقة.</p>
@@ -958,7 +958,7 @@ function GuardianLeaveRequestPageBase({
           ) : null}
 
           {activePortalSection === 'auto-call' ? (
-            <section className="glass-card space-y-4">
+            <section className="glass-card space-y-4 sm:space-y-5">
               <header className="space-y-1">
                 <div className="flex items-center justify-between gap-3">
                   <div>

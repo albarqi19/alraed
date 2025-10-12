@@ -66,9 +66,25 @@
     border-radius: 1.25rem;
     border: 1px solid var(--color-border);
     background-color: var(--color-surface);
-    padding: 1.75rem;
+    padding: clamp(1.25rem, calc(1rem + 1.5vw), 1.75rem);
     box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
     backdrop-filter: none;
+  }
+
+  @media (max-width: 640px) {
+    .glass-card {
+      border-radius: 1rem;
+    }
+  }
+
+  .guardian-portal-page {
+    width: 100%;
+  }
+
+  @media (max-width: 640px) {
+    .guardian-portal-page {
+      padding-inline: 0.5rem;
+    }
   }
 
   .button-primary,
