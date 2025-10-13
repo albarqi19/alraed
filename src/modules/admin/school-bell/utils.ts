@@ -33,7 +33,7 @@ export const DEFAULT_AUDIO_ASSETS: BellAudioAsset[] = [
   { id: 'bright-start-v1', title: 'بداية مشرقة', durationSeconds: 9, status: 'missing', sizeKb: 430 },
   { id: 'bright-end-v1', title: 'نهاية مشرقة', durationSeconds: 8, status: 'missing', sizeKb: 390 },
   { id: 'bright-break-v1', title: 'فسحة مرحة', durationSeconds: 12, status: 'missing', sizeKb: 510 },
-  { id: 'bright-prayer-v1', title: 'نداء روحاني', durationSeconds: 19, status: 'missing', sizeKb: 760 },
+  { id: 'bright-prayer-v1', title: 'نداء ', durationSeconds: 19, status: 'missing', sizeKb: 760 },
   { id: 'bright-generic-v1', title: 'تنبيه مشرق عام', durationSeconds: 6, status: 'missing', sizeKb: 320 },
 ]
 
