@@ -272,7 +272,7 @@ export function BellManagerProvider({ children }: { children: ReactNode }) {
 
   return <BellManagerContext.Provider value={value}>{children}</BellManagerContext.Provider>
 }
-
+// eslint-disable-next-line react-refresh/only-export-components
 export function useBellManager() {
   const context = useContext(BellManagerContext)
   if (!context) {

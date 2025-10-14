@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import {
   useCreateWhatsappTemplateMutation,
   useDeleteWhatsappTemplateMutation,
@@ -6,6 +6,13 @@ import {
   useWhatsappTemplatesQuery,
 } from '../hooks'
 import type { WhatsappTemplate, WhatsappTemplateVariable } from '../types'
+import {
+  extractWhatsappPlaceholders,
+  formatWhatsappVariableKey,
+  humanizeWhatsappVariableKey,
+  sanitizeWhatsappVariableKey,
+} from '../utils/whatsapp-templates'
+import type { WhatsappPlaceholder } from '../utils/whatsapp-templates'
 
 type TemplateFormState = {
   name: string
@@ -13,6 +20,139 @@ type TemplateFormState = {
   status: 'active' | 'inactive'
   body: string
   variables: Array<{ key: string; label: string; example: string }>
+}
+
+type QuickVariable = {
+  key: string
+  placeholder: string
+  label: string
+  description?: string
+  example?: string
+}
+
+const sanitizeVariableKey = sanitizeWhatsappVariableKey
+const formatKeyForDisplay = formatWhatsappVariableKey
+
+function createQuickVariable(rawKey: string, label: string, description?: string, example?: string): QuickVariable {
+  const key = sanitizeVariableKey(rawKey)
+  return {
+    key,
+    placeholder: `{{${key}}}`,
+    label,
+    description,
+    example,
+  }
+}
+
+const QUICK_VARIABLE_GROUPS: Array<{ title: string; variables: QuickVariable[] }> = [
+  {
+    title: 'بيانات الطالب',
+    variables: [
+      createQuickVariable('اسم_الطالب', 'اسم الطالب', 'يستبدل بالاسم الكامل للطالب', 'محمد بن أحمد'),
+      createQuickVariable('هوية_الطالب', 'هوية الطالب', 'الهوية الوطنية أو السجل المدني', '1022334455'),
+      createQuickVariable('رقم_الطالب', 'رقم الطالب الداخلي', 'الرقم التسلسلي المعتمد داخل النظام', 'ST-2043'),
+      createQuickVariable('الصف', 'الصف الدراسي', 'مثل الصف الثالث متوسط', 'الصف الثالث متوسط'),
+      createQuickVariable('الفصل', 'الفصل أو الشعبة', 'مثل الفصل (أ)', 'الشعبة (أ)'),
+    ],
+  },
+  {
+    title: 'بيانات ولي الأمر',
+    variables: [
+      createQuickVariable('اسم_ولي_الأمر', 'اسم ولي الأمر', 'الاسم المسجل في النظام', 'أحمد العتيبي'),
+      createQuickVariable('رقم_ولي_الأمر', 'رقم التواصل لولي الأمر', undefined, '0551234567'),
+      createQuickVariable('صلة_القرابة', 'صلة القرابة', 'أب، أم، أخ...', 'أب'),
+    ],
+  },
+  {
+    title: 'المواعيد والأوقات',
+    variables: [
+      createQuickVariable('التاريخ', 'تاريخ الموعد', 'تاريخ يتم اختياره عند الإرسال', '2025-10-15'),
+      createQuickVariable('تاريخ_اليوم', 'تاريخ اليوم', 'يُستبدل بتاريخ اليوم الحالي تلقائياً', '2025-10-14'),
+      createQuickVariable('الوقت', 'وقت الموعد', 'وقت يحدده الموظف عند الإرسال', '10:30 صباحاً'),
+      createQuickVariable('الوقت_الآن', 'الوقت الحالي', 'يُستبدل بالوقت أثناء الإرسال', '08:45 صباحاً'),
+    ],
+  },
+  {
+    title: 'بيانات المدرسة والنظام',
+    variables: [
+      createQuickVariable('اسم_المدرسة', 'اسم المدرسة', undefined, 'مدرسة  الابتدائية '),
+      createQuickVariable('رابط_النظام', 'رابط النظام', 'رابط لوحة ولي الأمر أو منصة المدرسة', 'https://school.example.com'),
+      createQuickVariable('رابط_التقرير', 'رابط تقرير مخصص', 'يمكن تعديله قبل الإرسال', 'https://school.example.com/report'),
+    ],
+  },
+]
+
+const QUICK_VARIABLE_LOOKUP: Record<string, QuickVariable> = QUICK_VARIABLE_GROUPS.reduce((acc, group) => {
+  group.variables.forEach((variable) => {
+    acc[variable.key] = variable
+  })
+  return acc
+}, {} as Record<string, QuickVariable>)
+
+function beautifyPlaceholderLabel(key: string): string {
+  return humanizeWhatsappVariableKey(key)
+}
+
+function extractPlaceholdersFromBody(body: string): WhatsappPlaceholder[] {
+  return extractWhatsappPlaceholders(body)
+}
+
+function normalizeVariablesForPayload(body: string, variables: TemplateFormState['variables']) {
+  const placeholders = extractPlaceholdersFromBody(body)
+  if (placeholders.length === 0) {
+    return []
+  }
+
+  return placeholders.map(({ key }) => {
+    const existing = variables.find((variable) => sanitizeVariableKey(variable.key) === key)
+    const quick = QUICK_VARIABLE_LOOKUP[key]
+
+    const label = (existing?.label?.trim() || quick?.label || beautifyPlaceholderLabel(key)).trim()
+    const exampleValue = existing?.example?.trim() || quick?.example || ''
+
+    return {
+      key,
+      label,
+      ...(exampleValue ? { example: exampleValue } : {}),
+    }
+  })
+}
+
+function upsertVariableList(
+  current: TemplateFormState['variables'],
+  placeholder: string,
+): TemplateFormState['variables'] {
+  const key = sanitizeVariableKey(placeholder)
+  if (!key) {
+    return current
+  }
+
+  const quick = QUICK_VARIABLE_LOOKUP[key]
+  const fallbackLabel = quick?.label || beautifyPlaceholderLabel(key)
+  const fallbackExample = quick?.example || ''
+  const displayKey = quick?.placeholder ?? formatKeyForDisplay(key)
+
+  const existingIndex = current.findIndex((variable) => sanitizeVariableKey(variable.key) === key)
+  if (existingIndex >= 0) {
+    const updated = [...current]
+    const existing = updated[existingIndex]
+    updated[existingIndex] = {
+      ...existing,
+      key: existing.key || displayKey,
+      label: existing.label || fallbackLabel,
+      example: existing.example || fallbackExample,
+    }
+    return updated
+  }
+
+  return [
+    ...current,
+    {
+      key: displayKey,
+      label: fallbackLabel,
+      example: fallbackExample,
+    },
+  ]
 }
 
 const DEFAULT_TEMPLATE_FORM: TemplateFormState = {
@@ -25,12 +165,12 @@ const DEFAULT_TEMPLATE_FORM: TemplateFormState = {
 
 function StatusPill({ status }: { status: WhatsappTemplate['status'] }) {
   return status === 'active' ? (
-    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
       <i className="bi bi-lightning-charge"></i>
       مفعّل
     </span>
   ) : (
-    <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+    <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
       <i className="bi bi-pause-circle"></i>
       موقوف
     </span>
@@ -43,15 +183,15 @@ function VariablesList({ variables }: { variables?: WhatsappTemplateVariable[] |
   }
 
   return (
-    <ul className="flex flex-wrap gap-2">
+    <ul className="flex flex-wrap gap-1.5">
       {variables.map((variable) => (
         <li
           key={`${variable.key}-${variable.label}`}
-          className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600"
+          className="rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] text-slate-600"
         >
-          <p className="font-semibold text-slate-700">{variable.key}</p>
-          <p className="text-[11px] text-slate-500">{variable.label}</p>
-          {variable.example ? <p className="mt-1 text-[11px] text-slate-400">مثال: {variable.example}</p> : null}
+          <p className="font-semibold text-slate-700">{formatKeyForDisplay(variable.key)}</p>
+          <p className="text-[10px] text-slate-500">{variable.label}</p>
+          {variable.example ? <p className="mt-1 text-[10px] text-slate-400">مثال: {variable.example}</p> : null}
         </li>
       ))}
     </ul>
@@ -75,6 +215,8 @@ function TemplateDialog({
   setState: (updater: (prev: TemplateFormState) => TemplateFormState) => void
   mode: 'create' | 'edit'
 }) {
+  const bodyRef = useRef<HTMLTextAreaElement | null>(null)
+
   const handleFieldChange = <Key extends keyof TemplateFormState>(key: Key, value: TemplateFormState[Key]) => {
     setState((prev) => ({ ...prev, [key]: value }))
   }
@@ -99,6 +241,33 @@ function TemplateDialog({
       ...prev,
       variables: prev.variables.filter((_, variableIndex) => variableIndex !== index),
     }))
+  }
+
+  const handleInsertVariable = (placeholder: string) => {
+    const textarea = bodyRef.current
+
+    setState((prev) => {
+      const baseBody = prev.body ?? ''
+      const selectionStart = textarea?.selectionStart ?? baseBody.length
+      const selectionEnd = textarea?.selectionEnd ?? selectionStart
+
+      const nextBody =
+        baseBody.slice(0, selectionStart) + placeholder + baseBody.slice(selectionEnd)
+
+      requestAnimationFrame(() => {
+        if (textarea) {
+          textarea.focus()
+          const caretPosition = selectionStart + placeholder.length
+          textarea.setSelectionRange(caretPosition, caretPosition)
+        }
+      })
+
+      return {
+        ...prev,
+        body: nextBody,
+        variables: upsertVariableList(prev.variables, placeholder),
+      }
+    })
   }
 
   if (!open) return null
@@ -168,18 +337,45 @@ function TemplateDialog({
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">نص الرسالة</label>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+              <div className="flex items-center justify-between text-[11px] text-slate-500">
+                <span className="font-semibold text-slate-600">المتغيرات السريعة</span>
+                <span>اضغط للإدراج في الموضع الحالي</span>
+              </div>
+              <div className="mt-2 space-y-2">
+                {QUICK_VARIABLE_GROUPS.map((group) => (
+                  <div key={group.title} className="space-y-1">
+                    <p className="text-[11px] font-semibold text-slate-500">{group.title}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {group.variables.map((variable) => (
+                        <button
+                          key={variable.placeholder}
+                          type="button"
+                          onClick={() => handleInsertVariable(variable.placeholder)}
+                          className="rounded-xl border border-teal-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-teal-700 transition hover:border-teal-300 hover:bg-teal-50"
+                          title={variable.description}
+                        >
+                          {variable.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
             <textarea
+              ref={bodyRef}
               value={state.body}
               onChange={(event) => handleFieldChange('body', event.target.value)}
               rows={8}
               required
               className="w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm leading-7 text-slate-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              placeholder="اكتب نص الرسالة مع المتغيرات مثل {الاسم} و {ايام_الغياب}"
+              placeholder="اكتب نص الرسالة مع المتغيرات مثل {{اسم_الطالب}} و {{عدد_أيام_الغياب}}"
             />
             <p className="text-xs text-slate-400">
-              استخدم الأقواس المعقوفة <code className="font-mono text-slate-500">{'{ }'}</code> لإدراج المتغيرات التي سيتم استبدالها تلقائياً عند الإرسال.
+              استخدم الصيغة <code className="font-mono text-slate-500">{'{{اسم_المتغير}}'}</code> لإدراج المتغيرات التي سيتم استبدالها تلقائياً عند الإرسال.
             </p>
           </div>
 
@@ -201,7 +397,7 @@ function TemplateDialog({
 
             {state.variables.length === 0 ? (
               <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-4 text-xs text-slate-400">
-                لا توجد متغيرات إضافية. مثال: <code className="font-mono">{'{اسم_ولي_الأمر}'}</code>
+                لا توجد متغيرات إضافية. مثال: <code className="font-mono">{'{{اسم_ولي_الأمر}}'}</code>
               </p>
             ) : (
               <div className="space-y-3">
@@ -213,7 +409,7 @@ function TemplateDialog({
                         type="text"
                         value={variable.key}
                         onChange={(event) => handleVariableChange(index, 'key', event.target.value)}
-                        placeholder="مثال: {الاسم}"
+                        placeholder="مثال: {{اسم_الطالب}}"
                         className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                       />
                     </div>
@@ -286,16 +482,24 @@ export function WhatsAppTemplatesPage() {
 
   useEffect(() => {
     if (dialogMode === 'edit' && editingTemplate) {
+      const initialVariables = editingTemplate.variables?.map((variable) => ({
+        key: variable.key,
+        label: variable.label,
+        example: variable.example ?? '',
+      })) ?? []
+
+      const normalized = normalizeVariablesForPayload(editingTemplate.body, initialVariables)
+
       setFormState({
         name: editingTemplate.name,
         category: editingTemplate.category ?? '',
         status: editingTemplate.status,
         body: editingTemplate.body,
-        variables: editingTemplate.variables?.map((variable) => ({
-          key: variable.key,
+        variables: normalized.map((variable) => ({
+          key: formatKeyForDisplay(variable.key),
           label: variable.label,
           example: variable.example ?? '',
-        })) ?? [],
+        })),
       })
     }
   }, [dialogMode, editingTemplate])
@@ -332,7 +536,7 @@ export function WhatsAppTemplatesPage() {
       body: template.body,
       variables:
         template.variables?.map((variable) => ({
-          key: variable.key,
+          key: formatKeyForDisplay(variable.key),
           label: variable.label,
           example: variable.example ?? '',
         })) ?? [],
@@ -348,6 +552,17 @@ export function WhatsAppTemplatesPage() {
   }
 
   const handleSubmit = () => {
+    const normalizedVariables = normalizeVariablesForPayload(formState.body, formState.variables)
+
+    setFormState((prev) => ({
+      ...prev,
+      variables: normalizedVariables.map((variable) => ({
+        key: formatKeyForDisplay(variable.key),
+        label: variable.label,
+        example: variable.example ?? '',
+      })),
+    }))
+
     if (dialogMode === 'edit' && editingTemplate) {
       updateMutation.mutate(
         {
@@ -357,7 +572,7 @@ export function WhatsAppTemplatesPage() {
             category: formState.category || undefined,
             status: formState.status,
             body: formState.body,
-            variables: formState.variables.filter((variable) => variable.key && variable.label),
+            variables: normalizedVariables,
           },
         },
         {
@@ -375,7 +590,7 @@ export function WhatsAppTemplatesPage() {
         category: formState.category || undefined,
         status: formState.status,
         body: formState.body,
-        variables: formState.variables.filter((variable) => variable.key && variable.label),
+        variables: normalizedVariables,
       },
       {
         onSuccess: () => {
@@ -477,38 +692,38 @@ export function WhatsAppTemplatesPage() {
               <p className="mt-1 text-xs text-slate-400">جرب تعديل معايير البحث أو أضف قالبًا جديدًا.</p>
             </div>
           ) : (
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {filteredTemplates.map((template) => (
-                <article key={template.id} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <article key={template.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                     <div className="space-y-1">
-                      <h3 className="text-lg font-semibold text-slate-900">{template.name}</h3>
-                      <p className="text-xs text-slate-500">
+                      <h3 className="text-base font-semibold text-slate-900">{template.name}</h3>
+                      <p className="text-[11px] text-slate-500">
                         {template.category ? <span className="font-semibold text-indigo-500">{template.category}</span> : 'بدون تصنيف'}
                       </p>
                     </div>
                     <StatusPill status={template.status} />
                   </div>
 
-                  <p className="mt-4 rounded-2xl bg-slate-50/90 p-4 text-sm leading-7 text-slate-700">
+                  <p className="mt-3 rounded-2xl bg-slate-50/90 p-3 text-[13px] leading-6 text-slate-700">
                     {template.body}
                   </p>
 
-                  <div className="mt-4 space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">المتغيرات</p>
+                  <div className="mt-3 space-y-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">المتغيرات</p>
                     <VariablesList variables={template.variables} />
                   </div>
 
-                  <div className="mt-5 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                  <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
                     {template.created_at ? <span>أُنشئ في {new Date(template.created_at).toLocaleDateString('ar-SA')}</span> : null}
                     {template.updated_at ? <span>تم التعديل في {new Date(template.updated_at).toLocaleDateString('ar-SA')}</span> : null}
                   </div>
 
-                  <div className="mt-6 flex items-center gap-3">
+                  <div className="mt-4 flex items-center gap-2 text-sm">
                     <button
                       type="button"
                       onClick={() => handleOpenEdit(template)}
-                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-indigo-200 px-4 py-2 text-sm font-semibold text-indigo-600 transition hover:border-indigo-300 hover:bg-indigo-50"
+                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-indigo-200 px-3 py-2 text-[13px] font-semibold text-indigo-600 transition hover:border-indigo-300 hover:bg-indigo-50"
                     >
                       <i className="bi bi-pencil-square"></i>
                       تعديل القالب
@@ -516,7 +731,7 @@ export function WhatsAppTemplatesPage() {
                     <button
                       type="button"
                       onClick={() => handleDelete(template)}
-                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-600 transition hover:border-rose-300 hover:bg-rose-50"
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-200 px-3 py-2 text-[13px] font-semibold text-rose-600 transition hover:border-rose-300 hover:bg-rose-50"
                       disabled={deleteMutation.isPending}
                     >
                       <i className="bi bi-trash"></i>

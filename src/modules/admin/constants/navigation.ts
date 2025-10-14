@@ -31,6 +31,7 @@ import {
   Megaphone,
   CalendarDays,
   School,
+  CalendarRange,
 } from 'lucide-react'
 
 export interface AdminNavItem {
@@ -65,6 +66,7 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
     icon: Calendar,
     items: [
       { to: '/admin/class-schedules', label: 'جداول الفصول', icon: Calendar },
+      // { to: '/admin/school-timetable', label: 'الجدول المدرسي', icon: CalendarRange },
       { to: '/admin/class-sessions', label: 'إدارة الحصص', icon: Clock },
       { to: '/admin/schedules', label: 'الخطط الزمنية', icon: ListTodo },
     ],

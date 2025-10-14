@@ -71,6 +71,7 @@ interface LateArrivalFormDialogProps {
   onSubmit: (payload: { student_ids: number[]; late_date: string; notes?: string | null }) => void
   isSubmitting: boolean
   students: StudentRecord[] | undefined
+  lateArrivals: LateArrivalRecord[] | undefined
   isLoading: boolean
   isError: boolean
   onRetry: () => void
@@ -83,6 +84,7 @@ function LateArrivalFormDialog({
   onSubmit,
   isSubmitting,
   students,
+  lateArrivals,
   isLoading,
   isError,
   onRetry,
@@ -94,6 +96,19 @@ function LateArrivalFormDialog({
   const [classFilter, setClassFilter] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [validationError, setValidationError] = useState<string | null>(null)
+
+  // حساب عدد التأخيرات لكل طالب
+  const lateCountByStudent = useMemo(() => {
+    const counts = new Map<number, number>()
+    if (!lateArrivals) return counts
+    
+    for (const record of lateArrivals) {
+      const currentCount = counts.get(record.student_id) ?? 0
+      counts.set(record.student_id, currentCount + 1)
+    }
+    
+    return counts
+  }, [lateArrivals])
 
   useEffect(() => {
     if (!open) return
@@ -383,6 +398,7 @@ function LateArrivalFormDialog({
                         <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                           {classStudents.map((student) => {
                             const checked = selectedIds.has(student.id)
+                            const lateCount = lateCountByStudent.get(student.id) ?? 0
                             return (
                               <label
                                 key={student.id}
@@ -394,7 +410,14 @@ function LateArrivalFormDialog({
                                 }`}
                               >
                                 <div className="flex-1">
-                                  <p className="font-semibold text-slate-900">{student.name}</p>
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-semibold text-slate-900">{student.name}</p>
+                                    {lateCount > 0 && (
+                                      <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-100 px-1.5 text-[10px] font-bold text-rose-700">
+                                        {lateCount}
+                                      </span>
+                                    )}
+                                  </div>
                                   <p className="text-xs text-muted">
                                     {student.national_id ? `هوية: ${student.national_id}` : 'بدون رقم هوية'}
                                   </p>
@@ -464,6 +487,9 @@ export function AdminLateArrivalsPage() {
   const lateArrivalsQuery = useLateArrivalsQuery(queryFilters)
   const statsQuery = useLateArrivalStatsQuery()
   const studentsQuery = useStudentsQuery()
+  
+  // جلب كل التأخيرات (بدون فلاتر) لحساب العدد الكلي لكل طالب
+  const allLateArrivalsQuery = useLateArrivalsQuery({})
 
   const deleteMutation = useDeleteLateArrivalMutation()
   const sendMessageMutation = useSendLateArrivalMessageMutation()
@@ -840,6 +866,7 @@ export function AdminLateArrivalsPage() {
         onSubmit={handleSubmitCreate}
         isSubmitting={createLateArrivalMutation.isPending}
         students={studentsQuery.data}
+        lateArrivals={allLateArrivalsQuery.data}
         isLoading={studentsQuery.isLoading}
         isError={studentsQuery.isError ?? false}
         onRetry={() => {

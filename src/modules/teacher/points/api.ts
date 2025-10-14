@@ -13,15 +13,14 @@ interface ApiEnvelope<T> {
   message?: string
 }
 
-interface TeacherPointConfigResponse extends ApiEnvelope<TeacherPointConfigPayload> {}
+type TeacherPointConfigResponse = ApiEnvelope<TeacherPointConfigPayload>
 
-interface TeacherPointSummaryResponse extends ApiEnvelope<TeacherPointSummary> {}
+type TeacherPointSummaryResponse = ApiEnvelope<TeacherPointSummary>
 
-interface TeacherPointTransactionResponse
-  extends ApiEnvelope<{
-    transaction: TeacherPointTransaction
-    summary: TeacherPointSummary
-  }> {}
+type TeacherPointTransactionResponse = ApiEnvelope<{
+  transaction: TeacherPointTransaction
+  summary: TeacherPointSummary
+}>
 
 function ensureSuccess<T>(response: ApiEnvelope<T>, fallbackMessage: string): T {
   if (!response.success || !response.data) {

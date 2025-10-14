@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
+import { isAxiosError } from 'axios'
 import {
   useCreateStudentMutation,
   useDeleteStudentMutation,
@@ -142,8 +143,8 @@ function StudentFormDialog({
     // parent_phone is required by backend with specific format
     if (!parentPhone) {
       nextErrors.parent_phone = 'الرجاء إدخال رقم جوال ولي الأمر'
-    } else if (!/^05\d{8}$/.test(parentPhone)) {
-      nextErrors.parent_phone = 'رقم الجوال يجب أن يبدأ بـ 05 ويتكون من 10 أرقام'
+    } else if (!/^(05\d{8}|9665\d{8})$/.test(parentPhone)) {
+      nextErrors.parent_phone = 'رقم الجوال يجب أن يبدأ بـ 05 (10 أرقام) أو 9665 (12 رقم)'
     }
 
     setErrors(nextErrors)
@@ -473,9 +474,11 @@ export function AdminStudentsPage() {
             setIsFormOpen(false)
             setEditingStudent(null)
           },
-          onError: (error: any) => {
+          onError: (error: unknown) => {
             console.error('❌ Update error:', error)
-            console.error('Error response:', error.response?.data)
+            if (isAxiosError(error)) {
+              console.error('Error response:', error.response?.data)
+            }
           },
         },
       )
@@ -487,11 +490,13 @@ export function AdminStudentsPage() {
             setIsFormOpen(false)
             setEditingStudent(null)
           },
-          onError: (error: any) => {
+          onError: (error: unknown) => {
             console.error('❌ Create error:', error)
-            console.error('Error response:', error.response?.data)
-            if (error.response?.data?.errors) {
-              console.error('Validation errors:', error.response.data.errors)
+            if (isAxiosError(error)) {
+              console.error('Error response:', error.response?.data)
+              if (error.response?.data?.errors) {
+                console.error('Validation errors:', error.response.data.errors)
+              }
             }
           },
         },
@@ -650,7 +655,7 @@ export function AdminStudentsPage() {
                       <td className="px-6 py-4 text-sm text-slate-600">
                         {student.parent_name ? <span>{student.parent_name}</span> : <span className="text-muted">—</span>}
                         <div className="text-xs text-muted">
-                          {student.parent_phone ? student.parent_phone : 'لا يوجد رقم'}
+                          {student.parent_phone ? student.parent_phone : 'لا يوجد رقم جوال'}
                         </div>
                       </td>
                       <td className="px-6 py-4 text-xs text-muted">{formatDate(student.updated_at ?? student.created_at)}</td>

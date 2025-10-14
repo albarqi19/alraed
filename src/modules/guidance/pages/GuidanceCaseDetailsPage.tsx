@@ -33,7 +33,9 @@ export function GuidanceCaseDetailsPage() {
   const { data: caseData, isLoading, error } = useGuidanceCase(Number(caseId))
   const { closeCase, reopenCase, addAction, addFollowup, updateFollowupStatus, uploadDocument } = useGuidanceCaseMutations()
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'actions' | 'followups' | 'documents'>('overview')
+  type CaseDetailsTabKey = 'overview' | 'actions' | 'followups' | 'documents'
+
+  const [activeTab, setActiveTab] = useState<CaseDetailsTabKey>('overview')
   const [showActionForm, setShowActionForm] = useState(false)
   const [showFollowupForm, setShowFollowupForm] = useState(false)
   const [showDocumentForm, setShowDocumentForm] = useState(false)
@@ -280,15 +282,15 @@ export function GuidanceCaseDetailsPage() {
             {/* Tabs */}
             <div className="bg-white rounded-t-lg shadow">
               <div className="flex border-b">
-                {[
+                {([
                   { key: 'overview', label: 'نظرة عامة' },
                   { key: 'actions', label: `الإجراءات (${caseData.actions?.length || 0})` },
                   { key: 'followups', label: `المتابعات (${caseData.followups?.length || 0})` },
                   { key: 'documents', label: `المستندات (${caseData.documents?.length || 0})` },
-                ].map((tab) => (
+                ] as Array<{ key: CaseDetailsTabKey; label: string }>).map((tab) => (
                   <button
                     key={tab.key}
-                    onClick={() => setActiveTab(tab.key as any)}
+                    onClick={() => setActiveTab(tab.key)}
                     className={`flex-1 px-4 py-3 font-medium transition-colors ${
                       activeTab === tab.key
                         ? 'text-indigo-600 border-b-2 border-indigo-600'

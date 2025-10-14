@@ -61,6 +61,7 @@ import type {
   PointCardsResponse,
   PaginationMeta,
 } from './types'
+import { deserializeWhatsappVariables, serializeWhatsappVariables } from './utils/whatsapp-templates'
 
 type Filters = Record<string, string | number | boolean | undefined>
 
@@ -402,6 +403,143 @@ function normalizeWhatsappStudentRecord(raw: unknown): WhatsappTargetStudent | n
   }
 }
 
+type RawWhatsappTemplateRecord = Record<string, unknown>
+
+function parseWhatsappTemplateStatus(value: unknown): 'active' | 'inactive' {
+  if (typeof value === 'boolean') {
+    return value ? 'active' : 'inactive'
+  }
+
+  if (typeof value === 'number') {
+    return value === 0 ? 'inactive' : 'active'
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase()
+    if (!normalized) {
+      return 'active'
+    }
+
+  if (['inactive', 'disabled', 'false', '0', 'off', 'paused'].includes(normalized)) {
+      return 'inactive'
+    }
+
+    return 'active'
+  }
+
+  return 'active'
+}
+
+function coerceJsonValue(value: unknown): unknown {
+  if (typeof value !== 'string') {
+    return value
+  }
+
+  try {
+    return JSON.parse(value)
+  } catch {
+    return value
+  }
+}
+
+function normalizeWhatsappTemplateRecord(raw: RawWhatsappTemplateRecord): WhatsappTemplate | null {
+  const idCandidate = coerceNumber(
+    raw.id ?? raw.template_id ?? raw.templateID ?? raw.ID ?? raw.identifier,
+    Number.NaN,
+  )
+
+  if (!Number.isFinite(idCandidate)) {
+    return null
+  }
+
+  const id = Math.trunc(idCandidate)
+
+  const name =
+    typeof raw.name === 'string'
+      ? raw.name
+      : typeof raw.template_name === 'string'
+        ? raw.template_name
+        : typeof raw.title === 'string'
+          ? raw.title
+          : null
+
+  if (!name) {
+    return null
+  }
+
+  const bodyCandidate =
+    typeof raw.content === 'string'
+      ? raw.content
+      : typeof raw.message === 'string'
+        ? raw.message
+        : typeof raw.body === 'string'
+          ? raw.body
+          : ''
+
+  const body = typeof bodyCandidate === 'string' ? bodyCandidate : ''
+
+  let category: string | undefined
+  if (typeof raw.category === 'string' && raw.category.trim()) {
+    category = raw.category
+  } else if (typeof raw.type === 'string' && raw.type.trim()) {
+    category = raw.type
+  } else if (typeof raw.description === 'string' && raw.description.trim()) {
+    category = raw.description
+  }
+
+  const metadata = isRecord(raw.metadata) ? raw.metadata : null
+  const variablesSource =
+    raw.variables ??
+    (metadata && metadata.variables) ??
+    raw.variable_map ??
+    raw.placeholders ??
+    raw.placeholders_map ??
+    null
+
+  const variables = deserializeWhatsappVariables(coerceJsonValue(variablesSource), body)
+
+  return {
+    id,
+    name,
+    body,
+    ...(category ? { category } : {}),
+    status: parseWhatsappTemplateStatus(raw.status ?? raw.is_active ?? raw.active ?? true),
+    variables,
+    created_at: typeof raw.created_at === 'string' ? raw.created_at : undefined,
+    updated_at: typeof raw.updated_at === 'string' ? raw.updated_at : undefined,
+  }
+}
+
+function serializeWhatsappTemplatePayload(payload: Partial<WhatsappTemplate>): Record<string, unknown> {
+  const result: Record<string, unknown> = {}
+
+  if (payload.name !== undefined) {
+    result.name = payload.name
+  }
+
+  if (payload.body !== undefined) {
+    result.content = payload.body
+    result.message = payload.body
+    result.body = payload.body
+  }
+
+  if (payload.status !== undefined) {
+    result.status = payload.status
+    result.is_active = payload.status === 'active'
+  }
+
+  if (payload.variables !== undefined) {
+    const serialized = serializeWhatsappVariables(payload.variables)
+    result.variables = Object.keys(serialized).length > 0 ? serialized : []
+  }
+
+  if (payload.category !== undefined) {
+    result.category = payload.category
+  }
+
+  return result
+}
+
 function unwrapPaginatedArray<T>(
   response: PaginatedResponse<T[]>,
   fallbackMessage: string,
@@ -715,13 +853,18 @@ export async function fetchScheduleTemplates(): Promise<ScheduleTemplate[]> {
   }))
 }
 
+type AttendanceManagementResponse = {
+  data: AttendanceReportRecord[]
+  current_page: number
+  last_page: number
+}
+
 export async function fetchAttendanceReports(filters: Filters = {}): Promise<AttendanceReportRecord[]> {
-  // استخدام API الجديد للسجلات المجمعة
-  const { data } = await apiClient.get<{data: any[], current_page: number, last_page: number}>('/admin/attendance-management', {
+  const { data } = await apiClient.get<AttendanceManagementResponse>('/admin/attendance-management', {
     params: filters,
   })
-  // البيانات ترجع مباشرة في data.data من Laravel pagination
-  return (data.data || []) as AttendanceReportRecord[]
+
+  return data?.data ?? []
 }
 
 export async function fetchAttendanceReportMatrix(
@@ -1036,7 +1179,15 @@ export async function fetchWhatsappHistory(filters?: {
 
 export async function fetchWhatsappTemplates(): Promise<WhatsappTemplate[]> {
   const { data } = await apiClient.get<ApiResponse<unknown>>('/admin/whatsapp/templates')
-  return unwrapCollectionResponse<WhatsappTemplate>(data, 'تعذر تحميل قوالب الواتساب', ['data', 'templates', 'items'])
+  const rawTemplates = unwrapCollectionResponse<RawWhatsappTemplateRecord>(
+    data,
+    'تعذر تحميل قوالب الواتساب',
+    ['data', 'templates', 'items'],
+  )
+
+  return rawTemplates
+    .map((template) => normalizeWhatsappTemplateRecord(template))
+    .filter((template): template is WhatsappTemplate => template !== null)
 }
 
 export async function sendWhatsappBulkMessages(payload: WhatsappBulkMessagePayload): Promise<{ queued: number }> {
@@ -1056,13 +1207,41 @@ export async function sendWhatsappBulkMessages(payload: WhatsappBulkMessagePaylo
 }
 
 export async function createWhatsappTemplate(payload: Partial<WhatsappTemplate>): Promise<WhatsappTemplate> {
-  const { data } = await apiClient.post<ApiResponse<WhatsappTemplate>>('/admin/whatsapp/templates', payload)
-  return unwrapResponse(data, 'تعذر إنشاء قالب الواتساب')
+  const requestPayload = serializeWhatsappTemplatePayload(payload)
+  const { data } = await apiClient.post<ApiResponse<unknown>>('/admin/whatsapp/templates', requestPayload)
+  const response = unwrapResponse<unknown>(data, 'تعذر إنشاء قالب الواتساب')
+
+  const templateRecord = isRecord(response)
+    ? (isRecord(response.template) ? (response.template as RawWhatsappTemplateRecord) : (response as RawWhatsappTemplateRecord))
+    : null
+
+  if (templateRecord) {
+    const normalized = normalizeWhatsappTemplateRecord(templateRecord)
+    if (normalized) {
+      return normalized
+    }
+  }
+
+  throw new Error('استجابة غير متوقعة من الخادم بعد إنشاء القالب')
 }
 
 export async function updateWhatsappTemplate(id: number, payload: Partial<WhatsappTemplate>): Promise<WhatsappTemplate> {
-  const { data } = await apiClient.put<ApiResponse<WhatsappTemplate>>(`/admin/whatsapp/templates/${id}`, payload)
-  return unwrapResponse(data, 'تعذر تحديث قالب الواتساب')
+  const requestPayload = serializeWhatsappTemplatePayload(payload)
+  const { data } = await apiClient.put<ApiResponse<unknown>>(`/admin/whatsapp/templates/${id}`, requestPayload)
+  const response = unwrapResponse<unknown>(data, 'تعذر تحديث قالب الواتساب')
+
+  const templateRecord = isRecord(response)
+    ? (isRecord(response.template) ? (response.template as RawWhatsappTemplateRecord) : (response as RawWhatsappTemplateRecord))
+    : null
+
+  if (templateRecord) {
+    const normalized = normalizeWhatsappTemplateRecord(templateRecord)
+    if (normalized) {
+      return normalized
+    }
+  }
+
+  throw new Error('استجابة غير متوقعة من الخادم بعد تحديث القالب')
 }
 
 export async function deleteWhatsappTemplate(id: number): Promise<void> {

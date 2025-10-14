@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   useSendWhatsappBulkMessagesMutation,
   useWhatsappAbsentStudentsQuery,
@@ -6,9 +6,9 @@ import {
   useWhatsappStudentsQuery,
   useWhatsappTemplatesQuery,
 } from '../hooks'
-import type { WhatsappTargetStudent } from '../types'
+import type { WhatsappTargetStudent, WhatsappTemplateVariable } from '../types'
+import { sanitizeWhatsappVariableKey } from '../utils/whatsapp-templates'
 import { useToast } from '@/shared/feedback/use-toast'
-
 type AbsenceFilterOption = {
   value: 'all' | number
   label: string
@@ -32,27 +32,93 @@ const DEFAULT_PLACEHOLDER_TOKENS = [
   { token: '{ايام_الغياب}', description: 'عدد أيام الغياب' },
 ]
 
-function personalizeMessage(template: string, student: WhatsappTargetStudent) {
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function buildPlaceholderRegexFromSanitizedKey(sanitizedKey: string): RegExp | null {
+  if (!sanitizedKey) {
+    return null
+  }
+
+  const patternParts = sanitizedKey
+    .split('_')
+    .filter((part) => part.length > 0)
+    .map((part) => escapeRegExp(part))
+
+  if (patternParts.length === 0) {
+    return null
+  }
+
+  const flexiblePattern = patternParts.join('[\\s_]*')
+  return new RegExp(`({{\\s*${flexiblePattern}\\s*}}|{\\s*${flexiblePattern}\\s*})`, 'gi')
+}
+
+function personalizeMessage(
+  template: string,
+  student: WhatsappTargetStudent,
+  customValues: Record<string, string> = {},
+) {
   const absenceValue =
     student.absence_days ?? student.total_absences ?? (student.last_absence_date ? 1 : undefined) ?? 0
 
-  const replacements: Array<[RegExp, string]> = [
-    [/{الاسم}/g, student.name],
-    [/\{name\}/gi, student.name],
-    [/{{\s*name\s*}}/gi, student.name],
-    [/\{student_name\}/gi, student.name],
-    [/\{الصف\}/g, student.grade ?? 'غير محدد'],
-    [/\{grade\}/gi, student.grade ?? 'غير محدد'],
-    [/{{\s*grade\s*}}/gi, student.grade ?? 'غير محدد'],
-    [/\{الفصل\}/g, student.class_name ?? 'غير محدد'],
-    [/\{class\}/gi, student.class_name ?? 'غير محدد'],
-    [/{{\s*class\s*}}/gi, student.class_name ?? 'غير محدد'],
-    [/\{ايام_الغياب\}/g, String(absenceValue)],
-    [/\{absence_days\}/gi, String(absenceValue)],
-    [/{{\s*absence_days\s*}}/gi, String(absenceValue)],
-  ]
+  const replacements = new Map<string, string>()
 
-  return replacements.reduce((result, [pattern, replacement]) => result.replace(pattern, replacement), template)
+  const assignValue = (keys: string[], rawValue: string | number | null | undefined) => {
+    if (rawValue === null || rawValue === undefined) {
+      return
+    }
+
+    const value = String(rawValue)
+    keys.forEach((rawKey) => {
+      const sanitized = sanitizeWhatsappVariableKey(rawKey)
+      if (!sanitized || replacements.has(sanitized)) {
+        return
+      }
+      replacements.set(sanitized, value)
+    })
+  }
+
+  assignValue(['الاسم', 'name', 'student_name', 'اسم_الطالب'], student.name)
+  assignValue(['الصف', 'grade'], student.grade ?? 'غير محدد')
+  assignValue(['الفصل', 'class', 'class_name'], student.class_name ?? 'غير محدد')
+  assignValue(['ايام_الغياب', 'absence_days', 'total_absences'], absenceValue)
+  assignValue(['هوية_الطالب', 'national_id'], student.national_id)
+  assignValue(['اسم_ولي_الأمر', 'guardian_name', 'parent_name'], student.parent_name)
+  assignValue(['رقم_ولي_الأمر', 'guardian_phone', 'parent_phone'], student.parent_phone)
+  assignValue(['آخر_غياب', 'اخر_غياب', 'last_absence_date'], student.last_absence_date)
+
+  Object.entries(customValues).forEach(([rawKey, rawValue]) => {
+    const sanitized = sanitizeWhatsappVariableKey(rawKey)
+    if (!sanitized) {
+      return
+    }
+
+    const value = typeof rawValue === 'string' ? rawValue.trim() : String(rawValue)
+    if (!value) {
+      return
+    }
+
+    replacements.set(sanitized, value)
+  })
+
+  let result = template
+
+  replacements.forEach((replacement, sanitizedKey) => {
+    const regex = buildPlaceholderRegexFromSanitizedKey(sanitizedKey)
+    if (!regex) {
+      return
+    }
+    result = result.replace(regex, replacement)
+  })
+
+  return result
+}
+
+type TemplateVariableMetaEntry = {
+  sanitizedKey: string
+  normalizedKey: string
+  variable: WhatsappTemplateVariable
 }
 
 function formatNumber(value: number) {
@@ -147,6 +213,7 @@ export function WhatsAppSendPage() {
   const [isPickerOpen, setIsPickerOpen] = useState(false)
   const [pickerGrade, setPickerGrade] = useState<string | null>(null)
   const [pickerClass, setPickerClass] = useState<string | null>(null)
+  const [templateVariableValues, setTemplateVariableValues] = useState<Record<string, string>>({})
 
   const templateSelectValue = selectedTemplateId === 'custom' ? 'custom' : selectedTemplateId != null ? String(selectedTemplateId) : ''
 
@@ -245,6 +312,89 @@ export function WhatsAppSendPage() {
     return null
   }, [selectedTemplateId, templates])
 
+  const templateVariableMeta = useMemo<TemplateVariableMetaEntry[]>(() => {
+    if (!selectedTemplate?.variables?.length) {
+      return []
+    }
+
+    return selectedTemplate.variables
+      .map((variable) => {
+        const sanitizedKey = sanitizeWhatsappVariableKey(variable.key)
+        if (!sanitizedKey) {
+          return null
+        }
+
+        const normalizedKey = sanitizedKey.replace(/[\s_]+/g, '_').toLocaleLowerCase('ar')
+
+        return {
+          sanitizedKey,
+          normalizedKey,
+          variable,
+        }
+      })
+      .filter((entry): entry is TemplateVariableMetaEntry => entry !== null)
+  }, [selectedTemplate])
+
+  const templateVariableMetaByKey = useMemo(() => {
+    const map: Record<string, TemplateVariableMetaEntry> = {}
+    templateVariableMeta.forEach((entry) => {
+      map[entry.sanitizedKey] = entry
+    })
+    return map
+  }, [templateVariableMeta])
+
+  useEffect(() => {
+    if (!templateVariableMeta.length) {
+      setTemplateVariableValues({})
+      return
+    }
+
+    setTemplateVariableValues((current) => {
+      const next: Record<string, string> = {}
+      templateVariableMeta.forEach((entry) => {
+        next[entry.sanitizedKey] = current?.[entry.sanitizedKey] ?? ''
+      })
+      return next
+    })
+  }, [templateVariableMeta])
+
+  const appointmentVariableKeys = useMemo(() => {
+    if (!templateVariableMeta.length) {
+      return { dateKeys: [] as string[], timeKeys: [] as string[] }
+    }
+
+    const isDateKey = (key: string) => key.includes('تاريخ') || key.includes('date')
+    const isTimeKey = (key: string) => key.includes('وقت') || key.includes('time') || key.includes('clock')
+
+    const dateKeys = templateVariableMeta
+      .filter((entry) => isDateKey(entry.normalizedKey))
+      .map((entry) => entry.sanitizedKey)
+
+    const timeKeys = templateVariableMeta
+      .filter((entry) => isTimeKey(entry.normalizedKey))
+      .map((entry) => entry.sanitizedKey)
+
+    return { dateKeys, timeKeys }
+  }, [templateVariableMeta])
+
+  const isAppointmentTemplate = appointmentVariableKeys.dateKeys.length > 0 || appointmentVariableKeys.timeKeys.length > 0
+  const uniqueDateKeys = useMemo(() => Array.from(new Set(appointmentVariableKeys.dateKeys)), [appointmentVariableKeys])
+  const uniqueTimeKeys = useMemo(() => Array.from(new Set(appointmentVariableKeys.timeKeys)), [appointmentVariableKeys])
+
+  const handleFieldWrapperClick = useCallback((inputId: string) => {
+    const element = document.getElementById(inputId) as HTMLInputElement | null
+    if (!element) {
+      return
+    }
+
+    if (typeof element.showPicker === 'function') {
+      element.showPicker()
+      return
+    }
+
+    element.focus()
+  }, [])
+
   const availableStudents = useMemo(() => {
     const base = studentsQuery.data ?? []
     let source: WhatsappTargetStudent[]
@@ -297,8 +447,8 @@ export function WhatsAppSendPage() {
 
   const messagePreview = useMemo(() => {
     if (!messageText.trim() || !selectedStudents.length) return ''
-    return personalizeMessage(messageText, selectedStudents[0])
-  }, [messageText, selectedStudents])
+    return personalizeMessage(messageText, selectedStudents[0], templateVariableValues)
+  }, [messageText, selectedStudents, templateVariableValues])
 
   useEffect(() => {
     if (selectedTemplate) {
@@ -340,6 +490,18 @@ export function WhatsAppSendPage() {
     }
   }
 
+  const handleTemplateVariableValueChange = (key: string, value: string) => {
+    const sanitizedKey = sanitizeWhatsappVariableKey(key)
+    if (!sanitizedKey) {
+      return
+    }
+
+    setTemplateVariableValues((current) => ({
+      ...current,
+      [sanitizedKey]: value,
+    }))
+  }
+
   const handleSend = async () => {
     const trimmedMessage = messageText.trim()
     if (!trimmedMessage) {
@@ -349,6 +511,25 @@ export function WhatsAppSendPage() {
 
     if (!selectedStudents.length) {
       toast({ type: 'warning', title: 'يرجى اختيار طالب واحد على الأقل' })
+      return
+    }
+
+    const requiredVariableKeys = new Set<string>([...appointmentVariableKeys.dateKeys, ...appointmentVariableKeys.timeKeys])
+    const missingVariableLabels: string[] = []
+
+    requiredVariableKeys.forEach((key) => {
+      if (!(templateVariableValues[key]?.trim())) {
+        const label = templateVariableMetaByKey[key]?.variable.label ?? key
+        missingVariableLabels.push(label)
+      }
+    })
+
+    if (missingVariableLabels.length) {
+      toast({
+        type: 'warning',
+        title: 'أكمل بيانات الموعد قبل الإرسال',
+        description: `الحقول المطلوبة: ${missingVariableLabels.join(' ، ')}`,
+      })
       return
     }
 
@@ -366,7 +547,7 @@ export function WhatsAppSendPage() {
         student_id: student.id,
         student_name: student.name,
         phone: student.parent_phone ?? undefined,
-        message: personalizeMessage(trimmedMessage, student),
+        message: personalizeMessage(trimmedMessage, student, templateVariableValues),
       }))
       .filter((message) => Boolean(message.phone && message.message))
 
@@ -562,10 +743,19 @@ export function WhatsAppSendPage() {
           <div className="glass-card space-y-6 p-6">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  اختيار قالب جاهز
-                </label>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-500" htmlFor="whatsapp-template-select">
+                    اختيار قالب جاهز
+                  </label>
+                  {isAppointmentTemplate ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+                      <i className="bi bi-calendar-event"></i>
+                      موعد
+                    </span>
+                  ) : null}
+                </div>
                 <select
+                  id="whatsapp-template-select"
                   value={templateSelectValue}
                   onChange={(event) => handleTemplateChange(event.target.value)}
                   className="w-full rounded-2xl border border-slate-200 bg-white py-3 px-4 text-sm font-semibold text-slate-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
@@ -578,6 +768,11 @@ export function WhatsAppSendPage() {
                     </option>
                   ))}
                 </select>
+                {isAppointmentTemplate ? (
+                  <p className="text-[11px] font-medium text-emerald-600">
+                    هذا القالب يحتوي على بيانات موعد. أكمل الحقول الجانبية قبل الإرسال.
+                  </p>
+                ) : null}
               </div>
 
               <div className="space-y-2">
@@ -594,32 +789,153 @@ export function WhatsAppSendPage() {
               ))}
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">نص الرسالة</label>
-              <textarea
-                value={messageText}
-                onChange={(event) => setMessageText(event.target.value)}
-                rows={8}
-                className="w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm leading-7 text-slate-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                placeholder="اكتب رسالتك هنا باستخدام المتغيرات المتاحة..."
-              />
-
-              <div className="flex items-center justify-between text-xs text-slate-400">
-                <span>عدد الأحرف: {messageText.length.toLocaleString('ar-SA')}</span>
-                <span>سيتم إرسال نسخة مخصصة لكل طالب</span>
-              </div>
-            </div>
-
-            {messagePreview ? (
-              <div className="rounded-3xl border border-indigo-100 bg-indigo-50/70 p-4 text-sm text-slate-700">
-                <div className="mb-2 flex items-center gap-2 text-indigo-600">
-                  <i className="bi bi-eye"></i>
-                  <span className="font-semibold">معاينة لأوّل طالب محدد:</span>
-                  <span className="text-xs text-slate-500">{selectedStudents[0]?.name}</span>
+            <div className={`grid gap-6 ${isAppointmentTemplate ? 'lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]' : 'lg:grid-cols-1'}`}>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-500" htmlFor="whatsapp-message-body">
+                    نص الرسالة
+                  </label>
+                  <textarea
+                    id="whatsapp-message-body"
+                    value={messageText}
+                    onChange={(event) => setMessageText(event.target.value)}
+                    rows={8}
+                    className="w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm leading-7 text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    placeholder="اكتب رسالتك هنا باستخدام المتغيرات المتاحة..."
+                  />
                 </div>
-                <p className="whitespace-pre-line leading-7">{messagePreview}</p>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+                  <span>عدد الأحرف: {messageText.length.toLocaleString('ar-SA')}</span>
+                  <span>سيتم إرسال نسخة مخصصة لكل ولي أمر</span>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/70 px-4 py-3">
+                  <div className="flex flex-wrap items-center gap-3 text-sm font-semibold text-indigo-700">
+                    <span className="inline-flex h-7 min-w-[2.25rem] items-center justify-center rounded-full bg-white/80 px-3 text-sm text-indigo-700 shadow-sm">
+                      {selectedStudents.length.toLocaleString('ar-SA')}
+                    </span>
+                    <span>جاهز للإرسال</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSend}
+                    disabled={sendBulkMutation.isPending}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-75"
+                  >
+                    {sendBulkMutation.isPending ? (
+                      <>
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
+                        جاري الإرسال...
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-send-fill"></i>
+                        إرسال الرسائل الآن
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <p className="text-xs text-slate-400">
+                  تظهر الرسائل في قائمة الانتظار فوراً، ويمكن متابعة تقدم الإرسال من صفحة مركز الواتساب.
+                </p>
+
+                {messagePreview ? (
+                  <div className="rounded-3xl border border-indigo-100 bg-indigo-50/70 p-4 text-sm text-slate-700">
+                    <div className="mb-2 flex items-center gap-2 text-indigo-600">
+                      <i className="bi bi-eye"></i>
+                      <span className="font-semibold">معاينة لأوّل طالب محدد:</span>
+                      <span className="text-xs text-slate-500">{selectedStudents[0]?.name}</span>
+                    </div>
+                    <p className="whitespace-pre-line leading-7">{messagePreview}</p>
+                  </div>
+                ) : null}
               </div>
-            ) : null}
+
+              {isAppointmentTemplate ? (
+                <div className="space-y-6 rounded-3xl border border-emerald-100 bg-white/80 p-5 shadow-sm">
+                  <header className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                        <i className="bi bi-calendar-event"></i>
+                      </span>
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-slate-800">تفاصيل الموعد</p>
+                        <p className="text-xs text-slate-500">اختر التاريخ والوقت ليتم استبدالهما داخل القالب لكل رسالة.</p>
+                      </div>
+                    </div>
+                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700">
+                      <i className="bi bi-check2-circle"></i> مطلوب
+                    </span>
+                  </header>
+
+                  <div className="space-y-4">
+                    {uniqueDateKeys.map((key) => {
+                      const meta = templateVariableMetaByKey[key]
+                      const label = meta?.variable.label ?? 'تاريخ الموعد'
+                      const example = meta?.variable.example
+                      const inputId = `appointment-date-${key}`
+                      return (
+                        <div key={`date-${key}`} className="space-y-2">
+                          <label className="text-xs font-semibold uppercase tracking-wider text-slate-500" htmlFor={inputId}>
+                            {label}
+                          </label>
+                          <div
+                            className="group relative rounded-2xl border border-emerald-200 bg-white shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50/60"
+                            onClick={() => handleFieldWrapperClick(inputId)}
+                          >
+                            <input
+                              id={inputId}
+                              type="date"
+                              value={templateVariableValues[key] ?? ''}
+                              onChange={(event) => handleTemplateVariableValueChange(key, event.target.value)}
+                              className="w-full cursor-pointer rounded-2xl border-none bg-transparent py-3 pl-4 pr-10 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-0"
+                            />
+                            <i className="bi bi-calendar3 pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400"></i>
+                          </div>
+                          <p className="text-[11px] text-slate-400">{example ? `مثال: ${example}` : 'صيغة مقترحة: 2025-10-15'}</p>
+                        </div>
+                      )
+                    })}
+
+                    {uniqueTimeKeys.map((key) => {
+                      const meta = templateVariableMetaByKey[key]
+                      const label = meta?.variable.label ?? 'وقت الموعد'
+                      const example = meta?.variable.example
+                      const inputId = `appointment-time-${key}`
+                      return (
+                        <div key={`time-${key}`} className="space-y-2">
+                          <label className="text-xs font-semibold uppercase tracking-wider text-slate-500" htmlFor={inputId}>
+                            {label}
+                          </label>
+                          <div
+                            className="group relative rounded-2xl border border-emerald-200 bg-white shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50/60"
+                            onClick={() => handleFieldWrapperClick(inputId)}
+                          >
+                            <input
+                              id={inputId}
+                              type="time"
+                              value={templateVariableValues[key] ?? ''}
+                              onChange={(event) => handleTemplateVariableValueChange(key, event.target.value)}
+                              className="w-full cursor-pointer rounded-2xl border-none bg-transparent py-3 pl-4 pr-10 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-0"
+                              step={300}
+                            />
+                            <i className="bi bi-clock-history pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400"></i>
+                          </div>
+                          <p className="text-[11px] text-slate-400">{example ? `مثال: ${example}` : 'صيغة مقترحة: 10:30'}</p>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-xs text-emerald-700">
+                    <i className="bi bi-lightbulb me-1"></i>
+                    يمكنك تحديث هذه القيم قبل كل دفعة إرسال لضمان دقة المواعيد المعروضة لأولياء الأمور.
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
 
@@ -652,40 +968,7 @@ export function WhatsAppSendPage() {
             </div>
           </div>
 
-          <div className="glass-card space-y-4 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">جاهز للإرسال؟</p>
-                <p className="text-sm text-slate-600">سيتم إرسال رسالة مخصصة لكل ولي أمر</p>
-              </div>
-              <span className="inline-flex h-8 min-w-[3rem] items-center justify-center rounded-full bg-indigo-100 px-3 text-sm font-semibold text-indigo-600">
-                {selectedStudents.length.toLocaleString('ar-SA')}
-              </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleSend}
-              disabled={sendBulkMutation.isPending}
-              className="w-full rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 py-3 text-sm font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-75"
-            >
-              {sendBulkMutation.isPending ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
-                  جاري الإرسال...
-                </span>
-              ) : (
-                <span className="flex items-center justify-center gap-2">
-                  <i className="bi bi-send-fill"></i>
-                  إرسال الرسائل الآن
-                </span>
-              )}
-            </button>
-
-            <p className="text-xs text-slate-400">
-              تظهر الرسائل في قائمة الانتظار فوراً ويمكنك متابعة تقدمها من صفحة مركز الواتساب.
-            </p>
-          </div>
+          
         </aside>
       </div>
 

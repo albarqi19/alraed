@@ -119,14 +119,7 @@ function sanitizeNumericList(value: string) {
 function getSettingsPayload(settings: PointSettingsRecord | null | undefined): PointSettingsUpdatePayload {
   if (!settings) return DEFAULT_SETTINGS
 
-  const {
-    id: _id,
-    created_at: _createdAt,
-    updated_at: _updatedAt,
-    reward_values,
-    violation_values,
-    ...rest
-  } = settings
+  const { reward_values, violation_values, ...rest } = settings
 
   return {
     ...DEFAULT_SETTINGS,

@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/services/api/client'
+import { useToast } from '@/shared/feedback/use-toast'
+import { sendTeacherMessages } from '../api'
 import clsx from 'classnames'
 
 interface MessageTemplate {
@@ -41,6 +43,8 @@ interface Student {
 
 export function TeacherMessagesPage() {
   const navigate = useNavigate()
+  const toast = useToast()
+  const queryClient = useQueryClient()
   
   // State management
   const [selectedClass, setSelectedClass] = useState<TeacherClass | null>(null)
@@ -155,21 +159,55 @@ export function TeacherMessagesPage() {
 
   const handleSendMessages = async () => {
     if (!checkSendingTime.allowed) {
+      if (checkSendingTime.reason) {
+        toast({ type: 'warning', title: checkSendingTime.reason })
+      }
+      return
+    }
+
+    if (!selectedClass || !selectedTemplate || selectedStudents.length === 0) {
+      toast({ type: 'warning', title: 'يرجى اختيار الفصل والطلاب والقالب قبل الإرسال' })
       return
     }
 
     setIsSending(true)
-    
-    // TODO: استدعاء API لإرسال الرسائل
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    setIsSending(false)
-    setShowPreview(false)
-    
-    // إعادة تعيين النموذج
-    setSelectedClass(null)
-    setSelectedStudents([])
-    setSelectedTemplate(null)
+
+    try {
+      const template = templates.find(t => t.id === selectedTemplate)
+      if (!template) {
+        toast({ type: 'error', title: 'القالب المختار غير موجود' })
+        setIsSending(false)
+        return
+      }
+
+      const result = await sendTeacherMessages({
+        class_id: selectedClass.id,
+        template_id: template.template_key,
+        student_ids: selectedStudents,
+      })
+
+      toast({
+        type: 'success',
+        title: 'تم إرسال الرسائل',
+        description:
+          result.failedCount > 0
+            ? `أُرسلت ${result.sentCount.toLocaleString('ar-SA')} رسائل، وتعذر إرسال ${result.failedCount.toLocaleString('ar-SA')}.`
+            : `تم إرسال ${result.sentCount.toLocaleString('ar-SA')} رسالة بنجاح.`,
+      })
+
+      await queryClient.invalidateQueries({ queryKey: ['teacher', 'message-stats-today'] })
+
+      setShowPreview(false)
+      setSelectedClass(null)
+      setSelectedStudents([])
+      setSelectedTemplate(null)
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'تعذر إرسال الرسائل حالياً، يرجى المحاولة لاحقاً.'
+      toast({ type: 'error', title: message })
+    } finally {
+      setIsSending(false)
+    }
   }
 
   const canPreview = selectedClass && selectedStudents.length > 0 && selectedTemplate

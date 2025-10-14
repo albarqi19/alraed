@@ -26,6 +26,15 @@ function formatTime(value?: string | null) {
   return value.slice(0, 5)
 }
 
+function shortenTeacherName(name?: string | null) {
+  if (!name) return ''
+  const parts = name.split(' ').filter(Boolean)
+  if (parts.length <= 2) {
+    return parts.join(' ')
+  }
+  return `${parts.slice(0, 2).join(' ')}…`
+}
+
 function getPeriodTimeLabel(schedule: ClassScheduleGrid | undefined, period: number) {
   if (!schedule) return ''
   for (const day of daysOfWeek) {
@@ -532,6 +541,7 @@ function ConfirmDeleteDialog({ open, onClose, onConfirm, isSubmitting, sessionIn
 
 export function AdminClassSchedulesPage() {
   const [searchTerm, setSearchTerm] = useState('')
+  const [gradeFilter, setGradeFilter] = useState<string>('all')
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null)
   const [quickSessionContext, setQuickSessionContext] = useState<{ day?: string; period?: number } | null>(null)
   const [isApplyScheduleOpen, setIsApplyScheduleOpen] = useState(false)
@@ -543,28 +553,61 @@ export function AdminClassSchedulesPage() {
   const applyScheduleMutation = useApplyScheduleToClassMutation()
   const deleteSessionMutation = useDeleteClassScheduleSessionMutation()
 
+  const gradeOptions = useMemo(() => {
+    if (!classSummariesQuery.data) return []
+    const uniqueGrades = new Set<string>()
+    classSummariesQuery.data.forEach((item) => {
+      if (item.grade) {
+        uniqueGrades.add(item.grade)
+      }
+    })
+    return Array.from(uniqueGrades).sort((a, b) => a.localeCompare(b, 'ar', { sensitivity: 'base' }))
+  }, [classSummariesQuery.data])
+
   useEffect(() => {
-    if (!selectedClassId && classSummariesQuery.data && classSummariesQuery.data.length > 0) {
-      setSelectedClassId(classSummariesQuery.data[0].id)
+    if (gradeFilter !== 'all' && gradeOptions.length > 0 && !gradeOptions.includes(gradeFilter)) {
+      setGradeFilter('all')
     }
-  }, [classSummariesQuery.data, selectedClassId])
-
-  const selectedClass: ClassScheduleSummary | null = useMemo(() => {
-    if (!classSummariesQuery.data) return null
-    return classSummariesQuery.data.find((item) => item.id === selectedClassId) ?? null
-  }, [classSummariesQuery.data, selectedClassId])
-
-  const scheduleQuery = useClassScheduleQuery(selectedClass?.grade, selectedClass?.class_name)
+  }, [gradeFilter, gradeOptions])
 
   const filteredClasses = useMemo(() => {
     if (!classSummariesQuery.data) return []
     const term = searchTerm.trim().toLowerCase()
-    if (!term) return classSummariesQuery.data
-    return classSummariesQuery.data.filter((item) => {
+    const baseList = gradeFilter === 'all'
+      ? classSummariesQuery.data
+      : classSummariesQuery.data.filter((item) => item.grade === gradeFilter)
+
+    if (!term) return baseList
+
+    return baseList.filter((item) => {
       const searchable = `${item.name} ${item.grade} ${item.class_name}`.toLowerCase()
       return searchable.includes(term)
     })
-  }, [classSummariesQuery.data, searchTerm])
+  }, [classSummariesQuery.data, gradeFilter, searchTerm])
+
+  const isFiltered = gradeFilter !== 'all' || Boolean(searchTerm.trim())
+
+  useEffect(() => {
+    if (filteredClasses.length === 0) {
+      if (selectedClassId !== null) {
+        setSelectedClassId(null)
+      }
+      return
+    }
+
+    const isStillSelected = filteredClasses.some((item) => item.id === selectedClassId)
+
+    if (!isStillSelected) {
+      setSelectedClassId(filteredClasses[0].id)
+    }
+  }, [filteredClasses, selectedClassId])
+
+  const selectedClass: ClassScheduleSummary | null = useMemo(() => {
+    if (filteredClasses.length === 0) return null
+    return filteredClasses.find((item) => item.id === selectedClassId) ?? null
+  }, [filteredClasses, selectedClassId])
+
+  const scheduleQuery = useClassScheduleQuery(selectedClass?.grade, selectedClass?.class_name)
 
   const periods = useMemo(() => extractPeriods(scheduleQuery.data?.schedule), [scheduleQuery.data?.schedule])
   const totalSessions = countScheduledSessions(scheduleQuery.data?.schedule)
@@ -641,36 +684,58 @@ export function AdminClassSchedulesPage() {
         </p>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-[320px,1fr]">
-        <aside className="glass-card space-y-4">
-          <div className="flex items-center justify-between">
+      <div className="grid gap-6 lg:grid-cols-[300px,1fr]">
+        <aside className="glass-card flex min-h-[320px] flex-col gap-4 lg:sticky lg:top-24 lg:max-h-[calc(100vh-140px)] lg:overflow-hidden">
+          <div className="flex items-center justify-between gap-2">
             <h2 className="text-lg font-semibold text-slate-900">قائمة الفصول</h2>
             <span className="rounded-full bg-teal-100 px-3 py-1 text-xs font-semibold text-teal-700">
-              {classSummariesQuery.data?.length ?? 0}
+              {classSummariesQuery.isLoading
+                ? '…'
+                : `${filteredClasses.length}${isFiltered ? ` / ${classSummariesQuery.data?.length ?? 0}` : ''}`}
             </span>
           </div>
 
-          <div>
-            <label htmlFor="class-search" className="sr-only">
-              بحث عن فصل
-            </label>
-            <input
-              id="class-search"
-              type="search"
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="ابحث بالصف أو الشعبة"
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-            />
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <div className="sm:w-44">
+              <label htmlFor="class-grade-filter" className="sr-only">
+                تصفية حسب الصف
+              </label>
+              <select
+                id="class-grade-filter"
+                value={gradeFilter}
+                onChange={(event) => setGradeFilter(event.target.value)}
+                className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+              >
+                <option value="all">جميع الصفوف</option>
+                {gradeOptions.map((grade) => (
+                  <option key={grade} value={grade}>
+                    {grade}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex-1">
+              <label htmlFor="class-search" className="sr-only">
+                بحث عن فصل
+              </label>
+              <input
+                id="class-search"
+                type="search"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="ابحث بالصف أو الشعبة أو اسم الفصل"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+              />
+            </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="flex-1 space-y-2 overflow-y-auto pr-1 lg:pr-2 custom-scrollbar">
             {classSummariesQuery.isLoading ? (
-              Array.from({ length: 4 }).map((_, index) => (
-                <div key={index} className="h-16 animate-pulse rounded-3xl bg-slate-100" />
+              Array.from({ length: 5 }).map((_, index) => (
+                <div key={index} className="h-12 animate-pulse rounded-2xl bg-slate-100" />
               ))
             ) : classSummariesQuery.isError ? (
-              <div className="rounded-3xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-700">
+              <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-700">
                 <p>تعذر تحميل الفصول: {summariesErrorMessage}</p>
                 <button
                   type="button"
@@ -682,7 +747,7 @@ export function AdminClassSchedulesPage() {
                 </button>
               </div>
             ) : filteredClasses.length === 0 ? (
-              <div className="rounded-3xl border border-dashed border-slate-200 bg-white/60 p-6 text-center text-sm text-muted">
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-white/60 p-6 text-center text-sm text-muted">
                 لا توجد فصول مطابقة لبحثك حالياً.
               </div>
             ) : (
@@ -693,22 +758,23 @@ export function AdminClassSchedulesPage() {
                     key={item.id}
                     type="button"
                     onClick={() => setSelectedClassId(item.id)}
-                    className={`w-full rounded-3xl border px-4 py-3 text-right transition focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${
+                    className={`w-full rounded-2xl border px-3 py-2.5 text-right text-sm transition focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${
                       isSelected
                         ? 'border-teal-500 bg-teal-50 text-teal-900 shadow-sm'
                         : 'border-transparent bg-white/80 hover:border-teal-300 hover:bg-white'
                     }`}
                     aria-pressed={isSelected}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-base font-semibold text-slate-900">{item.name}</span>
-                      <span className="text-xs font-semibold text-teal-600">{item.students_count} طالب</span>
-                    </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted">
-                      <span className="inline-flex items-center gap-1">
-                        <span className="h-1.5 w-1.5 rounded-full bg-teal-400" />
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold text-slate-900">
                         {item.grade} / {item.class_name}
                       </span>
+                      <span className="text-[11px] font-semibold text-teal-600">{item.students_count} طالب</span>
+                    </div>
+                    {item.name && item.name !== `${item.grade} / ${item.class_name}` ? (
+                      <p className="mt-1 text-xs text-slate-500">{item.name}</p>
+                    ) : null}
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted">
                       {typeof item.sessions_count === 'number' ? (
                         <span className="inline-flex items-center gap-1">
                           <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
@@ -804,20 +870,20 @@ export function AdminClassSchedulesPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="overflow-x-auto rounded-3xl border border-slate-100 bg-white shadow-sm">
-                    <table className="w-full min-w-[720px] border-separate border-spacing-0 text-right">
-                      <thead className="bg-slate-50">
+                  <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <table className="w-full min-w-[720px] border-collapse text-right text-xs md:text-sm">
+                      <thead className="bg-slate-100 text-slate-600">
                         <tr>
-                          <th className="sticky right-0 w-32 border-l border-slate-100 bg-slate-50 px-4 py-3 text-xs font-semibold text-slate-600">
+                          <th className="sticky right-0 w-28 border border-slate-200 bg-slate-100 px-2.5 py-2 text-[11px] font-semibold text-slate-600">
                             اليوم / الحصة
                           </th>
                           {periods.map((period) => {
                             const timeLabel = getPeriodTimeLabel(scheduleQuery.data?.schedule, period)
                             return (
-                              <th key={period} className="border-l border-slate-100 px-4 py-3 text-xs font-semibold text-slate-600">
-                                <div className="flex flex-col items-end gap-1">
+                              <th key={period} className="border border-slate-200 px-2.5 py-2 text-[11px] font-semibold">
+                                <div className="flex flex-col items-end gap-0.5">
                                   <span>الحصة {period}</span>
-                                  {timeLabel ? <span className="text-[11px] text-slate-500">{timeLabel}</span> : null}
+                                  {timeLabel ? <span className="text-[10px] text-slate-500">{timeLabel}</span> : null}
                                 </div>
                               </th>
                             )
@@ -828,10 +894,10 @@ export function AdminClassSchedulesPage() {
                         {daysOfWeek.map((day) => {
                           const daySessions = scheduleQuery.data?.schedule?.[day] ?? {}
                           return (
-                            <tr key={day} className="border-t border-slate-100">
+                            <tr key={day} className="bg-white even:bg-slate-50/70">
                               <th
                                 scope="row"
-                                className="sticky right-0 bg-slate-50 px-4 py-4 text-sm font-semibold text-slate-700"
+                                className="sticky right-0 border border-slate-200 bg-slate-100 px-2.5 py-2 text-[11px] font-semibold text-slate-700"
                               >
                                 {day}
                               </th>
@@ -841,43 +907,34 @@ export function AdminClassSchedulesPage() {
                                   deleteSessionMutation.isPending && sessionToDelete?.slot.id === slot?.id
 
                                 return (
-                                  <td key={period} className="border-l border-slate-100 px-3 py-4 align-top">
+                                  <td key={period} className="border border-slate-200 px-2.5 py-2 align-top">
                                     {slot ? (
-                                      <div className="flex h-full flex-col gap-2 rounded-2xl border border-slate-200 bg-white/80 p-3 shadow-sm">
-                                        <div>
-                                          <p className="text-sm font-semibold text-slate-900">{slot.subject_name}</p>
-                                          <p className="text-xs text-muted">{slot.teacher_name}</p>
-                                        </div>
-                                        {slot.period_name ? (
-                                          <span className="text-xs text-slate-500">{slot.period_name}</span>
-                                        ) : null}
-                                        {slot.schedule_name ? (
-                                          <span className="inline-flex w-fit items-center gap-1 rounded-full bg-teal-50 px-3 py-1 text-[11px] font-semibold text-teal-700">
-                                            {slot.schedule_name}
-                                          </span>
-                                        ) : null}
-                                        {slot.start_time && slot.end_time ? (
-                                          <span className="inline-flex w-fit items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">
-                                            {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
-                                          </span>
+                                      <div className="flex h-full flex-col gap-1">
+                                        <p className="font-semibold text-slate-900 leading-tight">
+                                          {slot.subject_name}
+                                        </p>
+                                        {slot.teacher_name ? (
+                                          <p className="text-[11px] text-slate-500" title={slot.teacher_name}>
+                                            {shortenTeacherName(slot.teacher_name)}
+                                          </p>
                                         ) : null}
                                         <button
                                           type="button"
-                                          className="button-secondary text-xs"
+                                          className="inline-flex w-fit items-center gap-1 rounded px-2 py-0.5 text-[10px] font-semibold text-rose-600 transition hover:text-rose-700 focus:outline-none focus:ring-1 focus:ring-rose-200"
                                           onClick={() => setSessionToDelete({ slot, day })}
                                           disabled={deleteSessionMutation.isPending}
                                         >
-                                          {isBeingDeleted ? 'جارٍ الحذف...' : 'حذف الحصة'}
+                                          {isBeingDeleted ? 'جارٍ الحذف…' : 'حذف الحصة'}
                                         </button>
                                       </div>
                                     ) : (
                                       <button
                                         type="button"
                                         onClick={() => handleOpenQuickSession(day, period)}
-                                        className="w-full rounded-2xl border border-dashed border-slate-200 bg-white/60 py-5 text-sm font-semibold text-teal-600 transition hover:border-teal-300 hover:bg-teal-50"
+                                        className="w-full rounded border border-dashed border-teal-300 bg-white py-2 text-[11px] font-semibold text-teal-600 transition hover:border-teal-400 hover:bg-teal-50"
                                         disabled={addQuickSessionMutation.isPending}
                                       >
-                                        إضافة حصة
+                                        إضافة
                                       </button>
                                     )}
                                   </td>

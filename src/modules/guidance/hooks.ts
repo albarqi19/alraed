@@ -30,6 +30,7 @@ import {
 import type {
   GuidanceCaseFilters,
   GuidanceCaseRecord,
+  GuidanceCaseFollowup,
   GuidanceStatsSummary,
   GuidanceStudentSummary,
   TreatmentPlanFilters,
@@ -220,8 +221,15 @@ export function useGuidanceCaseMutations() {
   })
 
   const updateFollowupStatusMutation = useMutation({
-    mutationFn: ({ caseId, followupId, payload }: { caseId: number; followupId: number; payload: Record<string, unknown> }) =>
-      updateGuidanceFollowupStatus(ensureToken(), caseId, followupId, payload as any),
+    mutationFn: ({
+      caseId,
+      followupId,
+      payload,
+    }: {
+      caseId: number
+      followupId: number
+      payload: { status: GuidanceCaseFollowup['status']; notes?: string | null }
+    }) => updateGuidanceFollowupStatus(ensureToken(), caseId, followupId, payload),
     onSuccess: (_data, { caseId }) => {
       queryClient.invalidateQueries({ queryKey: CASE_DETAILS_QUERY_KEY(caseId) })
       queryClient.invalidateQueries({ queryKey: STATS_QUERY_KEY })

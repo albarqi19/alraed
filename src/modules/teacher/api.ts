@@ -148,3 +148,66 @@ export async function fetchSubmittedAttendance(
     approvalStatus: data.approval_status ?? null,
   }
 }
+
+interface SendTeacherMessagesPayload {
+  class_id: number
+  template_id: number | string
+  student_ids: number[]
+}
+
+interface RawSendTeacherMessagesResponse {
+  success: boolean
+  message?: string
+  data?: {
+    sent_count?: number
+    failed_count?: number
+  }
+  summary?: {
+    sent?: number
+    failed?: number
+  }
+}
+
+export interface SendTeacherMessagesResult {
+  sentCount: number
+  failedCount: number
+  message?: string
+}
+
+export async function sendTeacherMessages(
+  payload: SendTeacherMessagesPayload,
+): Promise<SendTeacherMessagesResult> {
+  try {
+    const { data } = await apiClient.post<RawSendTeacherMessagesResponse>('/teacher/messages/send', payload)
+
+    if (!data.success) {
+      throw new Error(data.message ?? 'تعذر إرسال الرسائل')
+    }
+
+    const sentCount =
+      data.data?.sent_count ?? data.summary?.sent ?? (Array.isArray(payload.student_ids) ? payload.student_ids.length : 0)
+    const failedCount = data.data?.failed_count ?? data.summary?.failed ?? 0
+
+    return {
+      sentCount,
+      failedCount,
+      message: data.message,
+    }
+  } catch (error) {
+    if (isAxiosError(error) && error.response?.data) {
+      const response = error.response.data as { message?: string; error?: string }
+      if (response.message) {
+        throw new Error(response.message)
+      }
+      if (response.error) {
+        throw new Error(response.error)
+      }
+    }
+
+    if (error instanceof Error) {
+      throw error
+    }
+
+    throw new Error('تعذر إرسال الرسائل')
+  }
+}

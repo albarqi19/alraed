@@ -41,7 +41,7 @@ export function GuidanceCasesPage() {
   const { data: stats } = useGuidanceStats()
   const { data: casesData, isLoading, error } = useGuidanceCases(filters)
 
-  const updateFilter = (key: keyof GuidanceCaseFilters, value: any) => {
+  const updateFilter = <K extends keyof GuidanceCaseFilters>(key: K, value: GuidanceCaseFilters[K]) => {
     setFilters((prev) => ({ ...prev, [key]: value, page: 1 }))
   }
 

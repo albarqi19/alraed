@@ -87,7 +87,7 @@ export function TreatmentPlanDetailsPage() {
     if (!planId) return
 
     try {
-      await updateGoal.mutateAsync({ planId, goalId, data: { status } as any })
+      await updateGoal.mutateAsync({ planId, goalId, data: { status } })
     } catch (error) {
       console.error('Failed to update goal status:', error)
       alert('فشل تحديث حالة الهدف')
@@ -98,7 +98,7 @@ export function TreatmentPlanDetailsPage() {
     if (!planId) return
 
     try {
-      await updatePlan.mutateAsync({ planId, data: { status } as any })
+      await updatePlan.mutateAsync({ planId, data: { status } })
     } catch (error) {
       console.error('Failed to update plan status:', error)
       alert('فشل تحديث حالة الخطة')

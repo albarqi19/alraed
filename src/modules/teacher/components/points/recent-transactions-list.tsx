@@ -14,7 +14,7 @@ function formatDate(value: string) {
       hour: 'numeric',
       minute: 'numeric',
     }).format(date)
-  } catch (error) {
+  } catch {
     return value
   }
 }
