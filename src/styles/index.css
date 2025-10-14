@@ -239,3 +239,129 @@
     background-color: rgba(63, 111, 85, 0.7);
   }
 }
+
+@layer base {
+  [data-theme='classic-admin'] {
+    --radius-base: 6px;
+    color-scheme: light;
+  }
+
+  [data-theme='classic-admin'] body {
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
+    font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+  }
+
+  [data-theme='classic-admin'] h1,
+  [data-theme='classic-admin'] h2,
+  [data-theme='classic-admin'] h3,
+  [data-theme='classic-admin'] h4,
+  [data-theme='classic-admin'] h5 {
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  [data-theme='classic-admin'] a {
+    color: var(--color-primary);
+    text-decoration: none;
+  }
+
+  [data-theme='classic-admin'] a:hover {
+    text-decoration: underline;
+  }
+}
+
+@layer components {
+  [data-theme='classic-admin'] .glass-card,
+  [data-theme='classic-admin'] .soft-card {
+    border-radius: 4px;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-surface);
+    box-shadow: none;
+    padding: 1rem;
+  }
+
+  [data-theme='classic-admin'] .button-primary,
+  [data-theme='classic-admin'] .button-secondary {
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    padding: 0.65rem 1.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  [data-theme='classic-admin'] .button-secondary {
+    background-color: var(--color-surface);
+    border-color: var(--color-border);
+    color: var(--color-text-primary);
+  }
+
+  [data-theme='classic-admin'] .guardian-portal-page {
+    padding-inline: 0.75rem;
+  }
+}
+
+@layer utilities {
+  [data-theme='classic-admin'] .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.75rem !important;
+  }
+
+  [data-theme='classic-admin'] .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.5rem !important;
+  }
+
+  [data-theme='classic-admin'] .gap-6 {
+    gap: 0.75rem !important;
+  }
+
+  [data-theme='classic-admin'] .gap-4 {
+    gap: 0.5rem !important;
+  }
+
+  [data-theme='classic-admin'] .p-6 {
+    padding: 1rem !important;
+  }
+
+  [data-theme='classic-admin'] .px-6 {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  [data-theme='classic-admin'] .py-6 {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+  }
+
+  [data-theme='classic-admin'] .rounded-3xl,
+  [data-theme='classic-admin'] .rounded-2xl,
+  [data-theme='classic-admin'] .rounded-xl,
+  [data-theme='classic-admin'] .rounded-lg {
+    border-radius: 4px !important;
+  }
+
+  [data-theme='classic-admin'] .shadow-sm,
+  [data-theme='classic-admin'] .shadow,
+  [data-theme='classic-admin'] .shadow-md,
+  [data-theme='classic-admin'] .shadow-lg {
+    box-shadow: none !important;
+  }
+
+  [data-theme='classic-admin'] table {
+    border-collapse: collapse;
+    background-color: var(--color-surface);
+    font-size: 0.875rem;
+  }
+
+  [data-theme='classic-admin'] th,
+  [data-theme='classic-admin'] td {
+    border: 1px solid var(--color-border);
+    padding: 0.5rem 0.75rem;
+  }
+
+  [data-theme='classic-admin'] th {
+    background-color: var(--color-accent);
+    color: var(--color-text-primary);
+    font-weight: 700;
+  }
+}

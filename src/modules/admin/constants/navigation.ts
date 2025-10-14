@@ -31,7 +31,6 @@ import {
   Megaphone,
   CalendarDays,
   School,
-  CalendarRange,
 } from 'lucide-react'
 
 export interface AdminNavItem {

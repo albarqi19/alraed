@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  useApproveAllPendingSessionsMutation,
   useApproveAttendanceSessionMutation,
   useAttendanceSessionDetailsQuery,
   usePendingApprovalsQuery,
@@ -89,6 +90,7 @@ export function AdminApprovalPage() {
   const [filters, setFilters] = useState<FilterState>({ grade: '', className: '', teacher: '', subject: '' })
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [rejectTarget, setRejectTarget] = useState<PendingApprovalRecord | null>(null)
+  const [showApproveAllDialog, setShowApproveAllDialog] = useState(false)
 
   const approvalsQuery = usePendingApprovalsQuery()
   const approvals = useMemo(() => approvalsQuery.data ?? [], [approvalsQuery.data])
@@ -121,6 +123,7 @@ export function AdminApprovalPage() {
   const detailsQuery = useAttendanceSessionDetailsQuery(selectedApproval?.id)
   const approveMutation = useApproveAttendanceSessionMutation()
   const rejectMutation = useRejectAttendanceSessionMutation()
+  const approveAllMutation = useApproveAllPendingSessionsMutation()
 
   const totals = useMemo(() => {
     const totalStudents = approvals.reduce((sum, item) => sum + (item.student_count ?? 0), 0)
@@ -157,7 +160,16 @@ export function AdminApprovalPage() {
     )
   }
 
-  const isBusy = approveMutation.isPending || rejectMutation.isPending
+  const handleApproveAll = () => {
+    approveAllMutation.mutate(undefined, {
+      onSuccess: () => {
+        setShowApproveAllDialog(false)
+        setSelectedId(null)
+      },
+    })
+  }
+
+  const isBusy = approveMutation.isPending || rejectMutation.isPending || approveAllMutation.isPending
 
   return (
     <section className="space-y-6">
@@ -169,8 +181,21 @@ export function AdminApprovalPage() {
               راجع التحضير المرسل من المعلمين، اعتمد الحصص المطابقة، ودوّن أسباب الرفض عند الحاجة.
             </p>
           </div>
-          <div className="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-600">
-            يتم التحديث تلقائيًا كل 30 ثانية
+          <div className="flex items-center gap-2">
+            {filteredApprovals.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowApproveAllDialog(true)}
+                disabled={isBusy}
+                className="button-primary flex items-center gap-2"
+              >
+                <i className="bi bi-check2-all" />
+                اعتماد الجميع ({filteredApprovals.length})
+              </button>
+            )}
+            <div className="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-600">
+              يتم التحديث تلقائيًا كل 30 ثانية
+            </div>
           </div>
         </div>
         {approvalsQuery.isError ? (
@@ -448,6 +473,66 @@ export function AdminApprovalPage() {
           handleReject(rejectTarget, reason || undefined)
         }}
       />
+
+      {showApproveAllDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal>
+          <div className="w-full max-w-lg rounded-3xl bg-white p-6 text-right shadow-xl">
+            <header className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">تأكيد الإجراء</p>
+              <h2 className="text-xl font-semibold text-slate-900">اعتماد جميع الجلسات المعلقة</h2>
+              <p className="text-sm text-muted">
+                سيتم اعتماد {filteredApprovals.length > 0 ? filteredApprovals.length : 15} جلسة معلقة. قد تستغرق هذه العملية بعض الوقت.
+              </p>
+            </header>
+
+            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
+              <div className="flex items-start gap-3">
+                <i className="bi bi-exclamation-triangle-fill mt-0.5 text-amber-600" />
+                <div className="text-sm text-amber-800">
+                  <p className="font-semibold">تنبيه مهم</p>
+                  <p className="mt-1">
+                    لا يمكن التراجع عن هذا الإجراء. سيتم اعتماد جميع الجلسات المعروضة حاليًا (حسب الفلاتر المطبقة).
+                  </p>
+                  <p className="mt-2 font-semibold text-amber-900">
+                    ⚠️ يرجى عدم إغلاق المتصفح أو الصفحة حتى اكتمال العملية
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {approveAllMutation.isPending && (
+              <div className="mt-4 rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
+                <div className="flex items-center gap-3">
+                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+                  <p className="text-sm font-semibold text-indigo-900">جاري اعتماد الجلسات...</p>
+                </div>
+                <p className="mt-2 text-xs text-indigo-700">
+                  يرجى الانتظار حتى اكتمال العملية. <strong>لا تغلق هذه النافذة.</strong>
+                </p>
+              </div>
+            )}
+
+            <footer className="mt-6 flex flex-wrap items-center justify-end gap-2">
+              <button
+                type="button"
+                className="button-secondary"
+                onClick={() => setShowApproveAllDialog(false)}
+                disabled={approveAllMutation.isPending}
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                className="button-primary"
+                onClick={handleApproveAll}
+                disabled={approveAllMutation.isPending}
+              >
+                {approveAllMutation.isPending ? 'جارٍ الاعتماد...' : 'تأكيد اعتماد الجميع'}
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
     </section>
   )
 }

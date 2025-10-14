@@ -910,6 +910,13 @@ export async function rejectAttendanceSession(payload: {
   unwrapResponse(data, 'تعذر رفض التحضير')
 }
 
+export async function approveAllPendingSessions(): Promise<{ approved_count: number; failed_count: number }> {
+  const { data } = await apiClient.post<ApiResponse<{ approved_count: number; failed_count: number }>>(
+    '/admin/attendance-reports/approve-all-pending',
+  )
+  return unwrapResponse(data, 'تعذر اعتماد جميع الجلسات')
+}
+
 export async function fetchAttendanceSessionDetails(attendanceId: number): Promise<AttendanceSessionDetails> {
   const { data } = await apiClient.get<ApiResponse<AttendanceSessionDetails>>(
     `/admin/attendance-reports/${attendanceId}/details`,

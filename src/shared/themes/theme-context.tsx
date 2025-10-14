@@ -26,6 +26,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const root = document.documentElement
     const colors = currentTheme.colors
 
+    root.setAttribute('data-theme', currentTheme.id)
+
     root.style.setProperty('--color-background', colors.background)
     root.style.setProperty('--color-surface', colors.surface)
     root.style.setProperty('--color-primary', colors.primary)

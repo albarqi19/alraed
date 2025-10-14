@@ -3,6 +3,7 @@ import {
   activateSchedule,
   addQuickClassSession,
   applyScheduleToClass,
+  approveAllPendingSessions,
   approveAttendanceRecord,
   approveAttendanceSession,
   approveLeaveRequest,
@@ -628,6 +629,24 @@ export function useRejectAttendanceSessionMutation() {
     },
     onError: (error) => {
       toast({ type: 'error', title: getErrorMessage(error, 'تعذر رفض التحضير') })
+    },
+  })
+}
+
+export function useApproveAllPendingSessionsMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: approveAllPendingSessions,
+    onSuccess: (result: { approved_count: number; failed_count: number }) => {
+      const title = `تم اعتماد ${result.approved_count} جلسة${result.failed_count > 0 ? ` (فشل ${result.failed_count})` : ''}`
+      toast({ type: 'success', title })
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.attendance.pending() })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'attendance', 'reports'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر اعتماد جميع الجلسات') })
     },
   })
 }

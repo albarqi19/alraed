@@ -102,6 +102,31 @@ export const themes: Record<string, Theme> = {
       sidebarText: '#FDFCFB',
     },
   },
+  'classic-admin': {
+    id: 'classic-admin',
+    name: 'Classic Control',
+    nameAr: 'لوحة الإدارة الكلاسيكية',
+    description: 'A dense, understated dashboard theme inspired by classic admin UIs',
+    descriptionAr: 'ثيم لوحة تحكم كلاسيكي بكثافة عالية وتصميم بسيط',
+    colors: {
+      background: '#F3F4F6',
+      surface: '#FFFFFF',
+      primary: '#1F2A37',
+      primaryDark: '#111827',
+      primaryLight: '#374151',
+      accent: '#E5E7EB',
+      danger: '#B91C1C',
+      success: '#047857',
+      warning: '#B45309',
+      muted: '#6B7280',
+      textPrimary: '#1F2933',
+      textSecondary: '#4B5563',
+      border: '#D1D5DB',
+      sidebar: '#0F172A',
+      header: '#1F2933',
+      sidebarText: '#E5E7EB',
+    },
+  },
 }
 
 export const getThemeById = (id: string): Theme => {
