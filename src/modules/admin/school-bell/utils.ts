@@ -22,19 +22,6 @@ export const WEEKDAYS: { value: Weekday; label: string; short: string }[] = [
 export const DEFAULT_AUDIO_ASSETS: BellAudioAsset[] = [
   { id: 'calm-start-v1', title: 'بداية هادئة', durationSeconds: 9, status: 'ready', sizeKb: 410 },
   { id: 'calm-end-v1', title: 'نهاية هادئة', durationSeconds: 7, status: 'ready', sizeKb: 360 },
-  { id: 'calm-break-v1', title: 'فسحة هادئة', durationSeconds: 11, status: 'ready', sizeKb: 420 },
-  { id: 'calm-prayer-v1', title: 'أذان هادئ', durationSeconds: 20, status: 'ready', sizeKb: 780 },
-  { id: 'calm-generic-v1', title: 'تنبيه هادئ عام', durationSeconds: 6, status: 'ready', sizeKb: 300 },
-  { id: 'grand-start-v1', title: 'بداية حماسية', durationSeconds: 10, status: 'pending', sizeKb: 520 },
-  { id: 'grand-end-v1', title: 'نهاية قوية', durationSeconds: 8, status: 'pending', sizeKb: 470 },
-  { id: 'grand-break-v1', title: 'فسحة حماسية', durationSeconds: 13, status: 'pending', sizeKb: 560 },
-  { id: 'grand-prayer-v1', title: 'أذان رسمي', durationSeconds: 21, status: 'pending', sizeKb: 820 },
-  { id: 'grand-generic-v1', title: 'تنبيه رسمي عام', durationSeconds: 7, status: 'pending', sizeKb: 340 },
-  { id: 'bright-start-v1', title: 'بداية مشرقة', durationSeconds: 9, status: 'missing', sizeKb: 430 },
-  { id: 'bright-end-v1', title: 'نهاية مشرقة', durationSeconds: 8, status: 'missing', sizeKb: 390 },
-  { id: 'bright-break-v1', title: 'فسحة مرحة', durationSeconds: 12, status: 'missing', sizeKb: 510 },
-  { id: 'bright-prayer-v1', title: 'نداء ', durationSeconds: 19, status: 'missing', sizeKb: 760 },
-  { id: 'bright-generic-v1', title: 'تنبيه مشرق عام', durationSeconds: 6, status: 'missing', sizeKb: 320 },
 ]
 
 export const DEFAULT_TONE_PROFILES: ToneProfile[] = [
