@@ -7,6 +7,7 @@ import { AuthBootstrap } from './auth-bootstrap'
 import { ThemeProvider } from '@/shared/themes'
 import { BellManagerProvider } from '@/modules/admin/school-bell/context/bell-manager-context'
 import { AutoCallProvider } from '@/modules/auto-call/context/auto-call-provider'
+import { IdleTimeoutProvider } from './idle-timeout-provider'
 
 interface AppProvidersProps {
   children: ReactNode
@@ -37,9 +38,11 @@ export function AppProviders({ children }: AppProvidersProps) {
           <ThemeProvider>
             <ToastProvider>
               <AuthBootstrap>
-                <BellManagerProvider>
-                  <AutoCallProvider>{children}</AutoCallProvider>
-                </BellManagerProvider>
+                <IdleTimeoutProvider>
+                  <BellManagerProvider>
+                    <AutoCallProvider>{children}</AutoCallProvider>
+                  </BellManagerProvider>
+                </IdleTimeoutProvider>
               </AuthBootstrap>
             </ToastProvider>
           </ThemeProvider>
