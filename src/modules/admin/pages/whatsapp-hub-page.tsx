@@ -12,6 +12,7 @@ import {
 } from '@tanstack/react-table'
 import {
   useCreateWhatsappTemplateMutation,
+  useDeleteAllPendingWhatsappMessagesMutation,
   useDeleteWhatsappQueueItemMutation,
   useDeleteWhatsappTemplateMutation,
   useSendPendingWhatsappMessagesMutation,
@@ -149,6 +150,7 @@ export function WhatsappHubPage() {
   const sendPendingMutation = useSendPendingWhatsappMessagesMutation()
   const sendSingleMutation = useSendSingleWhatsappMessageMutation()
   const deleteQueueMutation = useDeleteWhatsappQueueItemMutation()
+  const deleteAllPendingMutation = useDeleteAllPendingWhatsappMessagesMutation()
   const testConnectionMutation = useTestWhatsappConnectionMutation()
 
   const createTemplateMutation = useCreateWhatsappTemplateMutation()
@@ -292,59 +294,6 @@ export function WhatsappHubPage() {
           return <HistoryStatusBadge status={status} />
         },
         size: 110,
-      },
-      {
-        id: 'details',
-        header: 'تفاصيل',
-        cell: ({ row }) => {
-          const item = row.original
-          const metadataEntries =
-            item.metadata && typeof item.metadata === 'object' && item.metadata !== null
-              ? Object.entries(item.metadata as Record<string, unknown>)
-                  .filter((entry): entry is [string, string | number] => {
-                    const [key, value] = entry
-                    if (['message', 'body', 'content', 'text'].includes(key)) return false
-                    return typeof value === 'string' || typeof value === 'number'
-                  })
-                  .slice(0, 4)
-              : []
-
-          const detailItems: Array<{ label: string; value: string }> = metadataEntries.map(([key, value]) => {
-            const normalizedKey = key
-              .replace(/_/g, ' ')
-              .replace(/\b\w/g, (char) => char.toUpperCase())
-            return { label: normalizedKey, value: String(value) }
-          })
-
-          const summaryItems: Array<{ label: string; value: string; tone?: 'error' | 'default' }> = [
-            ...detailItems.map((item) => ({ ...item, tone: 'default' as const })),
-          ]
-
-          if (item.error_message) {
-            summaryItems.push({ label: 'خطأ', value: item.error_message, tone: 'error' })
-          }
-
-          if (!summaryItems.length && item.template_name) {
-            summaryItems.push({ label: 'القالب', value: item.template_name })
-          }
-
-          return summaryItems.length ? (
-            <ul className="space-y-1 text-slate-600">
-              {summaryItems.slice(0, 3).map((detail, index) => (
-                <li
-                  key={`${item.id}-${detail.label}-${index}`}
-                  className={`rounded-xl px-3 py-2 ${detail.tone === 'error' ? 'bg-rose-50 text-rose-700' : 'bg-slate-50/80 text-slate-700'}`}
-                >
-                  <p className="text-[11px] font-semibold text-slate-500">{detail.label}</p>
-                  <p className="mt-0.5 text-[12px] line-clamp-2">{detail.value}</p>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-muted text-xs">—</p>
-          )
-        },
-        size: 190,
       },
     ],
     [expandedHistoryId],
@@ -557,6 +506,18 @@ export function WhatsappHubPage() {
                     onClick={() => queueQuery.refetch()}
                   >
                     تحديث القائمة
+                  </button>
+                  <button
+                    type="button"
+                    className="button-danger"
+                    onClick={() => {
+                      if (window.confirm('هل أنت متأكد من حذف جميع الرسائل المعلقة؟')) {
+                        deleteAllPendingMutation.mutate()
+                      }
+                    }}
+                    disabled={deleteAllPendingMutation.isPending || queueItems.length === 0}
+                  >
+                    {deleteAllPendingMutation.isPending ? 'جارٍ الحذف...' : 'حذف جميع المعلّق'}
                   </button>
                   <button
                     type="button"

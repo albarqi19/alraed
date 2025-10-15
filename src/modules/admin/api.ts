@@ -884,6 +884,75 @@ export async function fetchPendingApprovals(): Promise<PendingApprovalRecord[]> 
   return unwrapResponse(data, 'تعذر تحميل التحضير المعلق')
 }
 
+export async function fetchMissingSessions(): Promise<{
+  success: boolean
+  data: {
+    current_period: {
+      period_number: number
+      start_time: string
+      end_time: string
+      time_remaining: string
+      status?: string
+    } | null
+    total_classes: number
+    submitted: number
+    missing: number
+    missing_sessions: Array<{
+      class_session_id: number | null
+      grade: string
+      class_name: string
+      subject_name: string
+      teacher_name: string
+      teacher_id: number | null
+      period_number: number | null
+      start_time: string
+      end_time: string
+      time_since_start: string
+      minutes_since_start: number
+      status: 'very_late' | 'late' | 'slightly_late' | 'pending'
+      is_current: boolean
+      student_count: number | null
+      note?: string
+    }>
+    timestamp: string
+  }
+}> {
+  const { data } = await apiClient.get<{
+    success: boolean
+    data: {
+      current_period: {
+        period_number: number
+        start_time: string
+        end_time: string
+        time_remaining: string
+        status?: string
+      } | null
+      total_classes: number
+      submitted: number
+      missing: number
+      missing_sessions: Array<{
+        class_session_id: number | null
+        grade: string
+        class_name: string
+        subject_name: string
+        teacher_name: string
+        teacher_id: number | null
+        period_number: number | null
+        start_time: string
+        end_time: string
+        time_since_start: string
+        minutes_since_start: number
+        status: 'very_late' | 'late' | 'slightly_late' | 'pending'
+        is_current: boolean
+        student_count: number | null
+        note?: string
+      }>
+      timestamp: string
+    }
+  }>('/admin/attendance-reports/missing-sessions')
+  return data
+}
+
 export async function approveAttendanceRecord(attendanceId: number): Promise<void> {
   const { data } = await apiClient.post<ApiResponse<null>>(`/admin/attendance-reports/${attendanceId}/approve`)
   unwrapResponse(data, 'تعذر اعتماد سجل الحضور')
@@ -1224,6 +1293,11 @@ export async function fetchWhatsappQueue(): Promise<WhatsappQueueItem[]> {
 export async function deleteWhatsappQueueItem(id: number): Promise<void> {
   const { data } = await apiClient.delete<ApiResponse<null>>(`/admin/whatsapp/queue/${id}`)
   unwrapResponse(data, 'تعذر حذف رسالة الواتساب')
+}
+
+export async function deleteAllPendingWhatsappMessages(): Promise<void> {
+  const { data } = await apiClient.delete<ApiResponse<null>>('/admin/whatsapp/queue/delete-all-pending')
+  unwrapResponse(data, 'تعذر حذف الرسائل المعلقة')
 }
 
 export async function sendPendingWhatsappMessages(): Promise<void> {

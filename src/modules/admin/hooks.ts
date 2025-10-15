@@ -23,6 +23,7 @@ import {
   deleteStudent,
   deleteSubject,
   deleteTeacher,
+  deleteAllPendingWhatsappMessages,
   deleteWhatsappQueueItem,
   deleteWhatsappTemplate,
   downloadStudentsTemplate,
@@ -39,6 +40,7 @@ import {
   fetchLateArrivalStats,
   fetchLateArrivals,
   fetchLeaveRequests,
+  fetchMissingSessions,
   fetchPendingApprovals,
   fetchScheduleDetails,
   fetchScheduleSessionData,
@@ -553,6 +555,15 @@ export function usePendingApprovalsQuery() {
     queryKey: adminQueryKeys.attendance.pending(),
     queryFn: fetchPendingApprovals,
     refetchInterval: 30_000,
+  })
+}
+
+export function useMissingSessionsQuery(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: adminQueryKeys.attendance.missingSessions(),
+    queryFn: fetchMissingSessions,
+    refetchInterval: 60_000, // كل دقيقة
+    enabled: options?.enabled ?? true,
   })
 }
 
@@ -1235,6 +1246,23 @@ export function useDeleteWhatsappQueueItemMutation() {
     },
     onError: (error) => {
       toast({ type: 'error', title: getErrorMessage(error, 'تعذر حذف الرسالة') })
+    },
+  })
+}
+
+export function useDeleteAllPendingWhatsappMessagesMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: deleteAllPendingWhatsappMessages,
+    onSuccess: () => {
+      toast({ type: 'success', title: 'تم حذف جميع الرسائل المعلقة بنجاح' })
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.whatsapp.queue() })
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.whatsapp.statistics() })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر حذف الرسائل المعلقة') })
     },
   })
 }

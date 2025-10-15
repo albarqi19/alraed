@@ -7,6 +7,7 @@ import {
   useRejectAttendanceSessionMutation,
 } from '../hooks'
 import type { PendingApprovalRecord } from '../types'
+import { MissingSessionsModal } from '../components/missing-sessions-modal'
 
 type FilterState = {
   grade: string
@@ -91,6 +92,7 @@ export function AdminApprovalPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [rejectTarget, setRejectTarget] = useState<PendingApprovalRecord | null>(null)
   const [showApproveAllDialog, setShowApproveAllDialog] = useState(false)
+  const [showMissingSessionsModal, setShowMissingSessionsModal] = useState(false)
 
   const approvalsQuery = usePendingApprovalsQuery()
   const approvals = useMemo(() => approvalsQuery.data ?? [], [approvalsQuery.data])
@@ -182,6 +184,16 @@ export function AdminApprovalPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowMissingSessionsModal(true)}
+              className="button-secondary flex items-center gap-2"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              الفصول التي لم ترسل
+            </button>
             {filteredApprovals.length > 0 && (
               <button
                 type="button"
@@ -533,6 +545,11 @@ export function AdminApprovalPage() {
           </div>
         </div>
       )}
+
+      <MissingSessionsModal 
+        open={showMissingSessionsModal} 
+        onClose={() => setShowMissingSessionsModal(false)} 
+      />
     </section>
   )
 }

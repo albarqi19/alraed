@@ -26,6 +26,7 @@ export const adminQueryKeys = {
   attendance: {
     reports: (filters: Record<string, unknown>) => ['admin', 'attendance', 'reports', filters] as const,
     pending: () => ['admin', 'attendance', 'pending'] as const,
+    missingSessions: () => ['admin', 'attendance', 'missing-sessions'] as const,
     sessionDetails: (attendanceId: number) => ['admin', 'attendance', 'session-details', attendanceId] as const,
     reportMatrix: (filters: Record<string, unknown>) => ['admin', 'attendance', 'report-matrix', filters] as const,
   },

@@ -88,7 +88,8 @@
   }
 
   .button-primary,
-  .button-secondary {
+  .button-secondary,
+  .button-danger {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -136,6 +137,29 @@
   .button-secondary:focus-visible {
     outline: 2px solid rgba(76, 175, 80, 0.35);
     outline-offset: 3px;
+  }
+
+  .button-danger {
+    background-color: #dc2626;
+    color: #ffffff;
+    border: 1px solid #dc2626;
+    box-shadow: 0 1px 3px 0 rgba(220, 38, 38, 0.2);
+  }
+
+  .button-danger:hover {
+    background-color: #b91c1c;
+    border-color: #b91c1c;
+    box-shadow: 0 2px 4px 0 rgba(220, 38, 38, 0.3);
+  }
+
+  .button-danger:focus-visible {
+    outline: 2px solid rgba(220, 38, 38, 0.45);
+    outline-offset: 3px;
+  }
+
+  .button-danger:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .badge-soft {
