@@ -18,6 +18,7 @@ import { AdminSchedulesPage } from '@/modules/admin/pages/admin-schedules-page'
 import { AdminImportPage } from '@/modules/admin/pages/admin-import-page'
 import { AdminAttendancePage } from '@/modules/admin/pages/admin-attendance-page'
 import { AdminApprovalPage } from '@/modules/admin/pages/admin-approval-page'
+import { AdminAbsenceMessagesPage } from '@/modules/admin/pages/admin-absence-messages-page'
 import { AdminLateArrivalsPage } from '@/modules/admin/pages/admin-late-arrivals-page'
 import { AdminTeacherMessagesPage } from '@/modules/admin/pages/admin-teacher-messages-page'
 import { AdminSettingsPage } from '@/modules/admin/pages/admin-settings-page'
@@ -134,6 +135,7 @@ const appRoutes = [
           { path: 'import', element: <AdminImportPage /> },
           { path: 'attendance', element: <AdminAttendancePage /> },
           { path: 'approval', element: <AdminApprovalPage /> },
+          { path: 'absence-messages', element: <AdminAbsenceMessagesPage /> },
           { path: 'late-arrivals', element: <AdminLateArrivalsPage /> },
           { path: 'leave-requests', element: <AdminLeaveRequestsPage /> },
           { path: 'teacher-messages', element: <AdminTeacherMessagesPage /> },

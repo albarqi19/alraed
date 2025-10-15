@@ -924,6 +924,79 @@ export async function fetchAttendanceSessionDetails(attendanceId: number): Promi
   return unwrapResponse(data, 'تعذر تحميل تفاصيل الجلسة')
 }
 
+export async function resendAbsenceMessages(payload: {
+  date: string
+  skip_sent: boolean
+}): Promise<{
+  date: string
+  total_absent: number
+  messages_sent: number
+  messages_skipped: number
+  messages_failed: number
+  details: Array<{
+    student_id: number
+    student_name: string
+    status: 'sent' | 'skipped' | 'failed' | 'error'
+    message?: string
+    reason?: string
+    previous_message_at?: string
+  }>
+}> {
+  const { data } = await apiClient.post<
+    ApiResponse<{
+      date: string
+      total_absent: number
+      messages_sent: number
+      messages_skipped: number
+      messages_failed: number
+      details: Array<{
+        student_id: number
+        student_name: string
+        status: 'sent' | 'skipped' | 'failed' | 'error'
+        message?: string
+        reason?: string
+        previous_message_at?: string
+      }>
+    }>
+  >('/admin/attendance-reports/resend-absence-messages', payload)
+  return unwrapResponse(data, 'تعذر إعادة إرسال الرسائل')
+}
+
+export async function fetchAbsenceMessagesStats(date: string): Promise<{
+  date: string
+  total_absent: number
+  messages_sent: number
+  messages_pending: number
+  students: Array<{
+    student_id: number
+    student_name: string
+    student_phone: string | null
+    class_session_id: number
+    has_message: boolean
+    message_sent_at: string | null
+    message_status: string | null
+  }>
+}> {
+  const { data } = await apiClient.get<
+    ApiResponse<{
+      date: string
+      total_absent: number
+      messages_sent: number
+      messages_pending: number
+      students: Array<{
+        student_id: number
+        student_name: string
+        student_phone: string | null
+        class_session_id: number
+        has_message: boolean
+        message_sent_at: string | null
+        message_status: string | null
+      }>
+    }>
+  >('/admin/attendance-reports/absence-messages-stats', { params: { date } })
+  return unwrapResponse(data, 'تعذر تحميل إحصائيات الرسائل')
+}
+
 export async function exportAttendanceReport(format: 'excel' | 'pdf', filters: Filters = {}): Promise<Blob> {
   const { data } = await apiClient.get<Blob>(`/admin/attendance-reports/export/${format}` as const, {
     params: filters,

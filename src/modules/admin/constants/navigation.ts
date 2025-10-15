@@ -77,6 +77,7 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
       { to: '/admin/attendance', label: 'تقارير الحضور', icon: ClipboardCheck },
       { to: '/admin/attendance-report', label: 'كشف الغياب', icon: FileText },
       { to: '/admin/approval', label: 'اعتماد التحضير', icon: UserCheck },
+      { to: '/admin/absence-messages', label: 'إدارة رسائل الغياب', icon: MessageCircle },
       { to: '/admin/late-arrivals', label: 'إدارة التأخير', icon: Timer },
       { to: '/admin/leave-requests', label: 'طلبات الاستئذان', icon: DoorOpen },
     ],
