@@ -160,7 +160,7 @@ export function MissingSessionsModal({ open, onClose }: MissingSessionsModalProp
                   <h3 className="text-lg font-bold text-slate-900 text-right">
                     الفصول المتأخرة ({missingSessions.length})
                   </h3>
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {missingSessions.map((session: MissingSessionData) => (
                       <div
                         key={session.class_session_id ?? `${session.teacher_id ?? 'teacher'}-${session.start_time}`}
@@ -192,7 +192,7 @@ export function MissingSessionsModal({ open, onClose }: MissingSessionsModalProp
                           </div>
 
                           {/* تفاصيل المعلم والوقت */}
-                          <div className="flex flex-row-reverse flex-wrap items-center justify-between gap-3 text-sm text-slate-600">
+                          <div className="flex flex-col gap-2 text-sm text-slate-600">
                             <span className="flex flex-row-reverse items-center gap-1.5">
                               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
