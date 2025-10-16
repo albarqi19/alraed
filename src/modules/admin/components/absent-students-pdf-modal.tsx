@@ -77,7 +77,7 @@ export function AbsentStudentsPDFModal({ open, onClose }: AbsentStudentsPDFModal
   <style>
     @page {
       size: A4;
-      margin: 15mm;
+      margin: 10mm;
     }
     
     * {
@@ -90,47 +90,47 @@ export function AbsentStudentsPDFModal({ open, onClose }: AbsentStudentsPDFModal
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       direction: rtl;
       text-align: right;
-      padding: 20px;
+      padding: 10px;
       background: white;
     }
     
     .header {
       text-align: center;
-      margin-bottom: 30px;
-      border-bottom: 3px solid #2563eb;
-      padding-bottom: 15px;
+      margin-bottom: 12px;
+      border-bottom: 2px solid #2563eb;
+      padding-bottom: 8px;
     }
     
     .header h1 {
-      font-size: 24px;
+      font-size: 20px;
       color: #1e293b;
-      margin-bottom: 5px;
+      margin-bottom: 3px;
     }
     
     .header h2 {
-      font-size: 18px;
+      font-size: 16px;
       color: #475569;
-      margin-bottom: 10px;
+      margin-bottom: 5px;
     }
     
     .info {
-      font-size: 14px;
+      font-size: 12px;
       color: #64748b;
-      margin: 5px 0;
+      margin: 2px 0;
     }
     
     .total {
-      font-size: 16px;
+      font-size: 14px;
       font-weight: bold;
       color: #dc2626;
-      margin-top: 10px;
+      margin-top: 5px;
     }
     
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 20px;
-      font-size: 12px;
+      margin-top: 10px;
+      font-size: 11px;
     }
     
     thead {
@@ -139,14 +139,14 @@ export function AbsentStudentsPDFModal({ open, onClose }: AbsentStudentsPDFModal
     }
     
     th {
-      padding: 10px 8px;
+      padding: 6px 4px;
       text-align: center;
       font-weight: 600;
       border: 1px solid #1e40af;
     }
     
     td {
-      padding: 8px;
+      padding: 4px 6px;
       border: 1px solid #cbd5e1;
     }
     
