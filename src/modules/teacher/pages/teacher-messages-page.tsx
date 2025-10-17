@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/services/api/client'
@@ -102,7 +102,11 @@ export function TeacherMessagesPage() {
   })
 
   // Fetch students for selected class
-  const { data: studentsData } = useQuery({
+  const {
+    data: studentsData,
+    isFetching: isFetchingStudents,
+    isLoading: isLoadingStudents,
+  } = useQuery({
     queryKey: ['teacher', 'class-students', selectedClass?.id],
     queryFn: async () => {
       if (!selectedClass) return { students: [] }
@@ -114,6 +118,145 @@ export function TeacherMessagesPage() {
 
   const teacherClasses: TeacherClass[] = classesData?.classes || []
   const students: Student[] = studentsData?.students || []
+
+  const studentsCardRef = useRef<HTMLDivElement | null>(null)
+  const [highlightStudentsCard, setHighlightStudentsCard] = useState(false)
+  const [studentsHint, setStudentsHint] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!selectedClass) {
+      setStudentsHint(null)
+      setHighlightStudentsCard(false)
+      return
+    }
+
+    if (isLoadingStudents || isFetchingStudents) {
+      return
+    }
+
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const target = studentsCardRef.current
+    if (!target) {
+      return
+    }
+
+    window.requestAnimationFrame(() => {
+      const offset = 120
+      const top = target.getBoundingClientRect().top + window.scrollY - offset
+      window.scrollTo({ top: top > 0 ? top : 0, behavior: 'smooth' })
+    })
+
+    setHighlightStudentsCard(true)
+    setStudentsHint('تم فتح قائمة الطلاب في الأسفل، يمكنك المتابعة بالاختيار.')
+
+    const highlightTimer = window.setTimeout(() => setHighlightStudentsCard(false), 1600)
+    const hintTimer = window.setTimeout(() => setStudentsHint(null), 5000)
+
+    return () => {
+      window.clearTimeout(highlightTimer)
+      window.clearTimeout(hintTimer)
+    }
+  }, [isFetchingStudents, isLoadingStudents, selectedClass])
+
+  const messageTypeSectionRef = useRef<HTMLDivElement | null>(null)
+  const previewSectionRef = useRef<HTMLDivElement | null>(null)
+  const [highlightMessageSection, setHighlightMessageSection] = useState(false)
+  const [messageHint, setMessageHint] = useState<string | null>(null)
+  const [highlightPreviewSection, setHighlightPreviewSection] = useState(false)
+  const [previewHint, setPreviewHint] = useState<string | null>(null)
+
+  const messageHighlightTimerRef = useRef<number | null>(null)
+  const messageHintTimerRef = useRef<number | null>(null)
+  const previewHighlightTimerRef = useRef<number | null>(null)
+  const previewHintTimerRef = useRef<number | null>(null)
+  const previewScrollTimerRef = useRef<number | null>(null)
+
+  const scrollToElement = useCallback((element: HTMLElement | null) => {
+    if (!element || typeof window === 'undefined') {
+      return
+    }
+
+    window.requestAnimationFrame(() => {
+      const offset = 120
+      const top = element.getBoundingClientRect().top + window.scrollY - offset
+      window.scrollTo({ top: top > 0 ? top : 0, behavior: 'smooth' })
+    })
+  }, [])
+
+  const triggerHighlight = useCallback((setHighlight: (value: boolean) => void, timerRef: MutableRefObject<number | null>) => {
+    setHighlight(true)
+    if (timerRef.current) {
+      window.clearTimeout(timerRef.current)
+    }
+    timerRef.current = window.setTimeout(() => {
+      setHighlight(false)
+      timerRef.current = null
+    }, 1600)
+  }, [])
+
+  const triggerHint = useCallback(
+    (setHint: (value: string | null) => void, message: string, timerRef: MutableRefObject<number | null>) => {
+      setHint(message)
+      if (timerRef.current) {
+        window.clearTimeout(timerRef.current)
+      }
+      timerRef.current = window.setTimeout(() => {
+        setHint(null)
+        timerRef.current = null
+      }, 5000)
+    },
+    [],
+  )
+
+  const handleGoToTemplates = useCallback(() => {
+    if (!selectedStudents.length) {
+      return
+    }
+    scrollToElement(messageTypeSectionRef.current)
+    triggerHighlight(setHighlightMessageSection, messageHighlightTimerRef)
+    triggerHint(setMessageHint, 'اختر نوع الرسالة لإكمال الخطوات.', messageHintTimerRef)
+  }, [messageHighlightTimerRef, messageHintTimerRef, scrollToElement, selectedStudents.length, triggerHighlight, triggerHint])
+
+  const handleTemplateSelect = useCallback(
+    (templateId: number) => {
+      setSelectedTemplate(templateId)
+
+      if (previewScrollTimerRef.current) {
+        window.clearTimeout(previewScrollTimerRef.current)
+      }
+
+      previewScrollTimerRef.current = window.setTimeout(() => {
+        scrollToElement(previewSectionRef.current)
+        triggerHighlight(setHighlightPreviewSection, previewHighlightTimerRef)
+        triggerHint(setPreviewHint, 'يمكنك الآن معاينة الرسالة وإرسالها من القسم التالي.', previewHintTimerRef)
+        previewScrollTimerRef.current = null
+      }, 100)
+    },
+    [previewHighlightTimerRef, previewHintTimerRef, previewScrollTimerRef, scrollToElement, triggerHighlight, triggerHint],
+  )
+
+  useEffect(() => {
+    return () => {
+      if (messageHighlightTimerRef.current) {
+        window.clearTimeout(messageHighlightTimerRef.current)
+      }
+      if (messageHintTimerRef.current) {
+        window.clearTimeout(messageHintTimerRef.current)
+      }
+      if (previewHighlightTimerRef.current) {
+        window.clearTimeout(previewHighlightTimerRef.current)
+      }
+      if (previewHintTimerRef.current) {
+        window.clearTimeout(previewHintTimerRef.current)
+      }
+      if (previewScrollTimerRef.current) {
+        window.clearTimeout(previewScrollTimerRef.current)
+      }
+    }
+  }, [])
 
   // التحقق من وقت الإرسال
   const checkSendingTime = useMemo(() => {
@@ -442,11 +585,23 @@ export function TeacherMessagesPage() {
               ))}
             </div>
           )}
+
+          {studentsHint ? (
+            <p className="rounded-2xl border border-teal-100 bg-teal-50/70 px-4 py-2 text-xs font-semibold text-teal-700 text-right">
+              {studentsHint}
+            </p>
+          ) : null}
         </div>
 
         {/* اختيار الطلاب */}
         {selectedClass && (
-          <div className="glass-card space-y-4">
+          <div
+            ref={studentsCardRef}
+            className={clsx(
+              'glass-card space-y-4 scroll-mt-32 transition-shadow duration-500 pb-20 sm:pb-6',
+              highlightStudentsCard && 'ring-2 ring-teal-200 ring-offset-2 ring-offset-white shadow-lg',
+            )}
+          >
             <div className="flex items-center justify-between">
               {students.length > 0 && (
                 <button
@@ -494,27 +649,59 @@ export function TeacherMessagesPage() {
               </div>
             )}
 
-            {students.length > 0 && selectedStudents.length > 0 && (
-              <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-center">
-                <p className="text-sm text-emerald-800">
-                  تم تحديد <span className="font-bold">{selectedStudents.length}</span> من{' '}
-                  {students.length} طالب
-                </p>
+            {students.length > 0 && selectedStudents.length > 0 ? (
+              <div className="space-y-3">
+                <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-center">
+                  <p className="text-sm text-emerald-800">
+                    تم تحديد <span className="font-bold">{selectedStudents.length}</span> من{' '}
+                    {students.length} طالب
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleGoToTemplates}
+                  className="button-primary hidden w-full py-3 text-sm font-semibold sm:block"
+                >
+                  التالي - اختيار نوع الرسالة
+                </button>
               </div>
-            )}
+            ) : null}
           </div>
         )}
 
+        {selectedClass && selectedStudents.length > 0 && !selectedTemplate && !messageHint ? (
+          <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:hidden">
+            <button
+              type="button"
+              onClick={handleGoToTemplates}
+              className="pointer-events-auto inline-flex w-full max-w-sm items-center justify-center gap-2 rounded-full bg-teal-600 px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-teal-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500"
+            >
+              التالي - اختيار نوع الرسالة
+            </button>
+          </div>
+        ) : null}
+
         {/* اختيار نوع الرسالة */}
         {selectedStudents.length > 0 && (
-          <div className="glass-card space-y-4">
+          <div
+            ref={messageTypeSectionRef}
+            className={clsx(
+              'glass-card space-y-4 scroll-mt-32 transition-shadow duration-500',
+              highlightMessageSection && 'ring-2 ring-teal-200 ring-offset-2 ring-offset-white shadow-lg',
+            )}
+          >
             <h2 className="text-xl font-semibold text-slate-900 text-right">3. اختر نوع الرسالة</h2>
+            {messageHint ? (
+              <p className="rounded-2xl border border-teal-100 bg-teal-50/60 px-4 py-2 text-xs font-semibold text-teal-700 text-right">
+                {messageHint}
+              </p>
+            ) : null}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {templates.filter(t => t.is_active).map((template) => (
                 <button
                   key={template.id}
                   type="button"
-                  onClick={() => setSelectedTemplate(template.id)}
+                  onClick={() => handleTemplateSelect(template.id)}
                   className={clsx(
                     'rounded-2xl border-2 p-6 text-center transition hover:scale-105',
                     selectedTemplate === template.id
@@ -535,7 +722,18 @@ export function TeacherMessagesPage() {
 
         {/* زر المعاينة والإرسال */}
         {canPreview && (
-          <div className="glass-card">
+          <div
+            ref={previewSectionRef}
+            className={clsx(
+              'glass-card space-y-3 scroll-mt-32 transition-shadow duration-500',
+              highlightPreviewSection && 'ring-2 ring-teal-200 ring-offset-2 ring-offset-white shadow-lg',
+            )}
+          >
+            {previewHint ? (
+              <p className="rounded-2xl border border-teal-100 bg-teal-50/60 px-4 py-2 text-xs font-semibold text-teal-700 text-right">
+                {previewHint}
+              </p>
+            ) : null}
             <button
               type="button"
               onClick={() => setShowPreview(true)}

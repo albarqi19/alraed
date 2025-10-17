@@ -90,6 +90,23 @@ import {
   fetchPointLeaderboard,
   fetchPointCards,
   regeneratePointCard,
+  fetchStoreStats,
+  fetchStoreSettings,
+  fetchStoreCategories,
+  createStoreCategory,
+  updateStoreCategory,
+  deleteStoreCategory,
+  fetchStoreItems,
+  createStoreItem,
+  updateStoreItem,
+  deleteStoreItem,
+  fetchStoreOrders,
+  createStoreOrder,
+  approveStoreOrder,
+  fulfillStoreOrder,
+  cancelStoreOrder,
+  rejectStoreOrder,
+  updateStoreSettings,
 } from './api'
 import { adminQueryKeys } from './query-keys'
 import { useToast } from '@/shared/feedback/use-toast'
@@ -103,6 +120,12 @@ import type {
   PointTransactionFilters,
   PointLeaderboardFilters,
   PointCardFilters,
+  StoreItemFilters,
+  StoreOrderFilters,
+  StoreCategoryPayload,
+  StoreItemPayload,
+  StoreOrderPayload,
+  StoreSettingsPayload,
 } from './types'
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -1207,6 +1230,250 @@ export function useRegeneratePointCardMutation() {
     },
     onError: (error) => {
       toast({ type: 'error', title: getErrorMessage(error, 'تعذر توليد البطاقة') })
+    },
+  })
+}
+
+export function useStoreSettingsQuery() {
+  return useQuery({
+    queryKey: adminQueryKeys.store.settings(),
+    queryFn: fetchStoreSettings,
+    refetchOnMount: true,
+  })
+}
+
+export function useUpdateStoreSettingsMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: StoreSettingsPayload) => updateStoreSettings(payload),
+    onSuccess: (settings) => {
+      toast({ type: 'success', title: 'تم تحديث إعدادات المتجر' })
+      queryClient.setQueryData(adminQueryKeys.store.settings(), settings)
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.store.stats() })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تحديث إعدادات المتجر') })
+    },
+  })
+}
+
+export function useStoreStatsQuery() {
+  return useQuery({
+    queryKey: adminQueryKeys.store.stats(),
+    queryFn: fetchStoreStats,
+    refetchOnMount: true,
+  })
+}
+
+export function useStoreCategoriesQuery() {
+  return useQuery({
+    queryKey: adminQueryKeys.store.categories(),
+    queryFn: fetchStoreCategories,
+  })
+}
+
+export function useCreateStoreCategoryMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: StoreCategoryPayload) => createStoreCategory(payload),
+    onSuccess: (category) => {
+      toast({ type: 'success', title: `تم إنشاء التصنيف ${category.name}` })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'store', 'categories'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر إنشاء التصنيف') })
+    },
+  })
+}
+
+export function useUpdateStoreCategoryMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: StoreCategoryPayload }) => updateStoreCategory(id, payload),
+    onSuccess: (category) => {
+      toast({ type: 'success', title: `تم تحديث ${category.name}` })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'store', 'categories'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تحديث التصنيف') })
+    },
+  })
+}
+
+export function useDeleteStoreCategoryMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: number) => deleteStoreCategory(id),
+    onSuccess: () => {
+      toast({ type: 'success', title: 'تم حذف التصنيف' })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'store', 'categories'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر حذف التصنيف') })
+    },
+  })
+}
+
+export function useStoreItemsQuery(filters: StoreItemFilters = {}) {
+  return useQuery({
+    queryKey: adminQueryKeys.store.items(filters as Record<string, unknown>),
+    queryFn: () => fetchStoreItems(filters),
+  })
+}
+
+export function useCreateStoreItemMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: StoreItemPayload) => createStoreItem(payload),
+    onSuccess: (item) => {
+      toast({ type: 'success', title: `تم إضافة المنتج ${item.name}` })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'store', 'items'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'store', 'stats'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر إضافة المنتج') })
+    },
+  })
+}
+
+export function useUpdateStoreItemMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: StoreItemPayload }) => updateStoreItem(id, payload),
+    onSuccess: (item) => {
+      toast({ type: 'success', title: `تم تحديث ${item.name}` })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'store', 'items'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'store', 'stats'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تحديث المنتج') })
+    },
+  })
+}
+
+export function useDeleteStoreItemMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: number) => deleteStoreItem(id),
+    onSuccess: () => {
+      toast({ type: 'success', title: 'تم حذف المنتج' })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'store', 'items'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'store', 'stats'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر حذف المنتج') })
+    },
+  })
+}
+
+export function useStoreOrdersQuery(filters: StoreOrderFilters = {}) {
+  return useQuery({
+    queryKey: adminQueryKeys.store.orders(filters as Record<string, unknown>),
+    queryFn: () => fetchStoreOrders(filters),
+  })
+}
+
+export function useCreateStoreOrderMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: StoreOrderPayload) => createStoreOrder(payload),
+    onSuccess: (order) => {
+      toast({ type: 'success', title: `تم تسجيل طلب للطالب ${order.student.name}` })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'store', 'orders'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'store', 'stats'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'points', 'leaderboard'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'points', 'transactions'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر إنشاء الطلب') })
+    },
+  })
+}
+
+export function useApproveStoreOrderMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason?: string }) => approveStoreOrder(id, reason),
+    onSuccess: () => {
+      toast({ type: 'success', title: 'تم اعتماد الطلب' })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'store', 'orders'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'store', 'stats'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر اعتماد الطلب') })
+    },
+  })
+}
+
+export function useFulfillStoreOrderMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason?: string }) => fulfillStoreOrder(id, reason),
+    onSuccess: () => {
+      toast({ type: 'success', title: 'تم إنهاء الطلب وتسليمه' })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'store', 'orders'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'store', 'stats'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر إنهاء الطلب') })
+    },
+  })
+}
+
+export function useCancelStoreOrderMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason?: string }) => cancelStoreOrder(id, reason),
+    onSuccess: () => {
+      toast({ type: 'success', title: 'تم إلغاء الطلب وإرجاع النقاط' })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'store', 'orders'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'store', 'stats'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'points', 'leaderboard'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'points', 'transactions'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر إلغاء الطلب') })
+    },
+  })
+}
+
+export function useRejectStoreOrderMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason?: string }) => rejectStoreOrder(id, reason),
+    onSuccess: () => {
+      toast({ type: 'info', title: 'تم رفض الطلب وإرجاع النقاط' })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'store', 'orders'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'store', 'stats'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'points', 'leaderboard'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'points', 'transactions'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر رفض الطلب') })
     },
   })
 }

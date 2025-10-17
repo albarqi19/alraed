@@ -28,6 +28,7 @@ import { AttendanceReportPage } from '@/modules/admin/pages/attendance-report-pa
 import { StudentCasesPage } from '@/modules/admin/pages/student-cases-page'
 import { TreatmentPlansPage } from '@/modules/admin/pages/treatment-plans-page'
 import { PointsProgramPage } from '@/modules/admin/pages/points-program-page'
+import { AdminEStorePage } from '@/modules/admin/pages/admin-e-store-page'
 import { GuidanceProgramsPage } from '@/modules/admin/pages/guidance-programs-page'
 import { SummonsPage } from '@/modules/admin/pages/summons-page'
 import { WhatsAppSendPage } from '@/modules/admin/pages/whatsapp-send-page'
@@ -146,6 +147,7 @@ const appRoutes = [
           { path: 'subscription', element: <AdminSubscriptionPage /> },
           { path: 'treatment-plans', element: <TreatmentPlansPage /> },
           { path: 'points-program', element: <PointsProgramPage /> },
+          { path: 'e-store', element: <AdminEStorePage /> },
           { path: 'guidance-programs', element: <GuidanceProgramsPage /> },
           { path: 'summons', element: <SummonsPage /> },
           { path: 'settings', element: <AdminSettingsPage /> },

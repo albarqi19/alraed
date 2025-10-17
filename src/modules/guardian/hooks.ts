@@ -5,6 +5,10 @@ import {
   fetchGuardianPortalSettings,
   lookupGuardianStudent,
   submitGuardianLeaveRequest,
+  fetchGuardianStoreOverview,
+  fetchGuardianStoreCatalog,
+  fetchGuardianStoreOrders,
+  submitGuardianStoreOrder,
 } from './api'
 import { guardianQueryKeys } from './query-keys'
 import type {
@@ -12,6 +16,10 @@ import type {
   GuardianLeaveRequestRecord,
   GuardianPortalSettings,
   GuardianStudentSummary,
+  GuardianStoreOverview,
+  GuardianStoreCatalog,
+  GuardianStoreOrderRecord,
+  GuardianStoreOrderPayload,
 } from './types'
 
 type GuardianSubmissionResult = Awaited<ReturnType<typeof submitGuardianLeaveRequest>>
@@ -64,6 +72,52 @@ export function useGuardianLeaveRequestSubmissionMutation() {
     },
     onError: (error) => {
       toast({ type: 'error', title: getErrorMessage(error, 'تعذر إرسال طلب الاستئذان') })
+    },
+  })
+}
+
+export function useGuardianStoreOverviewQuery(nationalId: string | null) {
+  const cacheKey = guardianQueryKeys.storeOverview(nationalId ?? '__idle__')
+  return useQuery<GuardianStoreOverview>({
+    queryKey: cacheKey,
+    queryFn: () => fetchGuardianStoreOverview(nationalId as string),
+    enabled: Boolean(nationalId),
+  })
+}
+
+export function useGuardianStoreCatalogQuery(nationalId: string | null) {
+  const cacheKey = guardianQueryKeys.storeCatalog(nationalId ?? '__idle__')
+  return useQuery<GuardianStoreCatalog>({
+    queryKey: cacheKey,
+    queryFn: () => fetchGuardianStoreCatalog(nationalId as string),
+    enabled: Boolean(nationalId),
+  })
+}
+
+export function useGuardianStoreOrdersQuery(nationalId: string | null) {
+  const cacheKey = guardianQueryKeys.storeOrders(nationalId ?? '__idle__')
+  return useQuery<GuardianStoreOrderRecord[]>({
+    queryKey: cacheKey,
+    queryFn: () => fetchGuardianStoreOrders(nationalId as string),
+    enabled: Boolean(nationalId),
+  })
+}
+
+export function useGuardianStoreOrderMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation<GuardianStoreOrderRecord, unknown, GuardianStoreOrderPayload>({
+    mutationFn: submitGuardianStoreOrder,
+    onSuccess: (_order, variables) => {
+      const nationalId = variables.national_id
+      toast({ type: 'success', title: 'تم إرسال طلب الاستبدال بنجاح' })
+      queryClient.invalidateQueries({ queryKey: guardianQueryKeys.storeOverview(nationalId) })
+      queryClient.invalidateQueries({ queryKey: guardianQueryKeys.storeOrders(nationalId) })
+      queryClient.invalidateQueries({ queryKey: guardianQueryKeys.storeCatalog(nationalId) })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر إرسال طلب الاستبدال') })
     },
   })
 }

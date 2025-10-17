@@ -59,6 +59,17 @@ import type {
   PointCardRecord,
   PointCardFilters,
   PointCardsResponse,
+  StoreStats,
+  StoreSettingsRecord,
+  StoreSettingsPayload,
+  StoreCategoryRecord,
+  StoreCategoryPayload,
+  StoreItemRecord,
+  StoreItemFilters,
+  StoreItemPayload,
+  StoreOrderRecord,
+  StoreOrderFilters,
+  StoreOrderPayload,
   PaginationMeta,
 } from './types'
 import { deserializeWhatsappVariables, serializeWhatsappVariables } from './utils/whatsapp-templates'
@@ -117,6 +128,24 @@ function unwrapCollectionResponse<T>(response: ApiResponse<unknown>, fallbackMes
     (isRecord(response.data) ? extractArrayFromPayload<T>(response.data['data'], candidateKeys) : null)
 
   return collection ?? []
+}
+
+function normalizePaginationMeta(meta: unknown, fallbackCount = 0, fallbackPerPage = 15): PaginationMeta {
+  if (!isRecord(meta)) {
+    return {
+      current_page: 1,
+      last_page: 1,
+      per_page: fallbackPerPage,
+      total: fallbackCount,
+    }
+  }
+
+  return {
+    current_page: coerceNumber(meta.current_page, 1),
+    last_page: coerceNumber(meta.last_page, 1),
+    per_page: coerceNumber(meta.per_page, fallbackPerPage),
+    total: coerceNumber(meta.total, fallbackCount),
+  }
 }
 
 const ATTENDANCE_STATUS_VALUES: Array<AttendanceReportStudentAttendance['status']> = [
@@ -1541,4 +1570,127 @@ export async function testWhatsappConnection(): Promise<{ success: boolean; mess
     '/admin/whatsapp/test-connection',
   )
   return unwrapResponse(data, 'تعذر اختبار اتصال الواتساب')
+}
+
+function sanitizeFilters(filters: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(filters).filter(([, value]) => {
+      if (value === undefined || value === null) return false
+      if (typeof value === 'string' && value.trim() === '') return false
+      return true
+    }),
+  )
+}
+
+export async function fetchStoreStats(): Promise<StoreStats> {
+  const response = await apiClient.get<ApiResponse<StoreStats>>('/admin/e-store/stats')
+  return unwrapResponse(response.data, 'تعذر جلب إحصائيات المتجر')
+}
+
+export async function fetchStoreSettings(): Promise<StoreSettingsRecord> {
+  const response = await apiClient.get<ApiResponse<StoreSettingsRecord>>('/admin/e-store/settings')
+  return unwrapResponse(response.data, 'تعذر جلب إعدادات المتجر')
+}
+
+export async function updateStoreSettings(payload: StoreSettingsPayload): Promise<StoreSettingsRecord> {
+  const response = await apiClient.put<ApiResponse<StoreSettingsRecord>>('/admin/e-store/settings', payload)
+  return unwrapResponse(response.data, 'تعذر تحديث إعدادات المتجر')
+}
+
+export async function fetchStoreCategories(): Promise<StoreCategoryRecord[]> {
+  const response = await apiClient.get<ApiResponse<StoreCategoryRecord[]>>('/admin/e-store/categories')
+  return unwrapResponse(response.data, 'تعذر جلب تصنيفات المتجر')
+}
+
+export async function createStoreCategory(payload: StoreCategoryPayload): Promise<StoreCategoryRecord> {
+  const response = await apiClient.post<ApiResponse<StoreCategoryRecord>>('/admin/e-store/categories', payload)
+  return unwrapResponse(response.data, 'تعذر إنشاء التصنيف')
+}
+
+export async function updateStoreCategory(id: number, payload: StoreCategoryPayload): Promise<StoreCategoryRecord> {
+  const response = await apiClient.put<ApiResponse<StoreCategoryRecord>>(`/admin/e-store/categories/${id}`, payload)
+  return unwrapResponse(response.data, 'تعذر تحديث التصنيف')
+}
+
+export async function deleteStoreCategory(id: number): Promise<void> {
+  await apiClient.delete<ApiResponse<unknown>>(`/admin/e-store/categories/${id}`)
+}
+
+export async function fetchStoreItems(
+  filters: StoreItemFilters = {},
+): Promise<{ items: StoreItemRecord[]; meta: PaginationMeta }> {
+  const params = sanitizeFilters({
+    ...filters,
+    status: filters.status && filters.status !== 'all' ? filters.status : undefined,
+  })
+
+  const response = await apiClient.get<ApiResponse<StoreItemRecord[]>>('/admin/e-store/items', { params })
+  const items = unwrapResponse(response.data, 'تعذر جلب منتجات المتجر')
+  const rawMeta = (response.data as unknown as { meta?: unknown }).meta
+  const meta = normalizePaginationMeta(rawMeta, items.length, filters.per_page ?? 15)
+
+  return { items, meta }
+}
+
+export async function createStoreItem(payload: StoreItemPayload): Promise<StoreItemRecord> {
+  const response = await apiClient.post<ApiResponse<StoreItemRecord>>('/admin/e-store/items', payload)
+  return unwrapResponse(response.data, 'تعذر إضافة المنتج')
+}
+
+export async function updateStoreItem(id: number, payload: StoreItemPayload): Promise<StoreItemRecord> {
+  const response = await apiClient.put<ApiResponse<StoreItemRecord>>(`/admin/e-store/items/${id}`, payload)
+  return unwrapResponse(response.data, 'تعذر تحديث بيانات المنتج')
+}
+
+export async function deleteStoreItem(id: number): Promise<void> {
+  await apiClient.delete<ApiResponse<unknown>>(`/admin/e-store/items/${id}`)
+}
+
+export async function fetchStoreOrders(
+  filters: StoreOrderFilters = {},
+): Promise<{ items: StoreOrderRecord[]; meta: PaginationMeta }> {
+  const params = sanitizeFilters({
+    ...filters,
+    status: filters.status && filters.status !== 'all' ? filters.status : undefined,
+  })
+
+  const response = await apiClient.get<ApiResponse<StoreOrderRecord[]>>('/admin/e-store/orders', { params })
+  const items = unwrapResponse(response.data, 'تعذر جلب طلبات المتجر')
+  const rawMeta = (response.data as unknown as { meta?: unknown }).meta
+  const meta = normalizePaginationMeta(rawMeta, items.length, filters.per_page ?? 15)
+
+  return { items, meta }
+}
+
+export async function createStoreOrder(payload: StoreOrderPayload): Promise<StoreOrderRecord> {
+  const response = await apiClient.post<ApiResponse<StoreOrderRecord>>('/admin/e-store/orders', payload)
+  return unwrapResponse(response.data, 'تعذر إنشاء الطلب')
+}
+
+export async function approveStoreOrder(orderId: number, reason?: string): Promise<StoreOrderRecord> {
+  const response = await apiClient.post<ApiResponse<StoreOrderRecord>>(`/admin/e-store/orders/${orderId}/approve`, {
+    reason,
+  })
+  return unwrapResponse(response.data, 'تعذر اعتماد الطلب')
+}
+
+export async function fulfillStoreOrder(orderId: number, reason?: string): Promise<StoreOrderRecord> {
+  const response = await apiClient.post<ApiResponse<StoreOrderRecord>>(`/admin/e-store/orders/${orderId}/fulfill`, {
+    reason,
+  })
+  return unwrapResponse(response.data, 'تعذر إنهاء الطلب')
+}
+
+export async function cancelStoreOrder(orderId: number, reason?: string): Promise<StoreOrderRecord> {
+  const response = await apiClient.post<ApiResponse<StoreOrderRecord>>(`/admin/e-store/orders/${orderId}/cancel`, {
+    reason,
+  })
+  return unwrapResponse(response.data, 'تعذر إلغاء الطلب')
+}
+
+export async function rejectStoreOrder(orderId: number, reason?: string): Promise<StoreOrderRecord> {
+  const response = await apiClient.post<ApiResponse<StoreOrderRecord>>(`/admin/e-store/orders/${orderId}/reject`, {
+    reason,
+  })
+  return unwrapResponse(response.data, 'تعذر رفض الطلب')
 }

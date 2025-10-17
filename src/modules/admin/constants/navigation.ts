@@ -31,6 +31,7 @@ import {
   Megaphone,
   CalendarDays,
   School,
+  ShoppingCart,
 } from 'lucide-react'
 
 export interface AdminNavItem {
@@ -89,6 +90,7 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
       { to: '/admin/student-cases', label: 'الحالات الطلابية', icon: ClipboardList },
       { to: '/admin/treatment-plans', label: 'الخطط العلاجية', icon: Target },
       { to: '/admin/points-program', label: 'برنامج نقاطي', icon: Award },
+      { to: '/admin/e-store', label: 'المتجر الالكتروني', icon: ShoppingCart },
       { to: '/admin/guidance-programs', label: 'البرامج الإرشادية', icon: Lightbulb },
       { to: '/admin/summons', label: 'الاستدعاءات والتوصيات', icon: UserPlus },
     ],

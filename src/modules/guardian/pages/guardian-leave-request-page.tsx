@@ -1,16 +1,21 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import {
   useGuardianLeaveRequestSubmissionMutation,
   useGuardianLeaveRequestsQuery,
   useGuardianStudentLookupMutation,
   useGuardianSettingsQuery,
+  useGuardianStoreOverviewQuery,
+  useGuardianStoreCatalogQuery,
+  useGuardianStoreOrdersQuery,
+  useGuardianStoreOrderMutation,
 } from '../hooks'
 import type { GuardianLeaveRequestRecord, GuardianStudentSummary } from '../types'
+import { GuardianStoreSection } from '../components/guardian-store-section'
 import { AutoCallProvider, useAutoCall } from '@/modules/auto-call'
 import type { AutoCallHistoryEntry, AutoCallQueueEntry } from '@/modules/auto-call'
 import { useToast } from '@/shared/feedback/use-toast'
-import { CheckCircle2, FileText, Loader2, MapPin, Megaphone } from 'lucide-react'
+import { CheckCircle2, FileText, Gift, Loader2, MapPin, Megaphone, ShoppingCart } from 'lucide-react'
 
 const STATUS_LABELS = {
   pending: 'بانتظار المراجعة',
@@ -39,6 +44,8 @@ type FormValues = {
 }
 
 type FormErrors = Partial<Record<keyof FormValues, string>> & { national_id?: string }
+
+type PortalSection = 'none' | 'leave-request' | 'auto-call' | 'store'
 
 function resolveErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message) return error.message
@@ -260,8 +267,8 @@ interface GuardianLeaveRequestPageBaseProps {
   settingsQuery: GuardianSettingsQueryResult
   autoCall: AutoCallContextValue | null
   autoCallSchoolId: string | null
-  activePortalSection: 'none' | 'leave-request' | 'auto-call'
-  onPortalSectionChange: (section: 'none' | 'leave-request' | 'auto-call') => void
+  activePortalSection: PortalSection
+  onPortalSectionChange: (section: PortalSection) => void
   autoCallAvailabilityReason: string | null
 }
 
@@ -289,6 +296,10 @@ function GuardianLeaveRequestPageBase({
   const [autoCallStatus, setAutoCallStatus] = useState<'idle' | 'requesting' | 'success' | 'error'>('idle')
   const [autoCallError, setAutoCallError] = useState<string | null>(null)
   const [isCheckingLocation, setIsCheckingLocation] = useState(false)
+  const leaveSectionRef = useRef<HTMLDivElement | null>(null)
+  const autoCallSectionRef = useRef<HTMLElement | null>(null)
+  const storeSectionRef = useRef<HTMLDivElement | null>(null)
+  const [highlightSection, setHighlightSection] = useState<PortalSection>('none')
 
   const toast = useToast()
   const guardianSettings = settingsQuery.data
@@ -451,6 +462,10 @@ function GuardianLeaveRequestPageBase({
   const lookupMutation = useGuardianStudentLookupMutation()
   const requestsQuery = useGuardianLeaveRequestsQuery(currentNationalId)
   const submitMutation = useGuardianLeaveRequestSubmissionMutation()
+  const storeOverviewQuery = useGuardianStoreOverviewQuery(currentNationalId)
+  const storeCatalogQuery = useGuardianStoreCatalogQuery(currentNationalId)
+  const storeOrdersQuery = useGuardianStoreOrdersQuery(currentNationalId)
+  const storeOrderMutation = useGuardianStoreOrderMutation()
 
   const requests = requestsQuery.data ?? []
   const isLoadingRequests = requestsQuery.isFetching
@@ -471,10 +486,79 @@ function GuardianLeaveRequestPageBase({
 
   const hasStudent = Boolean(studentSummary && currentNationalId)
 
+  const activeSectionHint = useMemo(() => {
+    switch (activePortalSection) {
+      case 'leave-request':
+        return 'تم فتح نموذج الاستئذان في الأسفل.'
+      case 'auto-call':
+        return 'تم تهيئة واجهة النداء الآلي أدناه.'
+      case 'store':
+        return 'تم فتح المتجر الإلكتروني واستعراض المنتجات في الأسفل.'
+      default:
+        return null
+    }
+  }, [activePortalSection])
+
+  useEffect(() => {
+    if (activePortalSection === 'none') {
+      setHighlightSection('none')
+      return
+    }
+
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    let target: HTMLElement | null = null
+
+    switch (activePortalSection) {
+      case 'leave-request':
+        target = leaveSectionRef.current
+        break
+      case 'auto-call':
+        target = autoCallSectionRef.current
+        break
+      case 'store':
+        target = storeSectionRef.current
+        break
+      default:
+        target = null
+    }
+
+    if (!target) {
+      return
+    }
+
+    window.requestAnimationFrame(() => {
+      const offset = 120
+      const top = target.getBoundingClientRect().top + window.scrollY - offset
+      window.scrollTo({ top: top > 0 ? top : 0, behavior: 'smooth' })
+    })
+
+    setHighlightSection(activePortalSection)
+    const timer = window.setTimeout(() => {
+      setHighlightSection('none')
+    }, 1600)
+
+    return () => window.clearTimeout(timer)
+  }, [activePortalSection])
+
+  const storeOverview = storeOverviewQuery.data ?? null
+  const storeCatalogErrorMessage = storeCatalogQuery.isError
+    ? resolveErrorMessage(storeCatalogQuery.error, 'تعذر تحميل منتجات المتجر')
+    : null
+  const storeOrdersErrorMessage = storeOrdersQuery.isError
+    ? resolveErrorMessage(storeOrdersQuery.error, 'تعذر تحميل طلبات المتجر')
+    : null
+
   const studentCard = useMemo(() => {
     if (!studentSummary) {
       return null
     }
+
+    const pointsTotal = storeOverview?.points.total ?? null
+    const storeStatus = storeOverview?.store.status
+    const storeStatusMessage = storeOverview?.store.status_message
 
     return (
       <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -500,9 +584,41 @@ function GuardianLeaveRequestPageBase({
             <p className="mt-1 text-sm text-slate-800">{studentSummary.parent_phone}</p>
           </div>
         </section>
+        {pointsTotal != null ? (
+          <section className="mt-4 grid gap-3 text-xs text-slate-600 md:grid-cols-2">
+            <div className="flex items-center justify-between rounded-2xl border border-indigo-100 bg-indigo-50/70 px-4 py-3">
+              <div>
+                <p className="text-xs font-semibold text-indigo-600">رصيد النقاط الحالي</p>
+                <p className="mt-1 text-lg font-bold text-indigo-700">{pointsTotal}</p>
+              </div>
+              <Gift className="h-5 w-5 text-indigo-500" />
+            </div>
+            {storeStatus ? (
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3">
+                <p className="text-xs font-semibold text-slate-500">حالة المتجر</p>
+                <p className="mt-1 text-sm text-slate-800">
+                  {storeStatus === 'open'
+                    ? 'المتجر متاح للاستبدال'
+                    : storeStatus === 'closed'
+                      ? 'المتجر مغلق مؤقتاً'
+                      : storeStatus === 'maintenance'
+                        ? 'المتجر تحت الصيانة'
+                        : storeStatus === 'inventory'
+                          ? 'جرد المخزون جارٍ'
+                          : storeStatus === 'paused'
+                            ? 'المتجر متوقف مؤقتاً'
+                            : 'لا توجد منتجات متاحة'}
+                </p>
+                {storeStatusMessage ? (
+                  <p className="mt-1 text-[11px] text-slate-500">{storeStatusMessage}</p>
+                ) : null}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
       </div>
     )
-  }, [studentSummary, currentNationalId])
+  }, [studentSummary, currentNationalId, storeOverview])
 
   function validateForm(): FormErrors | null {
     if (!currentNationalId) {
@@ -748,7 +864,7 @@ function GuardianLeaveRequestPageBase({
       <header className="space-y-2 text-center sm:space-y-3">
         <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">بوابة ولي الأمر</h1>
         <p className="mx-auto max-w-2xl text-sm leading-6 text-muted sm:text-base">
-          أدخل رقم هوية الطالب للتحقق من البيانات، ثم اختر الخدمة المناسبة بين طلب الاستئذان والنداء الآلي لاستلام الطالب.
+          أدخل رقم هوية الطالب للتحقق من البيانات، ثم اختر الخدمة المناسبة بين طلب الاستئذان، النداء الآلي، أو استبدال نقاط الطالب عبر المتجر الإلكتروني.
         </p>
       </header>
 
@@ -785,10 +901,10 @@ function GuardianLeaveRequestPageBase({
           <div className="glass-card space-y-4 sm:space-y-5">
             <header className="space-y-1 text-right">
               <h2 className="text-xl font-semibold text-slate-900">اختر الخدمة المطلوبة</h2>
-              <p className="text-xs text-muted">يمكنك إرسال طلب استئذان أو تفعيل المناداة الآلية عند الوصول للمدرسة.</p>
+              <p className="text-xs text-muted">يمكنك إرسال طلب استئذان أو تفعيل المناداة الآلية أو استبدال نقاط الطالب من المتجر الإلكتروني.</p>
             </header>
 
-            <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
+            <div className="grid gap-3 sm:gap-4 md:grid-cols-3">
               <button
                 type="button"
                 onClick={() => onPortalSectionChange('leave-request')}
@@ -825,6 +941,30 @@ function GuardianLeaveRequestPageBase({
                 </div>
               </button>
             </div>
+
+            <button
+              type="button"
+              onClick={() => onPortalSectionChange('store')}
+              className={`w-full rounded-2xl border px-4 py-3 text-right transition ${
+                activePortalSection === 'store'
+                  ? 'border-indigo-500 bg-indigo-50/60 text-indigo-600 shadow-sm'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-indigo-50/40'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold">المتجر الإلكتروني</p>
+                  <p className="text-xs text-muted">تصفح المنتجات واستبدل نقاط الطالب مباشرة.</p>
+                </div>
+                <ShoppingCart className="h-5 w-5" />
+              </div>
+            </button>
+
+            {activeSectionHint ? (
+              <p className="rounded-2xl border border-indigo-100 bg-indigo-50/60 px-4 py-2 text-xs font-semibold text-indigo-700">
+                {activeSectionHint}
+              </p>
+            ) : null}
           </div>
 
           {activePortalSection === 'none' ? (
@@ -834,7 +974,13 @@ function GuardianLeaveRequestPageBase({
           ) : null}
 
           {activePortalSection === 'leave-request' ? (
-            <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
+            <div
+              ref={leaveSectionRef}
+              className={`scroll-mt-32 transition-shadow duration-500 ${
+                highlightSection === 'leave-request' ? 'rounded-[28px] ring-2 ring-indigo-200 ring-offset-2 ring-offset-white shadow-lg' : ''
+              }`}
+            >
+              <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
               <form className="glass-card space-y-4 sm:space-y-5" onSubmit={handleSubmit}>
                 <header className="space-y-1">
                   <h2 className="text-xl font-semibold text-slate-900">إرسال طلب جديد</h2>
@@ -954,11 +1100,17 @@ function GuardianLeaveRequestPageBase({
                   <RequestsList requests={requests} />
                 )}
               </aside>
+              </div>
             </div>
           ) : null}
 
           {activePortalSection === 'auto-call' ? (
-            <section className="glass-card space-y-4 sm:space-y-5">
+            <section
+              ref={autoCallSectionRef}
+              className={`glass-card space-y-4 sm:space-y-5 scroll-mt-32 transition-shadow duration-500 ${
+                highlightSection === 'auto-call' ? 'ring-2 ring-indigo-200 ring-offset-2 ring-offset-white shadow-lg' : ''
+              }`}
+            >
               <header className="space-y-1">
                 <div className="flex items-center justify-between gap-3">
                   <div>
@@ -1117,6 +1269,31 @@ function GuardianLeaveRequestPageBase({
               )}
             </section>
           ) : null}
+
+          {activePortalSection === 'store' ? (
+            <div
+              ref={storeSectionRef}
+              className={`scroll-mt-32 transition-shadow duration-500 ${
+                highlightSection === 'store' ? 'rounded-[28px] ring-2 ring-indigo-200 ring-offset-2 ring-offset-white shadow-lg' : ''
+              }`}
+            >
+              <GuardianStoreSection
+                nationalId={currentNationalId ?? ''}
+                overview={storeOverview}
+                overviewLoading={storeOverviewQuery.isFetching || storeOverviewQuery.isLoading}
+                catalog={storeCatalogQuery.data ?? null}
+                catalogLoading={storeCatalogQuery.isFetching || storeCatalogQuery.isLoading}
+                catalogError={storeCatalogErrorMessage}
+                orders={storeOrdersQuery.data ?? []}
+                ordersLoading={storeOrdersQuery.isFetching || storeOrdersQuery.isLoading}
+                ordersError={storeOrdersErrorMessage}
+                onSubmitOrder={storeOrderMutation.mutateAsync}
+                submitPending={storeOrderMutation.isPending}
+                guardianName={studentSummary?.parent_name}
+                guardianPhone={studentSummary?.parent_phone}
+              />
+            </div>
+          ) : null}
         </div>
       ) : (
         <div className="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-6 text-center text-sm text-muted">
@@ -1130,8 +1307,8 @@ function GuardianLeaveRequestPageBase({
 interface GuardianLeaveRequestAutoCallBridgeProps {
   settingsQuery: GuardianSettingsQueryResult
   autoCallSchoolId: string | null
-  activePortalSection: 'none' | 'leave-request' | 'auto-call'
-  onPortalSectionChange: (section: 'none' | 'leave-request' | 'auto-call') => void
+  activePortalSection: PortalSection
+  onPortalSectionChange: (section: PortalSection) => void
   autoCallAvailabilityReason: string | null
 }
 
@@ -1157,7 +1334,7 @@ function GuardianLeaveRequestAutoCallBridge({
 
 export function GuardianLeaveRequestPage() {
   const settingsQuery = useGuardianSettingsQuery()
-  const [activePortalSection, setActivePortalSection] = useState<'none' | 'leave-request' | 'auto-call'>('none')
+  const [activePortalSection, setActivePortalSection] = useState<PortalSection>('none')
   const rawSchoolId = settingsQuery.data?.auto_call_school_id
   const autoCallSchoolId = rawSchoolId != null && rawSchoolId !== '' ? String(rawSchoolId) : null
 

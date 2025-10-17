@@ -409,6 +409,209 @@ export interface WhatsappHistoryItem {
   metadata?: Record<string, unknown> | null
 }
 
+export interface StoreStats {
+  total_items: number
+  active_items: number
+  total_orders: number
+  pending_orders: number
+  fulfilled_orders: number
+  points_redeemed: number
+}
+
+export type StoreStatus = 'open' | 'closed' | 'maintenance' | 'inventory' | 'paused' | 'empty'
+
+export interface StoreSettingsRecord {
+  id?: number
+  school_id?: number | null
+  auto_approve_orders: boolean
+  auto_fulfill_orders: boolean
+  allow_student_cancellations: boolean
+  allow_student_notes: boolean
+  require_admin_reason_on_reject: boolean
+  notify_low_stock: boolean
+  low_stock_threshold: number
+  max_pending_orders_per_student?: number | null
+  max_items_per_order: number
+  max_points_per_order?: number | null
+  reference_prefix?: string | null
+  notification_recipients: string[]
+  store_status: StoreStatus
+  store_status_message?: string | null
+  allow_redemption_start_time?: string | null
+  allow_redemption_end_time?: string | null
+  allowed_redemption_weekdays: number[]
+  enforce_violation_limit: boolean
+  max_behavior_violations?: number | null
+  violation_lookback_days?: number | null
+  prevent_redemption_when_inventory_empty: boolean
+  allow_waitlist_when_closed: boolean
+  created_at?: string
+  updated_at?: string
+}
+
+export interface StoreSettingsPayload {
+  auto_approve_orders: boolean
+  auto_fulfill_orders: boolean
+  allow_student_cancellations: boolean
+  allow_student_notes: boolean
+  require_admin_reason_on_reject: boolean
+  notify_low_stock: boolean
+  low_stock_threshold: number
+  max_pending_orders_per_student?: number | null
+  max_items_per_order: number
+  max_points_per_order?: number | null
+  reference_prefix?: string | null
+  notification_recipients?: string[] | null
+  store_status: StoreStatus
+  store_status_message?: string | null
+  allow_redemption_start_time?: string | null
+  allow_redemption_end_time?: string | null
+  allowed_redemption_weekdays?: number[] | null
+  enforce_violation_limit: boolean
+  max_behavior_violations?: number | null
+  violation_lookback_days?: number | null
+  prevent_redemption_when_inventory_empty: boolean
+  allow_waitlist_when_closed: boolean
+}
+
+export interface StoreCategoryRecord {
+  id: number
+  name: string
+  slug?: string | null
+  description?: string | null
+  icon?: string | null
+  is_active: boolean
+  display_order: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface StoreCategoryPayload {
+  name: string
+  slug?: string | null
+  description?: string | null
+  icon?: string | null
+  is_active?: boolean
+  display_order?: number | null
+}
+
+export interface StoreItemRecord {
+  id: number
+  store_category_id?: number | null
+  name: string
+  slug?: string | null
+  sku?: string | null
+  points_cost: number
+  stock_quantity?: number | null
+  unlimited_stock: boolean
+  max_per_student?: number | null
+  is_active: boolean
+  display_order: number
+  available_from?: string | null
+  available_until?: string | null
+  image_url?: string | null
+  description?: string | null
+  metadata?: Record<string, unknown> | null
+  times_redeemed: number
+  created_at?: string
+  updated_at?: string
+  category?: StoreCategoryRecord | null
+}
+
+export interface StoreItemPayload {
+  store_category_id?: number | null
+  name: string
+  slug?: string | null
+  sku?: string | null
+  points_cost: number
+  stock_quantity?: number | null
+  unlimited_stock?: boolean
+  max_per_student?: number | null
+  is_active?: boolean
+  display_order?: number | null
+  available_from?: string | null
+  available_until?: string | null
+  image_url?: string | null
+  description?: string | null
+  metadata?: Record<string, unknown> | null
+}
+
+export interface StoreItemFilters {
+  status?: 'all' | 'active' | 'inactive'
+  category_id?: number
+  search?: string
+  page?: number
+  per_page?: number
+}
+
+export interface StoreOrderItemRecord {
+  id: number
+  store_order_id: number
+  store_item_id?: number | null
+  name: string
+  description?: string | null
+  image_url?: string | null
+  quantity: number
+  unit_points: number
+  total_points: number
+  metadata?: Record<string, unknown> | null
+}
+
+export type StoreOrderStatus = 'pending' | 'approved' | 'fulfilled' | 'cancelled' | 'rejected'
+
+export interface StoreOrderStudent {
+  id: number
+  name: string
+  grade?: string | null
+  class_name?: string | null
+  national_id?: string | null
+}
+
+export interface StoreOrderRecord {
+  id: number
+  student_id: number
+  reference_number: string
+  status: StoreOrderStatus
+  total_points: number
+  points_charged: number
+  items_count: number
+  submitted_via?: string | null
+  student_notes?: string | null
+  admin_notes?: string | null
+  point_transaction_id?: number | null
+  refund_transaction_id?: number | null
+  approved_at?: string | null
+  fulfilled_at?: string | null
+  cancelled_at?: string | null
+  metadata?: Record<string, unknown> | null
+  created_at?: string
+  updated_at?: string
+  student: StoreOrderStudent
+  items: StoreOrderItemRecord[]
+}
+
+export interface StoreOrderPayload {
+  student_id: number
+  items: Array<{
+    item_id: number
+    quantity: number
+  }>
+  student_notes?: string | null
+  admin_notes?: string | null
+  submitted_via?: string | null
+  metadata?: Record<string, unknown> | null
+}
+
+export interface StoreOrderFilters {
+  status?: StoreOrderStatus | 'all'
+  student_id?: number
+  date_from?: string
+  date_to?: string
+  search?: string
+  page?: number
+  per_page?: number
+}
+
 export interface WhatsappTemplateVariable {
   key: string
   label: string
