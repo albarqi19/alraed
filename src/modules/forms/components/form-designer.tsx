@@ -27,6 +27,7 @@ interface GeneralState {
   max_responses: string
   allow_multiple_submissions: boolean
   allow_edit_after_submit: boolean
+  requires_approval: boolean
   start_at: string
   end_at: string
 }
@@ -110,6 +111,32 @@ function toISOStringFromLocal(value: string): string | null {
   return date.toISOString()
 }
 
+function readRequiresApproval(form?: FormSummary | null): boolean {
+  if (!form) return false
+
+  const direct = (form as { requires_approval?: unknown }).requires_approval
+  if (typeof direct === 'boolean') {
+    return direct
+  }
+
+  const settings = ((form.settings ?? {}) as Record<string, unknown>) || {}
+  const candidates: Array<keyof typeof settings> = [
+    'requires_approval',
+    'requiresApproval',
+    'require_approval',
+    'requireApproval',
+  ]
+
+  for (const key of candidates) {
+    const value = settings[key]
+    if (typeof value === 'boolean') {
+      return value
+    }
+  }
+
+  return false
+}
+
 function parseOptions(text: string): FormFieldOption[] {
   return text
     .split('\n')
@@ -157,6 +184,7 @@ function getDefaultGeneralState(mode: 'create' | 'edit', initialForm?: FormSumma
       max_responses: initialForm.max_responses ? String(initialForm.max_responses) : '',
       allow_multiple_submissions: Boolean(initialForm.allow_multiple_submissions),
       allow_edit_after_submit: Boolean(initialForm.allow_edit_after_submit),
+      requires_approval: readRequiresApproval(initialForm),
       start_at: toDateTimeLocal(initialForm.start_at),
       end_at: toDateTimeLocal(initialForm.end_at),
     }
@@ -171,6 +199,7 @@ function getDefaultGeneralState(mode: 'create' | 'edit', initialForm?: FormSumma
     max_responses: '',
     allow_multiple_submissions: false,
     allow_edit_after_submit: false,
+    requires_approval: false,
     start_at: '',
     end_at: '',
   }
@@ -364,6 +393,12 @@ export function FormDesigner({ mode, initialForm, submitting = false, onSubmit, 
       return
     }
 
+    const previousSettings = (initialForm?.settings as Record<string, unknown> | null) ?? null
+    const mergedSettings = {
+      ...(previousSettings ?? {}),
+      requires_approval: general.requires_approval,
+    }
+
     const payload: FormUpsertPayload = {
       title: general.title.trim(),
       description: general.description.trim() || null,
@@ -373,12 +408,14 @@ export function FormDesigner({ mode, initialForm, submitting = false, onSubmit, 
       max_responses: general.max_responses ? Number(general.max_responses) : null,
       allow_multiple_submissions: general.allow_multiple_submissions,
       allow_edit_after_submit: general.allow_edit_after_submit,
+      requires_approval: general.requires_approval,
       start_at: toISOStringFromLocal(general.start_at),
       end_at: toISOStringFromLocal(general.end_at),
-      settings: null,
+      settings: mergedSettings,
       sections: [],
       fields: fields.map((field, index) => {
-        const { localId, autoKey, optionsText, ...rest } = field
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { localId: _localId, autoKey: _autoKey, optionsText: _optionsText, ...rest } = field
         return {
           ...rest,
           field_key: rest.field_key.trim(),
@@ -397,7 +434,6 @@ export function FormDesigner({ mode, initialForm, submitting = false, onSubmit, 
     try {
       await onSubmit(payload)
     } catch (error) {
-      // eslint-disable-next-line no-console
       console.error('Failed to submit form payload', error)
     }
   }
@@ -792,6 +828,16 @@ export function FormDesigner({ mode, initialForm, submitting = false, onSubmit, 
               disabled={submitting}
             />
             السماح بتعديل الرد بعد الإرسال
+          </label>
+          <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={general.requires_approval}
+              onChange={(event) => handleGeneralChange('requires_approval', event.target.checked)}
+              className="h-4 w-4 rounded border border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              disabled={submitting}
+            />
+            يتطلب اعتماد الإدارة قبل قبول الرد
           </label>
         </div>
       </section>

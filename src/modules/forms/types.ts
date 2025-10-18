@@ -118,6 +118,7 @@ export interface FormUpsertPayload {
   max_responses?: number | null
   allow_multiple_submissions?: boolean
   allow_edit_after_submit?: boolean
+  requires_approval?: boolean
   sections?: FormSectionInput[]
   fields?: FormFieldInput[]
   assignments?: FormAssignmentInput[]
@@ -137,6 +138,7 @@ export interface FormSummary {
   max_responses?: number | null
   allow_multiple_submissions: boolean
   allow_edit_after_submit: boolean
+  requires_approval: boolean
   created_at: string
   updated_at: string
   submissions_count?: number
@@ -159,6 +161,7 @@ export interface FormListResponse {
 export interface FormSubmissionAnswer {
   id: number
   field_id: number
+  field?: FormField
   value_text?: string | null
   value_json?: unknown
   value_number?: number | null
@@ -178,6 +181,16 @@ export interface FormSubmissionFile {
   size?: number | null
 }
 
+export interface FormSubmissionStudentSummary {
+  id: number
+  name: string
+  grade?: string | null
+  class_name?: string | null
+  national_id?: string | null
+  parent_name?: string | null
+  parent_phone?: string | null
+}
+
 export type FormSubmissionStatus = 'draft' | 'submitted' | 'reviewed' | 'approved' | 'rejected'
 
 export interface FormSubmission {
@@ -185,6 +198,7 @@ export interface FormSubmission {
   form_id: number
   student_id: number | null
   student_national_id?: string | null
+  student?: FormSubmissionStudentSummary | null
   guardian_name?: string | null
   guardian_phone?: string | null
   status: FormSubmissionStatus

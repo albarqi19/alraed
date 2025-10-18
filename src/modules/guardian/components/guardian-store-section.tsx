@@ -212,6 +212,7 @@ export function GuardianStoreSection({
     setSelectedItems((previous) => {
       const currentQuantity = previous[itemId] ?? 0
       if (currentQuantity <= 1) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { [itemId]: _removed, ...rest } = previous
         return rest
       }

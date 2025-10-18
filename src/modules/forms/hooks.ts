@@ -5,9 +5,11 @@ import {
   archiveAdminForm,
   createAdminForm,
   deleteAdminForm,
+  deleteAdminFormSubmission,
   fetchAdminForm,
   fetchAdminForms,
   fetchAdminFormSubmissions,
+  fetchAdminFormSubmission,
   fetchGuardianForms,
   publishAdminForm,
   reviewAdminFormSubmission,
@@ -154,6 +156,14 @@ export function useAdminFormSubmissions(formId: number, options: UseAdminSubmiss
   })
 }
 
+export function useAdminFormSubmission(formId: number, submissionId: number | null) {
+  return useQuery<FormSubmission>({
+    queryKey: formQueryKeys.adminSubmission(formId, submissionId),
+    queryFn: () => fetchAdminFormSubmission(formId, submissionId as number),
+    enabled: Number.isFinite(formId) && typeof submissionId === 'number',
+  })
+}
+
 export function useReviewAdminSubmissionMutation(formId: number) {
   const toast = useToast()
   const queryClient = useQueryClient()
@@ -171,6 +181,23 @@ export function useReviewAdminSubmissionMutation(formId: number) {
     },
     onError: (error: unknown) => {
       toast({ type: 'error', title: 'تعذر تحديث حالة الرد', description: error instanceof Error ? error.message : undefined })
+    },
+  })
+}
+
+export function useDeleteAdminSubmissionMutation(formId: number) {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (submissionId: number) => deleteAdminFormSubmission(formId, submissionId),
+    onSuccess: () => {
+      toast({ type: 'success', title: 'تم حذف الرد بنجاح' })
+      queryClient.invalidateQueries({ queryKey: formQueryKeys.adminSubmissions(formId) })
+      queryClient.invalidateQueries({ queryKey: formQueryKeys.adminDetail(formId) })
+    },
+    onError: (error: unknown) => {
+      toast({ type: 'error', title: 'تعذر حذف الرد', description: error instanceof Error ? error.message : undefined })
     },
   })
 }

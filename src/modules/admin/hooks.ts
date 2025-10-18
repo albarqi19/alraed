@@ -222,10 +222,11 @@ export function useResetTeacherPasswordMutation() {
   })
 }
 
-export function useStudentsQuery() {
+export function useStudentsQuery(options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: adminQueryKeys.students.all(),
     queryFn: fetchStudents,
+    enabled: options.enabled ?? true,
   })
 }
 

@@ -56,8 +56,23 @@ export function AdminFormDetailPage() {
 
   const handleDelete = async () => {
     if (!Number.isFinite(rawFormId)) return
-    const confirmed = window.confirm('هل أنت متأكد من حذف النموذج؟ لا يمكن التراجع عن هذا الإجراء.')
+    
+    const submissionsCount = formQuery.data?.submissions_count ?? 0
+    
+    let confirmed = false
+    if (submissionsCount > 0) {
+      confirmed = window.confirm(
+        `⚠️ تحذير هام!\n\n` +
+        `هذا النموذج يحتوي على ${submissionsCount} رد مسجل.\n\n` +
+        `سيتم حذف النموذج وجميع الردود المرتبطة به بشكل نهائي.\n\n` +
+        `هل أنت متأكد تماماً من المتابعة؟`
+      )
+    } else {
+      confirmed = window.confirm('هل أنت متأكد من حذف النموذج؟ لا يمكن التراجع عن هذا الإجراء.')
+    }
+    
     if (!confirmed) return
+    
     try {
       await deleteMutation.mutateAsync(safeFormId)
       navigate('/admin/forms')

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   useSendWhatsappBulkMessagesMutation,
   useWhatsappAbsentStudentsQuery,
@@ -204,6 +205,7 @@ function EmptyState({ icon, title, description }: { icon: string; title: string;
 
 export function WhatsAppSendPage() {
   const toast = useToast()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const [searchTerm, setSearchTerm] = useState('')
   const [absenceFilter, setAbsenceFilter] = useState<AbsenceFilterOption['value']>('all')
@@ -223,6 +225,35 @@ export function WhatsAppSendPage() {
   const absenceDays = typeof absenceFilter === 'number' ? absenceFilter : null
   const absentQuery = useWhatsappAbsentStudentsQuery(absenceDays ?? 0, { enabled: absenceDays !== null })
   const sendBulkMutation = useSendWhatsappBulkMessagesMutation()
+
+  useEffect(() => {
+    const idsParam = searchParams.get('studentIds')
+    if (!idsParam) {
+      return
+    }
+
+    const parsedIds = idsParam
+      .split(',')
+      .map((value) => Number(value.trim()))
+      .filter((id) => Number.isFinite(id) && id > 0)
+
+    if (!parsedIds.length) {
+      const nextParams = new URLSearchParams(searchParams)
+      nextParams.delete('studentIds')
+      setSearchParams(nextParams, { replace: true })
+      return
+    }
+
+    setSelectedStudentIds((current) => {
+      const next = new Set(current)
+      parsedIds.forEach((id) => next.add(id))
+      return next
+    })
+
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.delete('studentIds')
+    setSearchParams(nextParams, { replace: true })
+  }, [searchParams, setSearchParams])
 
   const templates = useMemo(() => templatesQuery.data ?? [], [templatesQuery.data])
 

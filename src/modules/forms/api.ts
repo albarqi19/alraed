@@ -99,6 +99,11 @@ export async function fetchAdminFormSubmissions(
   return unwrapPaginated<FormSubmission[]>(data, 'تعذر تحميل الردود')
 }
 
+export async function fetchAdminFormSubmission(formId: number, submissionId: number): Promise<FormSubmission> {
+  const { data } = await apiClient.get<ApiResponse<FormSubmission>>(`/admin/forms/${formId}/submissions/${submissionId}`)
+  return unwrap<FormSubmission>(data, 'تعذر تحميل بيانات الرد')
+}
+
 export async function reviewAdminFormSubmission(
   formId: number,
   submissionId: number,
@@ -109,6 +114,13 @@ export async function reviewAdminFormSubmission(
     payload,
   )
   return unwrap<FormSubmission>(data, 'تعذر تحديث حالة الرد')
+}
+
+export async function deleteAdminFormSubmission(formId: number, submissionId: number): Promise<void> {
+  const { data } = await apiClient.delete<ApiResponse<unknown>>(`/admin/forms/${formId}/submissions/${submissionId}`)
+  if (!data.success) {
+    throw new Error(data.message ?? 'تعذر حذف الرد')
+  }
 }
 
 export async function fetchGuardianForms(nationalId: string): Promise<PublicFormsResponse['data']> {
@@ -198,6 +210,7 @@ export function buildEmptyFormPayload(): FormUpsertPayload {
     target_audience: 'all_students' as FormAssignmentScope,
     allow_multiple_submissions: false,
     allow_edit_after_submit: false,
+    requires_approval: false,
     sections: [],
     fields: [],
     assignments: [],
