@@ -11,6 +11,10 @@ import { AdminTeachersPage } from '@/modules/admin/pages/admin-teachers-page'
 import { AdminStudentsPage } from '@/modules/admin/pages/admin-students-page'
 import { AdminStudentProfilePage } from '@/modules/admin/pages/admin-student-profile-page'
 import { AdminSubjectsPage } from '@/modules/admin/pages/admin-subjects-page'
+import { AdminFormsPage } from '@/modules/admin/pages/admin-forms-page'
+import { AdminFormCreatePage } from '@/modules/admin/pages/admin-form-create-page'
+import { AdminFormDetailPage } from '@/modules/admin/pages/admin-form-detail-page'
+import { AdminFormSubmissionsPage } from '@/modules/admin/pages/admin-form-submissions-page'
 import { AdminClassSessionsPage } from '@/modules/admin/pages/admin-class-sessions-page'
 import { AdminClassSchedulesPage } from '@/modules/admin/pages/admin-class-schedules-page'
 import { AdminSchoolTimetablePage } from '@/modules/admin/pages/admin-school-timetable-page'
@@ -128,6 +132,10 @@ const appRoutes = [
           { path: 'teachers', element: <AdminTeachersPage /> },
           { path: 'students', element: <AdminStudentsPage /> },
           { path: 'students/profile', element: <AdminStudentProfilePage /> },
+          { path: 'forms', element: <AdminFormsPage /> },
+          { path: 'forms/new', element: <AdminFormCreatePage /> },
+          { path: 'forms/:formId', element: <AdminFormDetailPage /> },
+          { path: 'forms/:formId/submissions', element: <AdminFormSubmissionsPage /> },
           { path: 'subjects', element: <AdminSubjectsPage /> },
           { path: 'class-sessions', element: <AdminClassSessionsPage /> },
           { path: 'class-schedules', element: <AdminClassSchedulesPage /> },

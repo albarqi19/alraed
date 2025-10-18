@@ -12,10 +12,15 @@ import {
 } from '../hooks'
 import type { GuardianLeaveRequestRecord, GuardianStudentSummary } from '../types'
 import { GuardianStoreSection } from '../components/guardian-store-section'
+import { GuardianPortalHeader } from '../components/guardian-portal-header'
+import { StudentInfoCard } from '../components/student-info-card'
+import { GuardianFormRenderer } from '../components/forms/guardian-form-renderer'
+import { useGuardianForms } from '@/modules/forms/hooks'
+import type { PublicFormDetails } from '@/modules/forms/types'
 import { AutoCallProvider, useAutoCall } from '@/modules/auto-call'
 import type { AutoCallHistoryEntry, AutoCallQueueEntry } from '@/modules/auto-call'
 import { useToast } from '@/shared/feedback/use-toast'
-import { CheckCircle2, FileText, Gift, Loader2, MapPin, Megaphone, ShoppingCart } from 'lucide-react'
+import { CheckCircle2, ClipboardList, Loader2, MapPin, Megaphone, ShoppingCart } from 'lucide-react'
 
 const STATUS_LABELS = {
   pending: 'بانتظار المراجعة',
@@ -45,7 +50,7 @@ type FormValues = {
 
 type FormErrors = Partial<Record<keyof FormValues, string>> & { national_id?: string }
 
-type PortalSection = 'none' | 'leave-request' | 'auto-call' | 'store'
+type PortalSection = 'none' | 'leave-request' | 'auto-call' | 'forms' | 'store'
 
 function resolveErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message) return error.message
@@ -63,6 +68,19 @@ function formatDateTime(value?: string | null) {
     return new Intl.DateTimeFormat('ar-SA', { dateStyle: 'medium', timeStyle: 'short' }).format(date)
   } catch {
     return date.toLocaleString('ar-SA')
+  }
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+  try {
+    return new Intl.DateTimeFormat('ar-SA', { dateStyle: 'medium' }).format(date)
+  } catch {
+    return date.toLocaleDateString('ar-SA')
   }
 }
 
@@ -298,10 +316,27 @@ function GuardianLeaveRequestPageBase({
   const [isCheckingLocation, setIsCheckingLocation] = useState(false)
   const leaveSectionRef = useRef<HTMLDivElement | null>(null)
   const autoCallSectionRef = useRef<HTMLElement | null>(null)
+  const formsSectionRef = useRef<HTMLDivElement | null>(null)
   const storeSectionRef = useRef<HTMLDivElement | null>(null)
   const [highlightSection, setHighlightSection] = useState<PortalSection>('none')
+  const [selectedFormId, setSelectedFormId] = useState<number | null>(null)
 
   const toast = useToast()
+  const formsQuery = useGuardianForms(currentNationalId ?? '')
+  const forms = formsQuery.data ?? []
+  const pendingFormsCount = currentNationalId ? forms.length : 0
+  const formsErrorMessage = formsQuery.isError ? resolveErrorMessage(formsQuery.error, 'تعذر تحميل النماذج المخصصة للطالب.') : null
+  const formsLoading = Boolean(currentNationalId) && (formsQuery.isFetching || formsQuery.isLoading)
+  const selectedForm: PublicFormDetails | null = useMemo(() => {
+    if (!forms.length) {
+      return null
+    }
+    if (selectedFormId == null) {
+      return null
+    }
+    return forms.find((form) => form.id === selectedFormId) ?? null
+  }, [forms, selectedFormId])
+  const refetchForms = formsQuery.refetch
   const guardianSettings = settingsQuery.data
   const autoCallSettings = autoCall?.settings ?? null
   const autoCallQueue = autoCall?.queue ?? []
@@ -484,6 +519,30 @@ function GuardianLeaveRequestPageBase({
     }))
   }, [studentSummary])
 
+  useEffect(() => {
+    if (!forms.length) {
+      setSelectedFormId(null)
+      return
+    }
+
+    setSelectedFormId((previous) => {
+      if (previous && forms.some((form) => form.id === previous)) {
+        return previous
+      }
+      return null
+    })
+  }, [forms])
+
+  useEffect(() => {
+    setSelectedFormId(null)
+  }, [currentNationalId])
+
+  useEffect(() => {
+    if (activePortalSection === 'forms' && currentNationalId && currentNationalId.length === 10) {
+      refetchForms().catch(() => undefined)
+    }
+  }, [activePortalSection, currentNationalId, refetchForms])
+
   const hasStudent = Boolean(studentSummary && currentNationalId)
 
   const activeSectionHint = useMemo(() => {
@@ -492,6 +551,8 @@ function GuardianLeaveRequestPageBase({
         return 'تم فتح نموذج الاستئذان في الأسفل.'
       case 'auto-call':
         return 'تم تهيئة واجهة النداء الآلي أدناه.'
+      case 'forms':
+        return 'تم تحميل النماذج الإلكترونية المخصصة لطالبك.'
       case 'store':
         return 'تم فتح المتجر الإلكتروني واستعراض المنتجات في الأسفل.'
       default:
@@ -517,6 +578,9 @@ function GuardianLeaveRequestPageBase({
         break
       case 'auto-call':
         target = autoCallSectionRef.current
+        break
+      case 'forms':
+        target = formsSectionRef.current
         break
       case 'store':
         target = storeSectionRef.current
@@ -552,7 +616,7 @@ function GuardianLeaveRequestPageBase({
     : null
 
   const studentCard = useMemo(() => {
-    if (!studentSummary) {
+    if (!studentSummary || !currentNationalId) {
       return null
     }
 
@@ -561,62 +625,17 @@ function GuardianLeaveRequestPageBase({
     const storeStatusMessage = storeOverview?.store.status_message
 
     return (
-      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-right">
-            <p className="text-xs font-semibold text-slate-500">الطالب</p>
-            <h2 className="text-lg font-bold text-slate-900">{studentSummary.name}</h2>
-            <p className="text-xs text-muted">
-              الصف {studentSummary.grade} • الفصل {studentSummary.class_name}
-            </p>
-          </div>
-          <div className="rounded-2xl bg-indigo-50 px-4 py-2 text-xs font-semibold text-indigo-600">
-            رقم هوية الطالب: {currentNationalId}
-          </div>
-        </header>
-        <section className="mt-4 grid gap-3 text-xs text-slate-600 md:grid-cols-2">
-          <div className="rounded-2xl bg-slate-50/80 p-4">
-            <p className="font-semibold text-slate-500">اسم ولي الأمر</p>
-            <p className="mt-1 text-sm text-slate-800">{studentSummary.parent_name}</p>
-          </div>
-          <div className="rounded-2xl bg-slate-50/80 p-4">
-            <p className="font-semibold text-slate-500">هاتف ولي الأمر</p>
-            <p className="mt-1 text-sm text-slate-800">{studentSummary.parent_phone}</p>
-          </div>
-        </section>
-        {pointsTotal != null ? (
-          <section className="mt-4 grid gap-3 text-xs text-slate-600 md:grid-cols-2">
-            <div className="flex items-center justify-between rounded-2xl border border-indigo-100 bg-indigo-50/70 px-4 py-3">
-              <div>
-                <p className="text-xs font-semibold text-indigo-600">رصيد النقاط الحالي</p>
-                <p className="mt-1 text-lg font-bold text-indigo-700">{pointsTotal}</p>
-              </div>
-              <Gift className="h-5 w-5 text-indigo-500" />
-            </div>
-            {storeStatus ? (
-              <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3">
-                <p className="text-xs font-semibold text-slate-500">حالة المتجر</p>
-                <p className="mt-1 text-sm text-slate-800">
-                  {storeStatus === 'open'
-                    ? 'المتجر متاح للاستبدال'
-                    : storeStatus === 'closed'
-                      ? 'المتجر مغلق مؤقتاً'
-                      : storeStatus === 'maintenance'
-                        ? 'المتجر تحت الصيانة'
-                        : storeStatus === 'inventory'
-                          ? 'جرد المخزون جارٍ'
-                          : storeStatus === 'paused'
-                            ? 'المتجر متوقف مؤقتاً'
-                            : 'لا توجد منتجات متاحة'}
-                </p>
-                {storeStatusMessage ? (
-                  <p className="mt-1 text-[11px] text-slate-500">{storeStatusMessage}</p>
-                ) : null}
-              </div>
-            ) : null}
-          </section>
-        ) : null}
-      </div>
+      <StudentInfoCard
+        studentName={studentSummary.name}
+        studentGrade={studentSummary.grade}
+        studentClass={studentSummary.class_name}
+        nationalId={currentNationalId}
+        points={pointsTotal}
+        storeStatus={storeStatus}
+        storeStatusMessage={storeStatusMessage}
+        guardianName={studentSummary.parent_name}
+        guardianPhone={studentSummary.parent_phone}
+      />
     )
   }, [studentSummary, currentNationalId, storeOverview])
 
@@ -677,12 +696,35 @@ function GuardianLeaveRequestPageBase({
     })
   }
 
+  function handleLogout() {
+    setStudentSummary(null)
+    setCurrentNationalId(null)
+    setNationalIdInput('')
+    setFormErrors({})
+    onPortalSectionChange('none')
+    setFormValues({
+      guardian_name: '',
+      guardian_phone: '',
+      reason: '',
+      pickup_person_name: '',
+      pickup_person_relation: '',
+      pickup_person_phone: '',
+      expected_pickup_time: '',
+    })
+  }
+
   function handleFormChange<Field extends keyof FormValues>(field: Field, value: FormValues[Field]) {
     setFormValues((previous) => ({
       ...previous,
       [field]: value,
     }))
   }
+
+  const handleFormSubmitted = useCallback(() => {
+    refetchForms().catch(() => {
+      toast({ type: 'error', title: 'تعذر تحديث قائمة النماذج بعد الإرسال' })
+    })
+  }, [refetchForms, toast])
 
   const handleAutoCallRequest = useCallback(async () => {
     if (!autoCall || !autoCallSettings || !enqueueAutoCall) {
@@ -860,48 +902,57 @@ function GuardianLeaveRequestPageBase({
   }
 
   return (
-    <section className="guardian-portal-page space-y-6 sm:space-y-8">
-      <header className="space-y-2 text-center sm:space-y-3">
-        <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">بوابة ولي الأمر</h1>
-        <p className="mx-auto max-w-2xl text-sm leading-6 text-muted sm:text-base">
-          أدخل رقم هوية الطالب للتحقق من البيانات، ثم اختر الخدمة المناسبة بين طلب الاستئذان، النداء الآلي، أو استبدال نقاط الطالب عبر المتجر الإلكتروني.
-        </p>
-      </header>
+    <section className="guardian-portal-page">
+      <GuardianPortalHeader
+        isLoggedIn={hasStudent}
+        onLogout={handleLogout}
+      />
 
-      <div className="glass-card space-y-5 sm:space-y-6">
-        <form className="space-y-3" onSubmit={handleLookupSubmit}>
-          <label className="block text-right text-xs font-semibold text-slate-600">رقم هوية الطالب</label>
-          <div className="flex flex-col gap-3 md:flex-row">
-            <input
-              type="text"
-              inputMode="numeric"
-              maxLength={10}
-              className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${formErrors.national_id ? 'border-rose-300' : 'border-slate-200'}`}
-              placeholder="أدخل رقم هوية الطالب"
-              value={nationalIdInput}
-              onChange={(event) => setNationalIdInput(event.target.value)}
-              disabled={lookupMutation.isPending}
-            />
-            <button
-              type="submit"
-              className="rounded-2xl bg-indigo-600 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-300"
-              disabled={lookupMutation.isPending}
-            >
-              {lookupMutation.isPending ? 'جاري التحميل...' : 'تحقق من البيانات'}
-            </button>
+      <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+        {!currentNationalId ? (
+          <div className="glass-card mx-auto max-w-md space-y-5 sm:space-y-6">
+            <div className="text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100">
+                <i className="bi bi-person-badge text-3xl text-indigo-600" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-900">مرحباً بك في بوابة ولي الأمر</h2>
+              <p className="mt-2 text-sm text-slate-600">
+                أدخل رقم هوية الطالب للوصول إلى جميع الخدمات
+              </p>
+            </div>
+
+            <form className="space-y-3" onSubmit={handleLookupSubmit}>
+              <label className="block text-right text-xs font-semibold text-slate-600">رقم هوية الطالب</label>
+              <div className="flex flex-col gap-3 md:flex-row">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={10}
+                  className={`w-full rounded-2xl border px-4 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${formErrors.national_id ? 'border-rose-300' : 'border-slate-200'}`}
+                  placeholder="أدخل رقم هوية الطالب (10 أرقام)"
+                  value={nationalIdInput}
+                  onChange={(event) => setNationalIdInput(event.target.value)}
+                  disabled={lookupMutation.isPending}
+                />
+                <button
+                  type="submit"
+                  className="rounded-2xl bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-300"
+                  disabled={lookupMutation.isPending}
+                >
+                  {lookupMutation.isPending ? 'جاري التحقق...' : 'دخول'}
+                </button>
+              </div>
+              {formErrors.national_id ? <p className="text-xs text-rose-600">{formErrors.national_id}</p> : null}
+            </form>
           </div>
-          {formErrors.national_id ? <p className="text-xs text-rose-600">{formErrors.national_id}</p> : null}
-        </form>
+        ) : (
+          <>
+            {studentCard}
 
-        {studentCard}
-      </div>
-
-      {hasStudent ? (
-        <div className="space-y-6">
-          <div className="glass-card space-y-4 sm:space-y-5">
+            <div className="glass-card space-y-4 sm:space-y-5">
             <header className="space-y-1 text-right">
               <h2 className="text-xl font-semibold text-slate-900">اختر الخدمة المطلوبة</h2>
-              <p className="text-xs text-muted">يمكنك إرسال طلب استئذان أو تفعيل المناداة الآلية أو استبدال نقاط الطالب من المتجر الإلكتروني.</p>
+              <p className="text-xs text-muted">يمكنك إرسال طلب استئذان، تعبئة النماذج الإلكترونية، تفعيل المناداة الآلية، أو استبدال نقاط الطالب من المتجر الرقمي.</p>
             </header>
 
             <div className="grid gap-3 sm:gap-4 md:grid-cols-3">
@@ -919,7 +970,7 @@ function GuardianLeaveRequestPageBase({
                     <p className="text-sm font-semibold">طلب الاستئذان</p>
                     <p className="text-xs text-muted">تعبئة نموذج الاستئذان ومتابعة حالة الطلبات السابقة.</p>
                   </div>
-                  <FileText className="h-5 w-5" />
+                  <CheckCircle2 className="h-5 w-5" />
                 </div>
               </button>
 
@@ -938,6 +989,31 @@ function GuardianLeaveRequestPageBase({
                     <p className="text-xs text-muted">طلب مناداة فورية لعرض اسم الطالب في لوحة الاستقبال.</p>
                   </div>
                   <Megaphone className="h-5 w-5" />
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onPortalSectionChange('forms')}
+                className={`rounded-2xl border px-4 py-3 text-right transition ${
+                  activePortalSection === 'forms'
+                    ? 'border-indigo-500 bg-indigo-50/60 text-indigo-600 shadow-sm'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-indigo-50/40'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold">النماذج الإلكترونية</p>
+                    <p className="text-xs text-muted">اطّلع على النماذج المطلوبة وأرسلها إلكترونياً.</p>
+                  </div>
+                  <span className="relative inline-flex">
+                    <ClipboardList className="h-5 w-5" />
+                    {pendingFormsCount > 0 ? (
+                      <span className="absolute -top-2 -left-2 inline-flex h-5 min-w-[1.4rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[11px] font-bold text-white shadow-sm">
+                        {pendingFormsCount > 99 ? '99+' : pendingFormsCount}
+                      </span>
+                    ) : null}
+                  </span>
                 </div>
               </button>
             </div>
@@ -1100,6 +1176,135 @@ function GuardianLeaveRequestPageBase({
                   <RequestsList requests={requests} />
                 )}
               </aside>
+              </div>
+            </div>
+          ) : null}
+
+          {activePortalSection === 'forms' ? (
+            <div
+              ref={formsSectionRef}
+              className={`scroll-mt-32 transition-shadow duration-500 ${
+                highlightSection === 'forms' ? 'rounded-[28px] ring-2 ring-indigo-200 ring-offset-2 ring-offset-white shadow-lg' : ''
+              }`}
+            >
+              <div className="glass-card space-y-5 sm:space-y-6">
+                <header className="space-y-1 text-right">
+                  <h2 className="text-xl font-semibold text-slate-900">النماذج الإلكترونية الموجّهة لطالبك</h2>
+                  <p className="text-xs text-muted">
+                    راجع النماذج المرتبطة بالطالب وعبئها إلكترونياً. تُحفظ الردود مباشرة لدى المدرسة.
+                  </p>
+                </header>
+
+                <div className="rounded-3xl border border-indigo-100 bg-indigo-50/70 p-4 text-sm text-indigo-700">
+                  <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="text-right">
+                      <p className="text-xs font-semibold text-indigo-600">اسم الطالب</p>
+                      <p className="text-sm font-semibold text-indigo-900">{studentSummary?.name}</p>
+                    </div>
+                    <div className="rounded-2xl bg-white/70 px-4 py-2 text-xs font-semibold text-indigo-600 shadow-sm">
+                      رقم الهوية: {currentNationalId}
+                    </div>
+                  </div>
+                </div>
+
+                {formsErrorMessage ? (
+                  <div className="rounded-3xl border border-rose-200 bg-rose-50/80 p-4 text-center text-sm text-rose-700">
+                    {formsErrorMessage}
+                  </div>
+                ) : null}
+
+                {formsLoading ? (
+                  <div className="space-y-3">
+                    {[...Array(3)].map((_, index) => (
+                      <div key={index} className="h-16 animate-pulse rounded-3xl bg-slate-100" />
+                    ))}
+                  </div>
+                ) : null}
+
+                {!formsLoading && forms.length === 0 ? (
+                  <div className="rounded-3xl border border-slate-200 bg-white p-5 text-center text-sm text-muted">
+                    لا توجد نماذج مطلوبة حالياً لهذا الطالب. سيتم إشعارك هنا عند وصول نموذج جديد.
+                  </div>
+                ) : null}
+
+                {forms.length ? (
+                  <>
+                    <section className="rounded-3xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-800">
+                      لديك <span className="font-bold">{forms.length}</span> {forms.length > 1 ? 'نماذج' : 'نموذج'} بانتظار الرد.
+                    </section>
+
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,280px)_1fr]">
+                      <aside className="space-y-3">
+                        {forms.map((form) => {
+                          const isActive = selectedForm?.id === form.id
+                          return (
+                            <button
+                              type="button"
+                              key={form.id}
+                              onClick={() => setSelectedFormId(form.id)}
+                              className={`relative w-full rounded-3xl border px-4 py-4 text-right transition ${
+                                isActive
+                                  ? 'border-indigo-400 bg-white shadow-md'
+                                  : 'border-slate-200 bg-white/60 hover:border-indigo-200 hover:bg-white'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="space-y-1">
+                                  <p className="text-sm font-semibold text-slate-900">{form.title}</p>
+                                  {form.description ? (
+                                    <p className="text-xs text-muted line-clamp-2">{form.description}</p>
+                                  ) : null}
+                                  <p className="text-[11px] text-slate-400">متاح حتى {formatDate(form.end_at)}</p>
+                                </div>
+                                <span className={`text-base ${isActive ? 'text-emerald-500' : 'text-slate-300'}`}>
+                                  <i className={isActive ? 'bi-check-circle-fill' : 'bi-circle'} />
+                                </span>
+                              </div>
+                            </button>
+                          )
+                        })}
+                      </aside>
+
+                      <main className="space-y-4">
+                        {selectedForm ? (
+                          <>
+                            <header className="rounded-3٣ border border-slate-200 bg-white p-5 shadow-sm">
+                              <h3 className="text-2xl font-bold text-slate-900">{selectedForm.title}</h3>
+                              {selectedForm.description ? (
+                                <p className="mt-2 text-sm text-muted">{selectedForm.description}</p>
+                              ) : null}
+                              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                                <span className="rounded-full border border-slate-200 px-3 py-1">
+                                  يبدأ: {formatDate(selectedForm.start_at)}
+                                </span>
+                                <span className="rounded-full border border-slate-200 px-3 py-1">
+                                  ينتهي: {formatDate(selectedForm.end_at)}
+                                </span>
+                                {selectedForm.allow_multiple_submissions ? (
+                                  <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 font-semibold text-emerald-700">
+                                    يسمح بأكثر من رد واحد
+                                  </span>
+                                ) : null}
+                              </div>
+                            </header>
+
+                            {currentNationalId ? (
+                              <GuardianFormRenderer
+                                form={selectedForm}
+                                nationalId={currentNationalId}
+                                onSubmitted={handleFormSubmitted}
+                              />
+                            ) : null}
+                          </>
+                        ) : (
+                          <div className="rounded-3٣ border border-dashed border-slate-200 bg-slate-50/60 p-6 text-center text-sm text-muted">
+                            اختر نموذجاً من القائمة لبدء تعبئته.
+                          </div>
+                        )}
+                      </main>
+                    </div>
+                  </>
+                ) : null}
               </div>
             </div>
           ) : null}
@@ -1294,12 +1499,9 @@ function GuardianLeaveRequestPageBase({
               />
             </div>
           ) : null}
-        </div>
-      ) : (
-        <div className="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-6 text-center text-sm text-muted">
-          يرجى إدخال رقم الهوية للتحقق من بيانات الطالب قبل إرسال الطلب.
-        </div>
-      )}
+          </>
+        )}
+      </div>
     </section>
   )
 }
