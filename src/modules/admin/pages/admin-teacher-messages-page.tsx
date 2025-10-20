@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/services/api/client'
+import { fetchTeacherMessagesByPeriod } from '../api'
+import { TeacherMessagesModal } from '../components/teacher-messages-modal'
 import clsx from 'classnames'
 
 interface MessageTemplate {
@@ -26,6 +28,11 @@ export function AdminTeacherMessagesPage() {
   const queryClient = useQueryClient()
   const [editingTemplate, setEditingTemplate] = useState<MessageTemplate | null>(null)
   const [editingSettings, setEditingSettings] = useState(false)
+  const [modalState, setModalState] = useState<{
+    isOpen: boolean
+    period: 'today' | 'week' | 'month' | 'active'
+    title: string
+  } | null>(null)
 
   // Fetch templates
   const { data: templatesData, isLoading: templatesLoading } = useQuery({
@@ -53,6 +60,21 @@ export function AdminTeacherMessagesPage() {
       return response.data
     },
   })
+
+  // Fetch detailed messages when modal is opened
+  const { data: modalData, isLoading: modalLoading } = useQuery({
+    queryKey: ['admin', 'teacher-messages-by-period', modalState?.period],
+    queryFn: () => fetchTeacherMessagesByPeriod(modalState!.period),
+    enabled: modalState !== null,
+  })
+
+  const handleCardClick = (period: 'today' | 'week' | 'month' | 'active', title: string) => {
+    setModalState({ isOpen: true, period, title })
+  }
+
+  const handleCloseModal = () => {
+    setModalState(null)
+  }
 
   // Update template mutation
   const updateTemplateMutation = useMutation({
@@ -162,25 +184,57 @@ export function AdminTeacherMessagesPage() {
 
       {/* Statistics Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="glass-card bg-gradient-to-br from-blue-50 to-blue-100 text-center">
-          <div className="text-4xl font-bold text-blue-600">{statistics.total_sent_today}</div>
-          <p className="mt-2 text-sm font-semibold text-blue-900">رسائل اليوم</p>
-        </div>
+        <button
+          type="button"
+          onClick={() => handleCardClick('today', 'رسائل اليوم')}
+          className="group relative overflow-hidden rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 p-6 text-center transition-all duration-300 hover:scale-105 hover:border-blue-400 hover:shadow-2xl cursor-pointer"
+        >
+          <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-blue-200/50 blur-2xl transition-all group-hover:scale-150" />
+          <div className="relative">
+            <div className="text-5xl font-extrabold text-blue-600">{statistics.total_sent_today}</div>
+            <p className="mt-3 text-sm font-bold text-blue-900">رسائل اليوم</p>
+            <p className="mt-2 text-xs font-semibold text-blue-700">انقر للتفاصيل</p>
+          </div>
+        </button>
 
-        <div className="glass-card bg-gradient-to-br from-purple-50 to-purple-100 text-center">
-          <div className="text-4xl font-bold text-purple-600">{statistics.total_sent_this_week}</div>
-          <p className="mt-2 text-sm font-semibold text-purple-900">رسائل الأسبوع</p>
-        </div>
+        <button
+          type="button"
+          onClick={() => handleCardClick('week', 'رسائل الأسبوع')}
+          className="group relative overflow-hidden rounded-2xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100 p-6 text-center transition-all duration-300 hover:scale-105 hover:border-purple-400 hover:shadow-2xl cursor-pointer"
+        >
+          <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-purple-200/50 blur-2xl transition-all group-hover:scale-150" />
+          <div className="relative">
+            <div className="text-5xl font-extrabold text-purple-600">{statistics.total_sent_this_week}</div>
+            <p className="mt-3 text-sm font-bold text-purple-900">رسائل الأسبوع</p>
+            <p className="mt-2 text-xs font-semibold text-purple-700">انقر للتفاصيل</p>
+          </div>
+        </button>
 
-        <div className="glass-card bg-gradient-to-br from-teal-50 to-teal-100 text-center">
-          <div className="text-4xl font-bold text-teal-600">{statistics.total_sent_this_month}</div>
-          <p className="mt-2 text-sm font-semibold text-teal-900">رسائل الشهر</p>
-        </div>
+        <button
+          type="button"
+          onClick={() => handleCardClick('month', 'رسائل الشهر')}
+          className="group relative overflow-hidden rounded-2xl border-2 border-teal-200 bg-gradient-to-br from-teal-50 to-teal-100 p-6 text-center transition-all duration-300 hover:scale-105 hover:border-teal-400 hover:shadow-2xl cursor-pointer"
+        >
+          <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-teal-200/50 blur-2xl transition-all group-hover:scale-150" />
+          <div className="relative">
+            <div className="text-5xl font-extrabold text-teal-600">{statistics.total_sent_this_month}</div>
+            <p className="mt-3 text-sm font-bold text-teal-900">رسائل الشهر</p>
+            <p className="mt-2 text-xs font-semibold text-teal-700">انقر للتفاصيل</p>
+          </div>
+        </button>
 
-        <div className="glass-card bg-gradient-to-br from-amber-50 to-amber-100 text-center">
-          <div className="text-4xl font-bold text-amber-600">{statistics.active_teachers_count}</div>
-          <p className="mt-2 text-sm font-semibold text-amber-900">معلمين نشطين</p>
-        </div>
+        <button
+          type="button"
+          onClick={() => handleCardClick('active', 'المعلمين النشطين')}
+          className="group relative overflow-hidden rounded-2xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100 p-6 text-center transition-all duration-300 hover:scale-105 hover:border-amber-400 hover:shadow-2xl cursor-pointer"
+        >
+          <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-amber-200/50 blur-2xl transition-all group-hover:scale-150" />
+          <div className="relative">
+            <div className="text-5xl font-extrabold text-amber-600">{statistics.active_teachers_count}</div>
+            <p className="mt-3 text-sm font-bold text-amber-900">معلمين نشطين</p>
+            <p className="mt-2 text-xs font-semibold text-amber-700">انقر للتفاصيل</p>
+          </div>
+        </button>
       </div>
 
       {/* Settings Card */}
@@ -446,6 +500,27 @@ export function AdminTeacherMessagesPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Teacher Messages Modal */}
+      {modalState && (
+        <>
+          {modalLoading ? (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+              <div className="rounded-3xl bg-white p-8 text-center shadow-2xl">
+                <div className="mx-auto h-16 w-16 animate-spin rounded-full border-4 border-teal-500/30 border-t-teal-500" />
+                <p className="mt-4 text-lg font-semibold text-slate-900">جاري تحميل البيانات...</p>
+              </div>
+            </div>
+          ) : (
+            <TeacherMessagesModal
+              isOpen={true}
+              onClose={handleCloseModal}
+              data={modalData || null}
+              title={modalState.title}
+            />
+          )}
+        </>
       )}
     </section>
   )

@@ -2000,3 +2000,41 @@ export async function rejectStoreOrder(orderId: number, reason?: string): Promis
   })
   return unwrapResponse(response.data, 'تعذر رفض الطلب')
 }
+
+// Teacher Messages Details API
+export interface TeacherMessageRecord {
+  id: number
+  student_name: string
+  student_grade: string | null
+  template_title: string
+  template_key: string
+  message_content: string
+  status: string
+  sent_at: string
+  sent_at_human: string
+}
+
+export interface TeacherMessagesData {
+  teacher_id: number
+  teacher_name: string
+  teacher_national_id: string | null
+  total_messages: number
+  messages: TeacherMessageRecord[]
+}
+
+export interface TeacherMessagesByPeriodResponse {
+  period: 'today' | 'week' | 'month' | 'active'
+  total_messages: number
+  total_teachers: number
+  teachers: TeacherMessagesData[]
+}
+
+export async function fetchTeacherMessagesByPeriod(
+  period: 'today' | 'week' | 'month' | 'active',
+): Promise<TeacherMessagesByPeriodResponse> {
+  const response = await apiClient.get<ApiResponse<TeacherMessagesByPeriodResponse>>(
+    '/admin/teacher-messages/messages-by-period',
+    { params: { period } },
+  )
+  return unwrapResponse(response.data, 'تعذر جلب تفاصيل رسائل المعلمين')
+}
