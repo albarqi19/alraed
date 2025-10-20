@@ -34,6 +34,15 @@ export const adminQueryKeys = {
     list: (filters: Record<string, unknown>) => ['admin', 'late-arrivals', 'list', filters] as const,
     stats: () => ['admin', 'late-arrivals', 'stats'] as const,
   },
+  dutyRosters: {
+    list: (filters: Record<string, unknown>) => ['admin', 'duty-rosters', 'list', filters] as const,
+  },
+  dutyRosterSettings: () => ['admin', 'duty-roster', 'settings'] as const,
+  dutyRosterTemplates: {
+    root: () => ['admin', 'duty-roster-templates'] as const,
+    list: (filters: Record<string, unknown>) => ['admin', 'duty-roster-templates', 'list', filters] as const,
+    detail: (id: number) => ['admin', 'duty-roster-templates', id] as const,
+  },
   leaveRequests: {
     list: (filters: Record<string, unknown>) => ['admin', 'leave-requests', 'list', filters] as const,
   },

@@ -71,7 +71,24 @@ import type {
   StoreOrderFilters,
   StoreOrderPayload,
   PaginationMeta,
+  DutyRosterFilters,
+  DutyRosterListResponse,
+  DutyRosterCreatePayload,
+  DutyRosterShiftRecord,
+  DutyRosterMarkAbsentPayload,
+  DutyRosterAssignReplacementPayload,
+  DutyRosterAssignmentRecord,
+  DutyRosterTemplateAssignmentRecord,
+  DutyRosterTemplateFilters,
+  DutyRosterTemplatePayload,
+  DutyRosterTemplateRecord,
+  DutyRosterTemplateUpdatePayload,
+  DutyRosterTemplateWeekdayAssignments,
+  DutyRosterSettingsRecord,
+  DutyRosterSettingsUpdatePayload,
+  DutyRosterWeekday,
 } from './types'
+import { DUTY_ROSTER_WEEKDAYS } from './types'
 import { deserializeWhatsappVariables, serializeWhatsappVariables } from './utils/whatsapp-templates'
 
 type Filters = Record<string, string | number | boolean | undefined>
@@ -163,6 +180,148 @@ function coerceNumber(value: unknown, fallback = 0): number {
   }
   if (typeof value === 'boolean') return value ? 1 : 0
   return fallback
+}
+
+function coerceNumberOrNull(value: unknown): number | null {
+  const result = coerceNumber(value, Number.NaN)
+  return Number.isFinite(result) ? result : null
+}
+
+function coerceBoolean(value: unknown, fallback = false): boolean {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'number') return value !== 0
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase()
+    if (['1', 'true', 'yes', 'on'].includes(normalized)) return true
+    if (['0', 'false', 'no', 'off'].includes(normalized)) return false
+  }
+  return fallback
+}
+
+function isDutyRosterWeekday(value: unknown): value is DutyRosterWeekday {
+  return typeof value === 'string' && DUTY_ROSTER_WEEKDAYS.includes(value as DutyRosterWeekday)
+}
+
+function createEmptyWeekdayAssignments(): DutyRosterTemplateWeekdayAssignments {
+  return DUTY_ROSTER_WEEKDAYS.reduce((accumulator, weekday) => {
+    accumulator[weekday] = []
+    return accumulator
+  }, {} as DutyRosterTemplateWeekdayAssignments)
+}
+
+function normalizeDutyRosterTemplateAssignmentRecord(
+  raw: unknown,
+  fallbackWeekday: DutyRosterWeekday,
+): DutyRosterTemplateAssignmentRecord | null {
+  if (!isRecord(raw)) return null
+
+  const userIdCandidate = coerceNumber(raw.user_id ?? raw.teacher_id ?? raw.staff_id, Number.NaN)
+  if (!Number.isFinite(userIdCandidate)) return null
+
+  const userId = Math.trunc(userIdCandidate)
+  if (userId <= 0) return null
+
+  const assignmentIdValue = coerceNumber(raw.id ?? raw.assignment_id, userId)
+  const assignmentId = Math.max(Math.trunc(assignmentIdValue), 0)
+
+  const weekdayValue = raw.weekday
+  const weekday = isDutyRosterWeekday(weekdayValue) ? weekdayValue : fallbackWeekday
+
+  const roleValue = typeof raw.assignment_role === 'string' ? raw.assignment_role : null
+  const assignmentRole: DutyRosterTemplateAssignmentRecord['assignment_role'] =
+    roleValue === 'staff' ? 'staff' : 'teacher'
+
+  const sortOrder = Math.max(0, Math.trunc(coerceNumber(raw.sort_order ?? raw.order ?? raw.priority, 0)))
+  const isActive = coerceBoolean(raw.is_active, true)
+
+  let user: DutyRosterTemplateAssignmentRecord['user'] = null
+  if (isRecord(raw.user)) {
+    const nestedId = coerceNumber(raw.user.id ?? raw.user.user_id ?? raw.user.teacher_id, Number.NaN)
+    const nestedName =
+      typeof raw.user.name === 'string'
+        ? raw.user.name
+        : typeof raw.user.full_name === 'string'
+          ? raw.user.full_name
+          : null
+
+    if (nestedName) {
+      user = {
+        id: Number.isFinite(nestedId) && nestedId > 0 ? Math.trunc(nestedId) : userId,
+        name: nestedName,
+        phone: typeof raw.user.phone === 'string' ? raw.user.phone : null,
+      }
+    }
+  }
+
+  return {
+    id: assignmentId,
+    weekday,
+    user_id: userId,
+    assignment_role: assignmentRole,
+    sort_order: sortOrder,
+    is_active: isActive,
+    user,
+  }
+}
+
+function normalizeDutyRosterTemplateRecord(raw: unknown): DutyRosterTemplateRecord | null {
+  if (!isRecord(raw)) return null
+
+  const idCandidate = coerceNumber(raw.id, Number.NaN)
+  if (!Number.isFinite(idCandidate)) return null
+
+  const templateId = Math.trunc(idCandidate)
+  if (templateId <= 0) return null
+
+  const name = typeof raw.name === 'string' ? raw.name.trim() : ''
+  if (!name) return null
+
+  const shiftType =
+    typeof raw.shift_type === 'string' && raw.shift_type.trim()
+      ? raw.shift_type.trim()
+      : name
+
+  const windowStart =
+    typeof raw.window_start === 'string' && raw.window_start
+      ? raw.window_start
+      : null
+
+  const windowEnd =
+    typeof raw.window_end === 'string' && raw.window_end
+      ? raw.window_end
+      : null
+
+  const triggerOffset = coerceNumberOrNull(raw.trigger_offset_minutes ?? raw.trigger_offset ?? null)
+  const isActive = coerceBoolean(raw.is_active, true)
+
+  const assignmentsSource = isRecord(raw.weekday_assignments)
+    ? (raw.weekday_assignments as Record<string, unknown>)
+    : {}
+
+  const weekdayAssignments = createEmptyWeekdayAssignments()
+
+  for (const weekday of DUTY_ROSTER_WEEKDAYS) {
+    const daySource = assignmentsSource[weekday]
+    const dayAssignments = Array.isArray(daySource) ? daySource : []
+
+    weekdayAssignments[weekday] = dayAssignments
+      .map((entry) => normalizeDutyRosterTemplateAssignmentRecord(entry, weekday))
+      .filter((entry): entry is DutyRosterTemplateAssignmentRecord => entry !== null)
+      .sort((a, b) => a.sort_order - b.sort_order || a.user_id - b.user_id)
+  }
+
+  return {
+    id: templateId,
+    name,
+    shift_type: shiftType,
+    window_start: windowStart,
+    window_end: windowEnd,
+    trigger_offset_minutes: triggerOffset,
+    is_active: isActive,
+    weekday_assignments: weekdayAssignments,
+    created_at: typeof raw.created_at === 'string' ? raw.created_at : null,
+    updated_at: typeof raw.updated_at === 'string' ? raw.updated_at : null,
+  }
 }
 
 function normalizeAttendanceEntries(entries: unknown): AttendanceReportStudentAttendance[] {
@@ -1193,6 +1352,141 @@ export async function cancelLeaveRequest(
   return normalizeLeaveRequestRecord(record as unknown) ?? record
 }
 
+function buildDutyRosterTemplateFilters(filters: DutyRosterTemplateFilters = {}): Filters {
+  const params: Filters = {}
+
+  if (typeof filters.shift_type === 'string' && filters.shift_type.trim()) {
+    params.shift_type = filters.shift_type.trim()
+  }
+
+  if (typeof filters.is_active === 'boolean') {
+    params.is_active = filters.is_active ? 1 : 0
+  }
+
+  return params
+}
+
+function buildDutyRosterFilters(filters: DutyRosterFilters = {}): Filters {
+  const params: Filters = {}
+
+  if (filters.shift_type) params.shift_type = filters.shift_type
+  if (filters.status) params.status = filters.status
+  if (filters.date) params.date = filters.date
+  if (filters.from_date) params.from_date = filters.from_date
+  if (filters.to_date) params.to_date = filters.to_date
+  if (filters.page) params.page = filters.page
+  if (filters.per_page) params.per_page = filters.per_page
+
+  return params
+}
+
+export async function fetchDutyRosterTemplates(
+  filters: DutyRosterTemplateFilters = {},
+): Promise<DutyRosterTemplateRecord[]> {
+  const params = buildDutyRosterTemplateFilters(filters)
+  const { data } = await apiClient.get<ApiResponse<unknown>>('/admin/duty-roster-templates', { params })
+
+  const records = unwrapCollectionResponse<Record<string, unknown>>(
+    data,
+    'تعذر تحميل قوالب المناوبات الأسبوعية',
+    ['data'],
+  )
+
+  return records
+    .map((record) => normalizeDutyRosterTemplateRecord(record))
+    .filter((record): record is DutyRosterTemplateRecord => record !== null)
+    .sort((a, b) => a.name.localeCompare(b.name, 'ar'))
+}
+
+export async function createDutyRosterTemplate(
+  payload: DutyRosterTemplatePayload,
+): Promise<DutyRosterTemplateRecord> {
+  const { data } = await apiClient.post<ApiResponse<unknown>>('/admin/duty-roster-templates', payload)
+  const record = normalizeDutyRosterTemplateRecord(unwrapResponse(data, 'تعذر إنشاء القالب الأسبوعي'))
+
+  if (!record) {
+    throw new Error('تم حفظ القالب لكن تعذر قراءة بياناته، حدّث الصفحة للمراجعة')
+  }
+
+  return record
+}
+
+export async function updateDutyRosterTemplate(
+  templateId: number,
+  payload: DutyRosterTemplateUpdatePayload,
+): Promise<DutyRosterTemplateRecord> {
+  const { data } = await apiClient.put<ApiResponse<unknown>>(
+    `/admin/duty-roster-templates/${templateId}`,
+    payload,
+  )
+
+  const record = normalizeDutyRosterTemplateRecord(unwrapResponse(data, 'تعذر تحديث القالب الأسبوعي'))
+
+  if (!record) {
+    throw new Error('تم تحديث القالب لكن تعذر قراءة بياناته، حدّث الصفحة للمراجعة')
+  }
+
+  return record
+}
+
+export async function deleteDutyRosterTemplate(templateId: number): Promise<void> {
+  const { data } = await apiClient.delete<ApiResponse<null>>(`/admin/duty-roster-templates/${templateId}`)
+  unwrapResponse(data, 'تعذر حذف القالب الأسبوعي')
+}
+
+export async function fetchDutyRosters(filters: DutyRosterFilters = {}): Promise<DutyRosterListResponse> {
+  const params = buildDutyRosterFilters(filters)
+  const { data } = await apiClient.get<PaginatedResponse<DutyRosterShiftRecord[]>>('/admin/duty-rosters', { params })
+
+  const items = Array.isArray(data.data) ? data.data : []
+  const metaRecord: Record<string, unknown> = isRecord(data.meta) ? (data.meta as Record<string, unknown>) : {}
+  const pagination = normalizePaginationMeta(metaRecord, items.length, filters.per_page ?? 15)
+
+  const statsPayload = isRecord(metaRecord['stats']) ? (metaRecord['stats'] as Record<string, unknown>) : null
+  const stats = {
+    total_shifts: statsPayload ? coerceNumber(statsPayload['total_shifts'], pagination.total) : pagination.total,
+    absent_assignments: statsPayload ? coerceNumber(statsPayload['absent_assignments'], 0) : 0,
+    replacement_assignments: statsPayload ? coerceNumber(statsPayload['replacement_assignments'], 0) : 0,
+  }
+
+  return {
+    items,
+    meta: {
+      ...pagination,
+      stats,
+    },
+  }
+}
+
+export async function createDutyRoster(payload: DutyRosterCreatePayload): Promise<DutyRosterShiftRecord> {
+  const { data } = await apiClient.post<ApiResponse<DutyRosterShiftRecord>>('/admin/duty-rosters', payload)
+  return unwrapResponse(data, 'تعذر إنشاء المناوبة')
+}
+
+export async function markDutyRosterAssignmentAbsent(
+  shiftId: number,
+  assignmentId: number,
+  payload: DutyRosterMarkAbsentPayload = {},
+): Promise<DutyRosterAssignmentRecord> {
+  const { data } = await apiClient.post<ApiResponse<DutyRosterAssignmentRecord>>(
+    `/admin/duty-rosters/${shiftId}/assignments/${assignmentId}/mark-absent`,
+    payload,
+  )
+  return unwrapResponse(data, 'تعذر توثيق عدم حضور المناوبة')
+}
+
+export async function assignDutyRosterReplacement(
+  shiftId: number,
+  assignmentId: number,
+  payload: DutyRosterAssignReplacementPayload,
+): Promise<DutyRosterAssignmentRecord> {
+  const { data } = await apiClient.post<ApiResponse<DutyRosterAssignmentRecord>>(
+    `/admin/duty-rosters/${shiftId}/assignments/${assignmentId}/assign-replacement`,
+    payload,
+  )
+  return unwrapResponse(data, 'تعذر تعيين البديل المؤقت')
+}
+
 export async function createLateArrival(payload: {
   student_ids: number[]
   late_date: string
@@ -1440,6 +1734,18 @@ export async function fetchWhatsappSettings(): Promise<WhatsappSettings> {
 export async function updateWhatsappSettings(payload: Partial<WhatsappSettings>): Promise<WhatsappSettings> {
   const { data } = await apiClient.put<ApiResponse<WhatsappSettings>>('/admin/whatsapp/settings', payload)
   return unwrapResponse(data, 'تعذر تحديث إعدادات الواتساب')
+}
+
+export async function fetchDutyRosterSettings(): Promise<DutyRosterSettingsRecord> {
+  const { data } = await apiClient.get<ApiResponse<DutyRosterSettingsRecord>>('/admin/duty-roster-settings')
+  return unwrapResponse(data, 'تعذر تحميل إعدادات مناوبات المعلمين')
+}
+
+export async function updateDutyRosterSettings(
+  payload: DutyRosterSettingsUpdatePayload,
+): Promise<DutyRosterSettingsRecord> {
+  const { data } = await apiClient.put<ApiResponse<DutyRosterSettingsRecord>>('/admin/duty-roster-settings', payload)
+  return unwrapResponse(data, 'تعذر تحديث إعدادات مناوبات المعلمين')
 }
 
 export async function fetchPointSettings(): Promise<PointSettingsRecord> {

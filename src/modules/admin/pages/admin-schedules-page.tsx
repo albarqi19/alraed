@@ -335,7 +335,7 @@ function ScheduleFormDialog({ open, onClose, onSubmit, isSubmitting, schedule, t
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" role="dialog" aria-modal>
-      <div className="relative h-[90vh] w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-xl">
+      <div className="relative flex h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-white shadow-xl">
         <header className="flex items-center justify-between border-b border-slate-100 px-6 py-5 text-right">
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-widest text-teal-600">
@@ -359,8 +359,8 @@ function ScheduleFormDialog({ open, onClose, onSubmit, isSubmitting, schedule, t
           </button>
         </header>
 
-        <form className="flex h-full flex-col overflow-hidden" onSubmit={handleSubmit} noValidate>
-          <div className="flex-1 space-y-6 overflow-y-auto px-6 py-6">
+        <form className="flex min-h-0 flex-1 flex-col overflow-hidden" onSubmit={handleSubmit} noValidate>
+          <div className="flex-1 space-y-6 overflow-y-auto px-6 py-6 custom-scrollbar">
             <section className="grid gap-4 md:grid-cols-2">
               <div className="grid gap-2 text-right">
                 <label htmlFor="schedule-name" className="text-sm font-medium text-slate-800">
@@ -595,7 +595,7 @@ function ScheduleFormDialog({ open, onClose, onSubmit, isSubmitting, schedule, t
             </section>
           </div>
 
-          <footer className="flex items-center justify-end gap-3 border-t border-slate-100 bg-slate-50/70 px-6 py-4">
+          <footer className="flex shrink-0 items-center justify-end gap-3 border-t border-slate-100 bg-slate-50/70 px-6 py-4">
             <button type="button" onClick={onClose} className="button-secondary" disabled={isSubmitting}>
               إلغاء
             </button>

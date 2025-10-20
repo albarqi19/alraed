@@ -39,6 +39,8 @@ import {
   fetchClassSessions,
   fetchLateArrivalStats,
   fetchLateArrivals,
+  fetchDutyRosters,
+  fetchDutyRosterSettings,
   fetchLeaveRequests,
   fetchMissingSessions,
   fetchPendingApprovals,
@@ -78,6 +80,7 @@ import {
   updateTeacher,
   updateWhatsappSettings,
   updateWhatsappTemplate,
+  updateDutyRosterSettings,
   fetchPointSettings,
   updatePointSettings,
   fetchPointReasons,
@@ -107,6 +110,13 @@ import {
   cancelStoreOrder,
   rejectStoreOrder,
   updateStoreSettings,
+  createDutyRoster,
+  markDutyRosterAssignmentAbsent,
+  assignDutyRosterReplacement,
+  createDutyRosterTemplate,
+  deleteDutyRosterTemplate,
+  fetchDutyRosterTemplates,
+  updateDutyRosterTemplate,
 } from './api'
 import { adminQueryKeys } from './query-keys'
 import { useToast } from '@/shared/feedback/use-toast'
@@ -126,6 +136,14 @@ import type {
   StoreItemPayload,
   StoreOrderPayload,
   StoreSettingsPayload,
+  DutyRosterFilters,
+  DutyRosterCreatePayload,
+  DutyRosterMarkAbsentPayload,
+  DutyRosterAssignReplacementPayload,
+  DutyRosterTemplateFilters,
+  DutyRosterTemplatePayload,
+  DutyRosterTemplateUpdatePayload,
+  DutyRosterSettingsUpdatePayload,
 } from './types'
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -138,6 +156,22 @@ type LateArrivalFilters = {
   date?: string
   className?: string
   studentId?: number
+}
+type DutyRosterQueryOptions = { enabled?: boolean }
+type DutyRosterTemplateQueryOptions = { enabled?: boolean }
+type DutyRosterMarkAbsentArgs = {
+  shiftId: number
+  assignmentId: number
+  payload?: DutyRosterMarkAbsentPayload
+}
+type DutyRosterAssignReplacementArgs = {
+  shiftId: number
+  assignmentId: number
+  payload: DutyRosterAssignReplacementPayload
+}
+type DutyRosterTemplateUpdateArgs = {
+  id: number
+  payload: DutyRosterTemplateUpdatePayload
 }
 
 export function useAdminDashboardStatsQuery() {
@@ -218,6 +252,93 @@ export function useResetTeacherPasswordMutation() {
     },
     onError: (error) => {
       toast({ type: 'error', title: getErrorMessage(error, 'تعذر إعادة تعيين كلمة المرور') })
+    },
+  })
+}
+
+export function useDutyRosterSettingsQuery(options: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: adminQueryKeys.dutyRosterSettings(),
+    queryFn: fetchDutyRosterSettings,
+    enabled: options.enabled ?? true,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+export function useUpdateDutyRosterSettingsMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: DutyRosterSettingsUpdatePayload) => updateDutyRosterSettings(payload),
+    onSuccess: () => {
+      toast({ type: 'success', title: 'تم حفظ إعدادات المناوبات' })
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.dutyRosterSettings() })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر حفظ إعدادات المناوبات') })
+    },
+  })
+}
+
+export function useDutyRosterTemplatesQuery(
+  filters: DutyRosterTemplateFilters = {},
+  options: DutyRosterTemplateQueryOptions = {},
+) {
+  const enabled = options.enabled ?? true
+  const queryFilters = filters as unknown as Record<string, unknown>
+
+  return useQuery({
+    queryKey: adminQueryKeys.dutyRosterTemplates.list(queryFilters),
+    queryFn: () => fetchDutyRosterTemplates(filters),
+    enabled,
+  })
+}
+
+export function useCreateDutyRosterTemplateMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: DutyRosterTemplatePayload) => createDutyRosterTemplate(payload),
+    onSuccess: (template) => {
+      toast({ type: 'success', title: `تم حفظ قالب ${template.name}` })
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.dutyRosterTemplates.root() })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر حفظ القالب الأسبوعي') })
+    },
+  })
+}
+
+export function useUpdateDutyRosterTemplateMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, payload }: DutyRosterTemplateUpdateArgs) => updateDutyRosterTemplate(id, payload),
+    onSuccess: (template) => {
+      toast({ type: 'success', title: `تم تحديث قالب ${template.name}` })
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.dutyRosterTemplates.root() })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تحديث القالب الأسبوعي') })
+    },
+  })
+}
+
+export function useDeleteDutyRosterTemplateMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (templateId: number) => deleteDutyRosterTemplate(templateId),
+    onSuccess: () => {
+      toast({ type: 'success', title: 'تم حذف القالب بنجاح' })
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.dutyRosterTemplates.root() })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر حذف القالب الأسبوعي') })
     },
   })
 }
@@ -772,6 +893,66 @@ export function useCreateLateArrivalMutation() {
     },
     onError: (error) => {
       toast({ type: 'error', title: getErrorMessage(error, 'تعذر تسجيل التأخير') })
+    },
+  })
+}
+
+export function useDutyRostersQuery(filters: DutyRosterFilters = {}, options: DutyRosterQueryOptions = {}) {
+  const enabled = options.enabled ?? true
+
+  return useQuery({
+    queryKey: adminQueryKeys.dutyRosters.list(filters as Record<string, unknown>),
+    queryFn: () => fetchDutyRosters(filters),
+    enabled,
+  })
+}
+
+export function useCreateDutyRosterMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: DutyRosterCreatePayload) => createDutyRoster(payload),
+    onSuccess: (shift) => {
+      toast({ type: 'success', title: `تم إنشاء مناوبة ${shift.shift_type}` })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'duty-rosters'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر إنشاء المناوبة') })
+    },
+  })
+}
+
+export function useMarkDutyRosterAssignmentAbsentMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ shiftId, assignmentId, payload }: DutyRosterMarkAbsentArgs) =>
+      markDutyRosterAssignmentAbsent(shiftId, assignmentId, payload ?? {}),
+    onSuccess: () => {
+      toast({ type: 'info', title: 'تم تسجيل عدم حضور المناوبة' })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'duty-rosters'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تسجيل عدم الحضور') })
+    },
+  })
+}
+
+export function useAssignDutyRosterReplacementMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ shiftId, assignmentId, payload }: DutyRosterAssignReplacementArgs) =>
+      assignDutyRosterReplacement(shiftId, assignmentId, payload),
+    onSuccess: () => {
+      toast({ type: 'success', title: 'تم تعيين البديل المؤقت' })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'duty-rosters'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تعيين البديل') })
     },
   })
 }

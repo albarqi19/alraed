@@ -151,7 +151,7 @@ export async function fetchSubmittedAttendance(
 
 interface SendTeacherMessagesPayload {
   class_id: number
-  template_id: number | string
+  template_key: string
   student_ids: number[]
 }
 

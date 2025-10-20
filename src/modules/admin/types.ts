@@ -876,3 +876,200 @@ export interface PointCardsResponse {
   items: PointCardRecord[]
   meta: PaginationMeta
 }
+
+export type DutyRosterWeekday =
+  | 'sunday'
+  | 'monday'
+  | 'tuesday'
+  | 'wednesday'
+  | 'thursday'
+  | 'friday'
+  | 'saturday'
+
+export const DUTY_ROSTER_WEEKDAYS: DutyRosterWeekday[] = [
+  'sunday',
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday',
+]
+
+export type DutyRosterStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
+
+export type DutyRosterAssignmentStatus = 'scheduled' | 'absent' | 'replacement_assigned' | 'completed'
+
+export type DutyRosterAssignmentRole = 'teacher' | 'staff'
+
+export interface DutyRosterAssignmentRecord {
+  id: number
+  user_id: number
+  user: {
+    id: number
+    name: string
+    phone?: string | null
+  }
+  assignment_role: DutyRosterAssignmentRole
+  status: DutyRosterAssignmentStatus
+  marked_absent_at?: string | null
+  replacement_user_id?: number | null
+  replacement_user?: {
+    id: number
+    name: string
+    phone?: string | null
+  } | null
+  replacement_assigned_at?: string | null
+  meta?: Record<string, unknown> | null
+  created_at?: string
+  updated_at?: string
+}
+
+export interface DutyRosterShiftRecord {
+  id: number
+  duty_shift_template_id?: number | null
+  shift_type: string
+  shift_date: string
+  window_start: string
+  window_end: string
+  trigger_time?: string | null
+  status: DutyRosterStatus
+  reminder_offset_minutes: number
+  settings?: Record<string, unknown> | null
+  notifications_dispatched_at?: string | null
+  created_at: string
+  updated_at: string
+  template?: {
+    id: number
+    name: string
+    shift_type: string
+    weekday_assignments?: DutyRosterTemplateWeekdayAssignments
+  } | null
+  assignments: DutyRosterAssignmentRecord[]
+}
+
+export interface DutyRosterStats {
+  total_shifts: number
+  absent_assignments: number
+  replacement_assignments: number
+}
+
+export interface DutyRosterFilters {
+  shift_type?: string
+  status?: DutyRosterStatus
+  date?: string
+  from_date?: string
+  to_date?: string
+  page?: number
+  per_page?: number
+}
+
+export interface DutyRosterListResponse {
+  items: DutyRosterShiftRecord[]
+  meta: PaginationMeta & {
+    stats: DutyRosterStats
+  }
+}
+
+export interface DutyRosterCreatePayload {
+  shift_type: string
+  shift_date: string
+  window_start: string
+  window_end: string
+  trigger_time?: string | null
+  status?: DutyRosterStatus
+  reminder_offset_minutes?: number
+  template_id?: number | null
+  assignments: Array<{
+    user_id: number
+    assignment_role?: DutyRosterAssignmentRole
+  }>
+}
+
+export interface DutyRosterMarkAbsentPayload {
+  reason?: string | null
+}
+
+export interface DutyRosterAssignReplacementPayload {
+  replacement_user_id: number
+  notes?: string | null
+}
+
+export interface DutyRosterTemplateUserSummary {
+  id: number
+  name: string
+  phone?: string | null
+}
+
+export interface DutyRosterTemplateAssignmentRecord {
+  id: number
+  weekday: DutyRosterWeekday
+  user_id: number
+  assignment_role: DutyRosterAssignmentRole
+  sort_order: number
+  is_active: boolean
+  user?: DutyRosterTemplateUserSummary | null
+}
+
+export type DutyRosterTemplateWeekdayAssignments = Record<
+  DutyRosterWeekday,
+  DutyRosterTemplateAssignmentRecord[]
+>
+
+export interface DutyRosterTemplateRecord {
+  id: number
+  name: string
+  shift_type: string
+  window_start: string | null
+  window_end: string | null
+  trigger_offset_minutes: number | null
+  is_active: boolean
+  weekday_assignments: DutyRosterTemplateWeekdayAssignments
+  created_at?: string | null
+  updated_at?: string | null
+}
+
+export interface DutyRosterTemplateFilters {
+  shift_type?: string
+  is_active?: boolean
+}
+
+export interface DutyRosterSettingsRecord {
+  id: number
+  auto_generate_enabled: boolean
+  auto_generate_time: string | null
+  reminder_notifications_enabled: boolean
+  reminder_lead_minutes: number
+  reminder_channels: string[]
+  reminder_repeat_interval_minutes: number | null
+  reminder_repeat_count: number
+  settings?: Record<string, unknown> | null
+  created_at?: string | null
+  updated_at?: string | null
+}
+
+export interface DutyRosterSettingsUpdatePayload {
+  auto_generate_enabled?: boolean
+  auto_generate_time?: string | null
+  reminder_notifications_enabled?: boolean
+  reminder_lead_minutes?: number
+  reminder_channels?: string[]
+  reminder_repeat_interval_minutes?: number | null
+  reminder_repeat_count?: number
+  settings?: Record<string, unknown> | null
+}
+
+export interface DutyRosterTemplatePayload {
+  name: string
+  shift_type: string
+  window_start: string
+  window_end: string
+  trigger_offset_minutes?: number | null
+  is_active?: boolean
+  weekday_assignments: Partial<Record<DutyRosterWeekday, number[]>>
+}
+
+export interface DutyRosterTemplateUpdatePayload
+  extends Partial<Omit<DutyRosterTemplatePayload, 'weekday_assignments'>> {
+  weekday_assignments?: Partial<Record<DutyRosterWeekday, number[]>>
+}

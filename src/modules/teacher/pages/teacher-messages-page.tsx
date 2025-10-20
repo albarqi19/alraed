@@ -325,7 +325,7 @@ export function TeacherMessagesPage() {
 
       const result = await sendTeacherMessages({
         class_id: selectedClass.id,
-        template_id: template.template_key,
+        template_key: template.template_key,
         student_ids: selectedStudents,
       })
 
