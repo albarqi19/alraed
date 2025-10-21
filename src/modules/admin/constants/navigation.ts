@@ -32,6 +32,9 @@ import {
   CalendarDays,
   School,
   ShoppingCart,
+  ShieldAlert,
+  AlertTriangle,
+  Activity,
 } from 'lucide-react'
 
 export interface AdminNavItem {
@@ -82,6 +85,15 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
       { to: '/admin/absence-messages', label: 'إدارة رسائل الغياب', icon: MessageCircle },
       { to: '/admin/late-arrivals', label: 'إدارة التأخير', icon: Timer },
       { to: '/admin/leave-requests', label: 'طلبات الاستئذان', icon: DoorOpen },
+    ],
+  },
+  {
+    title: 'السلوك والانضباط',
+    icon: ShieldAlert,
+    items: [
+      { to: '/admin/behavior', label: 'سجل المخالفات', icon: AlertTriangle },
+      { to: '/admin/behavior/plans', label: 'خطط المعالجة', icon: ClipboardList, soon: true },
+      { to: '/admin/behavior/analytics', label: 'مؤشرات السلوك', icon: Activity, soon: true },
     ],
   },
   {

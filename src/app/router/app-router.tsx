@@ -62,6 +62,9 @@ import { AdminSchoolBellPage } from '@/modules/admin/pages/admin-school-bell-pag
 import { AdminAutoCallPage } from '@/modules/admin/pages/admin-auto-call-page'
 import { AutoCallDisplayPage } from '@/modules/auto-call/pages/auto-call-display-page'
 import { AdminAcademicCalendarPage } from '@/modules/admin/pages/admin-academic-calendar-page'
+import { AdminBehaviorPage } from '@/modules/admin/pages/admin-behavior-page'
+import { AdminBehaviorPlansPage } from '@/modules/admin/pages/admin-behavior-plans-page'
+import { AdminBehaviorAnalyticsPage } from '@/modules/admin/pages/admin-behavior-analytics-page'
 import {
   GuidanceAccessPage,
   GuidanceDashboardPage,
@@ -149,6 +152,9 @@ const appRoutes = [
           { path: 'late-arrivals', element: <AdminLateArrivalsPage /> },
           { path: 'duty-rosters', element: <AdminDutyRostersPage /> },
           { path: 'leave-requests', element: <AdminLeaveRequestsPage /> },
+          { path: 'behavior', element: <AdminBehaviorPage /> },
+          { path: 'behavior/plans', element: <AdminBehaviorPlansPage /> },
+          { path: 'behavior/analytics', element: <AdminBehaviorAnalyticsPage /> },
           { path: 'teacher-messages', element: <AdminTeacherMessagesPage /> },
           { path: 'student-cases', element: <StudentCasesPage /> },
           { path: 'student-cases/list', element: <StudentCasesListPage /> },
