@@ -2,9 +2,14 @@ import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/modules/auth/store/auth-store'
 import { useLogoutMutation } from '@/modules/auth/hooks'
-import { ChevronDown } from 'lucide-react'
+import { CalendarClock, ChevronDown } from 'lucide-react'
 import clsx from 'classnames'
 import { primaryAdminNavGroups, secondaryAdminNav, settingsAdminNav } from '../constants/navigation'
+import { getCurrentAcademicWeek } from '../constants/academic-calendar-data'
+
+const headerDateFormatter = new Intl.DateTimeFormat('ar-SA', { month: 'long', day: '2-digit' })
+
+const toDate = (iso: string) => new Date(`${iso}T00:00:00`)
 
 export function AdminShell() {
   const admin = useAuthStore((state) => state.user)
@@ -82,6 +87,13 @@ export function AdminShell() {
 
   const planLabel = subscriptionPlan ? subscriptionPlan.toUpperCase() : null
   const statusLabel = subscriptionStatus ? statusLabelMap[subscriptionStatus] ?? subscriptionStatus : null
+  const currentAcademicWeek = getCurrentAcademicWeek(new Date())
+  const weekLabel = currentAcademicWeek
+    ? `الأسبوع ${currentAcademicWeek.week} • ${currentAcademicWeek.semester === 'first' ? 'الفصل الأول' : 'الفصل الثاني'}`
+    : null
+  const weekRangeLabel = currentAcademicWeek
+    ? `${headerDateFormatter.format(toDate(currentAcademicWeek.startIso))} - ${headerDateFormatter.format(toDate(currentAcademicWeek.endIso))}`
+    : null
 
   return (
     <div className="flex min-h-screen w-full" style={{ backgroundColor: 'var(--color-background)' }}>
@@ -328,28 +340,57 @@ export function AdminShell() {
                 </div>
               ) : null}
             </div>
-            <button
-              type="button"
-              onClick={() => logoutMutation.mutate()}
-              className="rounded-full border px-4 py-2 text-sm font-semibold transition shadow-sm hover:shadow-md"
-              style={{ 
-                borderColor: 'rgba(255, 255, 255, 0.3)', 
-                color: 'var(--color-sidebar-text)',
-                backgroundColor: 'rgba(255, 255, 255, 0.1)'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'var(--color-danger)'
-                e.currentTarget.style.color = 'var(--color-danger)'
-                e.currentTarget.style.backgroundColor = '#FFFFFF'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)'
-                e.currentTarget.style.color = 'var(--color-sidebar-text)'
-                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'
-              }}
-            >
-              تسجيل الخروج
-            </button>
+            <div className="flex items-center gap-3">
+              {weekLabel ? (
+                <div className="hidden text-right sm:flex sm:flex-col">
+                  <span
+                    className="text-[11px] font-semibold uppercase tracking-widest"
+                    style={{ color: 'var(--color-sidebar-text)', opacity: 0.6 }}
+                  >
+                    الأسبوع الحالي
+                  </span>
+                  <div
+                    className="mt-1 flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold"
+                    style={{
+                      borderColor: 'rgba(255, 255, 255, 0.25)',
+                      color: 'var(--color-sidebar-text)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                    }}
+                  >
+                    <CalendarClock className="h-3.5 w-3.5" style={{ color: 'var(--color-sidebar-text)', opacity: 0.75 }} />
+                    <span>{weekLabel}</span>
+                  </div>
+                  {weekRangeLabel ? (
+                    <span className="mt-1 text-[11px]" style={{ color: 'var(--color-sidebar-text)', opacity: 0.6 }}>
+                      {weekRangeLabel}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <button
+                type="button"
+                onClick={() => logoutMutation.mutate()}
+                className="rounded-full border px-4 py-2 text-sm font-semibold transition shadow-sm hover:shadow-md"
+                style={{ 
+                  borderColor: 'rgba(255, 255, 255, 0.3)', 
+                  color: 'var(--color-sidebar-text)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--color-danger)'
+                  e.currentTarget.style.color = 'var(--color-danger)'
+                  e.currentTarget.style.backgroundColor = '#FFFFFF'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)'
+                  e.currentTarget.style.color = 'var(--color-sidebar-text)'
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'
+                }}
+              >
+                تسجيل الخروج
+              </button>
+            </div>
           </div>
         </header>
         <main className="flex flex-1 flex-col">

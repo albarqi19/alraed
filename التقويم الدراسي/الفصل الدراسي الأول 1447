@@ -1,0 +1,308 @@
+import React, { useState } from 'react';
+import { Download, Calendar } from 'lucide-react';
+import * as XLSX from 'xlsx';
+
+const AcademicCalendarExcel = () => {
+  const [status, setStatus] = useState('');
+
+  const calendarData = [
+    // الأسبوع الأول
+    { week: 1, day: 'الأحد', hijri: '03/01', gregorian: '08/24', month: 'ربيع الأول', gregMonth: 'أغسطس' },
+    { week: 1, day: 'الإثنين', hijri: '03/02', gregorian: '08/25', month: 'ربيع الأول', gregMonth: 'أغسطس' },
+    { week: 1, day: 'الثلاثاء', hijri: '03/03', gregorian: '08/26', month: 'ربيع الأول', gregMonth: 'أغسطس' },
+    { week: 1, day: 'الأربعاء', hijri: '03/04', gregorian: '08/27', month: 'ربيع الأول', gregMonth: 'أغسطس' },
+    { week: 1, day: 'الخميس', hijri: '03/05', gregorian: '08/28', month: 'ربيع الأول', gregMonth: 'أغسطس' },
+    
+    // الأسبوع الثاني
+    { week: 2, day: 'الأحد', hijri: '03/08', gregorian: '08/31', month: 'ربيع الأول', gregMonth: 'أغسطس - سبتمبر' },
+    { week: 2, day: 'الإثنين', hijri: '03/09', gregorian: '09/01', month: 'ربيع الأول', gregMonth: 'سبتمبر' },
+    { week: 2, day: 'الثلاثاء', hijri: '03/10', gregorian: '09/02', month: 'ربيع الأول', gregMonth: 'سبتمبر' },
+    { week: 2, day: 'الأربعاء', hijri: '03/11', gregorian: '09/03', month: 'ربيع الأول', gregMonth: 'سبتمبر' },
+    { week: 2, day: 'الخميس', hijri: '03/12', gregorian: '09/04', month: 'ربيع الأول', gregMonth: 'سبتمبر' },
+    
+    // الأسبوع الثالث
+    { week: 3, day: 'الأحد', hijri: '03/15', gregorian: '09/07', month: 'ربيع الأول', gregMonth: 'سبتمبر' },
+    { week: 3, day: 'الإثنين', hijri: '03/16', gregorian: '09/08', month: 'ربيع الأول', gregMonth: 'سبتمبر' },
+    { week: 3, day: 'الثلاثاء', hijri: '03/17', gregorian: '09/09', month: 'ربيع الأول', gregMonth: 'سبتمبر' },
+    { week: 3, day: 'الأربعاء', hijri: '03/18', gregorian: '09/10', month: 'ربيع الأول', gregMonth: 'سبتمبر' },
+    { week: 3, day: 'الخميس', hijri: '03/19', gregorian: '09/11', month: 'ربيع الأول', gregMonth: 'سبتمبر' },
+    
+    // الأسبوع الرابع
+    { week: 4, day: 'الأحد', hijri: '03/22', gregorian: '09/14', month: 'ربيع الأول', gregMonth: 'سبتمبر' },
+    { week: 4, day: 'الإثنين', hijri: '03/23', gregorian: '09/15', month: 'ربيع الأول', gregMonth: 'سبتمبر' },
+    { week: 4, day: 'الثلاثاء', hijri: '03/24', gregorian: '09/16', month: 'ربيع الأول', gregMonth: 'سبتمبر' },
+    { week: 4, day: 'الأربعاء', hijri: '03/25', gregorian: '09/17', month: 'ربيع الأول', gregMonth: 'سبتمبر' },
+    { week: 4, day: 'الخميس', hijri: '03/26', gregorian: '09/18', month: 'ربيع الأول', gregMonth: 'سبتمبر' },
+    
+    // الأسبوع الخامس
+    { week: 5, day: 'الأحد', hijri: '03/29', gregorian: '09/21', month: 'ربيع الأول - ربيع الثاني', gregMonth: 'سبتمبر' },
+    { week: 5, day: 'الإثنين', hijri: '03/30', gregorian: '09/22', month: 'ربيع الأول', gregMonth: 'سبتمبر' },
+    { week: 5, day: 'الثلاثاء', hijri: '04/01', gregorian: '09/23', month: 'ربيع الثاني', gregMonth: 'سبتمبر', note: 'اليوم الوطني - إجازة' },
+    { week: 5, day: 'الأربعاء', hijri: '04/02', gregorian: '09/24', month: 'ربيع الثاني', gregMonth: 'سبتمبر' },
+    { week: 5, day: 'الخميس', hijri: '04/03', gregorian: '09/25', month: 'ربيع الثاني', gregMonth: 'سبتمبر' },
+    
+    // الأسبوع السادس
+    { week: 6, day: 'الأحد', hijri: '04/06', gregorian: '09/28', month: 'ربيع الثاني', gregMonth: 'سبتمبر - أكتوبر' },
+    { week: 6, day: 'الإثنين', hijri: '04/07', gregorian: '09/29', month: 'ربيع الثاني', gregMonth: 'سبتمبر' },
+    { week: 6, day: 'الثلاثاء', hijri: '04/08', gregorian: '09/30', month: 'ربيع الثاني', gregMonth: 'سبتمبر' },
+    { week: 6, day: 'الأربعاء', hijri: '04/09', gregorian: '10/01', month: 'ربيع الثاني', gregMonth: 'أكتوبر' },
+    { week: 6, day: 'الخميس', hijri: '04/10', gregorian: '10/02', month: 'ربيع الثاني', gregMonth: 'أكتوبر' },
+    
+    // الأسبوع السابع
+    { week: 7, day: 'الأحد', hijri: '04/13', gregorian: '10/05', month: 'ربيع الثاني', gregMonth: 'أكتوبر' },
+    { week: 7, day: 'الإثنين', hijri: '04/14', gregorian: '10/06', month: 'ربيع الثاني', gregMonth: 'أكتوبر' },
+    { week: 7, day: 'الثلاثاء', hijri: '04/15', gregorian: '10/07', month: 'ربيع الثاني', gregMonth: 'أكتوبر' },
+    { week: 7, day: 'الأربعاء', hijri: '04/16', gregorian: '10/08', month: 'ربيع الثاني', gregMonth: 'أكتوبر' },
+    { week: 7, day: 'الخميس', hijri: '04/17', gregorian: '10/09', month: 'ربيع الثاني', gregMonth: 'أكتوبر' },
+    
+    // الأسبوع الثامن
+    { week: 8, day: 'الأحد', hijri: '04/20', gregorian: '10/12', month: 'ربيع الثاني', gregMonth: 'أكتوبر' },
+    { week: 8, day: 'الإثنين', hijri: '04/21', gregorian: '10/13', month: 'ربيع الثاني', gregMonth: 'أكتوبر' },
+    { week: 8, day: 'الثلاثاء', hijri: '04/22', gregorian: '10/14', month: 'ربيع الثاني', gregMonth: 'أكتوبر' },
+    { week: 8, day: 'الأربعاء', hijri: '04/23', gregorian: '10/15', month: 'ربيع الثاني', gregMonth: 'أكتوبر' },
+    { week: 8, day: 'الخميس', hijri: '04/24', gregorian: '10/16', month: 'ربيع الثاني', gregMonth: 'أكتوبر', note: 'إجازة إضافية' },
+    
+    // الأسبوع التاسع
+    { week: 9, day: 'الأحد', hijri: '04/27', gregorian: '10/19', month: 'ربيع الثاني', gregMonth: 'أكتوبر' },
+    { week: 9, day: 'الإثنين', hijri: '04/28', gregorian: '10/20', month: 'ربيع الثاني', gregMonth: 'أكتوبر' },
+    { week: 9, day: 'الثلاثاء', hijri: '04/29', gregorian: '10/21', month: 'ربيع الثاني', gregMonth: 'أكتوبر' },
+    { week: 9, day: 'الأربعاء', hijri: '04/30', gregorian: '10/22', month: 'ربيع الثاني', gregMonth: 'أكتوبر' },
+    { week: 9, day: 'الخميس', hijri: '05/01', gregorian: '10/23', month: 'جمادى الأولى', gregMonth: 'أكتوبر' },
+    
+    // الأسبوع العاشر
+    { week: 10, day: 'الأحد', hijri: '05/04', gregorian: '10/26', month: 'جمادى الأولى', gregMonth: 'أكتوبر' },
+    { week: 10, day: 'الإثنين', hijri: '05/05', gregorian: '10/27', month: 'جمادى الأولى', gregMonth: 'أكتوبر' },
+    { week: 10, day: 'الثلاثاء', hijri: '05/06', gregorian: '10/28', month: 'جمادى الأولى', gregMonth: 'أكتوبر' },
+    { week: 10, day: 'الأربعاء', hijri: '05/07', gregorian: '10/29', month: 'جمادى الأولى', gregMonth: 'أكتوبر' },
+    { week: 10, day: 'الخميس', hijri: '05/08', gregorian: '10/30', month: 'جمادى الأولى', gregMonth: 'أكتوبر' },
+    
+    // الأسبوع الحادي عشر
+    { week: 11, day: 'الأحد', hijri: '05/11', gregorian: '11/02', month: 'جمادى الأولى', gregMonth: 'نوفمبر' },
+    { week: 11, day: 'الإثنين', hijri: '05/12', gregorian: '11/03', month: 'جمادى الأولى', gregMonth: 'نوفمبر' },
+    { week: 11, day: 'الثلاثاء', hijri: '05/13', gregorian: '11/04', month: 'جمادى الأولى', gregMonth: 'نوفمبر' },
+    { week: 11, day: 'الأربعاء', hijri: '05/14', gregorian: '11/05', month: 'جمادى الأولى', gregMonth: 'نوفمبر' },
+    { week: 11, day: 'الخميس', hijri: '05/15', gregorian: '11/06', month: 'جمادى الأولى', gregMonth: 'نوفمبر' },
+    
+    // الأسبوع الثاني عشر
+    { week: 12, day: 'الأحد', hijri: '05/18', gregorian: '11/09', month: 'جمادى الأولى', gregMonth: 'نوفمبر' },
+    { week: 12, day: 'الإثنين', hijri: '05/19', gregorian: '11/10', month: 'جمادى الأولى', gregMonth: 'نوفمبر' },
+    { week: 12, day: 'الثلاثاء', hijri: '05/20', gregorian: '11/11', month: 'جمادى الأولى', gregMonth: 'نوفمبر' },
+    { week: 12, day: 'الأربعاء', hijri: '05/21', gregorian: '11/12', month: 'جمادى الأولى', gregMonth: 'نوفمبر' },
+    { week: 12, day: 'الخميس', hijri: '05/22', gregorian: '11/13', month: 'جمادى الأولى', gregMonth: 'نوفمبر' },
+    
+    // الأسبوع الثالث عشر
+    { week: 13, day: 'الأحد', hijri: '05/25', gregorian: '11/16', month: 'جمادى الأولى', gregMonth: 'نوفمبر' },
+    { week: 13, day: 'الإثنين', hijri: '05/26', gregorian: '11/17', month: 'جمادى الأولى', gregMonth: 'نوفمبر' },
+    { week: 13, day: 'الثلاثاء', hijri: '05/27', gregorian: '11/18', month: 'جمادى الأولى', gregMonth: 'نوفمبر' },
+    { week: 13, day: 'الأربعاء', hijri: '05/28', gregorian: '11/19', month: 'جمادى الأولى', gregMonth: 'نوفمبر' },
+    { week: 13, day: 'الخميس', hijri: '05/29', gregorian: '11/20', month: 'جمادى الأولى', gregMonth: 'نوفمبر', note: 'بداية الاختبارات النهائية' },
+    
+    // الأسبوع الرابع عشر
+    { week: 14, day: 'الأحد', hijri: '06/09', gregorian: '11/30', month: 'جمادى الآخرة', gregMonth: 'نوفمبر - ديسمبر' },
+    { week: 14, day: 'الإثنين', hijri: '06/10', gregorian: '12/01', month: 'جمادى الآخرة', gregMonth: 'ديسمبر' },
+    { week: 14, day: 'الثلاثاء', hijri: '06/11', gregorian: '12/02', month: 'جمادى الآخرة', gregMonth: 'ديسمبر' },
+    { week: 14, day: 'الأربعاء', hijri: '06/12', gregorian: '12/03', month: 'جمادى الآخرة', gregMonth: 'ديسمبر' },
+    { week: 14, day: 'الخميس', hijri: '06/13', gregorian: '12/04', month: 'جمادى الآخرة', gregMonth: 'ديسمبر' },
+    
+    // الأسبوع الخامس عشر
+    { week: 15, day: 'الأحد', hijri: '06/16', gregorian: '12/07', month: 'جمادى الآخرة', gregMonth: 'ديسمبر' },
+    { week: 15, day: 'الإثنين', hijri: '06/17', gregorian: '12/08', month: 'جمادى الآخرة', gregMonth: 'ديسمبر' },
+    { week: 15, day: 'الثلاثاء', hijri: '06/18', gregorian: '12/09', month: 'جمادى الآخرة', gregMonth: 'ديسمبر' },
+    { week: 15, day: 'الأربعاء', hijri: '06/19', gregorian: '12/10', month: 'جمادى الآخرة', gregMonth: 'ديسمبر' },
+    { week: 15, day: 'الخميس', hijri: '06/20', gregorian: '12/11', month: 'جمادى الآخرة', gregMonth: 'ديسمبر', note: 'إجازة إضافية' },
+    
+    // الأسبوع السادس عشر
+    { week: 16, day: 'الأحد', hijri: '06/23', gregorian: '12/14', month: 'جمادى الآخرة', gregMonth: 'ديسمبر' },
+    { week: 16, day: 'الإثنين', hijri: '06/24', gregorian: '12/15', month: 'جمادى الآخرة', gregMonth: 'ديسمبر' },
+    { week: 16, day: 'الثلاثاء', hijri: '06/25', gregorian: '12/16', month: 'جمادى الآخرة', gregMonth: 'ديسمبر' },
+    { week: 16, day: 'الأربعاء', hijri: '06/26', gregorian: '12/17', month: 'جمادى الآخرة', gregMonth: 'ديسمبر' },
+    { week: 16, day: 'الخميس', hijri: '06/27', gregorian: '12/18', month: 'جمادى الآخرة', gregMonth: 'ديسمبر', note: 'إجازة إضافية' },
+    
+    // الأسبوع السابع عشر
+    { week: 17, day: 'الأحد', hijri: '07/01', gregorian: '12/21', month: 'رجب', gregMonth: 'ديسمبر' },
+    { week: 17, day: 'الإثنين', hijri: '07/02', gregorian: '12/22', month: 'رجب', gregMonth: 'ديسمبر' },
+    { week: 17, day: 'الثلاثاء', hijri: '07/03', gregorian: '12/23', month: 'رجب', gregMonth: 'ديسمبر' },
+    { week: 17, day: 'الأربعاء', hijri: '07/04', gregorian: '12/24', month: 'رجب', gregMonth: 'ديسمبر' },
+    { week: 17, day: 'الخميس', hijri: '07/05', gregorian: '12/25', month: 'رجب', gregMonth: 'ديسمبر' },
+    
+    // الأسبوع الثامن عشر
+    { week: 18, day: 'الأحد', hijri: '07/08', gregorian: '12/28', month: 'رجب', gregMonth: 'ديسمبر - يناير' },
+    { week: 18, day: 'الإثنين', hijri: '07/09', gregorian: '12/29', month: 'رجب', gregMonth: 'ديسمبر' },
+    { week: 18, day: 'الثلاثاء', hijri: '07/10', gregorian: '12/30', month: 'رجب', gregMonth: 'ديسمبر' },
+    { week: 18, day: 'الأربعاء', hijri: '07/11', gregorian: '12/31', month: 'رجب', gregMonth: 'ديسمبر' },
+    { week: 18, day: 'الخميس', hijri: '07/12', gregorian: '01/01', month: 'رجب', gregMonth: 'يناير' },
+    
+    // الأسبوع التاسع عشر
+    { week: 19, day: 'الأحد', hijri: '07/15', gregorian: '01/04', month: 'رجب', gregMonth: 'يناير' },
+    { week: 19, day: 'الإثنين', hijri: '07/16', gregorian: '01/05', month: 'رجب', gregMonth: 'يناير' },
+    { week: 19, day: 'الثلاثاء', hijri: '07/17', gregorian: '01/06', month: 'رجب', gregMonth: 'يناير' },
+    { week: 19, day: 'الأربعاء', hijri: '07/18', gregorian: '01/07', month: 'رجب', gregMonth: 'يناير' },
+    { week: 19, day: 'الخميس', hijri: '07/19', gregorian: '01/08', month: 'رجب', gregMonth: 'يناير', note: 'نهاية دوام العام - إجازة تصحيح' },
+  ];
+
+  const exportToExcel = () => {
+    try {
+      setStatus('جاري إنشاء الملف...');
+      
+      // تجهيز البيانات للإكسل
+      const excelData = calendarData.map(row => ({
+        'الأسبوع': `الأسبوع ${row.week}`,
+        'اليوم': row.day,
+        'التاريخ الهجري': `${row.hijri}/1447`,
+        'الشهر الهجري': row.month,
+        'التاريخ الميلادي': row.gregorian === '01/01' || row.gregorian === '01/04' || row.gregorian === '01/05' || row.gregorian === '01/06' || row.gregorian === '01/07' || row.gregorian === '01/08' ? `${row.gregorian}/2026` : `${row.gregorian}/2025`,
+        'الشهر الميلادي': row.gregMonth,
+        'ملاحظات': row.note || ''
+      }));
+
+      // إضافة معلومات إضافية في ورقة منفصلة
+      const summaryData = [
+        { 'البند': 'العام الدراسي', 'التفاصيل': '1447 هـ - 2025/2026 م' },
+        { 'البند': 'الفصل الدراسي', 'التفاصيل': 'الفصل الأول' },
+        { 'البند': 'بداية الدراسة', 'التفاصيل': '03/01/1447 هـ (24/08/2025 م)' },
+        { 'البند': 'نهاية الدراسة', 'التفاصيل': '07/28/1447 هـ (28/01/2026 م)' },
+        { 'البند': 'إجازة اليوم الوطني', 'التفاصيل': '04/01/1447 هـ (23/09/2025 م)' },
+        { 'البند': 'بداية الاختبارات النهائية', 'التفاصيل': '05/29/1447 هـ (20/11/2025 م)' },
+        { 'البند': 'نهاية إجازة الاختبارات', 'التفاصيل': '06/08/1447 هـ (29/11/2025 م)' },
+        { 'البند': 'إجازة إضافية 1', 'التفاصيل': '04/24/1447 هـ (16/10/2025 م)' },
+        { 'البند': 'إجازة إضافية 2', 'التفاصيل': '06/20/1447 هـ (11/12/2025 م)' },
+        { 'البند': 'إجازة إضافية 3', 'التفاصيل': '06/27/1447 هـ (18/12/2025 م)' },
+      ];
+
+      // إنشاء workbook
+      const wb = XLSX.utils.book_new();
+      
+      // إضافة ورقة التقويم الرئيسية
+      const ws1 = XLSX.utils.json_to_sheet(excelData);
+      XLSX.utils.book_append_sheet(wb, ws1, 'التقويم الدراسي');
+      
+      // إضافة ورقة الملخص
+      const ws2 = XLSX.utils.json_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, ws2, 'ملخص التقويم');
+      
+      // حفظ الملف
+      XLSX.writeFile(wb, 'التقويم_الدراسي_1447هـ_الفصل_الأول.xlsx');
+      
+      setStatus('تم التحميل بنجاح! ✓');
+      setTimeout(() => setStatus(''), 3000);
+    } catch (error) {
+      setStatus('حدث خطأ في التصدير');
+      console.error(error);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6" dir="rtl">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <div className="bg-indigo-600 p-3 rounded-xl">
+                <Calendar className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-800">
+                  التقويم الدراسي للفصل الأول
+                </h1>
+                <p className="text-gray-600 mt-1">
+                  العام الدراسي 1447 هـ (2025/2026 م)
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={exportToExcel}
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl"
+            >
+              <Download className="w-5 h-5" />
+              تحميل Excel
+            </button>
+          </div>
+          
+          {status && (
+            <div className={`p-4 rounded-lg ${status.includes('خطأ') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+              {status}
+            </div>
+          )}
+        </div>
+
+        {/* معلومات هامة */}
+        <div className="grid md:grid-cols-3 gap-4 mb-6">
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <h3 className="text-lg font-bold text-indigo-600 mb-2">📅 بداية الدراسة</h3>
+            <p className="text-gray-700">03/01/1447 هـ</p>
+            <p className="text-gray-600 text-sm">24/08/2025 م</p>
+          </div>
+          
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <h3 className="text-lg font-bold text-green-600 mb-2">🎯 اليوم الوطني</h3>
+            <p className="text-gray-700">04/01/1447 هـ</p>
+            <p className="text-gray-600 text-sm">23/09/2025 م</p>
+          </div>
+          
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <h3 className="text-lg font-bold text-orange-600 mb-2">📝 بداية الاختبارات</h3>
+            <p className="text-gray-700">05/29/1447 هـ</p>
+            <p className="text-gray-600 text-sm">20/11/2025 م</p>
+          </div>
+        </div>
+
+        {/* جدول التقويم */}
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-indigo-600 text-white">
+                <tr>
+                  <th className="px-4 py-3 text-right">الأسبوع</th>
+                  <th className="px-4 py-3 text-right">اليوم</th>
+                  <th className="px-4 py-3 text-right">التاريخ الهجري</th>
+                  <th className="px-4 py-3 text-right">الشهر الهجري</th>
+                  <th className="px-4 py-3 text-right">التاريخ الميلادي</th>
+                  <th className="px-4 py-3 text-right">الشهر الميلادي</th>
+                  <th className="px-4 py-3 text-right">ملاحظات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {calendarData.map((row, index) => (
+                  <tr 
+                    key={index} 
+                    className={`border-b ${row.note ? 'bg-yellow-50' : index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-indigo-50 transition-colors`}
+                  >
+                    <td className="px-4 py-3 font-semibold text-indigo-600">
+                      {index % 5 === 0 ? `الأسبوع ${row.week}` : ''}
+                    </td>
+                    <td className="px-4 py-3">{row.day}</td>
+                    <td className="px-4 py-3 font-mono">{row.hijri}/1447</td>
+                    <td className="px-4 py-3 text-sm">{row.month}</td>
+                    <td className="px-4 py-3 font-mono">
+                      {['01/01', '01/04', '01/05', '01/06', '01/07', '01/08'].includes(row.gregorian) 
+                        ? `${row.gregorian}/2026` 
+                        : `${row.gregorian}/2025`}
+                    </td>
+                    <td className="px-4 py-3 text-sm">{row.gregMonth}</td>
+                    <td className="px-4 py-3 text-sm">
+                      {row.note && (
+                        <span className="bg-yellow-200 text-yellow-800 px-2 py-1 rounded-full text-xs font-semibold">
+                          {row.note}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-6 text-center text-gray-600">
+          <p className="text-sm">
+            💡 اضغط على زر "تحميل Excel" للحصول على نسخة كاملة قابلة للتعديل
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AcademicCalendarExcel;

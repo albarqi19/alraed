@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import {
   useDownloadStudentsTemplateMutation,
   useDownloadTeachersTemplateMutation,
@@ -28,6 +28,85 @@ function PlatformImportButton({ label, logo, onClick }: Omit<PlatformImportButto
       </div>
       <p className="text-base font-bold text-slate-900">{label}</p>
     </button>
+  )
+}
+
+function ExtensionDetector() {
+  const [isInstalled, setIsInstalled] = useState<boolean | null>(null)
+  const EXTENSION_ID = 'YOUR_EXTENSION_ID_HERE' // سيتم تحديثه بعد النشر
+  const CHROME_STORE_URL = `https://chrome.google.com/webstore/detail/${EXTENSION_ID}`
+
+  useEffect(() => {
+    // الاستماع لرسائل من الإضافة
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'ALRAED_EXTENSION_DETECTED') {
+        setIsInstalled(true)
+      }
+    }
+
+    window.addEventListener('message', handleMessage)
+
+    // إرسال طلب كشف الإضافة
+    window.postMessage({ type: 'ALRAED_DETECT_EXTENSION' }, '*')
+
+    // إذا لم نتلقى رد خلال 1 ثانية، اعتبر الإضافة غير مثبتة
+    const timeout = setTimeout(() => {
+      if (isInstalled === null) {
+        setIsInstalled(false)
+      }
+    }, 1000)
+
+    return () => {
+      window.removeEventListener('message', handleMessage)
+      clearTimeout(timeout)
+    }
+  }, [isInstalled])
+
+  if (isInstalled === null) {
+    // حالة التحميل
+    return (
+      <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+        <div className="h-8 w-8 animate-pulse rounded-lg bg-slate-200" />
+        <p className="text-sm text-muted">جاري الكشف عن الإضافة...</p>
+      </div>
+    )
+  }
+
+  if (isInstalled) {
+    // الإضافة مثبتة
+    return (
+      <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 px-4 py-3">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50">
+          <span className="text-lg font-bold text-slate-900">R</span>
+        </div>
+        <div className="flex-1 text-right">
+          <p className="text-sm font-semibold text-emerald-700">إضافة الرَّائِد مُثبّتة ✓</p>
+          <p className="text-xs text-emerald-600">يمكنك الآن استيراد البيانات بسهولة</p>
+        </div>
+      </div>
+    )
+  }
+
+  // الإضافة غير مثبتة
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border-2 border-amber-300 bg-amber-50/80 p-4">
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100">
+        <span className="text-xl font-bold text-slate-900">R</span>
+      </div>
+      <div className="flex-1 text-right">
+        <p className="text-sm font-bold text-slate-900">احصل على إضافة الاستيراد التلقائي</p>
+        <p className="text-xs text-muted">قم بتثبيت الإضافة لاستيراد البيانات مباشرة من نور ومدرستي</p>
+      </div>
+      <a
+        href={CHROME_STORE_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="button-primary flex items-center gap-2 whitespace-nowrap text-sm"
+      >
+        <i className="bi bi-download" />
+        تحميل الإضافة
+      </a>
+    </div>
   )
 }
 
@@ -455,7 +534,9 @@ export function AdminImportPage() {
             اختر المنصة التي تريد الاستيراد منها لتحميل البيانات مباشرة
           </p>
         </header>
-        <div className="grid gap-4 sm:grid-cols-2">
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <ExtensionDetector />
           <PlatformImportButton
             label="استيراد من نظام نور"
             logo="https://noor.moe.gov.sa/Noor/images/home_login/noor_logo.png"
