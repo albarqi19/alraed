@@ -44,6 +44,7 @@ import {
   fetchLeaveRequests,
   fetchMissingSessions,
   fetchPendingApprovals,
+  fetchTeacherHudoriAttendance,
   fetchScheduleDetails,
   fetchScheduleSessionData,
   fetchScheduleTemplates,
@@ -146,6 +147,7 @@ import type {
   DutyRosterTemplatePayload,
   DutyRosterTemplateUpdatePayload,
   DutyRosterSettingsUpdatePayload,
+  TeacherHudoriAttendanceFilters,
 } from './types'
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -174,6 +176,30 @@ type DutyRosterAssignReplacementArgs = {
 type DutyRosterTemplateUpdateArgs = {
   id: number
   payload: DutyRosterTemplateUpdatePayload
+}
+type TeacherHudoriAttendanceQueryOptions = {
+  enabled?: boolean
+  refetchInterval?: number
+}
+
+export function useTeacherHudoriAttendanceQuery(
+  filters: TeacherHudoriAttendanceFilters = {},
+  options: TeacherHudoriAttendanceQueryOptions = {},
+) {
+  const normalizedFilters = Object.fromEntries(
+    Object.entries(filters ?? {}).filter(([, value]) => value !== undefined && value !== '' && value !== 'all'),
+  )
+
+  const enabled = options.enabled ?? true
+  const refetchInterval = enabled ? options.refetchInterval ?? 60_000 : undefined
+
+  return useQuery({
+    queryKey: adminQueryKeys.teacherAttendance.today(normalizedFilters),
+    queryFn: () => fetchTeacherHudoriAttendance(filters),
+    enabled,
+    refetchInterval,
+    staleTime: 30_000,
+  })
 }
 
 export function useAdminDashboardStatsQuery() {

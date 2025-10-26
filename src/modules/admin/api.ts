@@ -32,6 +32,12 @@ import type {
   SubjectRecord,
   TeacherCredentials,
   TeacherRecord,
+  TeacherHudoriAttendanceFilters,
+  TeacherHudoriAttendanceLoginMethod,
+  TeacherHudoriAttendanceRecord,
+  TeacherHudoriAttendanceResponse,
+  TeacherHudoriAttendanceStatus,
+  TeacherHudoriAttendanceStats,
   WhatsappHistoryItem,
   WhatsappQueueItem,
   WhatsappSettings,
@@ -496,6 +502,178 @@ function normalizeAttendanceReportMatrix(
     generated_at: typeof payloadRecord.generated_at === 'string' ? payloadRecord.generated_at : undefined,
     metadata,
   }
+}
+
+const TEACHER_ATTENDANCE_STATUS_VALUES: TeacherHudoriAttendanceStatus[] = ['present', 'departed', 'failed', 'unknown']
+const TEACHER_ATTENDANCE_LOGIN_VALUES: TeacherHudoriAttendanceLoginMethod[] = ['face', 'fingerprint', 'card', 'voice', 'manual', 'unknown']
+
+const TEACHER_ATTENDANCE_STATUS_LABELS: Record<TeacherHudoriAttendanceStatus, string> = {
+  present: 'حاضر',
+  departed: 'انصرف',
+  failed: 'فشل التحقق',
+  unknown: 'غير محدد',
+}
+
+const TEACHER_ATTENDANCE_LOGIN_LABELS: Record<TeacherHudoriAttendanceLoginMethod, string> = {
+  face: 'التعرف على الوجه',
+  fingerprint: 'بصمة اليد',
+  card: 'بطاقة دخول',
+  voice: 'التعرف الصوتي',
+  manual: 'إدخال يدوي',
+  unknown: 'غير محدد',
+}
+
+function normalizeTeacherHudoriAttendanceRecord(raw: unknown): TeacherHudoriAttendanceRecord | null {
+  if (!isRecord(raw)) return null
+
+  const idCandidate = coerceNumber(raw.id, Number.NaN)
+  const nationalId = typeof raw.national_id === 'string' ? raw.national_id : null
+  const employeeName = typeof raw.employee_name === 'string' ? raw.employee_name : null
+
+  if (!Number.isFinite(idCandidate) || !nationalId || !employeeName) {
+    return null
+  }
+
+  const transactionType =
+    typeof raw.transaction_type === 'string' && (raw.transaction_type === 'check_in' || raw.transaction_type === 'check_out')
+      ? (raw.transaction_type as 'check_in' | 'check_out')
+      : 'check_in'
+
+  const statusValue = typeof raw.status === 'string' ? (raw.status as TeacherHudoriAttendanceStatus) : 'unknown'
+  const status = TEACHER_ATTENDANCE_STATUS_VALUES.includes(statusValue) ? statusValue : 'unknown'
+
+  const loginValue = typeof raw.login_method === 'string' ? (raw.login_method as TeacherHudoriAttendanceLoginMethod) : 'unknown'
+  const loginMethod = TEACHER_ATTENDANCE_LOGIN_VALUES.includes(loginValue) ? loginValue : 'unknown'
+
+  const userRecord = isRecord(raw.user)
+    ? {
+        id: coerceNumber(raw.user.id ?? raw.user.user_id, 0),
+        name: typeof raw.user.name === 'string' ? raw.user.name : null,
+        school_id: coerceNumber(raw.user.school_id, Number.NaN),
+      }
+    : null
+
+  const user = userRecord && userRecord.name
+    ? {
+        id: Math.max(0, Math.trunc(userRecord.id ?? 0)),
+        name: userRecord.name,
+        school_id: Number.isFinite(userRecord.school_id ?? NaN) ? Math.trunc(userRecord.school_id ?? 0) : null,
+      }
+    : null
+
+  return {
+    id: Math.trunc(idCandidate),
+    national_id: nationalId,
+    employee_name: employeeName,
+    job_number: typeof raw.job_number === 'string' ? raw.job_number : null,
+    transaction_type: transactionType,
+    status,
+    status_label:
+      typeof raw.status_label === 'string' && raw.status_label.trim()
+        ? raw.status_label
+        : TEACHER_ATTENDANCE_STATUS_LABELS[status],
+    login_method: loginMethod,
+    login_method_label:
+      typeof raw.login_method_label === 'string' && raw.login_method_label.trim()
+        ? raw.login_method_label
+        : TEACHER_ATTENDANCE_LOGIN_LABELS[loginMethod],
+    result: typeof raw.result === 'string' ? raw.result : null,
+    attendance_date: typeof raw.attendance_date === 'string' ? raw.attendance_date : '',
+    transaction_time: typeof raw.transaction_time === 'string' ? raw.transaction_time : null,
+    check_in_time: typeof raw.check_in_time === 'string' ? raw.check_in_time : null,
+    check_out_time: typeof raw.check_out_time === 'string' ? raw.check_out_time : null,
+    gate_name: typeof raw.gate_name === 'string' ? raw.gate_name : null,
+    location: typeof raw.location === 'string' ? raw.location : null,
+    page_number: Number.isFinite(coerceNumber(raw.page_number, Number.NaN))
+      ? Math.trunc(coerceNumber(raw.page_number, 0))
+      : null,
+    source: typeof raw.source === 'string' ? raw.source : null,
+    is_matched: Boolean(raw.is_matched ?? false),
+    user,
+  }
+}
+
+function normalizeTeacherHudoriAttendanceStats(raw: unknown): TeacherHudoriAttendanceStats {
+  if (!isRecord(raw)) {
+    return {
+      total: 0,
+      matched: 0,
+      unmatched: 0,
+      present: 0,
+      departed: 0,
+      failed: 0,
+      unknown: 0,
+    }
+  }
+
+  return {
+    total: coerceNumber(raw.total, 0),
+    matched: coerceNumber(raw.matched, 0),
+    unmatched: coerceNumber(raw.unmatched, 0),
+    present: coerceNumber(raw.present, 0),
+    departed: coerceNumber(raw.departed, 0),
+    failed: coerceNumber(raw.failed, 0),
+    unknown: coerceNumber(raw.unknown, 0),
+  }
+}
+
+function normalizeTeacherHudoriAttendanceResponse(payload: unknown): TeacherHudoriAttendanceResponse {
+  if (!isRecord(payload)) {
+    throw new Error('استجابة غير متوقعة من الخادم')
+  }
+
+  const recordsSource = Array.isArray(payload.records) ? payload.records : []
+  const records = recordsSource
+    .map((record) => normalizeTeacherHudoriAttendanceRecord(record))
+    .filter((record): record is TeacherHudoriAttendanceRecord => record !== null)
+
+  const metadataRecord = isRecord(payload.metadata) ? payload.metadata : null
+  const filtersRecord = metadataRecord && isRecord(metadataRecord.filters) ? metadataRecord.filters : null
+
+  const metadata = metadataRecord
+    ? {
+        refreshed_at: typeof metadataRecord.refreshed_at === 'string' ? metadataRecord.refreshed_at : undefined,
+        filters: filtersRecord
+          ? {
+              status: typeof filtersRecord.status === 'string' ? filtersRecord.status : undefined,
+              matched: typeof filtersRecord.matched === 'string' ? filtersRecord.matched : undefined,
+              search: typeof filtersRecord.search === 'string' ? filtersRecord.search : undefined,
+            }
+          : undefined,
+      }
+    : undefined
+
+  return {
+    date: typeof payload.date === 'string' ? payload.date : new Date().toISOString().slice(0, 10),
+    records,
+    stats: normalizeTeacherHudoriAttendanceStats(payload.stats ?? {}),
+    metadata,
+  }
+}
+
+export async function fetchTeacherHudoriAttendance(
+  filters: TeacherHudoriAttendanceFilters = {},
+): Promise<TeacherHudoriAttendanceResponse> {
+  const params: Record<string, string> = {}
+
+  if (filters.date) params.date = filters.date
+  if (filters.status && filters.status !== 'all') params.status = filters.status
+  if (filters.matched && filters.matched !== 'all') params.matched = filters.matched
+  if (filters.search) params.search = filters.search
+  if (filters.login_method && filters.login_method !== 'all') params.login_method = filters.login_method
+
+  const { data } = await apiClient.get<unknown>('/attendance/teacher-hudori/today', {
+    params: Object.keys(params).length > 0 ? params : undefined,
+  })
+
+  if (isRecord(data) && data.success === false) {
+    const message = typeof data.message === 'string' ? data.message : 'تعذر تحميل حضور المعلمين'
+    throw new Error(message)
+  }
+
+  const payload = isRecord(data) && isRecord(data.data) ? data.data : data
+
+  return normalizeTeacherHudoriAttendanceResponse(payload)
 }
 
 function normalizeWhatsappStudentRecord(raw: unknown): WhatsappTargetStudent | null {

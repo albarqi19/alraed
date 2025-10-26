@@ -294,6 +294,69 @@ export interface AttendanceReportMatrix {
   }
 }
 
+export type TeacherHudoriAttendanceStatus = 'present' | 'departed' | 'failed' | 'unknown'
+export type TeacherHudoriAttendanceLoginMethod = 'face' | 'fingerprint' | 'card' | 'voice' | 'manual' | 'unknown'
+
+export interface TeacherHudoriAttendanceRecord {
+  id: number
+  national_id: string
+  employee_name: string
+  job_number?: string | null
+  transaction_type: 'check_in' | 'check_out'
+  status: TeacherHudoriAttendanceStatus
+  status_label: string
+  login_method: TeacherHudoriAttendanceLoginMethod
+  login_method_label: string
+  result?: string | null
+  attendance_date: string
+  transaction_time?: string | null
+  check_in_time?: string | null
+  check_out_time?: string | null
+  gate_name?: string | null
+  location?: string | null
+  page_number?: number | null
+  source?: string | null
+  is_matched: boolean
+  user?: {
+    id: number
+    name: string
+    school_id?: number | null
+  } | null
+}
+
+export interface TeacherHudoriAttendanceStats {
+  total: number
+  matched: number
+  unmatched: number
+  present: number
+  departed: number
+  failed: number
+  unknown: number
+}
+
+export interface TeacherHudoriAttendanceResponse {
+  success?: boolean
+  date: string
+  records: TeacherHudoriAttendanceRecord[]
+  stats: TeacherHudoriAttendanceStats
+  metadata?: {
+    refreshed_at?: string
+    filters?: {
+      status?: string | null
+      matched?: string | null
+      search?: string | null
+    }
+  }
+}
+
+export interface TeacherHudoriAttendanceFilters {
+  date?: string
+  status?: TeacherHudoriAttendanceStatus | 'all'
+  matched?: 'all' | 'matched' | 'unmatched'
+  search?: string
+  login_method?: TeacherHudoriAttendanceLoginMethod | 'all'
+}
+
 export interface LateArrivalRecord {
   id: number
   student_id: number
