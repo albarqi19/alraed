@@ -33,8 +33,7 @@ function PlatformImportButton({ label, logo, onClick }: Omit<PlatformImportButto
 
 function ExtensionDetector() {
   const [isInstalled, setIsInstalled] = useState<boolean | null>(null)
-  const EXTENSION_ID = 'YOUR_EXTENSION_ID_HERE' // سيتم تحديثه بعد النشر
-  const CHROME_STORE_URL = `https://chrome.google.com/webstore/detail/${EXTENSION_ID}`
+  const CHROME_STORE_URL = 'https://chromewebstore.google.com/detail/الرَّائِد-مساعد-استيراد-ا/kglcgomelgkhgaefhjmakcfalfdficll'
 
   useEffect(() => {
     // الاستماع لرسائل من الإضافة
