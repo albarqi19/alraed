@@ -1167,6 +1167,52 @@ export async function rejectAttendanceSession(payload: {
   unwrapResponse(data, 'تعذر رفض التحضير')
 }
 
+export async function updateAttendanceStatus(
+  attendanceId: number,
+  payload: { status: AttendanceSessionDetails['students'][number]['status']; notes?: string | null },
+): Promise<{
+  attendance: AttendanceSessionDetails['students'][number]
+  statistics: AttendanceSessionDetails['statistics']
+}> {
+  const { data } = await apiClient.post<
+    ApiResponse<{
+      attendance: {
+        attendance_id: number
+        student_id: number
+        name: string
+        national_id?: string | null
+        status: AttendanceSessionDetails['students'][number]['status']
+        notes?: string | null
+        recorded_at?: string | null
+      }
+      statistics: AttendanceSessionDetails['statistics']
+    }>
+  >(`/admin/attendance-reports/${attendanceId}/update-status`, payload)
+
+  const result = unwrapResponse(data, 'تعذر تحديث حالة الطالب')
+
+  const attendanceData: AttendanceSessionDetails['students'][number] = {
+    attendance_id: result.attendance.attendance_id,
+    student_id: result.attendance.student_id,
+    name: result.attendance.name,
+    status: result.attendance.status,
+    notes: result.attendance.notes ?? null,
+  }
+
+  if (result.attendance.national_id) {
+    attendanceData.national_id = result.attendance.national_id
+  }
+
+  if (result.attendance.recorded_at) {
+    attendanceData.recorded_at = result.attendance.recorded_at
+  }
+
+  return {
+    attendance: attendanceData,
+    statistics: result.statistics,
+  }
+}
+
 export async function approveAllPendingSessions(): Promise<{ approved_count: number; failed_count: number }> {
   const { data } = await apiClient.post<ApiResponse<{ approved_count: number; failed_count: number }>>(
     '/admin/attendance-reports/approve-all-pending',

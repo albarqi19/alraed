@@ -65,6 +65,7 @@ import {
   rejectAttendanceSession,
   rejectLeaveRequest,
   resetTeacherPassword,
+  updateAttendanceStatus,
   sendLateArrivalMessage,
   sendPendingWhatsappMessages,
   sendSingleWhatsappMessage,
@@ -122,6 +123,7 @@ import { adminQueryKeys } from './query-keys'
 import { useToast } from '@/shared/feedback/use-toast'
 import type {
   AttendanceReportFiltersPayload,
+  AttendanceSessionDetails,
   ImportStudentsPayload,
   LeaveRequestFilters,
   LeaveRequestRecord,
@@ -785,6 +787,56 @@ export function useRejectAttendanceSessionMutation() {
     },
     onError: (error) => {
       toast({ type: 'error', title: getErrorMessage(error, 'تعذر رفض التحضير') })
+    },
+  })
+}
+
+type UpdateAttendanceStatusVariables = {
+  attendanceId: number
+  sessionDetailId?: number | null
+  status: AttendanceSessionDetails['students'][number]['status']
+  notes?: string | null
+}
+
+export function useUpdateAttendanceStatusMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation<
+    { attendance: AttendanceSessionDetails['students'][number]; statistics: AttendanceSessionDetails['statistics'] },
+    unknown,
+    UpdateAttendanceStatusVariables
+  >({
+    mutationFn: ({ attendanceId, status, notes }: UpdateAttendanceStatusVariables) =>
+      updateAttendanceStatus(attendanceId, { status, notes }),
+    onSuccess: (response, variables) => {
+      toast({ type: 'success', title: 'تم تحديث حالة الطالب' })
+
+      if (variables.sessionDetailId) {
+        queryClient.setQueryData(
+          adminQueryKeys.attendance.sessionDetails(variables.sessionDetailId),
+          (previous: AttendanceSessionDetails | undefined) => {
+            if (!previous) return previous
+
+            const students = previous.students.map((student) =>
+              student.attendance_id === response.attendance.attendance_id
+                ? { ...student, ...response.attendance }
+                : student,
+            )
+
+            return {
+              ...previous,
+              students,
+              statistics: response.statistics,
+            }
+          },
+        )
+      }
+
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.attendance.pending() })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تحديث حالة الطالب') })
     },
   })
 }

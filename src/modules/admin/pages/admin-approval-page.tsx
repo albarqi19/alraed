@@ -5,8 +5,9 @@ import {
   useAttendanceSessionDetailsQuery,
   usePendingApprovalsQuery,
   useRejectAttendanceSessionMutation,
+  useUpdateAttendanceStatusMutation,
 } from '../hooks'
-import type { PendingApprovalRecord } from '../types'
+import type { PendingApprovalRecord, AttendanceSessionDetails } from '../types'
 import { MissingSessionsModal } from '../components/missing-sessions-modal'
 
 type FilterState = {
@@ -16,62 +17,36 @@ type FilterState = {
   subject: string
 }
 
+type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused'
+
+const attendanceStatusLabels: Record<AttendanceStatus, string> = {
+  present: 'حاضر',
+  absent: 'غائب',
+  late: 'متأخر',
+  excused: 'مستأذن',
+}
+
+const attendanceStatusTone: Record<AttendanceStatus, string> = {
+  present: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  absent: 'bg-rose-50 text-rose-700 border border-rose-200',
+  late: 'bg-amber-50 text-amber-700 border border-amber-200',
+  excused: 'bg-sky-50 text-sky-700 border border-sky-200',
+}
+
+const attendanceStatusOptions: Array<{ value: AttendanceStatus; label: string }> = (
+  Object.keys(attendanceStatusLabels) as AttendanceStatus[]
+).map((value) => ({ value, label: attendanceStatusLabels[value] }))
+
+function normalizeAttendanceDate(value: string): string {
+  const match = value.match(/^\d{4}-\d{2}-\d{2}/)
+  return match ? match[0] : value
+}
+
 function SummaryBadge({ label, value, tone }: { label: string; value: number; tone: string }) {
   return (
-    <article className={`rounded-2xl px-4 py-4 text-right shadow-sm ${tone}`}>
-      <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">{label}</p>
-      <p className="mt-2 text-2xl font-bold">{value.toLocaleString('ar-SA')}</p>
-    </article>
-  )
-}
-
-interface RejectDialogProps {
-  open: boolean
-  onClose: () => void
-  onConfirm: (reason: string) => void
-  isSubmitting: boolean
-}
-
-function RejectDialog({ open, onClose, onConfirm, isSubmitting }: RejectDialogProps) {
-  const [reason, setReason] = useState('')
-
-  useEffect(() => {
-    if (open) {
-      setReason('')
-    }
-  }, [open])
-
-  if (!open) return null
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal>
-      <div className="w-full max-w-lg rounded-3xl bg-white p-6 text-right shadow-xl">
-        <header className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-widest text-rose-600">رفض التحضير</p>
-          <h2 className="text-xl font-semibold text-slate-900">اذكر سبب الرفض</h2>
-          <p className="text-sm text-muted">سيتم مشاركة السبب مع المعلم في شاشة المتابعة.</p>
-        </header>
-        <textarea
-          value={reason}
-          onChange={(event) => setReason(event.target.value)}
-          className="mt-4 h-32 w-full rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-400/30"
-          placeholder="مثال: لم يتم توقيع محضر الحصة من المعلم المسؤول"
-          disabled={isSubmitting}
-        />
-        <footer className="mt-6 flex flex-wrap items-center justify-end gap-2">
-          <button type="button" className="button-secondary" onClick={onClose} disabled={isSubmitting}>
-            إلغاء
-          </button>
-          <button
-            type="button"
-            className="button-primary"
-            onClick={() => onConfirm(reason.trim())}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'جارٍ الرفض...' : 'تأكيد الرفض'}
-          </button>
-        </footer>
-      </div>
+    <div className={`rounded-3xl px-4 py-3 text-right shadow-sm ${tone}`}>
+      <p className="text-xs font-semibold text-slate-500">{label}</p>
+      <p className="text-xl font-semibold text-slate-900">{value.toLocaleString('ar-SA')}</p>
     </div>
   )
 }
@@ -87,12 +62,76 @@ function formatDate(value?: string | null, options: Intl.DateTimeFormatOptions =
   }
 }
 
+type RejectDialogProps = {
+  open: boolean
+  isSubmitting: boolean
+  onClose: () => void
+  onConfirm: (reason: string | null) => void
+}
+
+function RejectDialog({ open, isSubmitting, onClose, onConfirm }: RejectDialogProps) {
+  const [reason, setReason] = useState('')
+
+  useEffect(() => {
+    if (open) {
+      setReason('')
+    }
+  }, [open])
+
+  if (!open) return null
+
+  const handleSubmit = () => {
+    const trimmed = reason.trim()
+    onConfirm(trimmed === '' ? null : trimmed)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal>
+      <div className="w-full max-w-md space-y-4 rounded-3xl bg-white p-6 text-right shadow-xl">
+        <header className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-widest text-rose-600">رفض التحضير</p>
+          <h2 className="text-lg font-semibold text-slate-900">هل ترغب في رفض التحضير؟</h2>
+          <p className="text-sm text-muted">
+            يمكنك إضافة سبب الرفض لمساعدة المعلم على فهم القرار. هذا الحقل اختياري.
+          </p>
+        </header>
+
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-slate-600" htmlFor="reject-reason">
+            سبب الرفض (اختياري)
+          </label>
+          <textarea
+            id="reject-reason"
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            rows={4}
+            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+            placeholder="اكتب ملاحظاتك هنا..."
+            disabled={isSubmitting}
+          />
+        </div>
+
+        <footer className="flex flex-wrap items-center justify-end gap-2">
+          <button type="button" className="button-secondary" onClick={onClose} disabled={isSubmitting}>
+            تراجع
+          </button>
+          <button type="button" className="button-primary" onClick={handleSubmit} disabled={isSubmitting}>
+            {isSubmitting ? 'جارٍ الرفض...' : 'تأكيد الرفض'}
+          </button>
+        </footer>
+      </div>
+    </div>
+  )
+}
+
 export function AdminApprovalPage() {
   const [filters, setFilters] = useState<FilterState>({ grade: '', className: '', teacher: '', subject: '' })
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [rejectTarget, setRejectTarget] = useState<PendingApprovalRecord | null>(null)
   const [showApproveAllDialog, setShowApproveAllDialog] = useState(false)
   const [showMissingSessionsModal, setShowMissingSessionsModal] = useState(false)
+  const [updatingAttendanceId, setUpdatingAttendanceId] = useState<number | null>(null)
+  const [showStudentsModal, setShowStudentsModal] = useState(false)
 
   const approvalsQuery = usePendingApprovalsQuery()
   const approvals = useMemo(() => approvalsQuery.data ?? [], [approvalsQuery.data])
@@ -126,6 +165,7 @@ export function AdminApprovalPage() {
   const approveMutation = useApproveAttendanceSessionMutation()
   const rejectMutation = useRejectAttendanceSessionMutation()
   const approveAllMutation = useApproveAllPendingSessionsMutation()
+  const updateStatusMutation = useUpdateAttendanceStatusMutation()
 
   const totals = useMemo(() => {
     const totalStudents = approvals.reduce((sum, item) => sum + (item.student_count ?? 0), 0)
@@ -140,8 +180,9 @@ export function AdminApprovalPage() {
   }
 
   const handleApprove = (approval: PendingApprovalRecord) => {
+    const attendanceDate = normalizeAttendanceDate(approval.attendance_date)
     approveMutation.mutate(
-      { session_id: approval.class_session_id, date: approval.attendance_date },
+      { session_id: approval.class_session_id, date: attendanceDate },
       {
         onSuccess: () => {
           setSelectedId(null)
@@ -151,8 +192,9 @@ export function AdminApprovalPage() {
   }
 
   const handleReject = (approval: PendingApprovalRecord, reason?: string) => {
+    const attendanceDate = normalizeAttendanceDate(approval.attendance_date)
     rejectMutation.mutate(
-      { session_id: approval.class_session_id, date: approval.attendance_date, reason: reason ?? null },
+      { session_id: approval.class_session_id, date: attendanceDate, reason: reason ?? null },
       {
         onSuccess: () => {
           setRejectTarget(null)
@@ -171,57 +213,59 @@ export function AdminApprovalPage() {
     })
   }
 
-  const isBusy = approveMutation.isPending || rejectMutation.isPending || approveAllMutation.isPending
+  const handleStudentStatusChange = (
+    student: AttendanceSessionDetails['students'][number],
+    nextStatus: AttendanceStatus,
+  ) => {
+    if (!selectedApproval || !selectedApproval.id) return
+    if (student.status === nextStatus) return
+
+    setUpdatingAttendanceId(student.attendance_id)
+    updateStatusMutation.mutate(
+      {
+        attendanceId: student.attendance_id,
+        sessionDetailId: selectedApproval.id,
+        status: nextStatus,
+      },
+      {
+        onSettled: () => setUpdatingAttendanceId(null),
+      },
+    )
+  }
+
+  const isBusy =
+    approveMutation.isPending || rejectMutation.isPending || approveAllMutation.isPending || updateStatusMutation.isPending
 
   return (
     <section className="space-y-6">
-      <header className="space-y-2">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="space-y-1 text-right">
-            <h1 className="text-3xl font-bold text-slate-900">اعتماد التحضير</h1>
-            <p className="text-sm text-muted">
-              راجع التحضير المرسل من المعلمين، اعتمد الحصص المطابقة، ودوّن أسباب الرفض عند الحاجة.
-            </p>
+      <header className="glass-card space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-right">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">مراجعة التحضير</p>
+            <h1 className="text-2xl font-semibold text-slate-900">إدارة التحضير المعلّق</h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
+              className="button-secondary"
               onClick={() => setShowMissingSessionsModal(true)}
-              className="button-secondary flex items-center gap-2"
+              disabled={approvalsQuery.isLoading}
             >
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              الفصول التي لم ترسل
+              <i className="bi bi-calendar-x" /> الحصص المفقودة
             </button>
-            {filteredApprovals.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setShowApproveAllDialog(true)}
-                disabled={isBusy}
-                className="button-primary flex items-center gap-2"
-              >
-                <i className="bi bi-check2-all" />
-                اعتماد الجميع ({filteredApprovals.length})
-              </button>
-            )}
-            <div className="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-600">
-              يتم التحديث تلقائيًا كل 30 ثانية
-            </div>
+            <button
+              type="button"
+              className="button-primary"
+              onClick={() => setShowApproveAllDialog(true)}
+              disabled={filteredApprovals.length === 0 || approveAllMutation.isPending}
+            >
+              {approveAllMutation.isPending ? 'جارٍ الاعتماد...' : 'اعتماد الجميع'}
+            </button>
           </div>
         </div>
-        {approvalsQuery.isError ? (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4 text-sm text-rose-700">
-            تعذر تحميل قائمة التحضير المعلق.
-            <button
-              type="button"
-              onClick={() => approvalsQuery.refetch()}
-              className="mr-3 inline-flex items-center gap-2 rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-700"
-            >
-              <i className="bi bi-arrow-repeat" /> إعادة المحاولة
-            </button>
-          </div>
-        ) : null}
+        <p className="text-sm text-muted">
+          راجع سجل الحضور، حرر حالات الطلاب مباشرة، ثم اعتمد أو ارفض التحضير بحسب البيانات المتوفرة.
+        </p>
       </header>
 
       <section className="glass-card space-y-6">
@@ -430,11 +474,18 @@ export function AdminApprovalPage() {
                       </div>
 
                       <div className="space-y-2">
-                        <p className="text-[11px] font-semibold text-slate-500">
-                          أبرز الطلاب ({Math.min(detailsQuery.data.students.length, 6)}/{
-                            detailsQuery.data.students.length.toLocaleString('ar-SA')
-                          })
-                        </p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-[11px] font-semibold text-slate-500">
+                            قائمة الطلاب ({detailsQuery.data.students.length.toLocaleString('ar-SA')})
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setShowStudentsModal(true)}
+                            className="rounded-xl bg-indigo-600 px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-indigo-700"
+                          >
+                            <i className="bi bi-pencil-square" /> تعديل الحالات
+                          </button>
+                        </div>
                         <ul className="space-y-2">
                           {detailsQuery.data.students.slice(0, 6).map((student) => (
                             <li
@@ -443,20 +494,14 @@ export function AdminApprovalPage() {
                             >
                               <span className="text-[11px] font-semibold text-slate-700">{student.name}</span>
                               <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">
-                                {student.status === 'present'
-                                  ? 'حاضر'
-                                  : student.status === 'absent'
-                                  ? 'غائب'
-                                  : student.status === 'late'
-                                  ? 'متأخر'
-                                  : 'مستأذن'}
+                                {attendanceStatusLabels[student.status as AttendanceStatus]}
                               </span>
                             </li>
                           ))}
                         </ul>
                         {detailsQuery.data.students.length > 6 ? (
                           <p className="text-center text-[11px] text-muted">
-                            يوجد تفاصيل إضافية يمكن الاطلاع عليها من التقرير التفصيلي.
+                            انقر على "تعديل الحالات" لعرض جميع الطلاب ({detailsQuery.data.students.length})
                           </p>
                         ) : null}
                       </div>
@@ -550,6 +595,132 @@ export function AdminApprovalPage() {
         open={showMissingSessionsModal} 
         onClose={() => setShowMissingSessionsModal(false)} 
       />
+
+      {showStudentsModal && detailsQuery.data && selectedApproval && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal>
+          <div className="w-full max-w-4xl rounded-3xl bg-white p-6 text-right shadow-xl">
+            <header className="mb-4 flex items-center justify-between border-b border-slate-200 pb-4">
+              <button
+                type="button"
+                onClick={() => setShowStudentsModal(false)}
+                className="rounded-xl bg-slate-100 p-2 transition hover:bg-slate-200"
+                disabled={updateStatusMutation.isPending}
+              >
+                <i className="bi bi-x-lg text-slate-600" />
+              </button>
+              <div className="text-right">
+                <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">تعديل حالات الطلاب</p>
+                <h2 className="text-xl font-semibold text-slate-900">{selectedApproval.subject_name}</h2>
+                <p className="text-xs text-muted">
+                  {selectedApproval.teacher_name} • {selectedApproval.grade} — {selectedApproval.class_name}
+                </p>
+              </div>
+            </header>
+
+            <div className="mb-4 grid grid-cols-4 gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-center text-xs">
+              <div>
+                <p className="font-semibold text-emerald-700">حاضر</p>
+                <p className="text-lg font-bold text-emerald-900">{detailsQuery.data.statistics.present_count}</p>
+              </div>
+              <div>
+                <p className="font-semibold text-rose-700">غائب</p>
+                <p className="text-lg font-bold text-rose-900">{detailsQuery.data.statistics.absent_count}</p>
+              </div>
+              <div>
+                <p className="font-semibold text-amber-700">متأخر</p>
+                <p className="text-lg font-bold text-amber-900">{detailsQuery.data.statistics.late_count}</p>
+              </div>
+              <div>
+                <p className="font-semibold text-sky-700">مستأذن</p>
+                <p className="text-lg font-bold text-sky-900">{detailsQuery.data.statistics.excused_count}</p>
+              </div>
+            </div>
+
+            {updateStatusMutation.isPending && (
+              <div className="mb-3 rounded-2xl border border-indigo-200 bg-indigo-50 p-3">
+                <div className="flex items-center gap-2 text-sm text-indigo-900">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+                  جاري تحديث الحالة...
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-[480px] overflow-y-auto rounded-2xl border border-slate-200">
+              <table className="w-full text-right text-sm">
+                <thead className="sticky top-0 bg-slate-100 text-xs uppercase text-slate-600">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold">اسم الطالب</th>
+                    <th className="px-4 py-3 font-semibold">الحالة الحالية</th>
+                    <th className="px-4 py-3 font-semibold">ملاحظات</th>
+                    <th className="px-4 py-3 font-semibold">تغيير الحالة</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {detailsQuery.data.students.map((student) => {
+                    const isUpdating = updatingAttendanceId === student.attendance_id
+                    const status = student.status as AttendanceStatus
+
+                    return (
+                      <tr
+                        key={student.attendance_id}
+                        className={`border-t border-slate-100 transition ${
+                          isUpdating ? 'bg-indigo-50' : 'hover:bg-slate-50'
+                        }`}
+                      >
+                        <td className="px-4 py-3 font-semibold text-slate-900">{student.name}</td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${attendanceStatusTone[status]}`}
+                          >
+                            <span className="h-2 w-2 rounded-full bg-current" />
+                            {attendanceStatusLabels[status]}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-slate-500">{student.notes ?? '—'}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-2">
+                            <select
+                              value={student.status}
+                              onChange={(event) =>
+                                handleStudentStatusChange(student, event.target.value as AttendanceStatus)
+                              }
+                              disabled={isBusy || isUpdating}
+                              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                            >
+                              {attendanceStatusOptions.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                            {isUpdating && (
+                              <span className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <footer className="mt-4 flex items-center justify-between border-t border-slate-200 pt-4">
+              <p className="text-xs text-muted">
+                إجمالي الطلاب: {detailsQuery.data.students.length.toLocaleString('ar-SA')}
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowStudentsModal(false)}
+                className="button-primary"
+                disabled={updateStatusMutation.isPending}
+              >
+                إغلاق
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
     </section>
   )
 }
