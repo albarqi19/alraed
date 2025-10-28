@@ -1,4 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { apiClient } from '@/services/api/client'
+import type { ApiResponse } from '@/services/api/types'
 import {
   activateSchedule,
   addQuickClassSession,
@@ -148,6 +150,12 @@ import type {
   DutyRosterTemplateUpdatePayload,
   DutyRosterSettingsUpdatePayload,
   TeacherHudoriAttendanceFilters,
+  SmsStatistics,
+  SmsRegisteredDevice,
+  SmsMessage,
+  SmsDeviceActivityLog,
+  SendSmsPayload,
+  RegisterDevicePayload,
 } from './types'
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -1860,3 +1868,155 @@ export function useTestWhatsappConnectionMutation() {
 export function useDownloadableAttendanceReportMutation() {
   return useExportAttendanceReportMutation()
 }
+
+// ===== SMS Gateway Hooks =====
+
+export function useSmsStatisticsQuery() {
+  return useQuery({
+    queryKey: ['admin', 'sms', 'statistics'],
+    queryFn: async () => {
+      const { data } = await apiClient.get<ApiResponse<SmsStatistics>>('/sms/statistics')
+      if (!data.success) throw new Error(data.message)
+      return data.data
+    },
+    refetchInterval: 30000, // تحديث كل 30 ثانية
+  })
+}
+
+export function useSmsDevicesQuery() {
+  return useQuery({
+    queryKey: ['admin', 'sms', 'devices'],
+    queryFn: async () => {
+      const { data } = await apiClient.get<ApiResponse<SmsRegisteredDevice[]>>('/sms/devices')
+      if (!data.success) throw new Error(data.message)
+      return data.data
+    },
+  })
+}
+
+export function useSmsMessagesQuery(filters?: { status?: string; type?: string; search?: string }) {
+  return useQuery({
+    queryKey: ['admin', 'sms', 'messages', filters],
+    queryFn: async () => {
+      const { data } = await apiClient.get<
+        ApiResponse<{
+          data: SmsMessage[]
+          total: number
+          current_page: number
+          last_page: number
+        }>
+      >('/sms/messages', { params: filters })
+      if (!data.success) throw new Error(data.message)
+      return data.data
+    },
+  })
+}
+
+export function useSmsActivityLogQuery() {
+  return useQuery({
+    queryKey: ['admin', 'sms', 'activity-log'],
+    queryFn: async () => {
+      const { data } = await apiClient.get<
+        ApiResponse<{
+          data: SmsDeviceActivityLog[]
+          total: number
+          current_page: number
+          last_page: number
+        }>
+      >('/sms/activity-log')
+      if (!data.success) throw new Error(data.message)
+      return data.data
+    },
+  })
+}
+
+export function useSendSmsMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (payload: SendSmsPayload) => {
+      const { data } = await apiClient.post<ApiResponse<SmsMessage>>('/sms/send', payload)
+      if (!data.success) throw new Error(data.message)
+      return data.data
+    },
+    onSuccess: () => {
+      toast({ type: 'success', title: 'تم إضافة الرسالة إلى قائمة الانتظار' })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'sms', 'messages'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'sms', 'statistics'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر إرسال الرسالة') })
+    },
+  })
+}
+
+export function useRegisterSmsDeviceMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (payload: RegisterDevicePayload) => {
+      const { data } = await apiClient.post<ApiResponse<{ device: SmsRegisteredDevice; api_token: string }>>(
+        '/sms/devices/register',
+        payload,
+      )
+      if (!data.success) throw new Error(data.message)
+      return data.data
+    },
+    onSuccess: () => {
+      toast({ type: 'success', title: 'تم تسجيل الجهاز بنجاح' })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'sms', 'devices'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'sms', 'statistics'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تسجيل الجهاز') })
+    },
+  })
+}
+
+export function useDeleteSmsDeviceMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (deviceId: string) => {
+      const { data } = await apiClient.delete<ApiResponse<void>>(`/sms/devices/${deviceId}`)
+      if (!data.success) throw new Error(data.message)
+      return data.data
+    },
+    onSuccess: () => {
+      toast({ type: 'success', title: 'تم حذف الجهاز بنجاح' })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'sms', 'devices'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'sms', 'statistics'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر حذف الجهاز') })
+    },
+  })
+}
+
+export function useToggleSmsDeviceStatusMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (deviceId: string) => {
+      const { data } = await apiClient.patch<ApiResponse<SmsRegisteredDevice>>(`/sms/devices/${deviceId}/toggle`)
+      if (!data.success) throw new Error(data.message)
+      return data.data
+    },
+    onSuccess: (device) => {
+      toast({
+        type: 'success',
+        title: device.status === 'active' ? 'تم تفعيل الجهاز' : 'تم حظر الجهاز',
+      })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'sms', 'devices'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'sms', 'statistics'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تغيير حالة الجهاز') })
+    },
+  })
+}
+

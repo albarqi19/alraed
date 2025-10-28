@@ -30,6 +30,7 @@ import { AdminTeacherMessagesPage } from '@/modules/admin/pages/admin-teacher-me
 import { AdminSettingsPage } from '@/modules/admin/pages/admin-settings-page'
 import { AdminThemeSettingsPage } from '@/modules/admin/pages/admin-theme-settings-page'
 import { WhatsappHubPage } from '@/modules/admin/pages/whatsapp-hub-page'
+import { AdminSmsGatewayPage } from '@/modules/admin/pages/admin-sms-gateway-page'
 import { AttendanceReportPage } from '@/modules/admin/pages/attendance-report-page'
 import { StudentCasesPage } from '@/modules/admin/pages/student-cases-page'
 import { TreatmentPlansPage } from '@/modules/admin/pages/treatment-plans-page'
@@ -171,6 +172,7 @@ const appRoutes = [
           { path: 'settings', element: <AdminSettingsPage /> },
           { path: 'theme', element: <AdminThemeSettingsPage /> },
           { path: 'whatsapp', element: <WhatsappHubPage /> },
+          { path: 'sms-gateway', element: <AdminSmsGatewayPage /> },
           { path: 'whatsapp-send', element: <WhatsAppSendPage /> },
           { path: 'whatsapp-templates', element: <WhatsAppTemplatesPage /> },
           { path: 'attendance-report', element: <AttendanceReportPage /> },

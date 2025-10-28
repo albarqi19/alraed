@@ -1136,3 +1136,86 @@ export interface DutyRosterTemplateUpdatePayload
   extends Partial<Omit<DutyRosterTemplatePayload, 'weekday_assignments'>> {
   weekday_assignments?: Partial<Record<DutyRosterWeekday, number[]>>
 }
+
+// ===== SMS Gateway Types =====
+
+export type SmsDeviceStatus = 'active' | 'inactive' | 'blocked'
+
+export type SmsMessageStatus = 'pending' | 'processing' | 'sent' | 'failed' | 'cancelled'
+
+export type SmsMessageType = 'absence' | 'late_arrival' | 'behavior' | 'general' | 'custom'
+
+export interface SmsRegisteredDevice {
+  id: number
+  device_id: string
+  device_name: string | null
+  device_model: string | null
+  android_version: string | null
+  school_id: number
+  registration_date: string
+  last_active: string | null
+  status: SmsDeviceStatus
+  app_version: string | null
+  total_sent?: number
+  created_at: string
+  updated_at: string
+}
+
+export interface SmsDeviceActivityLog {
+  id: number
+  device_id: string
+  school_id: number
+  action: string
+  timestamp: string
+  ip_address: string | null
+  details: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
+}
+
+export interface SmsMessage {
+  id: number
+  school_id: number
+  phone: string
+  message: string
+  status: SmsMessageStatus
+  created_at: string
+  sent_at: string | null
+  delivered_at: string | null
+  device_id: string | null
+  error_message: string | null
+  student_id: number | null
+  message_type: SmsMessageType | null
+  retry_count: number
+  next_retry_at: string | null
+  updated_at: string
+  student?: StudentRecord
+  device?: SmsRegisteredDevice
+}
+
+export interface SmsStatistics {
+  total_devices: number
+  active_devices: number
+  total_messages: number
+  pending_messages: number
+  sent_messages: number
+  failed_messages: number
+  messages_today: number
+  messages_this_month: number
+}
+
+export interface SendSmsPayload {
+  phone: string
+  message: string
+  student_id?: number
+  message_type?: SmsMessageType
+}
+
+export interface RegisterDevicePayload {
+  device_id: string
+  device_name?: string
+  device_model?: string
+  android_version?: string
+  app_version?: string
+}
+

@@ -169,6 +169,17 @@ export function AdminDashboardPage() {
             </Link>
 
             <Link
+              to="/admin/sms"
+              className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white/60 p-4 transition hover:border-violet-200 hover:text-violet-700"
+            >
+              <div>
+                <p className="font-semibold text-slate-800">بوابة الرسائل SMS</p>
+                <p className="text-xs text-muted">إدارة الأجهزة وإرسال الرسائل النصية.</p>
+              </div>
+              <i className="bi bi-phone text-xl text-violet-500" />
+            </Link>
+
+            <Link
               to="/admin/import"
               className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white/60 p-4 transition hover:border-sky-200 hover:text-sky-700"
             >

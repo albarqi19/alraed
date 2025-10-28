@@ -36,6 +36,7 @@ import {
   AlertTriangle,
   Activity,
   Fingerprint,
+  Smartphone,
 } from 'lucide-react'
 
 export interface AdminNavItem {
@@ -126,6 +127,7 @@ export const secondaryAdminNav: AdminNavItem[] = [
   { to: '/admin/whatsapp-send', label: 'إرسال الرسائل', icon: Send },
   { to: '/admin/whatsapp-templates', label: 'قوالب الرسائل', icon: FileEdit },
   { to: '/admin/teacher-messages', label: 'رسائل المعلمين', icon: Send },
+  { to: '/admin/sms-gateway', label: 'رسائل SMS', icon: Smartphone },
 ]
 
 export const settingsAdminNav: AdminNavGroup = {
