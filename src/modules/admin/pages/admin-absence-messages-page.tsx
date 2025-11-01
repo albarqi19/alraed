@@ -1,8 +1,19 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchAbsenceMessagesStats, resendAbsenceMessages } from '../api'
 import { useToast } from '@/shared/feedback/use-toast'
-import { Check, X, Clock, Send, AlertCircle, RefreshCw } from 'lucide-react'
+import { Check, X, Clock, Send, AlertCircle, Loader2 } from 'lucide-react'
+
+interface SendingProgress {
+  totalMessages: number
+  sentMessages: number
+  failedMessages: number
+  skippedMessages: number
+  isOnBreak: boolean
+  breakTimeRemaining: number
+  currentOffset: number
+  isCompleted: boolean
+}
 
 export function AdminAbsenceMessagesPage() {
   const toast = useToast()
@@ -10,47 +21,274 @@ export function AdminAbsenceMessagesPage() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [skipSent, setSkipSent] = useState(true)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  const [isSending, setIsSending] = useState(false)
+  const [progress, setProgress] = useState<SendingProgress>({
+    totalMessages: 0,
+    sentMessages: 0,
+    failedMessages: 0,
+    skippedMessages: 0,
+    isOnBreak: false,
+    breakTimeRemaining: 0,
+    currentOffset: 0,
+    isCompleted: false,
+  })
+  
+  const breakTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // تنظيف المؤقت عند إلغاء التحميل
+  useEffect(() => {
+    return () => {
+      if (breakTimerRef.current) {
+        clearInterval(breakTimerRef.current)
+      }
+    }
+  }, [])
 
   const statsQuery = useQuery({
     queryKey: ['admin', 'absence-messages-stats', selectedDate],
     queryFn: () => fetchAbsenceMessagesStats(selectedDate),
-    refetchInterval: 30000,
+    refetchInterval: isSending ? false : 30000, // إيقاف التحديث أثناء الإرسال
   })
 
   const resendMutation = useMutation({
-    mutationFn: (payload: { date: string; skip_sent: boolean }) => resendAbsenceMessages(payload),
-    onSuccess: (result) => {
-      toast({
-        type: 'success',
-        title: `تم إرسال ${result.messages_sent} رسالة بنجاح`,
+    mutationFn: (payload: { date: string; skip_sent: boolean; offset?: number }) => resendAbsenceMessages(payload),
+  })
+
+  // دالة الإرسال بالدفعات مع استراحة
+  const sendInBatches = async (offset = 0) => {
+    try {
+      const result = await resendMutation.mutateAsync({
+        date: selectedDate,
+        skip_sent: skipSent,
+        offset,
       })
-      queryClient.invalidateQueries({ queryKey: ['admin', 'absence-messages-stats'] })
-      setShowConfirmDialog(false)
-    },
-    onError: () => {
+
+      // تحديث التقدم
+      setProgress((prev) => ({
+        ...prev,
+        totalMessages: result.total_absent,
+        sentMessages: prev.sentMessages + result.messages_sent,
+        failedMessages: prev.failedMessages + result.messages_failed,
+        skippedMessages: prev.skippedMessages + result.messages_skipped,
+        currentOffset: result.next_offset,
+        isCompleted: !result.has_more,
+      }))
+
+      // إذا كانت هناك رسائل متبقية
+      if (result.has_more) {
+        // إذا كانت هناك حاجة لاستراحة (بعد 20 رسالة)
+        if (result.needs_break) {
+          // استراحة عشوائية بين 2-3 دقائق (120-180 ثانية)
+          const breakDuration = Math.floor(Math.random() * 61) + 120 // 120-180 ثانية
+          
+          setProgress((prev) => ({
+            ...prev,
+            isOnBreak: true,
+            breakTimeRemaining: breakDuration,
+          }))
+
+          // عد تنازلي للاستراحة
+          let remainingTime = breakDuration
+          breakTimerRef.current = setInterval(() => {
+            remainingTime -= 1
+            setProgress((prev) => ({
+              ...prev,
+              breakTimeRemaining: remainingTime,
+            }))
+
+            if (remainingTime <= 0) {
+              if (breakTimerRef.current) {
+                clearInterval(breakTimerRef.current)
+              }
+              setProgress((prev) => ({
+                ...prev,
+                isOnBreak: false,
+                breakTimeRemaining: 0,
+              }))
+              // متابعة الإرسال بعد الاستراحة
+              sendInBatches(result.next_offset)
+            }
+          }, 1000)
+        } else {
+          // متابعة فوراً إذا لم نصل لـ 20 رسالة بعد
+          sendInBatches(result.next_offset)
+        }
+      } else {
+        // اكتمل الإرسال - تنظيف Timer
+        if (breakTimerRef.current) {
+          clearInterval(breakTimerRef.current)
+          breakTimerRef.current = null
+        }
+        
+        setIsSending(false)
+        setShowConfirmDialog(false)
+        queryClient.invalidateQueries({ queryKey: ['admin', 'absence-messages-stats'] })
+        
+        toast({
+          type: 'success',
+          title: `✅ اكتمل الإرسال!`,
+          description: `تم إرسال ${progress.sentMessages + result.messages_sent} رسالة بنجاح`,
+        })
+      }
+    } catch (error) {
+      // تنظيف Timer في حالة الخطأ
+      if (breakTimerRef.current) {
+        clearInterval(breakTimerRef.current)
+        breakTimerRef.current = null
+      }
+      
+      setIsSending(false)
+      setProgress((prev) => ({ ...prev, isOnBreak: false, breakTimeRemaining: 0 }))
+      
       toast({
         type: 'error',
         title: 'فشل في إرسال الرسائل',
+        description: 'حدث خطأ أثناء عملية الإرسال',
       })
-    },
-  })
-
-  const stats = statsQuery.data
+    }
+  }
 
   const handleResend = () => {
-    resendMutation.mutate({
-      date: selectedDate,
-      skip_sent: skipSent,
+    // إعادة تعيين التقدم
+    setProgress({
+      totalMessages: 0,
+      sentMessages: 0,
+      failedMessages: 0,
+      skippedMessages: 0,
+      isOnBreak: false,
+      breakTimeRemaining: 0,
+      currentOffset: 0,
+      isCompleted: false,
+    })
+    
+    setIsSending(true)
+    setShowConfirmDialog(false)
+    sendInBatches(0)
+  }
+
+  const handleCancel = () => {
+    // إيقاف العملية
+    if (breakTimerRef.current) {
+      clearInterval(breakTimerRef.current)
+      breakTimerRef.current = null
+    }
+    
+    setIsSending(false)
+    setProgress({
+      totalMessages: 0,
+      sentMessages: 0,
+      failedMessages: 0,
+      skippedMessages: 0,
+      isOnBreak: false,
+      breakTimeRemaining: 0,
+      currentOffset: 0,
+      isCompleted: false,
+    })
+    
+    toast({
+      type: 'info',
+      title: 'تم إيقاف الإرسال',
+      description: 'تم إلغاء عملية الإرسال',
     })
   }
 
+  const stats = statsQuery.data
   const studentsWithoutMessages = stats?.students.filter((s) => !s.has_message) ?? []
   const studentsWithMessages = stats?.students.filter((s) => s.has_message) ?? []
 
   return (
     <div className="space-y-6">
+      {/* شريط التحذير والتقدم - يظهر أثناء الإرسال */}
+      {isSending && (
+        <div className="fixed left-0 right-0 top-0 z-50 shadow-lg">
+          <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-4">
+            <div className="container mx-auto">
+              <div className="flex items-start gap-4">
+                <AlertCircle className="mt-1 h-6 w-6 flex-shrink-0 text-white" />
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-lg font-bold text-white">⚠️ لا تغلق هذه النافذة - جاري الإرسال الآمن</p>
+                      <p className="mt-1 text-sm text-amber-50">
+                        للحفاظ على أمان حسابك من الحظر، دع هذه الصفحة تقوم بعملها في الإرسال التلقائي دون إغلاقها
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-left">
+                        <p className="text-2xl font-bold text-white">
+                          {progress.sentMessages} / {progress.totalMessages}
+                        </p>
+                        <p className="text-xs text-amber-50">رسالة مرسلة</p>
+                      </div>
+                      <button
+                        onClick={handleCancel}
+                        className="rounded-xl bg-white/20 px-4 py-2 text-sm font-semibold text-white hover:bg-white/30 transition-colors"
+                      >
+                        إيقاف
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* شريط التقدم */}
+                  <div className="space-y-2">
+                    <div className="h-3 w-full overflow-hidden rounded-full bg-white/30">
+                      <div
+                        className="h-full rounded-full bg-white transition-all duration-500"
+                        style={{
+                          width: `${progress.totalMessages > 0 ? (progress.sentMessages / progress.totalMessages) * 100 : 0}%`,
+                        }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-white">
+                      <span>
+                        متبقي: {progress.totalMessages - progress.sentMessages} رسالة
+                        {progress.failedMessages > 0 && ` • فشل: ${progress.failedMessages}`}
+                        {progress.skippedMessages > 0 && ` • تم تخطي: ${progress.skippedMessages}`}
+                      </span>
+                      <span>
+                        {progress.totalMessages > 0
+                          ? Math.round((progress.sentMessages / progress.totalMessages) * 100)
+                          : 0}
+                        %
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* رسالة الاستراحة */}
+                  {progress.isOnBreak && (
+                    <div className="rounded-xl border-2 border-white/40 bg-white/20 p-3 backdrop-blur-sm">
+                      <div className="flex items-center gap-3">
+                        <Clock className="h-5 w-5 animate-pulse text-white" />
+                        <div className="flex-1">
+                          <p className="font-semibold text-white">استراحة أمان - سيتم الاستئناف تلقائياً</p>
+                          <p className="mt-1 text-sm text-amber-50">
+                            متبقي: {Math.floor(progress.breakTimeRemaining / 60)} دقيقة و {progress.breakTimeRemaining % 60}{' '}
+                            ثانية
+                          </p>
+                        </div>
+                        <Loader2 className="h-5 w-5 animate-spin text-white" />
+                      </div>
+                      <p className="mt-2 text-xs text-amber-50">
+                        💡 هذه الاستراحة ضرورية لحماية حسابك من الحظر من WhatsApp. يتم إرسال 20 رسالة ثم استراحة 2-3 دقائق
+                      </p>
+                    </div>
+                  )}
+
+                  {/* معلومات الإرسال الآمن */}
+                  {!progress.isOnBreak && (
+                    <div className="rounded-xl bg-white/10 p-2 text-xs text-white">
+                      <p>🔒 الإرسال الآمن نشط: تأخير 10-15 ثانية بين كل رسالة • استراحة 2-3 دقائق كل 20 رسالة</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* العنوان */}
-      <header className="space-y-2">
+      <header className="space-y-2" style={{ marginTop: isSending ? '220px' : '0' }}>
         <h1 className="text-3xl font-bold text-slate-900">إدارة رسائل الغياب</h1>
         <p className="text-sm text-muted">راجع وأعد إرسال رسائل واتساب للطلاب الغائبين</p>
       </header>
@@ -123,11 +361,20 @@ export function AdminAbsenceMessagesPage() {
                 <button
                   type="button"
                   onClick={() => setShowConfirmDialog(true)}
-                  disabled={resendMutation.isPending || stats.total_absent === 0}
-                  className="button-primary flex items-center gap-2"
+                  disabled={isSending || stats.total_absent === 0}
+                  className="button-primary flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <Send className="h-4 w-4" />
-                  إعادة إرسال الرسائل
+                  {isSending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      جاري الإرسال...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4" />
+                      إعادة إرسال الرسائل
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -225,34 +472,49 @@ export function AdminAbsenceMessagesPage() {
               </div>
             </div>
 
-            {resendMutation.isPending && (
-              <div className="mt-4 rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
-                <div className="flex items-center gap-3">
-                  <RefreshCw className="h-5 w-5 animate-spin text-indigo-600" />
-                  <div className="space-y-1">
-                    <p className="text-sm font-semibold text-indigo-900">جاري إرسال الرسائل...</p>
-                    <p className="text-xs text-indigo-700">يرجى الانتظار، قد يستغرق هذا بعض الوقت</p>
-                  </div>
+            {/* معلومات الإرسال الآمن */}
+            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" />
+                <div className="space-y-2 text-sm">
+                  <p className="font-semibold text-amber-900">⚠️ تنبيه: لا تغلق النافذة أثناء الإرسال</p>
+                  <ul className="mr-4 list-disc space-y-1 text-amber-800">
+                    <li>سيتم إرسال 20 رسالة في كل دفعة</li>
+                    <li>تأخير عشوائي 10-15 ثانية بين كل رسالة</li>
+                    <li>استراحة 2-3 دقائق بعد كل 20 رسالة</li>
+                    <li>سيتم الاستئناف تلقائياً بعد الاستراحة</li>
+                  </ul>
+                  <p className="font-semibold text-amber-900">💡 هذا النظام يحمي حسابك من الحظر</p>
                 </div>
               </div>
-            )}
+            </div>
 
             <footer className="mt-6 flex flex-wrap items-center justify-end gap-2">
               <button
                 type="button"
                 className="button-secondary"
                 onClick={() => setShowConfirmDialog(false)}
-                disabled={resendMutation.isPending}
+                disabled={isSending}
               >
                 إلغاء
               </button>
               <button
                 type="button"
-                className="button-primary"
+                className="button-primary flex items-center gap-2"
                 onClick={handleResend}
-                disabled={resendMutation.isPending}
+                disabled={isSending}
               >
-                {resendMutation.isPending ? 'جارٍ الإرسال...' : 'تأكيد الإرسال'}
+                {isSending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    جارٍ الإرسال...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4" />
+                    تأكيد الإرسال
+                  </>
+                )}
               </button>
             </footer>
           </div>

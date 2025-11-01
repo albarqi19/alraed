@@ -1331,9 +1331,42 @@ export async function rejectAttendanceRecord(attendanceId: number, reason?: stri
   unwrapResponse(data, 'تعذر رفض سجل الحضور')
 }
 
-export async function approveAttendanceSession(payload: { session_id: number; date: string }): Promise<void> {
-  const { data } = await apiClient.post<ApiResponse<null>>('/admin/attendance-reports/approve-session', payload)
-  unwrapResponse(data, 'تعذر اعتماد التحضير')
+export async function approveAttendanceSession(payload: {
+  session_id: number
+  date: string
+  offset?: number
+  total_sent?: number
+}): Promise<{
+  session_id: number
+  date: string
+  records_approved: number
+  messages_sent: number
+  messages_skipped: number
+  total_messages_sent: number
+  current_offset: number
+  next_offset: number
+  has_more: boolean
+  remaining_count: number
+  needs_break: boolean
+  batch_size: number
+}> {
+  const { data } = await apiClient.post<
+    ApiResponse<{
+      session_id: number
+      date: string
+      records_approved: number
+      messages_sent: number
+      messages_skipped: number
+      total_messages_sent: number
+      current_offset: number
+      next_offset: number
+      has_more: boolean
+      remaining_count: number
+      needs_break: boolean
+      batch_size: number
+    }>
+  >('/admin/attendance-reports/approve-session', payload)
+  return unwrapResponse(data, 'تعذر اعتماد التحضير')
 }
 
 export async function rejectAttendanceSession(payload: {
@@ -1408,12 +1441,19 @@ export async function fetchAttendanceSessionDetails(attendanceId: number): Promi
 export async function resendAbsenceMessages(payload: {
   date: string
   skip_sent: boolean
+  offset?: number
 }): Promise<{
   date: string
   total_absent: number
   messages_sent: number
   messages_skipped: number
   messages_failed: number
+  current_offset: number
+  next_offset: number
+  has_more: boolean
+  remaining_count: number
+  needs_break: boolean
+  batch_size: number
   details: Array<{
     student_id: number
     student_name: string
@@ -1430,6 +1470,12 @@ export async function resendAbsenceMessages(payload: {
       messages_sent: number
       messages_skipped: number
       messages_failed: number
+      current_offset: number
+      next_offset: number
+      has_more: boolean
+      remaining_count: number
+      needs_break: boolean
+      batch_size: number
       details: Array<{
         student_id: number
         student_name: string

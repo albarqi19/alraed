@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import {
   useApproveAllPendingSessionsMutation,
   useApproveAttendanceSessionMutation,
@@ -9,6 +9,18 @@ import {
 } from '../hooks'
 import type { PendingApprovalRecord, AttendanceSessionDetails } from '../types'
 import { MissingSessionsModal } from '../components/missing-sessions-modal'
+import { Clock, Loader2, AlertCircle } from 'lucide-react'
+
+interface ApprovalProgress {
+  totalRecords: number
+  approvedRecords: number
+  sentMessages: number
+  skippedMessages: number
+  isOnBreak: boolean
+  breakTimeRemaining: number
+  currentOffset: number
+  isCompleted: boolean
+}
 
 type FilterState = {
   grade: string
@@ -132,6 +144,27 @@ export function AdminApprovalPage() {
   const [showMissingSessionsModal, setShowMissingSessionsModal] = useState(false)
   const [updatingAttendanceId, setUpdatingAttendanceId] = useState<number | null>(null)
   const [showStudentsModal, setShowStudentsModal] = useState(false)
+  const [isApproving, setIsApproving] = useState(false)
+  const [progress, setProgress] = useState<ApprovalProgress>({
+    totalRecords: 0,
+    approvedRecords: 0,
+    sentMessages: 0,
+    skippedMessages: 0,
+    isOnBreak: false,
+    breakTimeRemaining: 0,
+    currentOffset: 0,
+    isCompleted: false,
+  })
+
+  const breakTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (breakTimerRef.current) {
+        clearInterval(breakTimerRef.current)
+      }
+    }
+  }, [])
 
   const approvalsQuery = usePendingApprovalsQuery()
   const approvals = useMemo(() => approvalsQuery.data ?? [], [approvalsQuery.data])
@@ -179,16 +212,94 @@ export function AdminApprovalPage() {
     setFilters((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handleApprove = (approval: PendingApprovalRecord) => {
+  const handleApprove = async (approval: PendingApprovalRecord) => {
     const attendanceDate = normalizeAttendanceDate(approval.attendance_date)
-    approveMutation.mutate(
-      { session_id: approval.class_session_id, date: attendanceDate },
-      {
-        onSuccess: () => {
-          setSelectedId(null)
-        },
-      },
-    )
+    
+    setProgress({
+      totalRecords: 0,
+      approvedRecords: 0,
+      sentMessages: 0,
+      skippedMessages: 0,
+      isOnBreak: false,
+      breakTimeRemaining: 0,
+      currentOffset: 0,
+      isCompleted: false,
+    })
+    
+    setIsApproving(true)
+    await approveInBatches(approval.class_session_id, attendanceDate, 0)
+  }
+
+  const approveInBatches = async (sessionId: number, date: string, offset = 0, totalSent = 0) => {
+    try {
+      const result = await approveMutation.mutateAsync({
+        session_id: sessionId,
+        date,
+        offset,
+        total_sent: totalSent,
+      })
+
+      setProgress((prev) => ({
+        ...prev,
+        totalRecords: prev.totalRecords + result.records_approved,
+        approvedRecords: prev.approvedRecords + result.records_approved,
+        sentMessages: result.total_messages_sent,
+        skippedMessages: prev.skippedMessages + result.messages_skipped,
+        currentOffset: result.next_offset,
+        isCompleted: !result.has_more,
+      }))
+
+      if (result.has_more) {
+        if (result.needs_break) {
+          const breakDuration = Math.floor(Math.random() * 61) + 120
+          
+          setProgress((prev) => ({
+            ...prev,
+            isOnBreak: true,
+            breakTimeRemaining: breakDuration,
+          }))
+
+          let remainingTime = breakDuration
+          breakTimerRef.current = setInterval(() => {
+            remainingTime -= 1
+            setProgress((prev) => ({
+              ...prev,
+              breakTimeRemaining: remainingTime,
+            }))
+
+            if (remainingTime <= 0) {
+              if (breakTimerRef.current) {
+                clearInterval(breakTimerRef.current)
+              }
+              setProgress((prev) => ({
+                ...prev,
+                isOnBreak: false,
+                breakTimeRemaining: 0,
+              }))
+              approveInBatches(sessionId, date, result.next_offset, result.total_messages_sent)
+            }
+          }, 1000)
+        } else {
+          approveInBatches(sessionId, date, result.next_offset, result.total_messages_sent)
+        }
+      } else {
+        if (breakTimerRef.current) {
+          clearInterval(breakTimerRef.current)
+          breakTimerRef.current = null
+        }
+        
+        setIsApproving(false)
+        setSelectedId(null)
+      }
+    } catch (error) {
+      if (breakTimerRef.current) {
+        clearInterval(breakTimerRef.current)
+        breakTimerRef.current = null
+      }
+      
+      setIsApproving(false)
+      setProgress((prev) => ({ ...prev, isOnBreak: false, breakTimeRemaining: 0 }))
+    }
   }
 
   const handleReject = (approval: PendingApprovalRecord, reason?: string) => {
@@ -238,7 +349,49 @@ export function AdminApprovalPage() {
 
   return (
     <section className="space-y-6">
-      <header className="glass-card space-y-4">
+      {/* شريط التقدم */}
+      {isApproving && (
+        <div className="fixed left-0 right-0 top-0 z-50 shadow-lg">
+          <div className="bg-gradient-to-r from-indigo-500 to-purple-500 p-4">
+            <div className="container mx-auto">
+              <div className="flex items-start gap-4">
+                <AlertCircle className="mt-1 h-6 w-6 flex-shrink-0 text-white" />
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-lg font-bold text-white">⚠️ جاري الاعتماد الآمن - لا تغلق النافذة</p>
+                    <div className="text-left">
+                      <p className="text-2xl font-bold text-white">
+                        {progress.approvedRecords}
+                      </p>
+                      <p className="text-xs text-indigo-50">سجل معتمد</p>
+                    </div>
+                  </div>
+
+                  {progress.isOnBreak && (
+                    <div className="rounded-xl border-2 border-white/40 bg-white/20 p-3 backdrop-blur-sm">
+                      <div className="flex items-center gap-3">
+                        <Clock className="h-5 w-5 animate-pulse text-white" />
+                        <div className="flex-1">
+                          <p className="font-semibold text-white">استراحة أمان - سيتم الاستئناف تلقائياً</p>
+                          <p className="mt-1 text-sm text-indigo-50">
+                            متبقي: {Math.floor(progress.breakTimeRemaining / 60)} دقيقة و {progress.breakTimeRemaining % 60} ثانية
+                          </p>
+                        </div>
+                        <Loader2 className="h-5 w-5 animate-spin text-white" />
+                      </div>
+                      <p className="mt-2 text-xs text-indigo-50">
+                        💡 تأخير 10-15 ثانية بين كل رسالة • استراحة 2-3 دقائق كل 20 رسالة
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <header className="glass-card space-y-4" style={{ marginTop: isApproving ? '120px' : '0' }}>
         <div className="flex flex-wrap items-center justify-between gap-3 text-right">
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">مراجعة التحضير</p>
