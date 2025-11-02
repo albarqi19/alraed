@@ -414,10 +414,21 @@ export interface ImportSummary {
   new_count?: number
   updated_count?: number
   deleted_count?: number
+  skipped_count?: number
+  duplicates_in_file?: number
   errors_count?: number
+  warnings_count?: number
   total_students?: number
   message?: string
   errors?: string[]
+  warnings?: string[]
+  deleted_students?: Array<{
+    id: number
+    name: string
+    national_id: string
+    grade: string
+    class_name: string
+  }>
 }
 
 export interface ImportTeachersSummary extends ImportSummary {

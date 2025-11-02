@@ -382,6 +382,8 @@ function ImportSummaryCard({ summary, title }: { summary: ImportSummary; title: 
     summary.new_count !== undefined ? { label: 'سجلات جديدة', value: summary.new_count, tone: 'success' as const } : null,
     summary.updated_count !== undefined ? { label: 'تم تحديثها', value: summary.updated_count, tone: 'warn' as const } : null,
     summary.deleted_count !== undefined ? { label: 'تم حذفها', value: summary.deleted_count, tone: 'danger' as const } : null,
+    summary.skipped_count !== undefined ? { label: 'تم تجاهلها', value: summary.skipped_count, tone: 'default' as const } : null,
+    summary.duplicates_in_file !== undefined && summary.duplicates_in_file > 0 ? { label: 'مكررات في الملف', value: summary.duplicates_in_file, tone: 'warn' as const } : null,
     summary.errors_count !== undefined ? { label: 'أخطاء', value: summary.errors_count, tone: 'danger' as const } : null,
   ].filter(Boolean) as Array<{ label: string; value: number; tone: 'default' | 'success' | 'warn' | 'danger' }>
 
@@ -399,6 +401,64 @@ function ImportSummaryCard({ summary, title }: { summary: ImportSummary; title: 
           ))}
         </div>
       ) : null}
+
+      {/* Deleted Students Section */}
+      {summary.deleted_students && summary.deleted_students.length > 0 ? (
+        <section className="space-y-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
+          <header className="flex items-center gap-2">
+            <span className="text-2xl">⚠️</span>
+            <h4 className="text-base font-semibold text-rose-900">
+              طلاب تم حذفهم ({summary.deleted_students.length})
+            </h4>
+          </header>
+          <div className="overflow-hidden rounded-lg border border-rose-200 bg-white">
+            <table className="w-full text-sm text-right">
+              <thead className="bg-rose-100 text-rose-900">
+                <tr>
+                  <th className="px-3 py-2 font-semibold">الاسم</th>
+                  <th className="px-3 py-2 font-semibold">رقم الهوية</th>
+                  <th className="px-3 py-2 font-semibold">الصف</th>
+                  <th className="px-3 py-2 font-semibold">الفصل</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-rose-100">
+                {summary.deleted_students.map((student) => (
+                  <tr key={student.id} className="hover:bg-rose-50/50 transition-colors">
+                    <td className="px-3 py-2 text-slate-800">{student.name}</td>
+                    <td className="px-3 py-2 text-slate-600 font-mono text-xs">{student.national_id}</td>
+                    <td className="px-3 py-2 text-slate-600">{student.grade}</td>
+                    <td className="px-3 py-2 text-slate-600">{student.class_name}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-rose-700 font-medium">
+            ℹ️ هؤلاء الطلاب لم يكونوا موجودين في الملف المرفوع وتم حذفهم من النظام
+          </p>
+        </section>
+      ) : null}
+
+      {/* Warnings Section */}
+      {summary.warnings && summary.warnings.length > 0 ? (
+        <section className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <header className="flex items-center gap-2">
+            <span className="text-xl">💡</span>
+            <h4 className="text-sm font-semibold text-amber-900">
+              تنبيهات ({summary.warnings.length})
+            </h4>
+          </header>
+          <ul className="space-y-1.5 text-xs text-amber-800">
+            {summary.warnings.map((warning, index) => (
+              <li key={index} className="rounded-lg bg-white/80 px-3 py-2 border border-amber-100">
+                {warning}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {/* Errors Section */}
       {summary.errors && summary.errors.length > 0 ? (
         <ul className="space-y-2 text-xs font-semibold text-rose-700">
           {summary.errors.map((error, index) => (
