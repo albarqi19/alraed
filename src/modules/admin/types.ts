@@ -469,6 +469,10 @@ export interface TeacherAttendanceDelayStatusUpdatePayload {
   clear_notification?: boolean
 }
 
+export interface TeacherAttendanceDelayRecalculatePayload {
+  check_in_time?: string
+}
+
 export interface LateArrivalRecord {
   id: number
   student_id: number

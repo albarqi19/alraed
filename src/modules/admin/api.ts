@@ -47,6 +47,7 @@ import type {
   TeacherAttendanceDelayFilters,
   TeacherAttendanceDelayListResponse,
   TeacherAttendanceDelayRecord,
+  TeacherAttendanceDelayRecalculatePayload,
   TeacherAttendanceDelayStatusUpdatePayload,
   WhatsappQueueItem,
   WhatsappSettings,
@@ -949,16 +950,25 @@ export async function fetchTeacherAttendanceDelays(
   if (typeof filters.per_page === 'number' && filters.per_page > 0) params.per_page = filters.per_page
   if (filters.order) params.order = filters.order
 
-  const { data } = await apiClient.get<ApiResponse<unknown>>('/admin/teacher-attendance/delays', {
+  const { data } = await apiClient.get<PaginatedResponse<unknown>>('/admin/teacher-attendance/delays', {
     params: Object.keys(params).length > 0 ? params : undefined,
   })
 
-  const payload = unwrapResponse(data, 'تعذر تحميل سجلات تأخر المعلمين')
+  if (!data.success) {
+    throw new Error(data.message ?? 'تعذر تحميل سجلات تأخر المعلمين')
+  }
+
+  const payload = {
+    data: Array.isArray(data.data) ? data.data : [],
+    meta: data.meta,
+  }
+
   return normalizeTeacherAttendanceDelayListResponse(payload)
 }
 
 export async function recalculateTeacherAttendanceDelay(
   attendanceId: number,
+  payload?: TeacherAttendanceDelayRecalculatePayload,
 ): Promise<TeacherAttendanceDelayRecord> {
   const targetId = Math.max(0, Math.trunc(attendanceId))
   if (targetId <= 0) {
@@ -966,10 +976,11 @@ export async function recalculateTeacherAttendanceDelay(
   }
   const { data } = await apiClient.post<ApiResponse<unknown>>(
     `/admin/teacher-attendance/delays/${targetId}/recalculate`,
+    payload ?? undefined,
   )
 
-  const payload = unwrapResponse(data, 'تعذر إعادة احتساب التأخير')
-  const record = normalizeTeacherAttendanceDelayRecord(payload)
+  const response = unwrapResponse(data, 'تعذر إعادة احتساب التأخير')
+  const record = normalizeTeacherAttendanceDelayRecord(response)
 
   if (!record) {
     throw new Error('استجابة غير متوقعة من الخادم')

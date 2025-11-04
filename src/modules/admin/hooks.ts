@@ -158,6 +158,7 @@ import type {
   TeacherHudoriAttendanceFilters,
   TeacherAttendanceSettingsPayload,
   TeacherAttendanceDelayFilters,
+  TeacherAttendanceDelayRecalculatePayload,
   TeacherAttendanceDelayStatusUpdatePayload,
   SmsStatistics,
   SmsRegisteredDevice,
@@ -211,6 +212,11 @@ type TeacherAttendanceDelaysQueryOptions = {
 type UpdateTeacherAttendanceDelayStatusArgs = {
   attendanceId: number
   payload: TeacherAttendanceDelayStatusUpdatePayload
+}
+
+type RecalculateTeacherAttendanceDelayArgs = {
+  attendanceId: number
+  payload?: TeacherAttendanceDelayRecalculatePayload
 }
 
 export function useTeacherHudoriAttendanceQuery(
@@ -286,7 +292,8 @@ export function useRecalculateTeacherAttendanceDelayMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (attendanceId: number) => recalculateTeacherAttendanceDelay(attendanceId),
+    mutationFn: ({ attendanceId, payload }: RecalculateTeacherAttendanceDelayArgs) =>
+      recalculateTeacherAttendanceDelay(attendanceId, payload),
     onSuccess: () => {
       toast({ type: 'success', title: 'تم إعادة احتساب التأخير' })
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.teacherAttendance.root(), exact: false })
