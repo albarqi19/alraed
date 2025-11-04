@@ -296,6 +296,18 @@ export interface AttendanceReportMatrix {
 
 export type TeacherHudoriAttendanceStatus = 'present' | 'departed' | 'failed' | 'unknown'
 export type TeacherHudoriAttendanceLoginMethod = 'face' | 'fingerprint' | 'card' | 'voice' | 'manual' | 'unknown'
+export type TeacherDelayStatus = 'on_time' | 'delayed' | 'excused' | 'unknown'
+
+export interface TeacherDelayInquiryRecord {
+  id: number
+  status: TeacherDelayStatus | string
+  channel?: string | null
+  notified_at?: string | null
+  responded_at?: string | null
+  response_text?: string | null
+  payload?: Record<string, unknown> | null
+  response_meta?: Record<string, unknown> | null
+}
 
 export interface TeacherHudoriAttendanceRecord {
   id: number
@@ -322,6 +334,15 @@ export interface TeacherHudoriAttendanceRecord {
     name: string
     school_id?: number | null
   } | null
+  delay_status?: TeacherDelayStatus | null
+  delay_status_label?: string | null
+  delay_minutes?: number | null
+  delay_evaluated_at?: string | null
+  delay_notified_at?: string | null
+  delay_notice_channel?: string | null
+  delay_notice_payload?: Record<string, unknown> | null
+  delay_notes?: string | null
+  delay_inquiry?: TeacherDelayInquiryRecord | null
 }
 
 export interface TeacherHudoriAttendanceStats {
@@ -332,6 +353,10 @@ export interface TeacherHudoriAttendanceStats {
   departed: number
   failed: number
   unknown: number
+  delayed?: number
+  on_time?: number
+  excused?: number
+  delay_unknown?: number
 }
 
 export interface TeacherHudoriAttendanceResponse {
@@ -345,6 +370,7 @@ export interface TeacherHudoriAttendanceResponse {
       status?: string | null
       matched?: string | null
       search?: string | null
+      delay_status?: string | null
     }
   }
 }
@@ -355,6 +381,92 @@ export interface TeacherHudoriAttendanceFilters {
   matched?: 'all' | 'matched' | 'unmatched'
   search?: string
   login_method?: TeacherHudoriAttendanceLoginMethod | 'all'
+  delay_status?: TeacherDelayStatus | 'all'
+  delayed_only?: boolean
+}
+
+export interface TeacherAttendanceTemplateOption {
+  id: number
+  name: string
+  type?: string | null
+}
+
+export interface TeacherAttendanceSettingsRecord {
+  school_id: number
+  start_time: string | null
+  end_time: string | null
+  grace_minutes: number
+  auto_calculate_delay: boolean
+  send_whatsapp_for_delay: boolean
+  include_delay_notice: boolean
+  allow_e_signature: boolean
+  remind_check_in: boolean
+  remind_check_out: boolean
+  delay_notification_template_id?: number | null
+  additional_settings: Record<string, unknown>
+  available_templates: TeacherAttendanceTemplateOption[]
+}
+
+export interface TeacherAttendanceSettingsPayload {
+  start_time?: string | null
+  end_time?: string | null
+  grace_minutes?: number
+  auto_calculate_delay?: boolean
+  send_whatsapp_for_delay?: boolean
+  include_delay_notice?: boolean
+  allow_e_signature?: boolean
+  remind_check_in?: boolean
+  remind_check_out?: boolean
+  delay_notification_template_id?: number | null
+  additional_settings?: Record<string, unknown>
+}
+
+export interface TeacherAttendanceDelayRecord {
+  id: number
+  teacher_id?: number | null
+  teacher_name?: string | null
+  teacher_phone?: string | null
+  national_id?: string | null
+  attendance_date?: string | null
+  check_in_time?: string | null
+  delay_minutes?: number | null
+  delay_status: TeacherDelayStatus
+  delay_status_label?: string | null
+  delay_evaluated_at?: string | null
+  delay_notified_at?: string | null
+  delay_notice_channel?: string | null
+  delay_notice_payload?: Record<string, unknown> | null
+  delay_notes?: string | null
+  transaction_type?: 'check_in' | 'check_out' | null
+  status?: TeacherHudoriAttendanceStatus
+  status_label?: string | null
+  user?: {
+    id: number
+    name: string
+    phone?: string | null
+  } | null
+  delay_inquiry?: TeacherDelayInquiryRecord | null
+}
+
+export interface TeacherAttendanceDelayFilters {
+  status?: TeacherDelayStatus | 'all'
+  start_date?: string
+  end_date?: string
+  search?: string
+  page?: number
+  per_page?: number
+  order?: 'asc' | 'desc'
+}
+
+export interface TeacherAttendanceDelayListResponse {
+  data: TeacherAttendanceDelayRecord[]
+  meta: PaginationMeta
+}
+
+export interface TeacherAttendanceDelayStatusUpdatePayload {
+  status: TeacherDelayStatus
+  notes?: string | null
+  clear_notification?: boolean
 }
 
 export interface LateArrivalRecord {

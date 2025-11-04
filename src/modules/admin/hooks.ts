@@ -47,6 +47,8 @@ import {
   fetchMissingSessions,
   fetchPendingApprovals,
   fetchTeacherHudoriAttendance,
+  fetchTeacherAttendanceSettings,
+  fetchTeacherAttendanceDelays,
   fetchScheduleDetails,
   fetchScheduleSessionData,
   fetchScheduleTemplates,
@@ -82,9 +84,13 @@ import {
   updateStudent,
   updateSubject,
   updateTeacher,
+  updateTeacherAttendanceSettings,
   updateWhatsappSettings,
   updateWhatsappTemplate,
   updateDutyRosterSettings,
+  recalculateTeacherAttendanceDelay,
+  notifyTeacherAttendanceDelay,
+  updateTeacherAttendanceDelayStatus,
   fetchPointSettings,
   updatePointSettings,
   fetchPointReasons,
@@ -150,6 +156,9 @@ import type {
   DutyRosterTemplateUpdatePayload,
   DutyRosterSettingsUpdatePayload,
   TeacherHudoriAttendanceFilters,
+  TeacherAttendanceSettingsPayload,
+  TeacherAttendanceDelayFilters,
+  TeacherAttendanceDelayStatusUpdatePayload,
   SmsStatistics,
   SmsRegisteredDevice,
   SmsMessage,
@@ -190,6 +199,20 @@ type TeacherHudoriAttendanceQueryOptions = {
   refetchInterval?: number
 }
 
+type TeacherAttendanceSettingsQueryOptions = {
+  enabled?: boolean
+}
+
+type TeacherAttendanceDelaysQueryOptions = {
+  enabled?: boolean
+  refetchInterval?: number
+}
+
+type UpdateTeacherAttendanceDelayStatusArgs = {
+  attendanceId: number
+  payload: TeacherAttendanceDelayStatusUpdatePayload
+}
+
 export function useTeacherHudoriAttendanceQuery(
   filters: TeacherHudoriAttendanceFilters = {},
   options: TeacherHudoriAttendanceQueryOptions = {},
@@ -207,6 +230,103 @@ export function useTeacherHudoriAttendanceQuery(
     enabled,
     refetchInterval,
     staleTime: 30_000,
+  })
+}
+
+export function useTeacherAttendanceSettingsQuery(
+  options: TeacherAttendanceSettingsQueryOptions = {},
+) {
+  return useQuery({
+    queryKey: adminQueryKeys.teacherAttendance.settings(),
+    queryFn: fetchTeacherAttendanceSettings,
+    enabled: options.enabled ?? true,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+export function useUpdateTeacherAttendanceSettingsMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: TeacherAttendanceSettingsPayload) => updateTeacherAttendanceSettings(payload),
+    onSuccess: (record) => {
+      toast({ type: 'success', title: 'تم حفظ إعدادات حضور المعلمين' })
+      queryClient.setQueryData(adminQueryKeys.teacherAttendance.settings(), record)
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.teacherAttendance.root(), exact: false })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر حفظ إعدادات حضور المعلمين') })
+    },
+  })
+}
+
+export function useTeacherAttendanceDelaysQuery(
+  filters: TeacherAttendanceDelayFilters = {},
+  options: TeacherAttendanceDelaysQueryOptions = {},
+) {
+  const normalizedFilters = Object.fromEntries(
+    Object.entries(filters ?? {}).filter(([, value]) => value !== undefined && value !== '' && value !== 'all'),
+  )
+
+  const enabled = options.enabled ?? true
+  const refetchInterval = enabled ? options.refetchInterval : undefined
+
+  return useQuery({
+    queryKey: adminQueryKeys.teacherAttendance.delays(normalizedFilters),
+    queryFn: () => fetchTeacherAttendanceDelays(filters),
+    enabled,
+    refetchInterval,
+    staleTime: 45_000,
+  })
+}
+
+export function useRecalculateTeacherAttendanceDelayMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (attendanceId: number) => recalculateTeacherAttendanceDelay(attendanceId),
+    onSuccess: () => {
+      toast({ type: 'success', title: 'تم إعادة احتساب التأخير' })
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.teacherAttendance.root(), exact: false })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر إعادة احتساب التأخير') })
+    },
+  })
+}
+
+export function useNotifyTeacherAttendanceDelayMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (attendanceId: number) => notifyTeacherAttendanceDelay(attendanceId),
+    onSuccess: () => {
+      toast({ type: 'success', title: 'تمت جدولة إرسال تنبيه التأخير' })
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.teacherAttendance.root(), exact: false })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر جدولة رسالة التنبيه') })
+    },
+  })
+}
+
+export function useUpdateTeacherAttendanceDelayStatusMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ attendanceId, payload }: UpdateTeacherAttendanceDelayStatusArgs) =>
+      updateTeacherAttendanceDelayStatus(attendanceId, payload),
+    onSuccess: () => {
+      toast({ type: 'success', title: 'تم تحديث حالة التأخير' })
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.teacherAttendance.root(), exact: false })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تحديث حالة التأخير') })
+    },
   })
 }
 

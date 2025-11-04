@@ -31,7 +31,10 @@ export const adminQueryKeys = {
     reportMatrix: (filters: Record<string, unknown>) => ['admin', 'attendance', 'report-matrix', filters] as const,
   },
   teacherAttendance: {
+    root: () => ['admin', 'teacher-attendance'] as const,
     today: (filters: Record<string, unknown>) => ['admin', 'teacher-attendance', 'today', filters] as const,
+    settings: () => ['admin', 'teacher-attendance', 'settings'] as const,
+    delays: (filters: Record<string, unknown>) => ['admin', 'teacher-attendance', 'delays', filters] as const,
   },
   lateArrivals: {
     list: (filters: Record<string, unknown>) => ['admin', 'late-arrivals', 'list', filters] as const,

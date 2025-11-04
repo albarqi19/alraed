@@ -38,7 +38,16 @@ import type {
   TeacherHudoriAttendanceResponse,
   TeacherHudoriAttendanceStatus,
   TeacherHudoriAttendanceStats,
+  TeacherDelayStatus,
+  TeacherDelayInquiryRecord,
   WhatsappHistoryItem,
+  TeacherAttendanceTemplateOption,
+  TeacherAttendanceSettingsRecord,
+  TeacherAttendanceSettingsPayload,
+  TeacherAttendanceDelayFilters,
+  TeacherAttendanceDelayListResponse,
+  TeacherAttendanceDelayRecord,
+  TeacherAttendanceDelayStatusUpdatePayload,
   WhatsappQueueItem,
   WhatsappSettings,
   WhatsappStatistics,
@@ -523,6 +532,206 @@ const TEACHER_ATTENDANCE_LOGIN_LABELS: Record<TeacherHudoriAttendanceLoginMethod
   unknown: 'غير محدد',
 }
 
+const TEACHER_DELAY_STATUS_VALUES: TeacherDelayStatus[] = ['on_time', 'delayed', 'excused', 'unknown']
+
+const TEACHER_DELAY_STATUS_LABELS: Record<TeacherDelayStatus, string> = {
+  on_time: 'في الوقت المحدد',
+  delayed: 'متأخر',
+  excused: 'معذور',
+  unknown: 'غير محدد',
+}
+
+function normalizeTeacherAttendanceTemplateOption(raw: unknown): TeacherAttendanceTemplateOption | null {
+  if (!isRecord(raw)) return null
+
+  const idCandidate = coerceNumber(raw.id, Number.NaN)
+  const name = typeof raw.name === 'string' ? raw.name.trim() : ''
+
+  if (!Number.isFinite(idCandidate) || !name) {
+    return null
+  }
+
+  return {
+    id: Math.max(0, Math.trunc(idCandidate)),
+    name,
+    type: typeof raw.type === 'string' && raw.type.trim() ? raw.type : null,
+  }
+}
+
+function normalizeTeacherAttendanceSettingsRecord(raw: unknown): TeacherAttendanceSettingsRecord {
+  const record = isRecord(raw) ? raw : {}
+
+  const delayTemplateIdCandidate = coerceNumberOrNull(record.delay_notification_template_id ?? null)
+  const delayTemplateId = delayTemplateIdCandidate && delayTemplateIdCandidate > 0 ? Math.trunc(delayTemplateIdCandidate) : null
+
+  const availableTemplatesSource = Array.isArray(record.available_templates) ? record.available_templates : []
+  const available_templates = availableTemplatesSource
+    .map((entry) => normalizeTeacherAttendanceTemplateOption(entry))
+    .filter((entry): entry is TeacherAttendanceTemplateOption => entry !== null)
+
+  const additionalSettings = isRecord(record.additional_settings)
+    ? (record.additional_settings as Record<string, unknown>)
+    : {}
+
+  return {
+    school_id: Math.max(0, Math.trunc(coerceNumber(record.school_id, 0))),
+    start_time: typeof record.start_time === 'string' && record.start_time.trim() ? record.start_time : null,
+    end_time: typeof record.end_time === 'string' && record.end_time.trim() ? record.end_time : null,
+    grace_minutes: Math.max(0, Math.trunc(coerceNumber(record.grace_minutes, 0))),
+    auto_calculate_delay: coerceBoolean(record.auto_calculate_delay, true),
+    send_whatsapp_for_delay: coerceBoolean(record.send_whatsapp_for_delay, false),
+    include_delay_notice: coerceBoolean(record.include_delay_notice, false),
+    allow_e_signature: coerceBoolean(record.allow_e_signature, false),
+    remind_check_in: coerceBoolean(record.remind_check_in, false),
+    remind_check_out: coerceBoolean(record.remind_check_out, false),
+    delay_notification_template_id: delayTemplateId,
+    additional_settings: additionalSettings,
+    available_templates,
+  }
+}
+
+function normalizeTeacherDelayInquiryRecord(raw: unknown): TeacherDelayInquiryRecord | null {
+  if (!isRecord(raw)) return null
+
+  const idCandidate = coerceNumber(raw.id, Number.NaN)
+  if (!Number.isFinite(idCandidate)) return null
+
+  const statusValue = typeof raw.status === 'string' ? raw.status : 'unknown'
+  const status = TEACHER_DELAY_STATUS_VALUES.includes(statusValue as TeacherDelayStatus)
+    ? (statusValue as TeacherDelayStatus)
+    : statusValue
+
+  return {
+    id: Math.max(0, Math.trunc(idCandidate)),
+    status,
+    channel: typeof raw.channel === 'string' ? raw.channel : null,
+    notified_at: typeof raw.notified_at === 'string' ? raw.notified_at : null,
+    responded_at: typeof raw.responded_at === 'string' ? raw.responded_at : null,
+    response_text: typeof raw.response_text === 'string' ? raw.response_text : null,
+    payload: isRecord(raw.payload) ? (raw.payload as Record<string, unknown>) : null,
+    response_meta: isRecord(raw.response_meta) ? (raw.response_meta as Record<string, unknown>) : null,
+  }
+}
+
+function normalizeTeacherAttendanceDelayRecord(raw: unknown): TeacherAttendanceDelayRecord | null {
+  if (!isRecord(raw)) return null
+
+  const idCandidate = coerceNumber(raw.id ?? raw.attendance_id, Number.NaN)
+  if (!Number.isFinite(idCandidate)) return null
+  const id = Math.max(0, Math.trunc(idCandidate))
+
+  const teacherIdCandidate = coerceNumberOrNull(raw.teacher_id ?? raw.user_id)
+  const teacherId = teacherIdCandidate && teacherIdCandidate > 0 ? Math.trunc(teacherIdCandidate) : null
+
+  const teacherName =
+    typeof raw.teacher_name === 'string'
+      ? raw.teacher_name
+      : typeof raw.employee_name === 'string'
+        ? raw.employee_name
+        : typeof raw.user_name === 'string'
+          ? raw.user_name
+          : null
+
+  const statusValue =
+    typeof raw.delay_status === 'string'
+      ? (raw.delay_status as TeacherDelayStatus)
+      : typeof raw.status === 'string'
+        ? (raw.status as TeacherDelayStatus)
+        : undefined
+
+  const delayStatus = statusValue && TEACHER_DELAY_STATUS_VALUES.includes(statusValue) ? statusValue : 'unknown'
+
+  const transactionType =
+    typeof raw.transaction_type === 'string' && (raw.transaction_type === 'check_in' || raw.transaction_type === 'check_out')
+      ? raw.transaction_type
+      : null
+
+  const attendanceStatusValue =
+    typeof raw.status === 'string'
+      ? (raw.status as TeacherHudoriAttendanceStatus)
+      : typeof raw.attendance_status === 'string'
+        ? (raw.attendance_status as TeacherHudoriAttendanceStatus)
+        : null
+
+  const attendanceStatus =
+    attendanceStatusValue && TEACHER_ATTENDANCE_STATUS_VALUES.includes(attendanceStatusValue)
+      ? attendanceStatusValue
+      : undefined
+
+  const userRecord = isRecord(raw.user) ? raw.user : null
+  let user: TeacherAttendanceDelayRecord['user'] = null
+  if (userRecord) {
+    const nestedIdCandidate = coerceNumberOrNull(userRecord.id ?? userRecord.user_id)
+    const nestedName =
+      typeof userRecord.name === 'string'
+        ? userRecord.name
+        : typeof userRecord.full_name === 'string'
+          ? userRecord.full_name
+          : null
+
+    if (nestedIdCandidate && nestedIdCandidate > 0 && nestedName) {
+      user = {
+        id: Math.trunc(nestedIdCandidate),
+        name: nestedName,
+        phone: typeof userRecord.phone === 'string' ? userRecord.phone : null,
+      }
+    }
+  }
+
+  return {
+    id,
+    teacher_id: teacherId,
+    teacher_name: teacherName ?? user?.name ?? null,
+    teacher_phone:
+      typeof raw.teacher_phone === 'string'
+        ? raw.teacher_phone
+        : typeof raw.phone === 'string'
+          ? raw.phone
+          : user?.phone ?? null,
+    national_id: typeof raw.national_id === 'string' ? raw.national_id : null,
+    attendance_date: typeof raw.attendance_date === 'string' ? raw.attendance_date : null,
+    check_in_time: typeof raw.check_in_time === 'string' ? raw.check_in_time : null,
+    delay_minutes: coerceNumberOrNull(raw.delay_minutes),
+    delay_status: delayStatus,
+    delay_status_label:
+      typeof raw.delay_status_label === 'string' && raw.delay_status_label.trim()
+        ? raw.delay_status_label
+        : TEACHER_DELAY_STATUS_LABELS[delayStatus],
+    delay_evaluated_at: typeof raw.delay_evaluated_at === 'string' ? raw.delay_evaluated_at : null,
+    delay_notified_at: typeof raw.delay_notified_at === 'string' ? raw.delay_notified_at : null,
+    delay_notice_channel: typeof raw.delay_notice_channel === 'string' ? raw.delay_notice_channel : null,
+    delay_notice_payload: isRecord(raw.delay_notice_payload) ? (raw.delay_notice_payload as Record<string, unknown>) : null,
+    delay_notes: typeof raw.delay_notes === 'string' ? raw.delay_notes : null,
+    transaction_type: transactionType,
+    status: attendanceStatus,
+    status_label:
+      typeof raw.status_label === 'string' && raw.status_label.trim()
+        ? raw.status_label
+        : attendanceStatus
+          ? TEACHER_ATTENDANCE_STATUS_LABELS[attendanceStatus]
+          : null,
+    user,
+    delay_inquiry: normalizeTeacherDelayInquiryRecord(raw.delay_inquiry),
+  }
+}
+
+function normalizeTeacherAttendanceDelayListResponse(payload: unknown): TeacherAttendanceDelayListResponse {
+  const record = isRecord(payload) ? payload : {}
+
+  const itemsSource = Array.isArray(record.data) ? record.data : []
+  const data = itemsSource
+    .map((entry) => normalizeTeacherAttendanceDelayRecord(entry))
+    .filter((entry): entry is TeacherAttendanceDelayRecord => entry !== null)
+
+  const metaSource = isRecord((record as { meta?: unknown }).meta) ? (record as { meta: Record<string, unknown> }).meta : null
+  const meta = normalizePaginationMeta(metaSource, data.length, 25)
+
+  return {
+    data,
+    meta,
+  }
+}
+
 function normalizeTeacherHudoriAttendanceRecord(raw: unknown): TeacherHudoriAttendanceRecord | null {
   if (!isRecord(raw)) return null
 
@@ -550,6 +759,7 @@ function normalizeTeacherHudoriAttendanceRecord(raw: unknown): TeacherHudoriAtte
         id: coerceNumber(raw.user.id ?? raw.user.user_id, 0),
         name: typeof raw.user.name === 'string' ? raw.user.name : null,
         school_id: coerceNumber(raw.user.school_id, Number.NaN),
+        phone: typeof raw.user.phone === 'string' ? raw.user.phone : null,
       }
     : null
 
@@ -560,6 +770,24 @@ function normalizeTeacherHudoriAttendanceRecord(raw: unknown): TeacherHudoriAtte
         school_id: Number.isFinite(userRecord.school_id ?? NaN) ? Math.trunc(userRecord.school_id ?? 0) : null,
       }
     : null
+
+  const delayStatusValue = typeof raw.delay_status === 'string' ? (raw.delay_status as TeacherDelayStatus) : null
+  const delayStatus = delayStatusValue && TEACHER_DELAY_STATUS_VALUES.includes(delayStatusValue) ? delayStatusValue : null
+
+  const delayStatusLabel =
+    typeof raw.delay_status_label === 'string' && raw.delay_status_label.trim()
+      ? raw.delay_status_label
+      : delayStatus
+        ? TEACHER_DELAY_STATUS_LABELS[delayStatus]
+        : null
+
+  const delayMinutes = coerceNumberOrNull(raw.delay_minutes)
+  const delayEvaluatedAt = typeof raw.delay_evaluated_at === 'string' ? raw.delay_evaluated_at : null
+  const delayNotifiedAt = typeof raw.delay_notified_at === 'string' ? raw.delay_notified_at : null
+  const delayNoticeChannel = typeof raw.delay_notice_channel === 'string' ? raw.delay_notice_channel : null
+  const delayNoticePayload = isRecord(raw.delay_notice_payload) ? (raw.delay_notice_payload as Record<string, unknown>) : null
+  const delayNotes = typeof raw.delay_notes === 'string' ? raw.delay_notes : null
+  const delayInquiry = normalizeTeacherDelayInquiryRecord(raw.delay_inquiry)
 
   return {
     id: Math.trunc(idCandidate),
@@ -590,6 +818,15 @@ function normalizeTeacherHudoriAttendanceRecord(raw: unknown): TeacherHudoriAtte
     source: typeof raw.source === 'string' ? raw.source : null,
     is_matched: Boolean(raw.is_matched ?? false),
     user,
+    delay_status: delayStatus,
+    delay_status_label: delayStatusLabel,
+    delay_minutes: delayMinutes,
+    delay_evaluated_at: delayEvaluatedAt,
+    delay_notified_at: delayNotifiedAt,
+    delay_notice_channel: delayNoticeChannel,
+    delay_notice_payload: delayNoticePayload,
+    delay_notes: delayNotes,
+    delay_inquiry: delayInquiry,
   }
 }
 
@@ -614,6 +851,10 @@ function normalizeTeacherHudoriAttendanceStats(raw: unknown): TeacherHudoriAtten
     departed: coerceNumber(raw.departed, 0),
     failed: coerceNumber(raw.failed, 0),
     unknown: coerceNumber(raw.unknown, 0),
+    delayed: coerceNumber(raw.delayed, 0),
+    on_time: coerceNumber(raw.on_time, 0),
+    excused: coerceNumber(raw.excused, 0),
+    delay_unknown: coerceNumber(raw.delay_unknown ?? raw.unknown_delay ?? raw.delay_unknown_count, 0),
   }
 }
 
@@ -638,6 +879,7 @@ function normalizeTeacherHudoriAttendanceResponse(payload: unknown): TeacherHudo
               status: typeof filtersRecord.status === 'string' ? filtersRecord.status : undefined,
               matched: typeof filtersRecord.matched === 'string' ? filtersRecord.matched : undefined,
               search: typeof filtersRecord.search === 'string' ? filtersRecord.search : undefined,
+              delay_status: typeof filtersRecord.delay_status === 'string' ? filtersRecord.delay_status : undefined,
             }
           : undefined,
       }
@@ -661,6 +903,8 @@ export async function fetchTeacherHudoriAttendance(
   if (filters.matched && filters.matched !== 'all') params.matched = filters.matched
   if (filters.search) params.search = filters.search
   if (filters.login_method && filters.login_method !== 'all') params.login_method = filters.login_method
+  if (filters.delay_status && filters.delay_status !== 'all') params.delay_status = filters.delay_status
+  if (filters.delayed_only) params.delayed_only = '1'
 
   const { data } = await apiClient.get<unknown>('/attendance/teacher-hudori/today', {
     params: Object.keys(params).length > 0 ? params : undefined,
@@ -674,6 +918,106 @@ export async function fetchTeacherHudoriAttendance(
   const payload = isRecord(data) && isRecord(data.data) ? data.data : data
 
   return normalizeTeacherHudoriAttendanceResponse(payload)
+}
+
+export async function fetchTeacherAttendanceSettings(): Promise<TeacherAttendanceSettingsRecord> {
+  const { data } = await apiClient.get<ApiResponse<unknown>>('/admin/teacher-attendance/settings')
+
+  const payload = unwrapResponse(data, 'تعذر تحميل إعدادات حضور المعلمين')
+  return normalizeTeacherAttendanceSettingsRecord(payload)
+}
+
+export async function updateTeacherAttendanceSettings(
+  payload: TeacherAttendanceSettingsPayload,
+): Promise<TeacherAttendanceSettingsRecord> {
+  const { data } = await apiClient.put<ApiResponse<unknown>>('/admin/teacher-attendance/settings', payload)
+
+  const response = unwrapResponse(data, 'تعذر حفظ إعدادات حضور المعلمين')
+  return normalizeTeacherAttendanceSettingsRecord(response)
+}
+
+export async function fetchTeacherAttendanceDelays(
+  filters: TeacherAttendanceDelayFilters = {},
+): Promise<TeacherAttendanceDelayListResponse> {
+  const params: Record<string, string | number> = {}
+
+  if (filters.status && filters.status !== 'all') params.status = filters.status
+  if (filters.start_date) params.start_date = filters.start_date
+  if (filters.end_date) params.end_date = filters.end_date
+  if (filters.search) params.search = filters.search
+  if (typeof filters.page === 'number' && filters.page > 0) params.page = filters.page
+  if (typeof filters.per_page === 'number' && filters.per_page > 0) params.per_page = filters.per_page
+  if (filters.order) params.order = filters.order
+
+  const { data } = await apiClient.get<ApiResponse<unknown>>('/admin/teacher-attendance/delays', {
+    params: Object.keys(params).length > 0 ? params : undefined,
+  })
+
+  const payload = unwrapResponse(data, 'تعذر تحميل سجلات تأخر المعلمين')
+  return normalizeTeacherAttendanceDelayListResponse(payload)
+}
+
+export async function recalculateTeacherAttendanceDelay(
+  attendanceId: number,
+): Promise<TeacherAttendanceDelayRecord> {
+  const targetId = Math.max(0, Math.trunc(attendanceId))
+  if (targetId <= 0) {
+    throw new Error('معرف سجل الحضور غير صالح')
+  }
+  const { data } = await apiClient.post<ApiResponse<unknown>>(
+    `/admin/teacher-attendance/delays/${targetId}/recalculate`,
+  )
+
+  const payload = unwrapResponse(data, 'تعذر إعادة احتساب التأخير')
+  const record = normalizeTeacherAttendanceDelayRecord(payload)
+
+  if (!record) {
+    throw new Error('استجابة غير متوقعة من الخادم')
+  }
+
+  return record
+}
+
+export async function notifyTeacherAttendanceDelay(attendanceId: number): Promise<TeacherAttendanceDelayRecord> {
+  const targetId = Math.max(0, Math.trunc(attendanceId))
+  if (targetId <= 0) {
+    throw new Error('معرف سجل الحضور غير صالح')
+  }
+  const { data } = await apiClient.post<ApiResponse<unknown>>(
+    `/admin/teacher-attendance/delays/${targetId}/notify`,
+  )
+
+  const payload = unwrapResponse(data, 'تعذر جدولة رسالة تنبيه التأخير')
+  const record = normalizeTeacherAttendanceDelayRecord(payload)
+
+  if (!record) {
+    throw new Error('استجابة غير متوقعة من الخادم')
+  }
+
+  return record
+}
+
+export async function updateTeacherAttendanceDelayStatus(
+  attendanceId: number,
+  payload: TeacherAttendanceDelayStatusUpdatePayload,
+): Promise<TeacherAttendanceDelayRecord> {
+  const targetId = Math.max(0, Math.trunc(attendanceId))
+  if (targetId <= 0) {
+    throw new Error('معرف سجل الحضور غير صالح')
+  }
+  const { data } = await apiClient.post<ApiResponse<unknown>>(
+    `/admin/teacher-attendance/delays/${targetId}/status`,
+    payload,
+  )
+
+  const response = unwrapResponse(data, 'تعذر تحديث حالة التأخير')
+  const record = normalizeTeacherAttendanceDelayRecord(response)
+
+  if (!record) {
+    throw new Error('استجابة غير متوقعة من الخادم')
+  }
+
+  return record
 }
 
 function normalizeWhatsappStudentRecord(raw: unknown): WhatsappTargetStudent | null {
