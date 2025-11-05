@@ -130,7 +130,7 @@ export function AdminAbsenceMessagesPage() {
           description: `تم إرسال ${progress.sentMessages + result.messages_sent} رسالة بنجاح`,
         })
       }
-    } catch (error) {
+    } catch {
       // تنظيف Timer في حالة الخطأ
       if (breakTimerRef.current) {
         clearInterval(breakTimerRef.current)

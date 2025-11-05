@@ -294,9 +294,35 @@ export interface AttendanceReportMatrix {
   }
 }
 
-export type TeacherHudoriAttendanceStatus = 'present' | 'departed' | 'failed' | 'unknown'
+export type TeacherHudoriAttendanceStatus = 'present' | 'departed' | 'failed' | 'unknown' | 'absent'
 export type TeacherHudoriAttendanceLoginMethod = 'face' | 'fingerprint' | 'card' | 'voice' | 'manual' | 'unknown'
-export type TeacherDelayStatus = 'on_time' | 'delayed' | 'excused' | 'unknown'
+export type TeacherDelayStatus = 'on_time' | 'delayed' | 'excused' | 'unknown' | 'absent'
+export type TeacherAbsenceReason =
+  | 'unjustified'
+  | 'delegated'
+  | 'annual_leave'
+  | 'sick_leave'
+  | 'emergency_leave'
+  | 'exceptional_leave'
+  | 'deduction'
+  | 'companion_leave'
+  | 'training_course'
+  | 'workshop'
+  | 'makeup'
+  | 'bereavement_leave'
+  | 'maternity_leave'
+  | 'exam_leave'
+  | 'paternity_leave'
+  | 'motherhood_leave'
+  | 'disaster'
+  | 'sports_leave'
+  | 'dialysis_leave'
+  | 'disability_care_leave'
+  | 'patient_companion_leave'
+  | 'international_sports_leave'
+  | 'accident_sick_leave'
+  | 'pending'
+  | 'remote_work'
 
 export interface TeacherDelayInquiryRecord {
   id: number
@@ -440,6 +466,11 @@ export interface TeacherAttendanceDelayRecord {
   transaction_type?: 'check_in' | 'check_out' | null
   status?: TeacherHudoriAttendanceStatus
   status_label?: string | null
+  absence_reason?: TeacherAbsenceReason | string | null
+  absence_reason_label?: string | null
+  absence_recorded_at?: string | null
+  absence_notes?: string | null
+  absence_source?: string | null
   user?: {
     id: number
     name: string
@@ -450,6 +481,7 @@ export interface TeacherAttendanceDelayRecord {
 
 export interface TeacherAttendanceDelayFilters {
   status?: TeacherDelayStatus | 'all'
+  absence_reason?: TeacherAbsenceReason | 'all'
   start_date?: string
   end_date?: string
   search?: string
@@ -467,6 +499,9 @@ export interface TeacherAttendanceDelayStatusUpdatePayload {
   status: TeacherDelayStatus
   notes?: string | null
   clear_notification?: boolean
+  attendance_status?: TeacherHudoriAttendanceStatus
+  absence_reason?: TeacherAbsenceReason | string | null
+  absence_notes?: string | null
 }
 
 export interface TeacherAttendanceDelayRecalculatePayload {

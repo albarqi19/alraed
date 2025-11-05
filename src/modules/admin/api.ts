@@ -38,6 +38,7 @@ import type {
   TeacherHudoriAttendanceResponse,
   TeacherHudoriAttendanceStatus,
   TeacherHudoriAttendanceStats,
+  TeacherAbsenceReason,
   TeacherDelayStatus,
   TeacherDelayInquiryRecord,
   WhatsappHistoryItem,
@@ -514,7 +515,7 @@ function normalizeAttendanceReportMatrix(
   }
 }
 
-const TEACHER_ATTENDANCE_STATUS_VALUES: TeacherHudoriAttendanceStatus[] = ['present', 'departed', 'failed', 'unknown']
+const TEACHER_ATTENDANCE_STATUS_VALUES: TeacherHudoriAttendanceStatus[] = ['present', 'departed', 'failed', 'unknown', 'absent']
 const TEACHER_ATTENDANCE_LOGIN_VALUES: TeacherHudoriAttendanceLoginMethod[] = ['face', 'fingerprint', 'card', 'voice', 'manual', 'unknown']
 
 const TEACHER_ATTENDANCE_STATUS_LABELS: Record<TeacherHudoriAttendanceStatus, string> = {
@@ -522,6 +523,7 @@ const TEACHER_ATTENDANCE_STATUS_LABELS: Record<TeacherHudoriAttendanceStatus, st
   departed: 'انصرف',
   failed: 'فشل التحقق',
   unknown: 'غير محدد',
+  absent: 'غائب',
 }
 
 const TEACHER_ATTENDANCE_LOGIN_LABELS: Record<TeacherHudoriAttendanceLoginMethod, string> = {
@@ -533,13 +535,42 @@ const TEACHER_ATTENDANCE_LOGIN_LABELS: Record<TeacherHudoriAttendanceLoginMethod
   unknown: 'غير محدد',
 }
 
-const TEACHER_DELAY_STATUS_VALUES: TeacherDelayStatus[] = ['on_time', 'delayed', 'excused', 'unknown']
+const TEACHER_DELAY_STATUS_VALUES: TeacherDelayStatus[] = ['on_time', 'delayed', 'excused', 'unknown', 'absent']
 
 const TEACHER_DELAY_STATUS_LABELS: Record<TeacherDelayStatus, string> = {
   on_time: 'في الوقت المحدد',
   delayed: 'متأخر',
   excused: 'معذور',
   unknown: 'غير محدد',
+  absent: 'غياب',
+}
+
+const TEACHER_ABSENCE_REASON_LABELS: Record<TeacherAbsenceReason, string> = {
+  unjustified: 'غير مبرر',
+  delegated: 'مكلف',
+  annual_leave: 'الإجازة العادية',
+  sick_leave: 'الإجازة المرضية',
+  emergency_leave: 'إجازة اضطرارية',
+  exceptional_leave: 'الإجازة الاستثنائية',
+  deduction: 'حسم',
+  companion_leave: 'إجازة المرافقة',
+  training_course: 'دورة تدريبية',
+  workshop: 'ورشة عمل',
+  makeup: 'مكمل',
+  bereavement_leave: 'إجازة الوفاة',
+  maternity_leave: 'إجازة الوضع',
+  exam_leave: 'إجازة الامتحانات',
+  paternity_leave: 'إجازة الأبوة',
+  motherhood_leave: 'إجازة الأمومة',
+  disaster: 'وقوع كارثة',
+  sports_leave: 'إجازة رياضية',
+  dialysis_leave: 'إجازة غسيل كلى',
+  disability_care_leave: 'إجازة رعاية ذوي الإعاقة',
+  patient_companion_leave: 'إجازة مرافقة مريض',
+  international_sports_leave: 'إجازة رياضية خارج المملكة',
+  accident_sick_leave: 'إجازة مرضية بسبب حادث',
+  pending: 'تحت الإجراء',
+  remote_work: 'دوام عن بعد',
 }
 
 function normalizeTeacherAttendanceTemplateOption(raw: unknown): TeacherAttendanceTemplateOption | null {
@@ -659,6 +690,16 @@ function normalizeTeacherAttendanceDelayRecord(raw: unknown): TeacherAttendanceD
       ? attendanceStatusValue
       : undefined
 
+  const absenceReasonRaw = typeof raw.absence_reason === 'string' ? raw.absence_reason : null
+  const absenceReason = absenceReasonRaw ?? null
+  const absenceReasonLabel =
+    typeof raw.absence_reason_label === 'string' && raw.absence_reason_label.trim()
+      ? raw.absence_reason_label
+      : (absenceReason && TEACHER_ABSENCE_REASON_LABELS[absenceReason as TeacherAbsenceReason]) ?? null
+  const absenceRecordedAt = typeof raw.absence_recorded_at === 'string' ? raw.absence_recorded_at : null
+  const absenceNotes = typeof raw.absence_notes === 'string' ? raw.absence_notes : null
+  const absenceSource = typeof raw.absence_source === 'string' ? raw.absence_source : null
+
   const userRecord = isRecord(raw.user) ? raw.user : null
   let user: TeacherAttendanceDelayRecord['user'] = null
   if (userRecord) {
@@ -711,6 +752,11 @@ function normalizeTeacherAttendanceDelayRecord(raw: unknown): TeacherAttendanceD
         : attendanceStatus
           ? TEACHER_ATTENDANCE_STATUS_LABELS[attendanceStatus]
           : null,
+    absence_reason: absenceReason,
+    absence_reason_label: absenceReasonLabel,
+    absence_recorded_at: absenceRecordedAt,
+    absence_notes: absenceNotes,
+    absence_source: absenceSource,
     user,
     delay_inquiry: normalizeTeacherDelayInquiryRecord(raw.delay_inquiry),
   }
@@ -943,6 +989,7 @@ export async function fetchTeacherAttendanceDelays(
   const params: Record<string, string | number> = {}
 
   if (filters.status && filters.status !== 'all') params.status = filters.status
+  if (filters.absence_reason && filters.absence_reason !== 'all') params.absence_reason = filters.absence_reason
   if (filters.start_date) params.start_date = filters.start_date
   if (filters.end_date) params.end_date = filters.end_date
   if (filters.search) params.search = filters.search

@@ -291,7 +291,7 @@ export function AdminApprovalPage() {
         setIsApproving(false)
         setSelectedId(null)
       }
-    } catch (error) {
+    } catch {
       if (breakTimerRef.current) {
         clearInterval(breakTimerRef.current)
         breakTimerRef.current = null

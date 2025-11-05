@@ -65,6 +65,7 @@ import { AdminAutoCallPage } from '@/modules/admin/pages/admin-auto-call-page'
 import { AutoCallDisplayPage } from '@/modules/auto-call/pages/auto-call-display-page'
 import { AdminAcademicCalendarPage } from '@/modules/admin/pages/admin-academic-calendar-page'
 import { AdminBehaviorPage } from '@/modules/admin/pages/admin-behavior-page'
+import { AdminBehaviorDetailPage } from '@/modules/admin/pages/admin-behavior-detail-page'
 import { AdminBehaviorPlansPage } from '@/modules/admin/pages/admin-behavior-plans-page'
 import { AdminBehaviorAnalyticsPage } from '@/modules/admin/pages/admin-behavior-analytics-page'
 import {
@@ -156,6 +157,7 @@ const appRoutes = [
           { path: 'duty-rosters', element: <AdminDutyRostersPage /> },
           { path: 'leave-requests', element: <AdminLeaveRequestsPage /> },
           { path: 'behavior', element: <AdminBehaviorPage /> },
+          { path: 'behavior/:violationId', element: <AdminBehaviorDetailPage /> },
           { path: 'behavior/plans', element: <AdminBehaviorPlansPage /> },
           { path: 'behavior/analytics', element: <AdminBehaviorAnalyticsPage /> },
           { path: 'teacher-messages', element: <AdminTeacherMessagesPage /> },

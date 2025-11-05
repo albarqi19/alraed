@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { renderToStaticMarkup } from 'react-dom/server'
 import {
   useTeacherHudoriAttendanceQuery,
   useTeacherAttendanceSettingsQuery,
@@ -17,10 +16,19 @@ import type {
   TeacherHudoriAttendanceRecord,
   TeacherHudoriAttendanceStatus,
   TeacherDelayStatus,
+  TeacherAbsenceReason,
   TeacherAttendanceDelayFilters,
   TeacherAttendanceDelayRecord,
+  TeacherAttendanceDelayStatusUpdatePayload,
   TeacherAttendanceSettingsPayload,
 } from '../types'
+import {
+  getInquiryTemplateMetadata,
+  renderBulkInquiryDocument,
+  renderInquiryDocument,
+  type InquiryTemplateData,
+  type TeacherInquiryTemplateKind,
+} from './teacher-attendance-inquiry-templates'
 
 const statusOptions: Array<{ value: TeacherHudoriAttendanceStatus | 'all'; label: string }> = [
   { value: 'all', label: 'جميع الحالات' },
@@ -28,6 +36,7 @@ const statusOptions: Array<{ value: TeacherHudoriAttendanceStatus | 'all'; label
   { value: 'departed', label: 'انصراف مسجل' },
   { value: 'failed', label: 'فشل التعرف' },
   { value: 'unknown', label: 'غير معروف' },
+  { value: 'absent', label: 'غياب مسجل' },
 ]
 
 const fallbackAttendanceStatusLabels: Record<TeacherHudoriAttendanceStatus, string> = {
@@ -35,6 +44,7 @@ const fallbackAttendanceStatusLabels: Record<TeacherHudoriAttendanceStatus, stri
   departed: 'انصرف',
   failed: 'فشل التحقق',
   unknown: 'غير محدد',
+  absent: 'غائب',
 }
 
 const matchedOptions: Array<{ value: 'all' | 'matched' | 'unmatched'; label: string }> = [
@@ -58,12 +68,46 @@ const delayStatusLabels: Record<TeacherDelayStatus, string> = {
   excused: 'معذور',
   on_time: 'في الوقت المحدد',
   unknown: 'غير محدد',
+  absent: 'غياب',
 }
+
+const absenceReasonLabels: Record<TeacherAbsenceReason, string> = {
+  unjustified: 'غير مبرر',
+  delegated: 'مكلف',
+  annual_leave: 'الإجازة العادية',
+  sick_leave: 'الإجازة المرضية',
+  emergency_leave: 'إجازة اضطرارية',
+  exceptional_leave: 'الإجازة الاستثنائية',
+  deduction: 'حسم',
+  companion_leave: 'إجازة المرافقة',
+  training_course: 'دورة تدريبية',
+  workshop: 'ورشة عمل',
+  makeup: 'مكمل',
+  bereavement_leave: 'إجازة الوفاة',
+  maternity_leave: 'إجازة الوضع',
+  exam_leave: 'إجازة الامتحانات',
+  paternity_leave: 'إجازة الأبوة',
+  motherhood_leave: 'إجازة الأمومة',
+  disaster: 'وقوع كارثة',
+  sports_leave: 'إجازة رياضية',
+  dialysis_leave: 'إجازة غسيل كلى',
+  disability_care_leave: 'إجازة رعاية ذوي الإعاقة',
+  patient_companion_leave: 'إجازة مرافقة مريض',
+  international_sports_leave: 'إجازة رياضية خارج المملكة',
+  accident_sick_leave: 'إجازة مرضية بسبب حادث',
+  pending: 'تحت الإجراء',
+  remote_work: 'دوام عن بعد',
+}
+
+const absenceReasonOptions: Array<{ value: TeacherAbsenceReason | 'all'; label: string }> = [
+  { value: 'all', label: 'جميع أسباب الغياب' },
+  ...Object.entries(absenceReasonLabels).map(([value, label]) => ({ value: value as TeacherAbsenceReason, label })),
+]
 
 const delayStatusOptions: Array<{ value: TeacherDelayStatus | 'all'; label: string }> = [
   { value: 'all', label: 'كل الحالات' },
+  { value: 'absent', label: delayStatusLabels.absent },
   { value: 'delayed', label: delayStatusLabels.delayed },
-  { value: 'on_time', label: delayStatusLabels.on_time },
   { value: 'excused', label: delayStatusLabels.excused },
   { value: 'unknown', label: delayStatusLabels.unknown },
 ]
@@ -91,6 +135,7 @@ type AttendanceSettingsState = {
 
 type DelayFilterState = {
   status: TeacherDelayStatus | 'all'
+  absence_reason: TeacherAbsenceReason | 'all'
   start_date: string
   end_date: string
   search: string
@@ -99,420 +144,34 @@ type DelayFilterState = {
   order: 'asc' | 'desc'
 }
 
-type InquiryTemplateData = {
-  schoolName: string
-  teacherName: string
-  nationalId: string
-  attendanceDayName: string
-  attendanceDateHijri: string
-  attendanceDateGregorian: string
-  checkInTime: string
-  workStartTime: string
-  delayMinutesText: string
-  issueDateHijri: string
-  issueDateGregorian: string
-}
-
 type InquiryDialogState = {
   record: TeacherAttendanceDelayRecord
   data: InquiryTemplateData
+  template: TeacherInquiryTemplateKind
 }
 
 type BulkInquiryDialogState = {
+  template: TeacherInquiryTemplateKind
   entries: Array<{
     record: TeacherAttendanceDelayRecord
     data: InquiryTemplateData
   }>
 }
 
-const INQUIRY_TEMPLATE_CSS = `
-  @page {
-    size: A4;
-    margin: 10mm;
-  }
+type AbsenceDialogState = {
+  record: TeacherAttendanceDelayRecord
+  reason: TeacherAbsenceReason
+  notes: string
+  error: string | null
+}
 
-  body {
-    font-family: 'Segoe UI', 'Tahoma', 'Arial', sans-serif;
-    direction: rtl;
-    text-align: right;
-    background: #e2e8f0;
-    color: #0f172a;
-    margin: 0;
-    padding: 0;
-  }
-
-  .inquiry-sheet {
-    width: 100%;
-    max-width: calc(210mm - 20mm);
-    min-height: calc(297mm - 20mm);
-    margin: 0 auto;
-    background: #fff;
-    border: 1px solid #cbd5f5;
-    padding: 10mm 12mm;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    gap: 6mm;
-  }
-
-  .inquiry-header {
-    border-bottom: 2px solid #0f766e;
-    padding-bottom: 4mm;
-  }
-
-  .inquiry-header-line {
-    display: flex;
-    justify-content: space-between;
-    font-weight: 700;
-    color: #0f766e;
-    font-size: 11px;
-  }
-
-  .inquiry-top-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 11.5px;
-  }
-
-  .inquiry-top-table th,
-  .inquiry-top-table td {
-    border: 1px solid #cbd5f5;
-    padding: 5px 7px;
-  }
-
-  .inquiry-top-table th {
-    background: #f8fafc;
-    font-weight: 700;
-    width: 22%;
-  }
-
-  .inquiry-top-table td {
-    width: 28%;
-    font-weight: 600;
-  }
-
-  .inquiry-section {
-    font-size: 11.5px;
-    line-height: 1.7;
-  }
-
-  .inquiry-section p {
-    margin: 2px 0;
-  }
-
-  .inquiry-section .field {
-    display: inline-block;
-    min-width: 68px;
-    border-bottom: 1px dotted #94a3b8;
-    padding: 0 3px;
-    font-weight: 600;
-  }
-
-  .inquiry-section .field.wide {
-    min-width: 110px;
-  }
-
-  .inquiry-options {
-    list-style: none;
-    padding: 0;
-    margin: 8px 0;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
-
-  .inquiry-option {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-  }
-
-  .inquiry-checkbox {
-    font-size: 13px;
-    font-weight: 700;
-    width: 16px;
-    text-align: center;
-    color: #dc2626;
-  }
-
-  .inquiry-checkbox.unchecked {
-    color: #64748b;
-  }
-
-  .signature-row {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 6px;
-  }
-
-  .signature-block {
-    min-width: 160px;
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    font-size: 11.5px;
-  }
-
-  .signature-line {
-    height: 1px;
-    background: #94a3b8;
-    margin: 3px 0 5px;
-  }
-
-  .signature-inline-row {
-    display: flex;
-    gap: 12px;
-    margin-top: 10px;
-    font-size: 11.5px;
-  }
-
-  .signature-inline-row span {
-    flex: 1;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    white-space: nowrap;
-  }
-
-  .signature-inline-row span:last-child {
-    flex: 0.9;
-  }
-
-  .inline-line {
-    flex: 1;
-    border-bottom: 1px dotted #94a3b8;
-    height: 1px;
-  }
-
-  .inline-line.short {
-    flex: 0 0 70px;
-  }
-
-  .page-break {
-    display: block;
-    height: 0;
-    margin: 0;
-    border: 0;
-    page-break-after: always;
-  }
-
-  .reason-lines {
-    margin: 8px 0 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .reason-lines .line {
-    height: 1px;
-    background: repeating-linear-gradient(90deg, #94a3b8, #94a3b8 10px, transparent 10px, transparent 16px);
-  }
-
-  .decision-row {
-    display: flex;
-    gap: 14px;
-    align-items: center;
-    margin: 6px 0;
-    font-size: 11.5px;
-  }
-
-  .note {
-    font-size: 10.5px;
-    color: #475569;
-    margin-top: 4px;
-  }
-
-  .inquiry-footer {
-    margin-top: auto;
-  }
-
-  .inquiry-footer-divider {
-    height: 1px;
-    background: #cbd5f5;
-    margin-bottom: 6px;
-  }
-
-  .inquiry-footer-line {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  @media print {
-    body {
-      background: #fff;
+  // تحويل الأرقام العربية إلى إنجليزية
+  function convertArabicNumeralsToEnglish(text: string): string {
+    const arabicToEnglish: Record<string, string> = {
+      '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4',
+      '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9'
     }
-  }
-`
-
-  function InquiryFormTemplate({ data }: { data: InquiryTemplateData }) {
-    return (
-      <div className="inquiry-sheet">
-        <div className="inquiry-header">
-          <div className="inquiry-header-line">
-            <span>نموذج رقم (18)</span>
-            <span>اسم النموذج: تنبيه على تأخر / انصراف</span>
-            <span>رمز النموذج (و.و.م.ن-02-3)</span>
-          </div>
-        </div>
-
-        <table className="inquiry-top-table">
-          <tbody>
-            <tr>
-              <th>المدرسة</th>
-              <td>{data.schoolName}</td>
-              <th>السجل المدني</th>
-              <td>{data.nationalId}</td>
-            </tr>
-            <tr>
-              <th>الاسم</th>
-              <td>{data.teacherName}</td>
-              <th>التخصص</th>
-              <td>____________________</td>
-            </tr>
-            <tr>
-              <th>المستوى/المرتبة</th>
-              <td>____________________</td>
-              <th>الوظيفة</th>
-              <td>____________________</td>
-            </tr>
-            <tr>
-              <th>العمل الحالي</th>
-              <td>____________________</td>
-              <th>رقم الوظيفة</th>
-              <td>____________________</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <section className="inquiry-section">
-          <p>
-            المكرم المعلم : <span className="field wide">{data.teacherName}</span>
-          </p>
-          <p>السلام عليكم ورحمة الله وبركاته وبعد :</p>
-          <p>
-            إشارة إلى يوم
-            <span className="field">{data.attendanceDayName}</span>
-            الموافق
-            <span className="field">{data.attendanceDateHijri}</span>
-            هـ، نأمل توضيح ما يلي:
-          </p>
-
-          <ul className="inquiry-options">
-            <li className="inquiry-option">
-              <span className="inquiry-checkbox">☑</span>
-              <span>
-                تأخركم من بداية العمل (الساعة
-                <span className="field">{data.workStartTime}</span>
-                ) وحضوركم الساعة
-                <span className="field">{data.checkInTime}</span>
-                — بمقدار
-                <span className="field">{data.delayMinutesText}</span>
-              </span>
-            </li>
-            <li className="inquiry-option">
-              <span className="inquiry-checkbox unchecked">☐</span>
-              <span>
-                غيابكم أثناء العمل من الساعة
-                <span className="field">__________</span>
-                إلى الساعة
-                <span className="field">__________</span>
-              </span>
-            </li>
-            <li className="inquiry-option">
-              <span className="inquiry-checkbox unchecked">☐</span>
-              <span>
-                انصرافكم مبكرًا قبل نهاية العمل من الساعة
-                <span className="field">__________</span>
-              </span>
-            </li>
-          </ul>
-
-          <p>عليه نأمل توضيح أسباب ذلك مع إرفاق ما يثبت عذركم ،،، ولكم تحياتي ..</p>
-
-          <div className="signature-row">
-            <div className="signature-block">
-              <p>قائد المدرسة :</p>
-              <div className="signature-line" />
-              <p>
-                التاريخ :
-                <span className="field">{data.issueDateHijri}</span>
-                هـ
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <section className="inquiry-section">
-          <p>المكرم قائد المدرسة</p>
-          <p>السلام عليكم ورحمة الله وبركاته وبعد :</p>
-          <p>أفيدكم أن أسباب ذلك ما يلي :</p>
-          <div className="reason-lines">
-            <span className="line" />
-            <span className="line" />
-            <span className="line" />
-            <span className="line" />
-          </div>
-          <div className="signature-inline-row">
-            <span>
-              الاسم:
-              <span className="inline-line" />
-            </span>
-            <span>
-              التوقيع:
-              <span className="inline-line" />
-            </span>
-            <span>
-              التاريخ:
-              <span className="inline-line short" />
-            </span>
-          </div>
-        </section>
-
-        <section className="inquiry-section">
-          <p>رأي قائد المدرسة :</p>
-          <div className="decision-row">
-            <span className="inquiry-footer-line">
-              <span className="inquiry-checkbox unchecked">☐</span>
-              عذر مقبول
-            </span>
-            <span className="inquiry-footer-line">
-              <span className="inquiry-checkbox unchecked">☐</span>
-              عذر غير مقبول ويحسم عليه
-            </span>
-          </div>
-          <div className="signature-row">
-            <div className="signature-block">
-              <p>قائد المدرسة :</p>
-              <div className="signature-line" />
-              <p>التاريخ : ____________</p>
-            </div>
-          </div>
-        </section>
-
-        <div className="inquiry-footer">
-          <div className="inquiry-footer-divider" />
-          <p className="note">
-            ملاحظة: تُرفق بطاقة المسائلة مع أصل القرار في حالة عدم قبول العذر لحفظها بملفه بالإدارة، وأصلها بملفه في المدرسة.
-          </p>
-        </div>
-      </div>
-    )
-  }
-
-  function buildInquiryDocumentHtml(data: InquiryTemplateData) {
-    const markup = renderToStaticMarkup(<InquiryFormTemplate data={data} />)
-    return `<!DOCTYPE html>
-  <html dir="rtl" lang="ar">
-    <head>
-      <meta charset="utf-8" />
-      <title>مسائلة تأخر - ${data.teacherName}</title>
-      <style>${INQUIRY_TEMPLATE_CSS}</style>
-    </head>
-    <body>
-      ${markup}
-    </body>
-  </html>`
+    return text.replace(/[٠-٩]/g, (digit) => arabicToEnglish[digit] || digit)
   }
 
   function formatHijriDateForTemplate(value?: string | Date | null) {
@@ -522,12 +181,14 @@ const INQUIRY_TEMPLATE_CSS = `
     const locales = ['ar-SA-u-ca-islamic-umalqura', 'ar-SA-u-ca-islamic', 'ar-SA']
     for (const locale of locales) {
       try {
-        return new Intl.DateTimeFormat(locale, { dateStyle: 'long' }).format(date)
+        const formatted = new Intl.DateTimeFormat(locale, { dateStyle: 'long' }).format(date)
+        return convertArabicNumeralsToEnglish(formatted)
       } catch {
         continue
       }
     }
-    return date.toLocaleDateString('ar-SA')
+    const fallback = date.toLocaleDateString('ar-SA')
+    return convertArabicNumeralsToEnglish(fallback)
   }
 
   function formatGregorianDateForTemplate(value?: string | Date | null) {
@@ -535,9 +196,11 @@ const INQUIRY_TEMPLATE_CSS = `
     const date = value instanceof Date ? value : new Date(value)
     if (Number.isNaN(date.getTime())) return '—'
     try {
-      return new Intl.DateTimeFormat('ar-SA', { dateStyle: 'long' }).format(date)
+      const formatted = new Intl.DateTimeFormat('ar-SA', { dateStyle: 'long' }).format(date)
+      return convertArabicNumeralsToEnglish(formatted)
     } catch {
-      return date.toLocaleDateString('ar-SA')
+      const fallback = date.toLocaleDateString('ar-SA')
+      return convertArabicNumeralsToEnglish(fallback)
     }
   }
 
@@ -566,7 +229,7 @@ const INQUIRY_TEMPLATE_CSS = `
 
   function createInquiryTemplateData(
     record: TeacherAttendanceDelayRecord,
-    options: { schoolName: string; workStartTime?: string | null; issueDate?: Date },
+    options: { schoolName: string; workStartTime?: string | null; issueDate?: Date; absenceDurationText?: string | null },
   ): InquiryTemplateData {
     const issueDate = options.issueDate ?? new Date()
     const teacherName = record.teacher_name?.trim() || record.user?.name?.trim() || '—'
@@ -575,8 +238,14 @@ const INQUIRY_TEMPLATE_CSS = `
 
     const delayMinutesText =
       typeof record.delay_minutes === 'number'
-        ? `${new Intl.NumberFormat('ar-SA').format(Math.max(record.delay_minutes, 0))} دقيقة`
+        ? `${Math.max(record.delay_minutes, 0)} دقيقة`
         : '—'
+
+    const absenceReasonLabel = record.absence_reason_label?.trim()
+      || (record.absence_reason && absenceReasonLabels[record.absence_reason as TeacherAbsenceReason])
+      || null
+    const absenceNotes = record.absence_notes?.trim() || null
+    const absenceDurationText = options.absenceDurationText ?? (record.delay_status === 'absent' ? 'يوم واحد' : null)
 
     return {
       schoolName: options.schoolName || '—',
@@ -590,6 +259,9 @@ const INQUIRY_TEMPLATE_CSS = `
       delayMinutesText,
       issueDateHijri: formatHijriDateForTemplate(issueDate),
       issueDateGregorian: formatGregorianDateForTemplate(issueDate),
+      absenceReasonLabel,
+      absenceNotes,
+      absenceDurationText,
     }
   }
 
@@ -656,6 +328,8 @@ function getDelayTone(status: TeacherDelayStatus) {
       return 'bg-amber-50 text-amber-700 border border-amber-200'
     case 'on_time':
       return 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+    case 'absent':
+      return 'bg-slate-100 text-slate-800 border border-slate-300'
     default:
       return 'bg-slate-100 text-slate-600 border border-slate-200'
   }
@@ -739,7 +413,8 @@ export function AdminTeacherAttendancePage() {
     delay_notification_template_id: null,
   })
   const [delayFilters, setDelayFilters] = useState<DelayFilterState>({
-    status: 'delayed',
+    status: 'all',
+    absence_reason: 'all',
     start_date: today,
     end_date: today,
     search: '',
@@ -759,6 +434,7 @@ export function AdminTeacherAttendancePage() {
       }
     | null
   >(null)
+  const [absenceDialog, setAbsenceDialog] = useState<AbsenceDialogState | null>(null)
   const [recalculateDialog, setRecalculateDialog] = useState<
     | {
         record: TeacherAttendanceDelayRecord
@@ -792,7 +468,8 @@ export function AdminTeacherAttendancePage() {
       order: delayFilters.order,
     }
 
-    if (delayFilters.status !== 'all') payload.status = delayFilters.status
+  if (delayFilters.status !== 'all') payload.status = delayFilters.status
+  if (delayFilters.absence_reason !== 'all') payload.absence_reason = delayFilters.absence_reason
     if (delayFilters.start_date) payload.start_date = delayFilters.start_date
     if (delayFilters.end_date) payload.end_date = delayFilters.end_date
     if (delayFilters.search.trim()) payload.search = delayFilters.search.trim()
@@ -831,17 +508,37 @@ export function AdminTeacherAttendancePage() {
 
   const delays = delayQuery.data?.data ?? []
   const delayMeta = delayQuery.data?.meta
+  
+  const sortedDelays = useMemo(() => {
+    // ترتيب السجلات: الغائبين أولاً ثم المتأخرين ثم المعذورين ثم الباقي
+    const statusOrder: Record<TeacherDelayStatus, number> = {
+      absent: 1,
+      delayed: 2,
+      excused: 3,
+      on_time: 4,
+      unknown: 5,
+    }
+    
+    return [...delays].sort((a, b) => {
+      const orderA = statusOrder[a.delay_status] ?? 999
+      const orderB = statusOrder[b.delay_status] ?? 999
+      return orderA - orderB
+    })
+  }, [delays])
+  
   const delayAnalytics = useMemo(() => {
     if (!delays.length) {
       return {
         delayedCount: 0,
         excusedCount: 0,
+        absenceCount: 0,
         averageDelay: null as number | null,
       }
     }
 
     let delayedCount = 0
     let excusedCount = 0
+    let absenceCount = 0
     let totalDelayedMinutes = 0
     let countedDelayedRecords = 0
 
@@ -851,6 +548,9 @@ export function AdminTeacherAttendancePage() {
       }
       if (record.delay_status === 'excused') {
         excusedCount += 1
+      }
+      if (record.delay_status === 'absent') {
+        absenceCount += 1
       }
       if (typeof record.delay_minutes === 'number') {
         if (record.delay_status === 'delayed') {
@@ -865,35 +565,24 @@ export function AdminTeacherAttendancePage() {
     return {
       delayedCount,
       excusedCount,
+      absenceCount,
       averageDelay,
     }
   }, [delays])
   const inquiryDocumentHtml = useMemo(() => {
     if (!inquiryDialog) return null
-    return buildInquiryDocumentHtml(inquiryDialog.data)
+    return renderInquiryDocument(inquiryDialog.template, inquiryDialog.data)
   }, [inquiryDialog])
+
   const bulkInquiryDocumentHtml = useMemo(() => {
     if (!bulkInquiryDialog || bulkInquiryDialog.entries.length === 0) return null
-    const sheets = bulkInquiryDialog.entries
-      .map((entry, index) => {
-        const markup = renderToStaticMarkup(<InquiryFormTemplate data={entry.data} />)
-        const separator = index === bulkInquiryDialog.entries.length - 1 ? '' : '<div class="page-break"></div>'
-        return `${markup}${separator}`
-      })
-      .join('\n')
-
-    return `<!DOCTYPE html>
-<html dir="rtl" lang="ar">
-  <head>
-    <meta charset="utf-8" />
-    <title>مجموعة مسائلات التأخر</title>
-    <style>${INQUIRY_TEMPLATE_CSS}</style>
-  </head>
-  <body>
-    ${sheets}
-  </body>
-</html>`
+    return renderBulkInquiryDocument(
+      bulkInquiryDialog.template,
+      bulkInquiryDialog.entries.map((entry) => entry.data),
+    )
   }, [bulkInquiryDialog])
+  const inquiryTemplateMetadata = inquiryDialog ? getInquiryTemplateMetadata(inquiryDialog.template) : null
+  const bulkInquiryTemplateMetadata = bulkInquiryDialog ? getInquiryTemplateMetadata(bulkInquiryDialog.template) : null
   const totalDelayPages = Math.max(1, delayMeta?.last_page ?? 1)
   const availableTemplates = settingsQuery.data?.available_templates ?? []
   const isSettingsLoading = settingsQuery.isLoading
@@ -902,6 +591,8 @@ export function AdminTeacherAttendancePage() {
     !!excuseDialog && updateDelayStatusMutation.isPending && activeStatusUpdateId === excuseDialog.record.id
   const isSubmittingRecalculate =
     !!recalculateDialog && recalcDelayMutation.isPending && activeRecalculateId === recalculateDialog.record.id
+  const isSubmittingAbsence =
+    !!absenceDialog && updateDelayStatusMutation.isPending && activeStatusUpdateId === absenceDialog.record.id
   const settingsErrorMessage =
     settingsQuery.isError && settingsQuery.error instanceof Error ? settingsQuery.error.message : null
 
@@ -1015,12 +706,14 @@ export function AdminTeacherAttendancePage() {
   const handleInquiryOpen = (record: TeacherAttendanceDelayRecord) => {
     const schoolName = adminSettingsQuery.data?.school_name?.trim() || '—'
     const workStartTime = settingsQuery.data?.start_time ?? null
+    const template: TeacherInquiryTemplateKind = record.delay_status === 'absent' ? 'absence' : 'delay'
     const data = createInquiryTemplateData(record, {
       schoolName,
       workStartTime,
       issueDate: new Date(),
+      absenceDurationText: template === 'absence' ? 'يوم واحد' : null,
     })
-    setInquiryDialog({ record, data })
+    setInquiryDialog({ record, data, template })
   }
 
   const handleInquiryClose = () => setInquiryDialog(null)
@@ -1028,7 +721,7 @@ export function AdminTeacherAttendancePage() {
   const handleInquiryPrint = () => {
     if (!inquiryDialog) return
     if (typeof window === 'undefined') return
-    const html = buildInquiryDocumentHtml(inquiryDialog.data)
+    const html = renderInquiryDocument(inquiryDialog.template, inquiryDialog.data)
     const printWindow = window.open('', '_blank', 'width=900,height=1200')
     if (!printWindow) return
     printWindow.document.write(html)
@@ -1040,12 +733,13 @@ export function AdminTeacherAttendancePage() {
   const handleInquiryDownload = () => {
     if (!inquiryDialog) return
     if (typeof window === 'undefined' || typeof document === 'undefined') return
-    const html = buildInquiryDocumentHtml(inquiryDialog.data)
+    const html = renderInquiryDocument(inquiryDialog.template, inquiryDialog.data)
+    const meta = getInquiryTemplateMetadata(inquiryDialog.template)
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
     anchor.href = url
-    anchor.download = `inquiry-${inquiryDialog.record.id}.html`
+    anchor.download = `${meta.downloadPrefix}-${inquiryDialog.record.id}.html`
     document.body.appendChild(anchor)
     anchor.click()
     document.body.removeChild(anchor)
@@ -1065,7 +759,7 @@ export function AdminTeacherAttendancePage() {
         issueDate,
       }),
     }))
-    setBulkInquiryDialog({ entries })
+    setBulkInquiryDialog({ template: 'delay', entries })
   }
 
   const handleBulkInquiryClose = () => setBulkInquiryDialog(null)
@@ -1092,7 +786,8 @@ export function AdminTeacherAttendancePage() {
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
     anchor.href = url
-    anchor.download = `inquiries-${Date.now()}.html`
+    const meta = getInquiryTemplateMetadata(bulkInquiryDialog.template)
+    anchor.download = `${meta.downloadPrefix}-bulk-${Date.now()}.html`
     document.body.appendChild(anchor)
     anchor.click()
     document.body.removeChild(anchor)
@@ -1101,7 +796,7 @@ export function AdminTeacherAttendancePage() {
 
   const mutateDelayStatus = (
     record: TeacherAttendanceDelayRecord,
-    payload: { status: TeacherDelayStatus; notes?: string | null; clear_notification?: boolean },
+    payload: TeacherAttendanceDelayStatusUpdatePayload,
     options: { onSuccess?: () => void } = {},
   ) => {
     setActiveStatusUpdateId(record.id)
@@ -1116,6 +811,20 @@ export function AdminTeacherAttendancePage() {
         onSettled: () => setActiveStatusUpdateId(null),
       },
     )
+  }
+
+  const openAbsenceDialog = (record: TeacherAttendanceDelayRecord) => {
+    const fallbackReason: TeacherAbsenceReason =
+      record.absence_reason && absenceReasonLabels[record.absence_reason as TeacherAbsenceReason]
+        ? (record.absence_reason as TeacherAbsenceReason)
+        : 'unjustified'
+
+    setAbsenceDialog({
+      record,
+      reason: fallbackReason,
+      notes: record.absence_notes ?? '',
+      error: null,
+    })
   }
 
   const handleDelayStatusChange = (record: TeacherAttendanceDelayRecord, status: TeacherDelayStatus) => {
@@ -1135,8 +844,26 @@ export function AdminTeacherAttendancePage() {
       return
     }
 
+    if (status === 'absent') {
+      openAbsenceDialog(record)
+      return
+    }
+
     if (status === record.delay_status) return
-    mutateDelayStatus(record, { status, notes: null })
+
+    const payload: TeacherAttendanceDelayStatusUpdatePayload = {
+      status,
+      notes: null,
+    }
+
+    if (status === 'on_time') {
+      payload.attendance_status = 'present'
+      payload.clear_notification = true
+    } else if (status === 'delayed') {
+      payload.attendance_status = record.status === 'departed' ? 'departed' : 'present'
+    }
+
+    mutateDelayStatus(record, payload)
   }
 
   const handleExcuseReasonChange = (reason: 'technical_issue' | 'other') => {
@@ -1169,6 +896,38 @@ export function AdminTeacherAttendancePage() {
       { status: 'excused', notes: notes || null },
       {
         onSuccess: () => setExcuseDialog(null),
+      },
+    )
+  }
+
+  const handleAbsenceReasonChange = (reason: TeacherAbsenceReason) => {
+    setAbsenceDialog((prev) => (prev ? { ...prev, reason, error: null } : prev))
+  }
+
+  const handleAbsenceNotesChange = (value: string) => {
+    setAbsenceDialog((prev) => (prev ? { ...prev, notes: value, error: null } : prev))
+  }
+
+  const closeAbsenceDialog = () => {
+    if (absenceDialog && updateDelayStatusMutation.isPending && activeStatusUpdateId === absenceDialog.record.id) return
+    setAbsenceDialog(null)
+  }
+
+  const handleAbsenceSubmit = () => {
+    if (!absenceDialog) return
+    const trimmedNotes = absenceDialog.notes.trim()
+
+    setAbsenceDialog((prev) => (prev ? { ...prev, error: null } : prev))
+
+    mutateDelayStatus(
+      absenceDialog.record,
+      {
+        status: 'absent',
+        absence_reason: absenceDialog.reason,
+        absence_notes: trimmedNotes || null,
+      },
+      {
+        onSuccess: () => setAbsenceDialog(null),
       },
     )
   }
@@ -1503,9 +1262,9 @@ export function AdminTeacherAttendancePage() {
   <header id="teacher-delay-header" className="space-y-3 scroll-mt-16">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="space-y-2 text-right">
-              <h2 className="text-2xl font-bold text-slate-900">إدارة حالات التأخر</h2>
+              <h2 className="text-2xl font-bold text-slate-900">إدارة حالات التأخر والغياب</h2>
               <p className="text-sm text-muted">
-                راجع حالات التأخر المكتشفة، أعد احتسابها، أو أعد إرسال التنبيهات مباشرة.
+                متابعة المعلمين المتأخرين والغائبين وإدارة حالاتهم
               </p>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2">
@@ -1531,15 +1290,29 @@ export function AdminTeacherAttendancePage() {
             </div>
           </div>
 
-          <div className="grid gap-3 lg:grid-cols-5">
+          <div className="grid gap-3 lg:grid-cols-6">
             <label className="space-y-1">
-              <span className="text-xs font-semibold text-slate-600">حالة التأخر</span>
+              <span className="text-xs font-semibold text-slate-600">حالة التأخر / الغياب</span>
               <select
                 value={delayFilters.status}
                 onChange={(event) => updateDelayFilters('status', event.target.value as DelayFilterState['status'])}
                 className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               >
                 {delayStatusOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1">
+              <span className="text-xs font-semibold text-slate-600">سبب الغياب</span>
+              <select
+                value={delayFilters.absence_reason}
+                onChange={(event) => updateDelayFilters('absence_reason', event.target.value as DelayFilterState['absence_reason'])}
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              >
+                {absenceReasonOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
@@ -1623,11 +1396,19 @@ export function AdminTeacherAttendancePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {delays.map((delay) => {
+                    {sortedDelays.map((delay) => {
                       const isRecalculating = recalcDelayMutation.isPending && activeRecalculateId === delay.id
                       const isNotifying = notifyDelayMutation.isPending && activeNotifyId === delay.id
                       const isUpdatingStatus = updateDelayStatusMutation.isPending && activeStatusUpdateId === delay.id
+                      const isAbsent = delay.delay_status === 'absent'
                       const actionStatus: 'delayed' | 'excused' = delay.delay_status === 'excused' ? 'excused' : 'delayed'
+                      const absenceReasonLabel = delay.absence_reason_label?.trim()
+                        || (delay.absence_reason
+                          ? absenceReasonLabels[delay.absence_reason as TeacherAbsenceReason]
+                          : null)
+                      const absenceActionLabel = absenceReasonLabel ?? absenceReasonLabels.unjustified
+                      const hasCustomAbsenceReason = Boolean(absenceReasonLabel)
+                      const notifyLabel = isNotifying ? 'جارٍ الإرسال...' : 'إشعار'
 
                       return (
                         <tr key={delay.id} className="border-t border-slate-100 text-[13px] transition hover:bg-slate-50/70">
@@ -1656,14 +1437,25 @@ export function AdminTeacherAttendancePage() {
                           <td className="px-4 py-3 align-top">
                             <div className="space-y-2">
                               <DelayStatusBadge status={delay.delay_status} label={delay.delay_status_label} />
-                              {typeof delay.delay_minutes === 'number' ? (
-                                <p className="text-[11px] text-muted">
-                                  دقائق التأخر: {delay.delay_minutes.toLocaleString('ar-SA')}
-                                </p>
-                              ) : null}
-                              {delay.delay_notes ? (
-                                <p className="text-[11px] text-muted">ملاحظة: {delay.delay_notes}</p>
-                              ) : null}
+                              {isAbsent ? (
+                                <>
+                                  <p className="text-[11px] text-muted">سبب الغياب: {absenceActionLabel}</p>
+                                  {delay.absence_notes ? (
+                                    <p className="text-[11px] text-muted">ملاحظات: {delay.absence_notes}</p>
+                                  ) : null}
+                                </>
+                              ) : (
+                                <>
+                                  {typeof delay.delay_minutes === 'number' ? (
+                                    <p className="text-[11px] text-muted">
+                                      دقائق التأخر: {delay.delay_minutes.toLocaleString('ar-SA')}
+                                    </p>
+                                  ) : null}
+                                  {delay.delay_notes ? (
+                                    <p className="text-[11px] text-muted">ملاحظة: {delay.delay_notes}</p>
+                                  ) : null}
+                                </>
+                              )}
                             </div>
                           </td>
                           <td className="px-4 py-3 align-top">
@@ -1700,39 +1492,67 @@ export function AdminTeacherAttendancePage() {
                           <td className="px-4 py-3 align-top">
                             <div className="flex flex-col gap-2">
                               <div className="inline-flex rounded-2xl border border-slate-200 bg-white p-0.5 shadow-sm">
-                                <button
-                                  type="button"
-                                  onClick={() => handleDelayStatusChange(delay, 'delayed')}
-                                  className={`flex-1 rounded-2xl px-3 py-1 text-[12px] font-semibold transition ${
-                                    actionStatus === 'delayed'
-                                      ? 'bg-rose-600 text-white shadow'
-                                      : 'text-slate-600 hover:bg-slate-100'
-                                  }`}
-                                  disabled={isUpdatingStatus}
-                                >
-                                  متأخر
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDelayStatusChange(delay, 'excused')}
-                                  className={`flex-1 rounded-2xl px-3 py-1 text-[12px] font-semibold transition ${
-                                    actionStatus === 'excused'
-                                      ? 'bg-amber-500 text-white shadow'
-                                      : 'text-slate-600 hover:bg-slate-100'
-                                  }`}
-                                  disabled={isUpdatingStatus}
-                                >
-                                  بعذر
-                                </button>
+                                {isAbsent ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="flex-1 rounded-2xl bg-slate-700 px-3 py-1 text-[12px] font-semibold text-white shadow"
+                                      disabled
+                                    >
+                                      غائب
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => openAbsenceDialog(delay)}
+                                      className={`flex-1 rounded-2xl px-3 py-1 text-[12px] font-semibold transition ${
+                                        hasCustomAbsenceReason
+                                          ? 'bg-indigo-600 text-white shadow'
+                                          : 'text-slate-600 hover:bg-slate-100'
+                                      }`}
+                                      disabled={isUpdatingStatus}
+                                    >
+                                      {absenceActionLabel}
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDelayStatusChange(delay, 'delayed')}
+                                      className={`flex-1 rounded-2xl px-3 py-1 text-[12px] font-semibold transition ${
+                                        actionStatus === 'delayed'
+                                          ? 'bg-rose-600 text-white shadow'
+                                          : 'text-slate-600 hover:bg-slate-100'
+                                      }`}
+                                      disabled={isUpdatingStatus}
+                                    >
+                                      متأخر
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDelayStatusChange(delay, 'excused')}
+                                      className={`flex-1 rounded-2xl px-3 py-1 text-[12px] font-semibold transition ${
+                                        actionStatus === 'excused'
+                                          ? 'bg-amber-500 text-white shadow'
+                                          : 'text-slate-600 hover:bg-slate-100'
+                                      }`}
+                                      disabled={isUpdatingStatus}
+                                    >
+                                      بعذر
+                                    </button>
+                                  </>
+                                )}
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => handleDelayRecalculate(delay)}
-                                className="button-secondary text-xs"
-                                disabled={isRecalculating}
-                              >
-                                <i className="bi bi-calculator" /> {isRecalculating ? 'جارٍ الاحتساب...' : 'إعادة الاحتساب'}
-                              </button>
+                              {!isAbsent ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDelayRecalculate(delay)}
+                                  className="button-secondary text-xs"
+                                  disabled={isRecalculating}
+                                >
+                                  <i className="bi bi-calculator" /> {isRecalculating ? 'جارٍ الاحتساب...' : 'إعادة الاحتساب'}
+                                </button>
+                              ) : null}
                               <div className="flex gap-2">
                                 <button
                                   type="button"
@@ -1740,7 +1560,7 @@ export function AdminTeacherAttendancePage() {
                                   className="button-secondary text-xs"
                                   disabled={isNotifying}
                                 >
-                                  <i className="bi bi-send" /> {isNotifying ? 'جارٍ الإرسال...' : 'إرسال'}
+                                  <i className="bi bi-send" /> {notifyLabel}
                                 </button>
                                 <button
                                   type="button"
@@ -1761,7 +1581,7 @@ export function AdminTeacherAttendancePage() {
               <aside className="flex h-full flex-col gap-3 rounded-3xl border border-slate-100 bg-slate-50/80 p-4 text-right shadow-inner">
                 <header className="space-y-1">
                   <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">إحصائيات فورية</p>
-                  <h3 className="text-lg font-bold text-slate-800">نظرة على حالات التأخر</h3>
+                  <h3 className="text-lg font-bold text-slate-800">نظرة على التأخر والغياب</h3>
                 </header>
                 <article className="rounded-2xl border border-rose-200 bg-white/90 px-4 py-3 shadow-sm">
                   <p className="text-xs font-semibold text-rose-600">مجموع المتأخرين</p>
@@ -1773,6 +1593,12 @@ export function AdminTeacherAttendancePage() {
                   <p className="text-xs font-semibold text-amber-600">حالات بعذر</p>
                   <p className="mt-1 text-xl font-bold text-amber-700">
                     {delayAnalytics.excusedCount.toLocaleString('ar-SA')}
+                  </p>
+                </article>
+                <article className="rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm">
+                  <p className="text-xs font-semibold text-slate-600">سجلات الغياب</p>
+                  <p className="mt-1 text-xl font-bold text-slate-800">
+                    {delayAnalytics.absenceCount.toLocaleString('ar-SA')}
                   </p>
                 </article>
                 <article className="rounded-2xl border border-indigo-200 bg-white/90 px-4 py-3 shadow-sm">
@@ -1813,6 +1639,93 @@ export function AdminTeacherAttendancePage() {
           </div>
         </footer>
       </section>
+
+      {absenceDialog ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
+          <div className="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <header className="mb-4 flex items-start justify-between gap-3 text-right">
+              <div className="space-y-1">
+                <h3 className="text-xl font-bold text-slate-900">اعتماد سبب الغياب</h3>
+                <p className="text-sm text-muted">
+                  اختر سبب الغياب وأضف ملاحظات إن لزم، سيُحفظ السبب مع السجل ويُعامل الغياب بعذر عند اعتماده.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeAbsenceDialog}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100"
+              >
+                <i className="bi bi-x" aria-hidden />
+                <span className="sr-only">إغلاق</span>
+              </button>
+            </header>
+
+            <div className="space-y-4 text-right">
+              <article className="rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 text-sm text-slate-700">
+                <p className="font-semibold text-slate-900">{absenceDialog.record.teacher_name ?? '—'}</p>
+                <p className="text-[11px] text-muted">التاريخ: {formatDate(absenceDialog.record.attendance_date)}</p>
+                <p className="text-[11px] text-muted">
+                  أقرب حالة مسجلة:{' '}
+                  {delayStatusLabels[absenceDialog.record.delay_status as TeacherDelayStatus] ?? 'غير محدد'}
+                </p>
+              </article>
+
+              <label className="space-y-2">
+                <span className="text-xs font-semibold text-slate-600">سبب الغياب</span>
+                <select
+                  value={absenceDialog.reason}
+                  onChange={(event) => handleAbsenceReasonChange(event.target.value as TeacherAbsenceReason)}
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  disabled={isSubmittingAbsence}
+                >
+                  {Object.entries(absenceReasonLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-xs font-semibold text-slate-600">ملاحظات إضافية (اختياري)</span>
+                <textarea
+                  rows={3}
+                  value={absenceDialog.notes}
+                  onChange={(event) => handleAbsenceNotesChange(event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-inner focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:bg-slate-100"
+                  placeholder="أدخل تفاصيل داعمة مثل رقم المعاملة أو الجهة المعنية"
+                  disabled={isSubmittingAbsence}
+                />
+              </label>
+
+              {absenceDialog.error ? (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50/80 px-3 py-2 text-sm text-rose-700">
+                  {absenceDialog.error}
+                </div>
+              ) : null}
+
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={closeAbsenceDialog}
+                  className="button-secondary"
+                  disabled={isSubmittingAbsence}
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAbsenceSubmit}
+                  className="button-primary"
+                  disabled={isSubmittingAbsence}
+                >
+                  {isSubmittingAbsence ? 'جارٍ الحفظ...' : 'تسجيل الغياب'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {excuseDialog ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
@@ -1914,10 +1827,12 @@ export function AdminTeacherAttendancePage() {
             <header className="mb-4 flex items-start justify-between gap-3 text-right">
               <div className="space-y-1">
                 <h3 className="text-xl font-bold text-slate-900">
-                  نموذج مسائلة تأخر — {inquiryDialog.data.teacherName}
+                  {inquiryTemplateMetadata
+                    ? `${inquiryTemplateMetadata.heading} — ${inquiryDialog.data.teacherName}`
+                    : `نموذج مسائلة — ${inquiryDialog.data.teacherName}`}
                 </h3>
                 <p className="text-sm text-muted">
-                  راجع البيانات ثم استخدم خيارات الطباعة أو التنزيل لإصدار النموذج الرسمي.
+                  {inquiryTemplateMetadata?.description ?? 'راجع البيانات ثم استخدم خيارات الطباعة أو التنزيل لإصدار النموذج الرسمي.'}
                 </p>
               </div>
               <button
@@ -1941,7 +1856,7 @@ export function AdminTeacherAttendancePage() {
 
               <div className="overflow-auto rounded-3xl border border-slate-200 bg-slate-100 p-2">
                 <iframe
-                  title={`نموذج مسائلة ${inquiryDialog.data.teacherName}`}
+                  title={`${inquiryTemplateMetadata?.heading ?? 'نموذج مسائلة'} — ${inquiryDialog.data.teacherName}`}
                   srcDoc={inquiryDocumentHtml ?? ''}
                   className="h-[70vh] w-full min-w-[520px] rounded-2xl bg-white shadow-inner"
                 />
@@ -1956,8 +1871,12 @@ export function AdminTeacherAttendancePage() {
           <div className="relative w-full max-w-5xl rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
             <header className="mb-4 flex items-start justify-between gap-3 text-right">
               <div className="space-y-1">
-                <h3 className="text-xl font-bold text-slate-900">نموذج مسائلة تأخر — جميع المتأخرين</h3>
-                <p className="text-sm text-muted">تم تضمين جميع حالات التأخر الحالية ضمن نموذج واحد للطباعة أو التنزيل.</p>
+                <h3 className="text-xl font-bold text-slate-900">
+                  {bulkInquiryTemplateMetadata?.bulkHeading ?? 'نماذج المسائلة الحالية'}
+                </h3>
+                <p className="text-sm text-muted">
+                  {bulkInquiryTemplateMetadata?.bulkDescription ?? 'تم تضمين جميع السجلات الحالية ضمن مستند واحد للطباعة أو التنزيل.'}
+                </p>
               </div>
               <button
                 type="button"
@@ -1985,7 +1904,7 @@ export function AdminTeacherAttendancePage() {
 
                 <div className="overflow-auto rounded-3xl border border-slate-200 bg-slate-100 p-2">
                   <iframe
-                    title="مجموعة نماذج المسائلة"
+                    title={bulkInquiryTemplateMetadata?.bulkHeading ?? 'مجموعة نماذج المسائلة'}
                     srcDoc={bulkInquiryDocumentHtml ?? ''}
                     className="h-[70vh] w-full min-w-[520px] rounded-2xl bg-white shadow-inner"
                   />
