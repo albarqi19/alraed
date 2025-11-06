@@ -6,12 +6,6 @@ const config: Config = {
   darkMode: 'class',
   theme: {
     extend: {
-      fontFamily: {
-        // الخط الحالي: Readex Pro
-        sans: ['Readex Pro', 'sans-serif'],
-        // للرجوع للخط السابق استبدل السطر أعلاه بـ:
-        // sans: ['IBM Plex Sans Arabic', 'sans-serif'],
-      },
       colors: {
         surface: 'var(--color-surface)',
         background: 'var(--color-background)',
