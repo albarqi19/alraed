@@ -589,6 +589,8 @@ export interface ImportTeachersSummary extends ImportSummary {
 export interface AdminSettings {
   school_name: string
   school_phone: string
+  school_region?: string | null
+  school_principal_name?: string | null
   whatsapp_webhook_url?: string | null
   attendance_notification: boolean
   weekly_report: boolean

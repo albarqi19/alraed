@@ -7,8 +7,10 @@ import {
   ChevronRight,
   ClipboardList,
   Download,
+  ListChecks,
   Plus,
   Search,
+  Trash2,
   Users,
   X,
 } from 'lucide-react'
@@ -26,6 +28,7 @@ import type {
   BehaviorDegree,
   BehaviorProcedureDefinition,
   BehaviorStatus,
+  BehaviorStudent,
 } from '@/modules/admin/behavior/types'
 import type { CreateBehaviorViolationPayload } from '@/modules/admin/behavior/api'
 import { useBehaviorStore } from '@/modules/admin/behavior/store/use-behavior-store'
@@ -52,6 +55,17 @@ const STATUS_COLORS: Record<BehaviorStatus, string> = {
   ملغاة: 'bg-slate-50 text-slate-600 border border-slate-200',
 }
 
+type ProcedureAssignment = {
+  student: BehaviorStudent
+  occurrence: number
+  procedure: BehaviorProcedureDefinition
+}
+
+type ProcedureGroup = {
+  procedure: BehaviorProcedureDefinition
+  students: ProcedureAssignment[]
+}
+
 const initialDetails = () => ({
   date: new Date().toISOString().split('T')[0],
   time: new Date().toTimeString().slice(0, 5),
@@ -71,9 +85,11 @@ export function AdminBehaviorPage() {
   const fetchViolations = useBehaviorStore((state) => state.fetchViolations)
   const fetchReporters = useBehaviorStore((state) => state.fetchReporters)
   const createViolations = useBehaviorStore((state) => state.createViolations)
+  const deleteViolation = useBehaviorStore((state) => state.deleteViolation)
   const isCreating = useBehaviorStore((state) => state.isCreating)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isProceduresModalOpen, setIsProceduresModalOpen] = useState(false)
   const [recordStep, setRecordStep] = useState<RecordStep>(1)
   const [recordStudentSearch, setRecordStudentSearch] = useState('')
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([])
@@ -81,6 +97,7 @@ export function AdminBehaviorPage() {
   const [selectedDegree, setSelectedDegree] = useState<BehaviorDegree | null>(null)
   const [selectedViolationType, setSelectedViolationType] = useState('')
   const [recordDetails, setRecordDetails] = useState(() => initialDetails())
+  const [deletingViolationId, setDeletingViolationId] = useState<string | null>(null)
 
   const selectedStudents = useMemo(
     () => students.filter((student) => selectedStudentIds.includes(student.id)),
@@ -118,6 +135,85 @@ export function AdminBehaviorPage() {
   const [logPage, setLogPage] = useState(1)
 
   const availableProcedures = selectedDegree ? PROCEDURES_BY_DEGREE[selectedDegree] : []
+
+  const procedurePreview = useMemo<{
+    assignments: ProcedureAssignment[]
+    groups: ProcedureGroup[]
+    assignmentsByStudentId: Record<string, ProcedureAssignment>
+  } | null>(() => {
+    if (!selectedDegree || !selectedViolationType || selectedStudents.length === 0) {
+      return null
+    }
+
+    const template = PROCEDURES_BY_DEGREE[selectedDegree] ?? []
+    if (template.length === 0) {
+      return null
+    }
+
+    const assignments: ProcedureAssignment[] = selectedStudents.map((student) => {
+      const occurrences = violations.filter(
+        (violation) =>
+          violation.studentId === student.id &&
+          violation.degree === selectedDegree &&
+          violation.type === selectedViolationType,
+      ).length
+
+      const targetIndex = Math.min(occurrences, template.length - 1)
+
+      return {
+        student,
+        occurrence: occurrences + 1,
+        procedure: template[targetIndex],
+      }
+    })
+
+    const groupsMap = assignments.reduce((map, assignment) => {
+      const step = assignment.procedure.step
+      if (!map.has(step)) {
+        map.set(step, {
+          procedure: assignment.procedure,
+          students: [] as ProcedureAssignment[],
+        })
+      }
+
+      map.get(step)!.students.push(assignment)
+      return map
+    }, new Map<number, ProcedureGroup>())
+
+    const groups = Array.from(groupsMap.values()).sort(
+      (first, second) => first.procedure.step - second.procedure.step,
+    )
+
+    const assignmentsByStudentId = assignments.reduce<Record<string, ProcedureAssignment>>((acc, assignment) => {
+      acc[assignment.student.id] = assignment
+      return acc
+    }, {})
+
+    return {
+      assignments,
+      groups,
+      assignmentsByStudentId,
+    }
+  }, [selectedStudents, selectedDegree, selectedViolationType, violations])
+
+  const procedureSummaryGroups = useMemo<ProcedureGroup[]>(() => {
+    if (procedurePreview) {
+      return procedurePreview.groups
+    }
+
+    if (selectedDegree) {
+      const template = PROCEDURES_BY_DEGREE[selectedDegree] ?? []
+      return template.map((procedure) => ({
+        procedure,
+        students: [],
+      }))
+    }
+
+    return []
+  }, [procedurePreview, selectedDegree])
+
+  const procedureAssignmentsByStudentId = procedurePreview?.assignmentsByStudentId ??
+    ({} as Record<string, ProcedureAssignment>)
 
   const filteredViolations = useMemo(() => {
     const query = logSearch.trim()
@@ -160,17 +256,16 @@ export function AdminBehaviorPage() {
       ملغاة: 0,
     }
 
-    const byDegree: Record<BehaviorDegree, number> = {
-      1: 0,
-      2: 0,
-      3: 0,
-      4: 0,
-      5: 0,
-    }
+    const byDegree = BEHAVIOR_DEGREE_OPTIONS.reduce<Record<BehaviorDegree, number>>((acc, degree) => {
+      acc[degree] = 0
+      return acc
+    }, {} as Record<BehaviorDegree, number>)
 
     violations.forEach((violation) => {
       byStatus[violation.status] += 1
-      byDegree[violation.degree] += 1
+      if (violation.degree in byDegree) {
+        byDegree[violation.degree] += 1
+      }
     })
 
     return {
@@ -263,6 +358,27 @@ export function AdminBehaviorPage() {
     }
   }
 
+  const handleDeleteViolation = async (violationId: string) => {
+    const violation = violations.find((item) => item.id === violationId)
+    const studentName = violation?.studentName ?? 'الطالب'
+
+    const confirmed = window.confirm(`سيتم حذف المخالفة المسجلة للطالب ${studentName}. هل تريد المتابعة؟`)
+    if (!confirmed) {
+      return
+    }
+
+    try {
+      setDeletingViolationId(violationId)
+      await deleteViolation(violationId)
+      toast({ type: 'success', title: 'تم حذف المخالفة بنجاح' })
+    } catch (error) {
+      console.error('Error deleting violation:', error)
+      toast({ type: 'error', title: 'تعذر حذف المخالفة' })
+    } finally {
+      setDeletingViolationId(null)
+    }
+  }
+
   return (
     <section className="space-y-8">
       <header className="flex flex-wrap items-center justify-between gap-4">
@@ -272,14 +388,24 @@ export function AdminBehaviorPage() {
             لوحة موحدة لرصد المخالفات، البحث عن الطلاب، واستعراض السجل السلوكي في صفحة واحدة.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handleOpenModal}
-          className="button-primary flex items-center gap-2"
-        >
-          <Plus className="h-5 w-5" />
-          إضافة مخالفة سلوكية
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsProceduresModalOpen(true)}
+            className="button-secondary flex items-center gap-2 text-sm"
+          >
+            <ListChecks className="h-5 w-5" />
+            المخالفات والإجراءات
+          </button>
+          <button
+            type="button"
+            onClick={handleOpenModal}
+            className="button-primary flex items-center gap-2"
+          >
+            <Plus className="h-5 w-5" />
+            إضافة مخالفة سلوكية
+          </button>
+        </div>
       </header>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -371,7 +497,9 @@ export function AdminBehaviorPage() {
               ) : (
                 paginatedViolations.map((violation) => (
                   <tr key={violation.id} className="transition hover:bg-primary/5">
-                    <td className="px-6 py-4 font-mono text-xs text-muted">{violation.id}</td>
+                    <td className="px-6 py-4 font-mono text-xs text-muted" title={violation.id}>
+                      {violation.id.split('-')[0]}
+                    </td>
                     <td className="px-6 py-4">
                       <div className="space-y-1">
                         <p className="font-semibold text-slate-900">{violation.studentName}</p>
@@ -394,12 +522,23 @@ export function AdminBehaviorPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <Link
-                        to={`/admin/behavior/${violation.id}`}
-                        className="rounded-full border border-primary/40 px-3 py-1 text-xs font-semibold text-primary transition hover:bg-primary/10"
-                      >
-                        عرض التفاصيل
-                      </Link>
+                      <div className="flex items-center justify-end gap-2">
+                        <Link
+                          to={`/admin/behavior/${violation.id}`}
+                          className="rounded-full border border-primary/40 px-3 py-1 text-xs font-semibold text-primary transition hover:bg-primary/10"
+                        >
+                          عرض التفاصيل
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteViolation(violation.id)}
+                          disabled={deletingViolationId === violation.id}
+                          className="inline-flex items-center gap-1 rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          حذف
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -416,6 +555,75 @@ export function AdminBehaviorPage() {
           />
         ) : null}
       </div>
+
+      {isProceduresModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="relative flex max-h-[90vh] w-full max-w-5xl flex-col rounded-3xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-6 py-4">
+              <div>
+                <p className="text-xs font-semibold text-primary-700">مرجع المخالفات والإجراءات</p>
+                <h2 className="text-xl font-bold text-slate-900">المخالفات حسب الدرجة</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsProceduresModalOpen(false)}
+                className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+              {BEHAVIOR_DEGREE_OPTIONS.map((degree) => {
+                const violationsByDegree = VIOLATIONS_BY_DEGREE[degree] ?? []
+                const proceduresByDegree = PROCEDURES_BY_DEGREE[degree] ?? []
+
+                return (
+                  <section key={degree} className="space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <ViolationBadge degree={degree} size="md" />
+                        <span className="text-sm font-semibold text-slate-700">الدرجة {degree}</span>
+                      </div>
+                      <span className="text-xs text-muted">
+                        {violationsByDegree.length} مخالفة • {proceduresByDegree.length} إجراء
+                      </span>
+                    </div>
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+                      <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
+                        <p className="text-sm font-semibold text-slate-700">أنواع المخالفات</p>
+                        {violationsByDegree.length > 0 ? (
+                          <ul className="mt-2 space-y-2 text-sm text-muted">
+                            {violationsByDegree.map((violation) => (
+                              <li key={violation} className="flex items-start gap-2">
+                                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary/70" />
+                                <span>{violation}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="mt-2 text-xs text-muted">لا توجد مخالفات محددة لهذه الدرجة.</p>
+                        )}
+                      </div>
+                      <div className="space-y-3">
+                        {proceduresByDegree.length > 0 ? (
+                          proceduresByDegree.map((procedure) => (
+                            <ProcedureCard key={procedure.step} procedure={procedure} />
+                          ))
+                        ) : (
+                          <div className="rounded-2xl border border-slate-200 bg-white/70 p-4 text-sm text-muted shadow-sm">
+                            لا توجد إجراءات محددة لهذه الدرجة.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </section>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal for adding new violation */}
       {isModalOpen && (
@@ -690,12 +898,33 @@ export function AdminBehaviorPage() {
                 {recordStep === 4 ? (
                   <div className="space-y-4">
                     <div className="rounded-2xl border border-sky-200 bg-sky-50/60 p-4 text-sm text-sky-700">
-                      سيتم تطبيق الإجراءات التالية حسب درجة المخالفة المختارة. يمكن تعديل الإنجاز لاحقاً من سجل المخالفات.
+                      يتم تحديد الإجراء التالي تلقائياً بناءً على سجل كل طالب. يمكن تحديث حالة التنفيذ لاحقاً من صفحة تفاصيل المخالفة.
                     </div>
                     <div className="space-y-3">
-                      {availableProcedures.map((procedure) => (
-                        <ProcedureCard key={procedure.step} procedure={procedure} />
-                      ))}
+                      {procedurePreview && procedurePreview.groups.length > 0 ? (
+                        procedurePreview.groups.map(({ procedure, students }) => (
+                          <div key={procedure.step} className="space-y-3">
+                            <ProcedureCard procedure={procedure} />
+                            <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-3 text-xs text-muted">
+                              <p className="font-semibold text-slate-600">
+                                سيطبق على {students.length} {students.length === 1 ? 'طالباً' : 'طلاباً'}:
+                              </p>
+                              <ul className="mt-2 space-y-1">
+                                {students.map(({ student, occurrence }) => (
+                                  <li key={student.id} className="flex items-center justify-between gap-3">
+                                    <span className="font-medium text-slate-700">{student.name}</span>
+                                    <span className="text-[11px] text-muted">المخالفة رقم {occurrence}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        availableProcedures.map((procedure) => (
+                          <ProcedureCard key={procedure.step} procedure={procedure} />
+                        ))
+                      )}
                     </div>
                   </div>
                 ) : null}
@@ -709,14 +938,22 @@ export function AdminBehaviorPage() {
                       <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
                         <h3 className="text-sm font-semibold text-slate-700">الطلاب المحددون ({selectedStudents.length})</h3>
                         <div className="mt-3 max-h-40 overflow-y-auto space-y-2">
-                          {selectedStudents.map((student) => (
-                            <div key={student.id} className="text-sm border-r-2 border-primary pr-3 py-1">
-                              <p className="font-semibold text-slate-900">{student.name}</p>
-                              <p className="text-xs text-muted">
-                                {student.studentId} • {student.grade} {student.class}
-                              </p>
-                            </div>
-                          ))}
+                          {selectedStudents.map((student) => {
+                            const assignment = procedureAssignmentsByStudentId[student.id]
+                            return (
+                              <div key={student.id} className="text-sm border-r-2 border-primary pr-3 py-1">
+                                <p className="font-semibold text-slate-900">{student.name}</p>
+                                <p className="text-xs text-muted">
+                                  {student.studentId} • {student.grade} {student.class}
+                                </p>
+                                {assignment ? (
+                                  <p className="text-[11px] text-muted">
+                                    المخالفة رقم {assignment.occurrence} • الإجراء: {assignment.procedure.title}
+                                  </p>
+                                ) : null}
+                              </div>
+                            )
+                          })}
                         </div>
                       </div>
                       <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
@@ -754,12 +991,30 @@ export function AdminBehaviorPage() {
                         </div>
                       </div>
                       <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
-                        <h3 className="text-sm font-semibold text-slate-700">الإجراءات ({availableProcedures.length})</h3>
-                        <ul className="mt-3 list-disc space-y-2 pr-5 text-sm text-muted">
-                          {availableProcedures.map((procedure) => (
-                            <li key={procedure.step}>{procedure.title}</li>
-                          ))}
-                        </ul>
+                        <h3 className="text-sm font-semibold text-slate-700">الإجراءات ({procedureSummaryGroups.length})</h3>
+                        {procedureSummaryGroups.length === 0 ? (
+                          <p className="mt-3 text-sm text-muted">لا توجد إجراءات محددة لهذه الدرجة.</p>
+                        ) : (
+                          <ul className="mt-3 space-y-2 pr-1 text-sm text-muted">
+                            {procedureSummaryGroups.map(({ procedure, students }) => (
+                              <li
+                                key={procedure.step}
+                                className="rounded-xl border border-slate-100 bg-slate-50/70 p-3"
+                              >
+                                <div className="font-semibold text-slate-900">{procedure.title}</div>
+                                <p className="mt-1 text-xs text-muted">{procedure.description}</p>
+                                {procedurePreview && students.length > 0 ? (
+                                  <p className="mt-2 text-[11px] text-muted">
+                                    يستهدف {students.length === 1 ? 'طالباً واحداً' : `${students.length} طلاب`}{' '}
+                                    ({students
+                                      .map(({ student, occurrence }) => `${student.name} - المخالفة رقم ${occurrence}`)
+                                      .join('، ')})
+                                  </p>
+                                ) : null}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -844,6 +1099,23 @@ function ProcedureCard({ procedure }: { procedure: BehaviorProcedureDefinition }
             )}
           </p>
           <p className="text-muted">{procedure.description}</p>
+          {procedure.tasks && procedure.tasks.length > 0 ? (
+            <ul className="mt-2 space-y-1 text-xs text-muted">
+              {procedure.tasks.map((task) => (
+                <li key={task.id} className="flex items-start gap-2">
+                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary/60" />
+                  <span>
+                    {task.title}
+                    {!task.mandatory ? (
+                      <span className="mr-1 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
+                        اختياري
+                      </span>
+                    ) : null}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
       </div>
     </div>

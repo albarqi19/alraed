@@ -13,7 +13,10 @@ const SIZE_CLASSES: Record<NonNullable<ViolationBadgeProps['size']>, string> = {
 }
 
 export function ViolationBadge({ degree, size = 'md' }: ViolationBadgeProps) {
-  const config = BEHAVIOR_DEGREE_LABELS[degree]
+  const config = BEHAVIOR_DEGREE_LABELS[degree] ?? {
+    name: `درجة غير مصنفة (${degree})`,
+    badgeClass: 'bg-slate-100 text-slate-600 border border-slate-200',
+  }
   return (
     <span className={`inline-flex items-center gap-1 rounded-full font-semibold ${config.badgeClass} ${SIZE_CLASSES[size]}`}>
       <span className="h-2 w-2 rounded-full bg-current" />

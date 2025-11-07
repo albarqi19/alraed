@@ -91,12 +91,30 @@ export async function createBehaviorViolations(
   return response.data.data
 }
 
+export async function deleteBehaviorViolation(id: string): Promise<void> {
+  await apiClient.delete<ApiResponse<BehaviorViolation | null>>(
+    `/admin/behavior/violations/${id}`,
+  )
+}
+
 export async function toggleBehaviorProcedure(
   violationId: string,
   step: number,
 ): Promise<BehaviorViolation> {
   const response = await apiClient.post<ApiResponse<BehaviorViolation>>(
     `/admin/behavior/violations/${violationId}/procedures/${step}/toggle`,
+  )
+
+  return response.data.data
+}
+
+export async function toggleBehaviorProcedureTask(
+  violationId: string,
+  step: number,
+  taskId: number,
+): Promise<BehaviorViolation> {
+  const response = await apiClient.post<ApiResponse<BehaviorViolation>>(
+    `/admin/behavior/violations/${violationId}/procedures/${step}/tasks/${taskId}/toggle`,
   )
 
   return response.data.data

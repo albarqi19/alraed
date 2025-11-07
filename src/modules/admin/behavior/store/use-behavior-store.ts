@@ -8,7 +8,9 @@ import {
   fetchBehaviorStudents,
   fetchBehaviorViolation,
   fetchBehaviorViolations,
+  deleteBehaviorViolation,
   toggleBehaviorProcedure,
+  toggleBehaviorProcedureTask,
   updateBehaviorProcedureNotes,
   type CreateBehaviorViolationPayload,
   type FetchBehaviorViolationsParams,
@@ -33,7 +35,9 @@ interface BehaviorState {
   fetchViolationById: (id: string) => Promise<BehaviorViolation | null>
   fetchReporters: () => Promise<BehaviorReporter[]>
   createViolations: (payload: CreateBehaviorViolationPayload) => Promise<BehaviorViolation[]>
+  deleteViolation: (id: string) => Promise<void>
   toggleProcedure: (violationId: string, step: number) => Promise<BehaviorViolation | null>
+  toggleProcedureTask: (violationId: string, step: number, taskId: number) => Promise<BehaviorViolation | null>
   updateProcedureNotes: (violationId: string, step: number, notes: string) => void
 }
 
@@ -188,6 +192,29 @@ export const useBehaviorStore = create<BehaviorState>()(
       }
     },
 
+    deleteViolation: async (violationId) => {
+      set({ lastError: null })
+
+      try {
+        await deleteBehaviorViolation(violationId)
+
+        set((state) => ({
+          violations: state.violations.filter((violation) => violation.id !== violationId),
+        }))
+
+        try {
+          await get().fetchStudents()
+        } catch (error) {
+          const message = resolveErrorMessage(error, 'تم الحذف لكن تعذر تحديث بيانات الطلاب')
+          set({ lastError: message })
+        }
+      } catch (error) {
+        const message = resolveErrorMessage(error, 'تعذر حذف المخالفة')
+        set({ lastError: message })
+        throw error
+      }
+    },
+
     toggleProcedure: async (violationId, step) => {
       const key = `${violationId}-${step}`
       set((state) => ({
@@ -212,6 +239,39 @@ export const useBehaviorStore = create<BehaviorState>()(
         return updated
       } catch (error) {
         const message = resolveErrorMessage(error, 'تعذر تحديث حالة الإجراء')
+        set((state) => {
+          const nextMutations = { ...state.procedureMutations }
+          delete nextMutations[key]
+          return { procedureMutations: nextMutations, lastError: message }
+        })
+        throw error
+      }
+    },
+
+    toggleProcedureTask: async (violationId, step, taskId) => {
+      const key = `${violationId}-${step}-${taskId}`
+      set((state) => ({
+        procedureMutations: { ...state.procedureMutations, [key]: true },
+        lastError: null,
+      }))
+
+      try {
+        const updated = await toggleBehaviorProcedureTask(violationId, step, taskId)
+        set((state) => {
+          const nextMutations = { ...state.procedureMutations }
+          delete nextMutations[key]
+
+          return {
+            procedureMutations: nextMutations,
+            violations: state.violations.map((violation) =>
+              violation.id === updated.id ? updated : violation,
+            ),
+          }
+        })
+
+        return updated
+      } catch (error) {
+        const message = resolveErrorMessage(error, 'تعذر تحديث حالة الخطوة')
         set((state) => {
           const nextMutations = { ...state.procedureMutations }
           delete nextMutations[key]
