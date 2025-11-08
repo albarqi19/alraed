@@ -8,6 +8,8 @@ export interface AdminDashboardStats {
     day: string
     present: number
     absent: number
+    late: number
+    absent_teachers: number
   }>
 }
 

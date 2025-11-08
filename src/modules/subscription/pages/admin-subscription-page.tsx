@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useChangeSubscriptionPlanMutation, useCreateSubscriptionInvoiceMutation, useSubscriptionInvoicesQuery, useSubscriptionSummaryQuery } from '../hooks'
+import { useChangeSubscriptionPlanMutation, useSubscriptionInvoicesQuery, useSubscriptionSummaryQuery } from '../hooks'
 import { SubscriptionStatusIndicator } from '../components/subscription-status-indicator'
 import { PlanCard } from '../components/plan-card'
 import { BillingHistoryTable } from '../components/billing-history-table'
@@ -22,7 +22,6 @@ export function AdminSubscriptionPage() {
   const [invoiceStatus, setInvoiceStatus] = useState<string | undefined>()
   const [page, setPage] = useState(1)
   const invoicesQuery = useSubscriptionInvoicesQuery({ status: invoiceStatus, page })
-  const createInvoiceMutation = useCreateSubscriptionInvoiceMutation()
 
   const currentPlanCode = data?.school.plan ?? ''
   const plans = data?.available_plans ?? []
@@ -39,22 +38,6 @@ export function AdminSubscriptionPage() {
   const handlePlanChange = (planCode: string) => {
     if (!billingCycle || changePlanMutation.isPending) return
     changePlanMutation.mutate({ plan_code: planCode, billing_cycle: billingCycle })
-  }
-
-  const [manualTotal, setManualTotal] = useState('')
-  const [manualTax, setManualTax] = useState('')
-
-  const handleCreateInvoice = () => {
-    const totalValue = Number(manualTotal)
-    if (!Number.isFinite(totalValue) || totalValue <= 0) return
-
-    createInvoiceMutation.mutate({
-      total: totalValue,
-      tax: Number.isFinite(Number(manualTax)) ? Number(manualTax) : undefined,
-      currency: 'SAR',
-    })
-    setManualTotal('')
-    setManualTax('')
   }
 
   return (
@@ -151,44 +134,6 @@ export function AdminSubscriptionPage() {
               lastPage={invoicesQuery.data?.meta.last_page ?? 1}
               onPageChange={(nextPage) => setPage(nextPage)}
             />
-          </div>
-
-          <div className="glass-card space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900">فاتورة يدوية</h2>
-            <p className="text-xs text-muted">يمكنك إصدار فاتورة إضافية لأية خدمات أو رصيد خارج الباقة الحالية.</p>
-            <div className="grid gap-3 md:grid-cols-3">
-              <label className="flex flex-col gap-2 text-xs font-semibold text-slate-700">
-                إجمالي الفاتورة (ريال)
-                <input
-                  type="number"
-                  value={manualTotal}
-                  onChange={(event) => setManualTotal(event.target.value)}
-                  placeholder="مثال: 450"
-                  min={0}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                />
-              </label>
-              <label className="flex flex-col gap-2 text-xs font-semibold text-slate-700">
-                قيمة الضريبة (اختياري)
-                <input
-                  type="number"
-                  value={manualTax}
-                  onChange={(event) => setManualTax(event.target.value)}
-                  min={0}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                />
-              </label>
-              <div className="flex items-end">
-                <button
-                  type="button"
-                  onClick={handleCreateInvoice}
-                  disabled={createInvoiceMutation.isPending}
-                  className="button-primary w-full"
-                >
-                  {createInvoiceMutation.isPending ? 'جاري الإنشاء...' : 'إصدار فاتورة' }
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       ) : null}

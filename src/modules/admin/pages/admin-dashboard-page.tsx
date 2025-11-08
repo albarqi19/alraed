@@ -16,8 +16,8 @@ export function AdminDashboardPage() {
     weekly_attendance: [],
   }
 
-  // عكس ترتيب الأيام لعرض الأحدث أولاً
-  const weeklyAttendanceReversed = stats.weekly_attendance ? [...stats.weekly_attendance].reverse() : []
+  // البيانات تأتي من Backend مرتبة من الأحدث إلى الأقدم
+  const weeklyAttendanceReversed = stats.weekly_attendance ?? []
 
   const cards = [
     {
@@ -120,9 +120,14 @@ export function AdminDashboardPage() {
                         style={{ width: `${presentPercent}%` }}
                       />
                     </div>
-                    <div className="mt-2 flex justify-between text-xs text-muted">
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
                       <span>حاضر: {dayStat.present.toLocaleString('en-US')}</span>
+                      <span>•</span>
                       <span>غائب: {dayStat.absent.toLocaleString('en-US')}</span>
+                      <span>•</span>
+                      <span>متأخر: {dayStat.late?.toLocaleString('en-US') ?? 0}</span>
+                      <span>•</span>
+                      <span>معلمين غائبين: {dayStat.absent_teachers?.toLocaleString('en-US') ?? 0}</span>
                     </div>
                   </article>
                 )

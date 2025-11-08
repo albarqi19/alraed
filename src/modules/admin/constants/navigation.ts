@@ -26,7 +26,6 @@ import {
   DoorOpen,
   IdCard,
   Palette,
-  // CreditCard,
   BellRing,
   Megaphone,
   CalendarDays,
