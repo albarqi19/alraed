@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useTeacherSessionsQuery } from '../hooks'
 import type { TeacherSession } from '../types'
+import { InstallPWAPrompt } from '../components/install-pwa-prompt'
 
 const WEEK_DAYS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'] as const
 
@@ -245,6 +246,8 @@ export function TeacherSchedulePage() {
           </div>
         </div>
       ) : null}
+
+      <InstallPWAPrompt />
     </section>
   )
 }
