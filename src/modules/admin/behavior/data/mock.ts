@@ -118,6 +118,11 @@ export function createMockViolations(students: BehaviorStudent[]): BehaviorViola
         completed,
         completedDate: completed ? randomDateWithinMonths(1) : undefined,
         notes: completed ? 'تم التنفيذ بنجاح' : undefined,
+        tasks: (procedure.tasks ?? []).map((task) => ({
+          ...task,
+          completed: completed && Math.random() > 0.3,
+          completedDate: completed && Math.random() > 0.3 ? randomDateWithinMonths(1) : undefined,
+        })),
       }
     })
 

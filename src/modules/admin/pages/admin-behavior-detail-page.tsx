@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import { useBehaviorStore } from '@/modules/admin/behavior/store/use-behavior-store'
 import { ViolationBadge } from '@/modules/admin/behavior/components/violation-badge'
-import type { BehaviorStatus, BehaviorViolation } from '@/modules/admin/behavior/types'
+import type { BehaviorStatus } from '@/modules/admin/behavior/types'
 import { generateCounselorReferralHtml } from '@/modules/admin/behavior/counselor-referral-template'
 import { generateGuardianInvitationHtml } from '@/modules/admin/behavior/guardian-invitation-template'
 import { useAdminSettingsQuery } from '@/modules/admin/hooks'
