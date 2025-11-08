@@ -6,6 +6,7 @@ import { AdminLoginPage } from '@/modules/auth/pages/admin-login-page'
 import { TeacherDashboardPage } from '@/modules/teacher/pages/teacher-dashboard-page'
 import { TeacherMessagesPage } from '@/modules/teacher/pages/teacher-messages-page'
 import { TeacherPointsPage } from '@/modules/teacher/pages/teacher-points-page'
+import { TeacherServicesPage } from '@/modules/teacher/pages/teacher-services-page'
 import { AdminDashboardPage } from '@/modules/admin/pages/admin-dashboard-page'
 import { AdminTeachersPage } from '@/modules/admin/pages/admin-teachers-page'
 import { AdminStudentsPage } from '@/modules/admin/pages/admin-students-page'
@@ -123,6 +124,7 @@ const appRoutes = [
           { path: 'schedule', element: <TeacherSchedulePage /> },
           { path: 'messages', element: <TeacherMessagesPage /> },
           { path: 'points', element: <TeacherPointsPage /> },
+          { path: 'services', element: <TeacherServicesPage /> },
           { path: 'sessions/:sessionId', element: <TeacherSessionAttendancePage /> },
         ],
       },

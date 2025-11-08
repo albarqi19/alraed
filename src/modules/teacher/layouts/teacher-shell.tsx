@@ -9,6 +9,7 @@ const navItems = [
   { to: '/teacher/schedule', label: 'الجدول', exact: false },
   { to: '/teacher/messages', label: 'الرسائل', exact: false },
   { to: '/teacher/points', label: 'نقاطي', exact: false },
+  { to: '/teacher/services', label: 'خدمات', exact: false },
 ]
 
 export function TeacherShell() {
@@ -82,7 +83,7 @@ export function TeacherShell() {
             </div>
           </div>
           <div className={clsx('flex flex-col gap-2 text-sm font-medium text-slate-600 sm:flex-row sm:items-center sm:justify-between', navigationOpen ? 'flex' : 'hidden sm:flex')}>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
               {navItems.map((item) => (
                 <NavLink
                   key={item.to}
@@ -90,7 +91,7 @@ export function TeacherShell() {
                   end={item.exact}
                   className={({ isActive }) =>
                     clsx(
-                      'rounded-full px-4 py-2 transition',
+                      'rounded-full px-3.5 py-2 text-sm transition',
                       isActive ? 'bg-slate-900 text-white' : 'border border-transparent text-slate-500 hover:border-slate-200 hover:bg-white',
                     )
                   }
