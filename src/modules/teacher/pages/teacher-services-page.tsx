@@ -81,23 +81,18 @@ export function TeacherServicesPage() {
             onClick={() => handleServiceClick(service.title)}
             className="group w-full text-right transition-transform duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50"
           >
-            <span className="glass-card relative flex h-[180px] w-full flex-col justify-between gap-4 overflow-hidden p-5 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-lg">
+            <span className="glass-card relative flex h-[105px] w-full flex-col justify-end overflow-hidden p-3.5 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-lg">
               <span
-                className={`pointer-events-none absolute inset-x-4 top-0 h-1 rounded-full bg-gradient-to-l opacity-80 transition-opacity duration-200 group-hover:opacity-100 ${service.accentBar}`}
+                className={`pointer-events-none absolute inset-x-3 top-0 h-1 rounded-full bg-gradient-to-l opacity-80 transition-opacity duration-200 group-hover:opacity-100 ${service.accentBar}`}
               />
 
-              <span className="flex items-start justify-between gap-3">
-                <span
-                  className={`flex h-12 w-12 items-center justify-center rounded-xl border border-white/70 text-xl ${service.iconBg}`}
-                >
-                  <i className={`${service.icon} ${service.iconColor}`} />
-                </span>
-                <i className="bi bi-arrow-left-short text-2xl text-slate-300 transition group-hover:text-slate-400" />
-              </span>
+              {/* Icon as background */}
+              <i className={`${service.icon} ${service.iconColor} pointer-events-none absolute left-2 top-4 text-5xl opacity-10`} />
 
-              <span className="space-y-1">
-                <h3 className="text-lg font-bold text-slate-900">{service.title}</h3>
-                <p className="text-xs leading-6 text-slate-600 line-clamp-2 sm:text-sm">{service.description}</p>
+              {/* Content */}
+              <span className="relative z-10 space-y-0.5">
+                <h3 className="text-base font-bold text-slate-900">{service.title}</h3>
+                <p className="text-xs leading-5 text-slate-600 line-clamp-2">{service.description}</p>
               </span>
             </span>
           </button>
