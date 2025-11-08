@@ -16,6 +16,9 @@ export function AdminDashboardPage() {
     weekly_attendance: [],
   }
 
+  // عكس ترتيب الأيام لعرض الأحدث أولاً
+  const weeklyAttendanceReversed = stats.weekly_attendance ? [...stats.weekly_attendance].reverse() : []
+
   const cards = [
     {
       title: 'إجمالي الطلاب',
@@ -83,23 +86,23 @@ export function AdminDashboardPage() {
           <header className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-semibold text-slate-900">الإحصائيات الأسبوعية</h2>
-              <p className="text-sm text-muted">ملخص الحضور خلال الأيام السبعة الماضية.</p>
+              <p className="text-sm text-muted">ملخص الحضور خلال الأيام السبعة الماضية (من الأحدث للأقدم).</p>
             </div>
-            {stats.weekly_attendance?.length ? (
+            {weeklyAttendanceReversed?.length ? (
               <span className="rounded-full bg-teal-500/10 px-4 py-1 text-xs font-semibold text-teal-600">
-                {stats.weekly_attendance.length} أيام
+                {weeklyAttendanceReversed.length} أيام
               </span>
             ) : null}
           </header>
-          <div className="space-y-3">
+          <div className="max-h-[280px] space-y-3 overflow-y-auto pr-2 stats-scrollbar">
             {isLoading ? (
               <div className="space-y-2">
-                {[...Array(5)].map((_, index) => (
+                {[...Array(3)].map((_, index) => (
                   <div key={index} className="h-10 animate-pulse rounded-xl bg-slate-100/80" />
                 ))}
               </div>
-            ) : stats.weekly_attendance && stats.weekly_attendance.length > 0 ? (
-              stats.weekly_attendance.map((dayStat: WeeklyAttendanceStat) => {
+            ) : weeklyAttendanceReversed && weeklyAttendanceReversed.length > 0 ? (
+              weeklyAttendanceReversed.map((dayStat: WeeklyAttendanceStat) => {
                 const total = dayStat.present + dayStat.absent
                 const presentPercent = total > 0 ? Math.round((dayStat.present / total) * 100) : 0
                 return (

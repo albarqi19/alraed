@@ -262,6 +262,35 @@
   .custom-scrollbar:hover::-webkit-scrollbar-thumb {
     background-color: rgba(63, 111, 85, 0.7);
   }
+
+  /* Scrollbar for Weekly Stats */
+  .stats-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+  }
+
+  .stats-scrollbar:hover {
+    scrollbar-color: rgba(148, 163, 184, 0.5) transparent;
+  }
+
+  .stats-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .stats-scrollbar::-webkit-scrollbar-track {
+    background: rgba(241, 245, 249, 0.5);
+    border-radius: 4px;
+  }
+
+  .stats-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(148, 163, 184, 0.3);
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+  }
+
+  .stats-scrollbar:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(148, 163, 184, 0.5);
+  }
 }
 
 @layer base {
