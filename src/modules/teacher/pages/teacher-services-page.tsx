@@ -73,6 +73,20 @@ export function TeacherServicesPage() {
         <p className="text-sm text-muted">الوصول السريع لجميع الخدمات والأدوات المتاحة</p>
       </header>
 
+      {/* Banner Ad */}
+      <a
+        href="https://play.google.com/store/apps/details?id=com.tasjeel.app"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="glass-card block overflow-hidden p-0 transition-transform hover:scale-[1.01]"
+      >
+        <img
+          src="/tasjeel-banner.png"
+          alt="تطبيق تسجيل - نظامك الذكي لإدارة الفصول"
+          className="h-auto w-full object-cover"
+        />
+      </a>
+
       <div className="grid grid-cols-2 gap-3 sm:gap-4 md:gap-5">
         {SERVICES.map((service) => (
           <button
