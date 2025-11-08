@@ -5,6 +5,7 @@ import {
   activateSchedule,
   addQuickClassSession,
   applyScheduleToClass,
+  applyScheduleToMultipleClasses,
   approveAllPendingSessions,
   approveAttendanceRecord,
   approveAttendanceSession,
@@ -18,6 +19,7 @@ import {
   createSubject,
   createTeacher,
   createWhatsappTemplate,
+  deactivateSchedule,
   deleteClassScheduleSession,
   deleteClassSession,
   deleteLateArrival,
@@ -724,6 +726,24 @@ export function useApplyScheduleToClassMutation() {
   })
 }
 
+export function useApplyScheduleToMultipleClassesMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: applyScheduleToMultipleClasses,
+    onSuccess: (_, variables) => {
+      const classCount = variables.classes.length
+      toast({ type: 'success', title: `تم تطبيق الجدول على ${classCount} فصل بنجاح` })
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.classSessions.summary() })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'class-schedules'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تطبيق الجدول على الفصول') })
+    },
+  })
+}
+
 export function useDeleteClassScheduleSessionMutation() {
   const toast = useToast()
   const queryClient = useQueryClient()
@@ -808,6 +828,22 @@ export function useActivateScheduleMutation() {
     },
     onError: (error) => {
       toast({ type: 'error', title: getErrorMessage(error, 'تعذر تفعيل الجدول') })
+    },
+  })
+}
+
+export function useDeactivateScheduleMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (scheduleId: number) => deactivateSchedule(scheduleId),
+    onSuccess: () => {
+      toast({ type: 'success', title: 'تم تعطيل الجدول' })
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.schedules.all() })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تعطيل الجدول') })
     },
   })
 }

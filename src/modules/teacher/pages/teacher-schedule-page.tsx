@@ -4,20 +4,6 @@ import type { TeacherSession } from '../types'
 
 const WEEK_DAYS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'] as const
 
-const PERIOD_TEMPLATE: Array<
-  | { number: number; defaultTime: string; isBreak?: false }
-  | { number: number; defaultTime: string; isBreak: true; label: string }
-> = [
-  { number: 1, defaultTime: '07:30 - 08:15' },
-  { number: 2, defaultTime: '08:15 - 09:00' },
-  { number: 3, defaultTime: '09:00 - 09:45' },
-  { number: 4, defaultTime: '09:45 - 10:15', isBreak: true, label: 'فسحة' },
-  { number: 5, defaultTime: '10:15 - 11:00' },
-  { number: 6, defaultTime: '11:00 - 11:45' },
-  { number: 7, defaultTime: '11:45 - 12:30' },
-  { number: 8, defaultTime: '12:30 - 01:15' },
-]
-
 function formatTime(value?: string) {
   if (!value) return 'غير محدد'
   const [hourStr, minuteStr] = value.split(':')
@@ -37,6 +23,19 @@ function getSessionTimeRange(session: TeacherSession) {
 
 function isWeekDay(day: unknown): day is (typeof WEEK_DAYS)[number] {
   return typeof day === 'string' && (WEEK_DAYS as readonly string[]).includes(day)
+}
+
+function extractPeriodNumbers(sessions: TeacherSession[]): number[] {
+  const periodNumbers = new Set<number>()
+  sessions.forEach((session) => {
+    if (session.period_number) {
+      periodNumbers.add(session.period_number)
+    }
+  })
+  if (periodNumbers.size === 0) {
+    return [1, 2, 3, 4, 5, 6, 7, 8] // default periods
+  }
+  return Array.from(periodNumbers).sort((a, b) => a - b)
 }
 
 function useScheduleMatrix(sessions: TeacherSession[]) {
@@ -112,6 +111,7 @@ export function TeacherSchedulePage() {
   const { matrix, unmatched } = useScheduleMatrix(sessions)
   const stats = useScheduleStats(sessions)
   const weekRange = useWeekRange(data?.saudiTime)
+  const periods = extractPeriodNumbers(sessions)
 
   if (isLoading) {
     return (
@@ -177,7 +177,6 @@ export function TeacherSchedulePage() {
             <thead>
               <tr className="text-xs text-muted">
                 <th className="px-3 py-3 text-center font-semibold">الحصة</th>
-                <th className="px-3 py-3 text-center font-semibold">التوقيت</th>
                 {WEEK_DAYS.map((day) => (
                   <th key={day} className="px-3 py-3 text-center font-semibold">
                     {day}
@@ -186,25 +185,12 @@ export function TeacherSchedulePage() {
               </tr>
             </thead>
             <tbody>
-              {PERIOD_TEMPLATE.map((period) => {
-                if ('isBreak' in period && period.isBreak) {
-                  return (
-                    <tr key={`break-${period.number}`} className="bg-amber-50 text-amber-700">
-                      <td className="px-3 py-4 text-center text-sm font-semibold">{period.label}</td>
-                      <td className="px-3 py-4 text-center text-xs">{period.defaultTime}</td>
-                      <td className="px-3 py-4 text-center text-xs" colSpan={WEEK_DAYS.length}>
-                        وقت استراحة لجميع الفصول
-                      </td>
-                    </tr>
-                  )
-                }
-
-                const sessionsByDay = matrix[period.number] ?? {}
+              {periods.map((period) => {
+                const sessionsByDay = matrix[period] ?? {}
 
                 return (
-                  <tr key={period.number} className="even:bg-slate-50/60">
-                    <td className="px-3 py-4 text-center text-sm font-semibold text-slate-900">{period.number}</td>
-                    <td className="px-3 py-4 text-center text-xs text-muted">{period.defaultTime}</td>
+                  <tr key={period} className="even:bg-slate-50/60">
+                    <td className="px-3 py-4 text-center text-sm font-semibold text-slate-900">{period}</td>
                     {WEEK_DAYS.map((day) => {
                       const session = sessionsByDay[day]
                       if (!session) {

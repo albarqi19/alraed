@@ -1541,6 +1541,14 @@ export async function applyScheduleToClass(payload: Record<string, unknown>): Pr
   unwrapResponse(data, 'تعذر تطبيق الجدول على الفصل')
 }
 
+export async function applyScheduleToMultipleClasses(payload: {
+  schedule_id: number
+  classes: Array<{ grade: string; class_name: string }>
+}): Promise<void> {
+  const { data } = await apiClient.post<ApiResponse<null>>('/admin/class-schedules/apply-schedule-bulk', payload)
+  unwrapResponse(data, 'تعذر تطبيق الجدول على الفصول')
+}
+
 export async function deleteClassScheduleSession(sessionId: number): Promise<void> {
   const { data } = await apiClient.delete<ApiResponse<null>>(`/admin/class-schedules/sessions/${sessionId}`)
   unwrapResponse(data, 'تعذر حذف الحصة من جدول الفصل')
@@ -1594,6 +1602,11 @@ export async function updateSchedule(scheduleId: number, payload: SchedulePayloa
 export async function activateSchedule(scheduleId: number): Promise<void> {
   const { data } = await apiClient.post<ApiResponse<null>>(`/admin/schedules/${scheduleId}/activate`)
   unwrapResponse(data, 'تعذر تفعيل الجدول')
+}
+
+export async function deactivateSchedule(scheduleId: number): Promise<ScheduleRecord> {
+  const { data } = await apiClient.post<ApiResponse<ScheduleRecord>>(`/admin/schedules/${scheduleId}/deactivate`)
+  return unwrapResponse(data, 'تعذر تعطيل الجدول')
 }
 
 export async function deleteSchedule(scheduleId: number): Promise<void> {
