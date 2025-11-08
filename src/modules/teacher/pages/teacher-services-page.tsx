@@ -81,18 +81,18 @@ export function TeacherServicesPage() {
             onClick={() => handleServiceClick(service.title)}
             className="group w-full text-right transition-transform duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50"
           >
-            <span className="glass-card relative flex h-[105px] w-full flex-col justify-end overflow-hidden p-3.5 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-lg">
+            <span className="glass-card relative flex h-[90px] w-full flex-col justify-center overflow-hidden p-3 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-lg">
               <span
                 className={`pointer-events-none absolute inset-x-3 top-0 h-1 rounded-full bg-gradient-to-l opacity-80 transition-opacity duration-200 group-hover:opacity-100 ${service.accentBar}`}
               />
 
               {/* Icon as background */}
-              <i className={`${service.icon} ${service.iconColor} pointer-events-none absolute left-2 top-4 text-5xl opacity-10`} />
+              <i className={`${service.icon} ${service.iconColor} pointer-events-none absolute left-2 top-3 text-4xl opacity-10`} />
 
               {/* Content */}
               <span className="relative z-10 space-y-0.5">
                 <h3 className="text-base font-bold text-slate-900">{service.title}</h3>
-                <p className="text-xs leading-5 text-slate-600 line-clamp-2">{service.description}</p>
+                <p className="text-xs leading-5 text-slate-600 line-clamp-1">{service.description}</p>
               </span>
             </span>
           </button>
