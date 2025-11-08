@@ -1,4 +1,13 @@
-export type UserRole = 'teacher' | 'admin' | 'super_admin'
+export type UserRole = 
+  | 'teacher'
+  | 'admin' 
+  | 'super_admin'
+  | 'school_principal'
+  | 'deputy_teachers'
+  | 'deputy_students'
+  | 'administrative_staff'
+  | 'student_counselor'
+  | 'learning_resources_admin'
 
 export type SubscriptionPlan = 'trial' | 'basic' | 'premium' | 'enterprise'
 export type SubscriptionStatus = 'trial' | 'active' | 'suspended' | 'cancelled' | 'expired'

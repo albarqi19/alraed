@@ -131,7 +131,7 @@ const appRoutes = [
       {
         path: 'admin',
         element: (
-          <RequireAuth role="admin">
+          <RequireAuth requireManagement>
             <AdminShell />
           </RequireAuth>
         ),

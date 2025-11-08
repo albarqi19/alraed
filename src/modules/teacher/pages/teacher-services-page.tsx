@@ -68,11 +68,6 @@ export function TeacherServicesPage() {
 
   return (
     <section className="space-y-6">
-      <header className="space-y-2">
-        <h1 className="text-3xl font-bold text-slate-900">الخدمات</h1>
-        <p className="text-sm text-muted">الوصول السريع لجميع الخدمات والأدوات المتاحة</p>
-      </header>
-
       {/* Banner Ad */}
       <a
         href="https://play.google.com/store/apps/details?id=com.tasjeel.app"

@@ -7,8 +7,9 @@ import {
   useTeachersQuery,
   useUpdateTeacherMutation,
 } from '../hooks'
-import type { TeacherCredentials, TeacherRecord, TeacherStatus } from '../types'
+import type { TeacherCredentials, TeacherRecord, TeacherStatus, StaffRole } from '../types'
 import { useToast } from '@/shared/feedback/use-toast'
+import { ROLE_OPTIONS, getRoleLabel } from '@/modules/auth/constants/roles'
 
 type StatusFilter = 'all' | TeacherStatus
 
@@ -16,6 +17,8 @@ interface TeacherFormValues {
   name: string
   national_id: string
   phone: string
+  role: StaffRole
+  secondary_role?: StaffRole | null
   status: TeacherStatus
 }
 
@@ -67,6 +70,8 @@ function TeacherFormDialog({ open, onClose, onSubmit, isSubmitting, teacher }: T
     name: teacher?.name ?? '',
     national_id: teacher?.national_id ?? '',
     phone: teacher?.phone ?? '',
+    role: teacher?.role ?? 'teacher',
+    secondary_role: teacher?.secondary_role ?? null,
     status: teacher?.status ?? 'active',
   }
 
@@ -75,6 +80,8 @@ function TeacherFormDialog({ open, onClose, onSubmit, isSubmitting, teacher }: T
     name: null,
     national_id: null,
     phone: null,
+    role: null,
+    secondary_role: null,
     status: null,
   })
 
@@ -84,9 +91,11 @@ function TeacherFormDialog({ open, onClose, onSubmit, isSubmitting, teacher }: T
         name: teacher?.name ?? '',
         national_id: teacher?.national_id ?? '',
         phone: teacher?.phone ?? '',
+        role: teacher?.role ?? 'teacher',
+        secondary_role: teacher?.secondary_role ?? null,
         status: teacher?.status ?? 'active',
       })
-      setErrors({ name: null, national_id: null, phone: null, status: null })
+      setErrors({ name: null, national_id: null, phone: null, role: null, secondary_role: null, status: null })
     }
   }, [open, teacher])
 
@@ -98,6 +107,8 @@ function TeacherFormDialog({ open, onClose, onSubmit, isSubmitting, teacher }: T
       name: null,
       national_id: null,
       phone: null,
+      role: null,
+      secondary_role: null,
       status: null,
     }
 
@@ -128,6 +139,8 @@ function TeacherFormDialog({ open, onClose, onSubmit, isSubmitting, teacher }: T
       name: values.name.trim(),
       national_id: values.national_id.trim(),
       phone: values.phone.trim(),
+      role: values.role,
+      secondary_role: values.secondary_role,
       status: values.status,
     })
   }
@@ -212,6 +225,57 @@ function TeacherFormDialog({ open, onClose, onSubmit, isSubmitting, teacher }: T
           </div>
 
           <div className="grid gap-2 text-right">
+            <label htmlFor="teacher-role" className="text-sm font-medium text-slate-800">
+              الدور الوظيفي
+            </label>
+            <select
+              id="teacher-role"
+              name="role"
+              value={values.role}
+              onChange={(event) => setValues((prev) => ({ ...prev, role: event.target.value as StaffRole }))}
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+              disabled={isSubmitting}
+            >
+              {ROLE_OPTIONS.map((role) => (
+                <option key={role.value} value={role.value}>
+                  {role.label}
+                </option>
+              ))}
+            </select>
+            {errors.role ? <span className="text-xs font-medium text-rose-600">{errors.role}</span> : null}
+          </div>
+
+          <div className="grid gap-2 text-right">
+            <label htmlFor="teacher-secondary-role" className="text-sm font-medium text-slate-800">
+              الدور الثانوي (اختياري)
+              <span className="mr-1 text-xs text-slate-500">يتم توليد كلمة مرور منفصلة</span>
+            </label>
+            <select
+              id="teacher-secondary-role"
+              name="secondary_role"
+              value={values.secondary_role ?? ''}
+              onChange={(event) =>
+                setValues((prev) => ({
+                  ...prev,
+                  secondary_role: event.target.value ? (event.target.value as StaffRole) : null,
+                }))
+              }
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+              disabled={isSubmitting}
+            >
+              <option value="">بدون دور ثانوي</option>
+              {ROLE_OPTIONS.map((role) => (
+                <option key={role.value} value={role.value} disabled={role.value === values.role}>
+                  {role.label}
+                </option>
+              ))}
+            </select>
+            {errors.secondary_role ? (
+              <span className="text-xs font-medium text-rose-600">{errors.secondary_role}</span>
+            ) : null}
+          </div>
+
+          <div className="grid gap-2 text-right">
             <label htmlFor="teacher-status" className="text-sm font-medium text-slate-800">
               حالة المعلم
             </label>
@@ -279,6 +343,16 @@ function TeacherCredentialsPanel({
                     <span className="font-mono font-semibold text-slate-900">{selectedTeacher.national_id}</span>
                   </div>
                   <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+                    <span className="text-slate-600">الدور الوظيفي</span>
+                    <span className="font-semibold text-slate-900">{getRoleLabel(selectedTeacher.role)}</span>
+                  </div>
+                  {selectedTeacher.secondary_role && (
+                    <div className="flex items-center justify-between rounded-xl bg-teal-50 px-3 py-2 border border-teal-200">
+                      <span className="text-teal-700">الدور الثانوي</span>
+                      <span className="font-semibold text-teal-900">{getRoleLabel(selectedTeacher.secondary_role)}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
                     <span className="text-slate-600">رقم الجوال</span>
                     <span className="font-semibold text-slate-900">{selectedTeacher.phone ?? '—'}</span>
                   </div>
@@ -288,8 +362,14 @@ function TeacherCredentialsPanel({
                   </div>
                   {selectedTeacher.generated_password && (
                     <div className="flex items-center justify-between rounded-xl bg-amber-50 px-3 py-2 border border-amber-200">
-                      <span className="text-amber-700">كلمة المرور</span>
+                      <span className="text-amber-700">كلمة المرور الأساسية</span>
                       <span className="font-mono font-semibold text-amber-900">{selectedTeacher.generated_password}</span>
+                    </div>
+                  )}
+                  {selectedTeacher.secondary_generated_password && (
+                    <div className="flex items-center justify-between rounded-xl bg-teal-50 px-3 py-2 border border-teal-200">
+                      <span className="text-teal-700">كلمة المرور الثانوية</span>
+                      <span className="font-mono font-semibold text-teal-900">{selectedTeacher.secondary_generated_password}</span>
                     </div>
                   )}
                 </div>
@@ -440,6 +520,10 @@ export function AdminTeachersPage() {
   }
 
   const handleFormSubmit = (values: TeacherFormValues) => {
+    console.log('🔍 Form values on submit:', values)
+    console.log('🔍 Secondary role value:', values.secondary_role)
+    console.log('🔍 Secondary role type:', typeof values.secondary_role)
+    
     if (editingTeacher) {
       updateTeacherMutation.mutate(
         {
@@ -448,13 +532,22 @@ export function AdminTeachersPage() {
             name: values.name,
             national_id: values.national_id,
             phone: values.phone ? values.phone : null,
+            role: values.role,
+            secondary_role: values.secondary_role || null, // تحويل سلسلة فارغة إلى null
             status: values.status,
           },
         },
         {
-          onSuccess: () => {
+          onSuccess: (response) => {
             setIsFormOpen(false)
             setEditingTeacher(null)
+            // إذا تم توليد كلمة مرور للدور الثانوي، نعرضها
+            if (response.secondary_login_credentials) {
+              appendCredentials(
+                `${response.name} (${response.secondary_login_credentials.role})`,
+                response.secondary_login_credentials,
+              )
+            }
           },
         },
       )
@@ -464,12 +557,21 @@ export function AdminTeachersPage() {
           name: values.name,
           national_id: values.national_id,
           phone: values.phone ? values.phone : undefined,
+          role: values.role,
+          secondary_role: values.secondary_role || undefined, // تحويل سلسلة فارغة إلى undefined
         },
         {
           onSuccess: (response) => {
             setIsFormOpen(false)
             if (response.login_credentials) {
               appendCredentials(response.teacher.name, response.login_credentials)
+            }
+            // إذا كان هناك دور ثانوي، نعرض بياناته أيضاً
+            if (response.secondary_login_credentials) {
+              appendCredentials(
+                `${response.teacher.name} (${response.secondary_login_credentials.role})`,
+                response.secondary_login_credentials,
+              )
             }
           },
         },
@@ -611,6 +713,7 @@ export function AdminTeachersPage() {
                     <tr>
                       <th scope="col" className="px-6 py-3 text-right tracking-wider">المعلم</th>
                       <th scope="col" className="px-6 py-3 text-right tracking-wider">رقم الهوية</th>
+                      <th scope="col" className="px-6 py-3 text-right tracking-wider">الدور الوظيفي</th>
                       <th scope="col" className="px-6 py-3 text-right tracking-wider">رقم الجوال</th>
                       <th scope="col" className="px-6 py-3 text-right tracking-wider">الحالة</th>
                       <th scope="col" className="px-6 py-3 text-right tracking-wider">آخر تحديث</th>
@@ -650,6 +753,11 @@ export function AdminTeachersPage() {
                             </div>
                           </td>
                           <td className="px-6 py-4 font-mono text-sm text-slate-700">{teacher.national_id}</td>
+                          <td className="px-6 py-4 text-sm">
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                              {getRoleLabel(teacher.role)}
+                            </span>
+                          </td>
                           <td className="px-6 py-4 text-sm text-slate-600">{teacher.phone ?? '—'}</td>
                           <td className="px-6 py-4">
                             <TeacherStatusBadge status={teacher.status} />

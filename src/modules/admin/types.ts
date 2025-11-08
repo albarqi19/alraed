@@ -15,13 +15,25 @@ export interface AdminDashboardStats {
 
 export type TeacherStatus = 'active' | 'inactive'
 
+export type StaffRole = 
+  | 'teacher'
+  | 'school_principal'
+  | 'deputy_teachers'
+  | 'deputy_students'
+  | 'administrative_staff'
+  | 'student_counselor'
+  | 'learning_resources_admin'
+
 export interface TeacherRecord {
   id: number
   name: string
   national_id: string
   phone?: string | null
+  role: StaffRole
+  secondary_role?: StaffRole | null
   status: TeacherStatus
   generated_password?: string | null
+  secondary_generated_password?: string | null
   needs_password_change?: boolean
   created_at?: string
   updated_at?: string
@@ -30,11 +42,17 @@ export interface TeacherRecord {
 export interface TeacherCredentials {
   national_id: string
   password: string
+  role?: StaffRole
 }
 
 export interface CreateTeacherResponse {
   teacher: TeacherRecord
   login_credentials?: TeacherCredentials
+  secondary_login_credentials?: TeacherCredentials
+}
+
+export interface UpdateTeacherResponse extends TeacherRecord {
+  secondary_login_credentials?: TeacherCredentials
 }
 
 export interface StudentRecord {

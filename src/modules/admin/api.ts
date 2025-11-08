@@ -16,6 +16,7 @@ import type {
   ClassScheduleSessionData,
   ClassSessionRecord,
   CreateTeacherResponse,
+  UpdateTeacherResponse,
   ImportStudentsPayload,
   ImportStudentsPreview,
   ImportSummary,
@@ -29,6 +30,7 @@ import type {
   ScheduleTemplate,
   ScheduleType,
   StudentRecord,
+  StaffRole,
   SubjectRecord,
   TeacherCredentials,
   TeacherRecord,
@@ -1433,13 +1435,18 @@ export async function createTeacher(payload: {
   name: string
   national_id: string
   phone?: string | null
+  role: StaffRole
+  secondary_role?: StaffRole | null
 }): Promise<CreateTeacherResponse> {
   const { data } = await apiClient.post<ApiResponse<CreateTeacherResponse>>('/admin/teachers', payload)
   return unwrapResponse(data, 'تعذر إضافة المعلم')
 }
 
-export async function updateTeacher(id: number, payload: Partial<TeacherRecord>): Promise<TeacherRecord> {
-  const { data } = await apiClient.put<ApiResponse<TeacherRecord>>(`/admin/teachers/${id}`, payload)
+export async function updateTeacher(
+  id: number,
+  payload: Partial<TeacherRecord>,
+): Promise<UpdateTeacherResponse> {
+  const { data } = await apiClient.put<ApiResponse<UpdateTeacherResponse>>(`/admin/teachers/${id}`, payload)
   return unwrapResponse(data, 'تعذر تحديث بيانات المعلم')
 }
 
