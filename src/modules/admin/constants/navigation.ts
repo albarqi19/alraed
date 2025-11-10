@@ -36,6 +36,7 @@ import {
   Activity,
   Fingerprint,
   Smartphone,
+  ClipboardPen,
 } from 'lucide-react'
 
 export interface AdminNavItem {
@@ -60,6 +61,7 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
       { to: '/admin/dashboard', label: 'نظرة عامة', icon: LayoutDashboard, exact: true },
       { to: '/admin/teachers', label: 'إدارة المعلمين', icon: Users },
       { to: '/admin/teacher-attendance', label: 'حضور المعلمين', icon: Fingerprint },
+      { to: '/admin/teacher-preparation', label: 'تحضير مدرستي', icon: ClipboardPen },
       { to: '/admin/students', label: 'إدارة الطلاب', icon: GraduationCap },
     { to: '/admin/forms', label: 'النماذج الإلكترونية', icon: FileText },
     { to: '/admin/students/profile', label: 'ملف الطالب', icon: IdCard },
