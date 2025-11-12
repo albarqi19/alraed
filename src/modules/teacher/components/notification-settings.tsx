@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLocalNotifications } from '@/hooks/use-local-notifications'
+import { useInstallPWA } from '@/hooks/use-install-pwa'
 import { useTeacherSessionsQuery } from '../hooks'
 import { useToast } from '@/shared/feedback/use-toast'
 
@@ -19,25 +20,39 @@ export function NotificationSettings() {
     scheduledCount,
   } = useLocalNotifications()
 
+  const { isInstalled, canInstall, install } = useInstallPWA()
   const { data: sessionsData } = useTeacherSessionsQuery()
   const sessions = sessionsData?.sessions || []
 
   const [isEnabling, setIsEnabling] = useState(false)
   const [isDisabling, setIsDisabling] = useState(false)
   const [isTesting, setIsTesting] = useState(false)
+  const [isInstalling, setIsInstalling] = useState(false)
 
-  // التحقق من أن التطبيق مثبت
-  const [isAppInstalled, setIsAppInstalled] = useState(false)
-
-  useEffect(() => {
-    const checkIfInstalled = () => {
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches
-      // @ts-expect-error - navigator.standalone for iOS
-      const isIOSStandalone = window.navigator.standalone === true
-      return isStandalone || isIOSStandalone
+  // تثبيت التطبيق
+  const handleInstallApp = async () => {
+    setIsInstalling(true)
+    try {
+      const installed = await install()
+      if (installed) {
+        toast({
+          type: 'success',
+          title: 'تم تثبيت التطبيق بنجاح',
+          description: 'يمكنك الآن الوصول للتطبيق من الشاشة الرئيسية',
+        })
+      } else {
+        toast({
+          type: 'warning',
+          title: 'تم إلغاء التثبيت',
+        })
+      }
+    } catch (error) {
+      console.error('خطأ في تثبيت التطبيق:', error)
+      toast({ type: 'error', title: 'فشل تثبيت التطبيق' })
+    } finally {
+      setIsInstalling(false)
     }
-    setIsAppInstalled(checkIfInstalled())
-  }, [])
+  }
 
   // تفعيل الإشعارات
   const handleEnable = async () => {
@@ -121,16 +136,48 @@ export function NotificationSettings() {
   return (
     <div className="glass-card space-y-6">
       {/* تحذير إذا لم يكن التطبيق مثبتاً */}
-      {!isAppInstalled && (
+      {!isInstalled && (
         <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4">
           <div className="flex items-start gap-3 text-right">
             <div className="flex-shrink-0 text-2xl">📱</div>
-            <div className="flex-1">
-              <h4 className="text-base font-bold text-amber-900">ثبّت التطبيق أولاً</h4>
-              <p className="mt-1 text-sm text-amber-800 leading-relaxed">
-                للحصول على إشعارات موثوقة ومستمرة، يُنصح بتثبيت التطبيق على جهازك.
-                اضغط على زر <strong>المشاركة</strong> في المتصفح ثم اختر <strong>"إضافة إلى الشاشة الرئيسية"</strong>.
-              </p>
+            <div className="flex-1 space-y-3">
+              <div>
+                <h4 className="text-base font-bold text-amber-900">ثبّت التطبيق أولاً</h4>
+                <p className="mt-1 text-sm text-amber-800 leading-relaxed">
+                  للحصول على إشعارات موثوقة ومستمرة، يُنصح بتثبيت التطبيق على جهازك.
+                </p>
+              </div>
+              
+              {canInstall ? (
+                // زر التثبيت المباشر (متاح فقط في Chrome/Edge)
+                <button
+                  type="button"
+                  onClick={handleInstallApp}
+                  disabled={isInstalling}
+                  className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-3 text-sm font-bold text-white shadow-lg transition hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isInstalling ? (
+                    <>
+                      <span className="inline-block animate-spin">⏳</span>
+                      <span className="mr-2">جاري التثبيت...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>📥</span>
+                      <span className="mr-2">تثبيت التطبيق الآن</span>
+                    </>
+                  )}
+                </button>
+              ) : (
+                // تعليمات يدوية (iOS أو إذا لم يتوفر الزر التلقائي)
+                <div className="rounded-lg bg-amber-100/50 p-3 text-xs text-amber-900">
+                  <p className="font-semibold mb-1">📌 طريقة التثبيت:</p>
+                  <p>
+                    اضغط على زر <strong>المشاركة</strong> <span className="inline-block">📤</span> في المتصفح،
+                    ثم اختر <strong>"إضافة إلى الشاشة الرئيسية"</strong>
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

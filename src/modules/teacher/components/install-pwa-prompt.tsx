@@ -18,10 +18,17 @@ export function InstallPWAPrompt() {
       // @ts-expect-error - navigator.standalone for iOS
       const isIOSStandalone = window.navigator.standalone === true
       
+      console.log('🔍 PWA Installation Check:', {
+        isStandalone,
+        isIOSStandalone,
+        combined: isStandalone || isIOSStandalone
+      })
+      
       return isStandalone || isIOSStandalone
     }
 
     if (checkIfInstalled()) {
+      console.log('✅ التطبيق مثبت بالفعل')
       setIsInstalled(true)
       return
     }
@@ -30,7 +37,14 @@ export function InstallPWAPrompt() {
     const lastShown = localStorage.getItem('pwa_prompt_last_shown')
     const promptDismissed = localStorage.getItem('pwa_prompt_dismissed')
     
+    console.log('📦 PWA Prompt Status:', {
+      lastShown: lastShown ? new Date(parseInt(lastShown)).toLocaleString('ar-SA') : 'لم يظهر بعد',
+      promptDismissed,
+      willShow: promptDismissed !== 'true'
+    })
+    
     if (promptDismissed === 'true') {
+      console.log('❌ المستخدم رفض التنبيه سابقاً')
       return
     }
 
@@ -38,21 +52,26 @@ export function InstallPWAPrompt() {
     const oneDay = 24 * 60 * 60 * 1000 // يوم واحد
     
     if (lastShown && now - parseInt(lastShown) < oneDay) {
+      const remainingHours = Math.ceil((oneDay - (now - parseInt(lastShown))) / (60 * 60 * 1000))
+      console.log(`⏰ سيظهر التنبيه بعد ${remainingHours} ساعة`)
       return
     }
 
     // الاستماع لحدث beforeinstallprompt
     const handleBeforeInstallPrompt = (e: Event) => {
+      console.log('🎉 beforeinstallprompt event fired!')
       e.preventDefault()
       setDeferredPrompt(e as BeforeInstallPromptEvent)
       
       // عرض التنبيه بعد 3 ثواني من تحميل الصفحة
       setTimeout(() => {
+        console.log('📢 عرض تنبيه التثبيت')
         setShowPrompt(true)
         localStorage.setItem('pwa_prompt_last_shown', Date.now().toString())
       }, 3000)
     }
 
+    console.log('👂 الاستماع لحدث beforeinstallprompt...')
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
 
     // التحقق من نجاح التثبيت
