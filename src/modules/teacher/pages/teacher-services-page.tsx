@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NotificationSettings } from '../components/notification-settings'
+import { NotificationModal } from '../components/notification-modal'
 
 type ServiceCard = {
   id: string
@@ -12,6 +12,15 @@ type ServiceCard = {
 }
 
 const SERVICES: ServiceCard[] = [
+  {
+    id: 'notifications',
+    title: 'الإشعارات',
+    description: 'تذكير بمواعيد الحصص',
+    icon: 'bi-bell',
+    iconColor: 'text-violet-600',
+    iconBg: 'bg-violet-100/80',
+    accentBar: 'from-violet-400/50 via-violet-200/40 to-transparent',
+  },
   {
     id: 'my-services',
     title: 'خدماتي',
@@ -61,17 +70,20 @@ const SERVICES: ServiceCard[] = [
 
 export function TeacherServicesPage() {
   const [comingSoonMessage, setComingSoonMessage] = useState<string | null>(null)
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false)
 
-  const handleServiceClick = (serviceName: string) => {
+  const handleServiceClick = (serviceId: string, serviceName: string) => {
+    if (serviceId === 'notifications') {
+      setIsNotificationModalOpen(true)
+      return
+    }
+
     setComingSoonMessage(`ميزة "${serviceName}" قيد التطوير وستكون متاحة قريباً`)
     setTimeout(() => setComingSoonMessage(null), 3000)
   }
 
   return (
     <section className="space-y-6">
-      {/* إعدادات الإشعارات */}
-      <NotificationSettings />
-
       {/* Banner Ad */}
       <a
         href="https://play.google.com/store/apps/details?id=com.tasjeel.app"
@@ -91,7 +103,7 @@ export function TeacherServicesPage() {
           <button
             key={service.id}
             type="button"
-            onClick={() => handleServiceClick(service.title)}
+            onClick={() => handleServiceClick(service.id, service.title)}
             className="group w-full text-right transition-transform duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50"
           >
             <span className="glass-card relative flex h-[90px] w-full flex-col justify-center overflow-hidden p-3 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-lg">
@@ -122,6 +134,9 @@ export function TeacherServicesPage() {
           </div>
         </div>
       )}
+
+      {/* Modal الإشعارات */}
+      <NotificationModal isOpen={isNotificationModalOpen} onClose={() => setIsNotificationModalOpen(false)} />
     </section>
   )
 }
