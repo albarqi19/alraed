@@ -2,7 +2,7 @@
   "name": "نظام الرائد - إدارة الحضور والغياب",
   "short_name": "الرائد",
   "description": "نظام متكامل لإدارة حضور وغياب الطلاب والمعلمين",
-  "start_url": "/",
+  "start_url": "/teacher",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#14b8a6",
