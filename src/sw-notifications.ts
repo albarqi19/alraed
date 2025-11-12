@@ -68,7 +68,7 @@ async function showNotification(notification: ScheduledNotification) {
           title: 'تجاهل',
         },
       ],
-    })
+    } as NotificationOptions)
 
     console.log(`✅ SW: تم إرسال إشعار - ${title}`)
   } catch (error) {

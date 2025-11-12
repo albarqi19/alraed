@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocalNotifications } from '@/hooks/use-local-notifications'
 import { useTeacherSessionsQuery } from '../hooks'
 import { useToast } from '@/shared/feedback/use-toast'
@@ -25,6 +25,19 @@ export function NotificationSettings() {
   const [isEnabling, setIsEnabling] = useState(false)
   const [isDisabling, setIsDisabling] = useState(false)
   const [isTesting, setIsTesting] = useState(false)
+
+  // التحقق من أن التطبيق مثبت
+  const [isAppInstalled, setIsAppInstalled] = useState(false)
+
+  useEffect(() => {
+    const checkIfInstalled = () => {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+      // @ts-expect-error - navigator.standalone for iOS
+      const isIOSStandalone = window.navigator.standalone === true
+      return isStandalone || isIOSStandalone
+    }
+    setIsAppInstalled(checkIfInstalled())
+  }, [])
 
   // تفعيل الإشعارات
   const handleEnable = async () => {
@@ -107,6 +120,22 @@ export function NotificationSettings() {
 
   return (
     <div className="glass-card space-y-6">
+      {/* تحذير إذا لم يكن التطبيق مثبتاً */}
+      {!isAppInstalled && (
+        <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4">
+          <div className="flex items-start gap-3 text-right">
+            <div className="flex-shrink-0 text-2xl">📱</div>
+            <div className="flex-1">
+              <h4 className="text-base font-bold text-amber-900">ثبّت التطبيق أولاً</h4>
+              <p className="mt-1 text-sm text-amber-800 leading-relaxed">
+                للحصول على إشعارات موثوقة ومستمرة، يُنصح بتثبيت التطبيق على جهازك.
+                اضغط على زر <strong>المشاركة</strong> في المتصفح ثم اختر <strong>"إضافة إلى الشاشة الرئيسية"</strong>.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* العنوان */}
       <div className="flex items-start gap-4 text-right">
         <div className="flex-shrink-0 text-4xl">🔔</div>

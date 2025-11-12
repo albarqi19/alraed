@@ -35,9 +35,9 @@ export function InstallPWAPrompt() {
     }
 
     const now = Date.now()
-    const threeDays = 3 * 24 * 60 * 60 * 1000 // 3 أيام
+    const oneDay = 24 * 60 * 60 * 1000 // يوم واحد
     
-    if (lastShown && now - parseInt(lastShown) < threeDays) {
+    if (lastShown && now - parseInt(lastShown) < oneDay) {
       return
     }
 
@@ -46,11 +46,11 @@ export function InstallPWAPrompt() {
       e.preventDefault()
       setDeferredPrompt(e as BeforeInstallPromptEvent)
       
-      // عرض التنبيه بعد 10 ثواني من تحميل الصفحة
+      // عرض التنبيه بعد 3 ثواني من تحميل الصفحة
       setTimeout(() => {
         setShowPrompt(true)
         localStorage.setItem('pwa_prompt_last_shown', Date.now().toString())
-      }, 10000)
+      }, 3000)
     }
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
