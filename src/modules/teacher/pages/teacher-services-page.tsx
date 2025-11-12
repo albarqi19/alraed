@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { NotificationSettings } from '../components/notification-settings'
 
 type ServiceCard = {
   id: string
@@ -68,6 +69,9 @@ export function TeacherServicesPage() {
 
   return (
     <section className="space-y-6">
+      {/* إعدادات الإشعارات */}
+      <NotificationSettings />
+
       {/* Banner Ad */}
       <a
         href="https://play.google.com/store/apps/details?id=com.tasjeel.app"
