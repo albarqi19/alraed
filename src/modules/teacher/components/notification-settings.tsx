@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useLocalNotifications } from '@/hooks/use-local-notifications'
 import { useInstallPWA } from '@/hooks/use-install-pwa'
 import { useTeacherSessionsQuery } from '../hooks'
