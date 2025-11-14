@@ -135,22 +135,6 @@ export function WhatsappInstancesManager() {
     },
   })
 
-  // اختبار الإرسال عبر Queue
-  const testQueueMutation = useMutation({
-    mutationFn: ({ instanceId, phoneNumber }: { instanceId: number; phoneNumber: string }) => 
-      testWhatsappInstanceQueue(instanceId, phoneNumber),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'whatsapp', 'instances'] })
-      const message = data?.message || 'تم إضافة رسالة الاختبار للطابور بنجاح'
-      toast({ title: message, type: 'success' })
-    },
-    onError: (error: any) => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'whatsapp', 'instances'] })
-      const errorMessage = error?.response?.data?.message || error?.message || 'فشل إرسال رسالة الاختبار'
-      toast({ title: errorMessage, type: 'error' })
-    },
-  })
-
   // Polling تلقائي للـ instances قيد الاتصال
   const startPolling = (instanceId: number) => {
     setPollingInstanceIds(prev => new Set(prev).add(instanceId))

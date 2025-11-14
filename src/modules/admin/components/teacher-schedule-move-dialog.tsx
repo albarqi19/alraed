@@ -38,7 +38,6 @@ export function TeacherScheduleMoveDialog({
   open,
   preview,
   isLoading = false,
-  isSubmitting = false,
   onClose,
 }: TeacherScheduleMoveDialogProps) {
   const directOption: TeacherScheduleMoveSuggestion | null = useMemo(() => {
@@ -83,9 +82,7 @@ export function TeacherScheduleMoveDialog({
     }
   }, [preview])
 
-  const selectedSuggestion = suggestions.find((item) => item.id === selectedSuggestionId)
   const hasBlockingConflicts = preview?.conflicts?.some((conflict) => conflict.priority === 'P1')
-  const confirmDisabled = !selectedSuggestion?.resolution || (selectedSuggestion.id === 'direct-move' && !preview?.can_move)
 
   const renderSuggestionSteps = (steps?: TeacherScheduleMoveSuggestionStep[]) => {
     if (!steps || steps.length === 0) return null

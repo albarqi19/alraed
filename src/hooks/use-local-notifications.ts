@@ -47,7 +47,7 @@ export function useLocalNotifications(): UseLocalNotificationsResult {
       }
     }
 
-    await localNotificationService.scheduleWeeklyNotifications(sessions)
+    await localNotificationService.scheduleWeeklyNotifications(sessions as SessionInput[])
 
     // تحديث العدد
     const scheduled = localNotificationService.getScheduledNotifications()
