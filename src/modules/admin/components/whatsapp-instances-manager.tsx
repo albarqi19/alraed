@@ -9,7 +9,6 @@ import {
   disconnectWhatsappInstance,
   deleteWhatsappInstance,
   testWhatsappInstance,
-  testWhatsappInstanceQueue,
 } from '../api'
 import type { WhatsappInstance } from '../types'
 import { MessageSquare, Plus, QrCode, RefreshCw, Trash2, CheckCircle, XCircle, Loader2, LogOut } from 'lucide-react'

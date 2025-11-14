@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { localNotificationService } from '@/services/notifications/local-notifications'
+import { localNotificationService, type SessionInput } from '@/services/notifications/local-notifications'
 
 interface UseLocalNotificationsResult {
   isSupported: boolean
