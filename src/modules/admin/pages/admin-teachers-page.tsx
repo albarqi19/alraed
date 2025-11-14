@@ -711,13 +711,13 @@ export function AdminTeachersPage() {
                 <table className="min-w-full divide-y divide-slate-200 text-sm">
                   <thead className="bg-slate-50/80 text-xs font-semibold uppercase text-slate-500">
                     <tr>
-                      <th scope="col" className="px-6 py-3 text-right tracking-wider">المعلم</th>
-                      <th scope="col" className="px-6 py-3 text-right tracking-wider">رقم الهوية</th>
-                      <th scope="col" className="px-6 py-3 text-right tracking-wider">الدور الوظيفي</th>
-                      <th scope="col" className="px-6 py-3 text-right tracking-wider">رقم الجوال</th>
-                      <th scope="col" className="px-6 py-3 text-right tracking-wider">الحالة</th>
-                      <th scope="col" className="px-6 py-3 text-right tracking-wider">آخر تحديث</th>
-                      <th scope="col" className="px-6 py-3 text-right">إجراءات</th>
+                      <th scope="col" className="px-4 py-2 text-right tracking-wider">المعلم</th>
+                      <th scope="col" className="px-4 py-2 text-right tracking-wider">رقم الهوية</th>
+                      <th scope="col" className="px-4 py-2 text-right tracking-wider">الدور الوظيفي</th>
+                      <th scope="col" className="px-4 py-2 text-right tracking-wider">رقم الجوال</th>
+                      <th scope="col" className="px-4 py-2 text-right tracking-wider">الحالة</th>
+                      <th scope="col" className="px-4 py-2 text-right tracking-wider">آخر تحديث</th>
+                      <th scope="col" className="px-4 py-2 text-right">إجراءات</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white">
@@ -735,55 +735,48 @@ export function AdminTeachersPage() {
                           onClick={() => setSelectedTeacher(teacher)}
                           className="cursor-pointer transition hover:bg-teal-50/50"
                         >
-                          <td className="px-6 py-4">
-                            <div className="flex flex-col gap-1">
+                          <td className="px-4 py-2.5">
+                            <div className="flex flex-col gap-0.5">
                               <span className="font-semibold text-slate-900">{teacher.name}</span>
-                              <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
-                                {teacher.needs_password_change ? (
-                                  <span className="rounded-full bg-amber-50 px-2 py-1 text-amber-700">
-                                    يحتاج لتغيير كلمة المرور
-                                  </span>
-                                ) : null}
-                                {teacher.generated_password ? (
-                                  <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">
-                                    كلمة مرور مؤقتة مُنشأة
-                                  </span>
-                                ) : null}
-                              </div>
+                              {teacher.needs_password_change ? (
+                                <span className="inline-flex items-center gap-1 text-xs text-amber-700">
+                                  يحتاج لتغيير كلمة المرور
+                                </span>
+                              ) : null}
                             </div>
                           </td>
-                          <td className="px-6 py-4 font-mono text-sm text-slate-700">{teacher.national_id}</td>
-                          <td className="px-6 py-4 text-sm">
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                          <td className="px-4 py-2.5 font-mono text-sm text-slate-700">{teacher.national_id}</td>
+                          <td className="px-4 py-2.5 text-sm">
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
                               {getRoleLabel(teacher.role)}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-sm text-slate-600">{teacher.phone ?? '—'}</td>
-                          <td className="px-6 py-4">
+                          <td className="px-4 py-2.5 text-sm text-slate-600">{teacher.phone ?? '—'}</td>
+                          <td className="px-4 py-2.5">
                             <TeacherStatusBadge status={teacher.status} />
                           </td>
-                          <td className="px-6 py-4 text-xs text-muted">{formatDate(teacher.updated_at ?? teacher.created_at)}</td>
-                          <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex flex-wrap gap-2">
+                          <td className="px-4 py-2.5 text-xs text-muted">{formatDate(teacher.updated_at ?? teacher.created_at)}</td>
+                          <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex flex-wrap items-center gap-1.5">
                               <button
                                 type="button"
                                 onClick={() => handleEdit(teacher)}
-                                className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-teal-200 hover:text-teal-600"
+                                className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:border-teal-200 hover:bg-teal-50 hover:text-teal-600"
                               >
                                 تعديل
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleResetPassword(teacher)}
-                                className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-teal-600 transition hover:border-teal-200 hover:bg-teal-50"
+                                className="rounded-full border border-teal-200 bg-white px-2.5 py-1 text-xs font-semibold text-teal-600 transition hover:bg-teal-50"
                                 disabled={isResetting}
                               >
-                                {isResetting ? 'جاري التهيئة...' : 'إعادة كلمة المرور'}
+                                {isResetting ? 'جاري...' : 'إعادة كلمة المرور'}
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleToggleStatus(teacher)}
-                                className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-amber-600 transition hover:border-amber-200 hover:bg-amber-50"
+                                className="rounded-full border border-amber-200 bg-white px-2.5 py-1 text-xs font-semibold text-amber-600 transition hover:bg-amber-50"
                                 disabled={isToggling}
                               >
                                 {teacher.status === 'active' ? 'إيقاف' : 'تفعيل'}
@@ -791,10 +784,10 @@ export function AdminTeachersPage() {
                               <button
                                 type="button"
                                 onClick={() => handleDelete(teacher)}
-                                className="rounded-full border border-transparent bg-rose-500 px-3 py-1 text-xs font-semibold text-white shadow hover:bg-rose-600"
+                                className="rounded-full border border-rose-200 bg-white px-2.5 py-1 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
                                 disabled={isDeleting}
                               >
-                                {isDeleting ? 'جاري الحذف...' : 'حذف'}
+                                {isDeleting ? 'جاري...' : 'حذف'}
                               </button>
                             </div>
                           </td>

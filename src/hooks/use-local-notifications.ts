@@ -6,7 +6,7 @@ interface UseLocalNotificationsResult {
   hasPermission: boolean
   isRequesting: boolean
   requestPermission: () => Promise<boolean>
-  scheduleWeeklyNotifications: (sessions: any[]) => Promise<void>
+  scheduleWeeklyNotifications: (sessions: unknown[]) => Promise<void>
   cancelAllNotifications: () => Promise<void>
   sendTestNotification: () => Promise<void>
   scheduledCount: number
@@ -39,7 +39,7 @@ export function useLocalNotifications(): UseLocalNotificationsResult {
   }, [])
 
   // جدولة إشعارات الحصص
-  const scheduleWeeklyNotifications = useCallback(async (sessions: any[]) => {
+  const scheduleWeeklyNotifications = useCallback(async (sessions: unknown[]) => {
     if (!hasPermission) {
       const granted = await requestPermission()
       if (!granted) {

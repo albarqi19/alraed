@@ -6,12 +6,17 @@ import {
   useClassScheduleSummaryQuery,
   useDeleteClassScheduleSessionMutation,
   useScheduleSessionDataQuery,
+  useSubjectsQuery,
+  useTeachersQuery,
+  useUpdateClassSessionMutation,
 } from '../hooks'
 import type {
   ClassScheduleGrid,
   ClassScheduleSessionData,
   ClassScheduleSlot,
   ClassScheduleSummary,
+  SubjectRecord,
+  TeacherRecord,
 } from '../types'
 
 const daysOfWeek: string[] = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس']
@@ -539,6 +544,138 @@ function ConfirmDeleteDialog({ open, onClose, onConfirm, isSubmitting, sessionIn
   )
 }
 
+interface QuickEditScheduleDialogProps {
+  slot: ClassScheduleSlot | null
+  day: string
+  open: boolean
+  onCancel: () => void
+  onConfirm: (teacherId: number, subjectId: number) => void
+  onDelete: () => void
+  isSubmitting: boolean
+  isDeleting: boolean
+  teacherOptions: TeacherRecord[]
+  subjectOptions: SubjectRecord[]
+}
+
+function QuickEditScheduleDialog({ slot, day, open, onCancel, onConfirm, onDelete, isSubmitting, isDeleting, teacherOptions, subjectOptions }: QuickEditScheduleDialogProps) {
+  const [selectedTeacherId, setSelectedTeacherId] = useState<number>(0)
+  const [selectedSubjectId, setSelectedSubjectId] = useState<number>(0)
+
+  useEffect(() => {
+    if (slot) {
+      // البحث عن teacher_id من الاسم
+      const teacher = teacherOptions.find(t => t.name === slot.teacher_name)
+      setSelectedTeacherId(teacher?.id ?? 0)
+      
+      // البحث عن subject_id من الاسم
+      const subject = subjectOptions.find(s => s.name === slot.subject_name)
+      setSelectedSubjectId(subject?.id ?? 0)
+    }
+  }, [slot, teacherOptions, subjectOptions])
+
+  if (!open || !slot) return null
+
+  const handleSubmit = () => {
+    if (selectedTeacherId && selectedSubjectId) {
+      onConfirm(selectedTeacherId, selectedSubjectId)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" role="dialog">
+      <div className="w-full max-w-md rounded-3xl bg-white p-6 text-right shadow-xl">
+        <header className="mb-6 space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-widest text-teal-600">تعديل سريع</p>
+          <h2 className="text-xl font-semibold text-slate-900">تعديل المعلم والمادة</h2>
+          <p className="text-sm text-muted">
+            {day} | الحصة {slot.period_number} | {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+          </p>
+        </header>
+
+        <div className="space-y-4">
+          <div className="grid gap-2 text-right">
+            <label htmlFor="quick-edit-schedule-teacher" className="text-sm font-medium text-slate-800">
+              المعلم
+            </label>
+            <select
+              id="quick-edit-schedule-teacher"
+              value={selectedTeacherId}
+              onChange={(e) => setSelectedTeacherId(Number(e.target.value))}
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+              disabled={isSubmitting}
+            >
+              <option value="0">اختر المعلم...</option>
+              {teacherOptions.map((teacher) => (
+                <option key={teacher.id} value={teacher.id}>
+                  {teacher.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid gap-2 text-right">
+            <label htmlFor="quick-edit-schedule-subject" className="text-sm font-medium text-slate-800">
+              المادة
+            </label>
+            <select
+              id="quick-edit-schedule-subject"
+              value={selectedSubjectId}
+              onChange={(e) => setSelectedSubjectId(Number(e.target.value))}
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+              disabled={isSubmitting}
+            >
+              <option value="0">اختر المادة...</option>
+              {subjectOptions.map((subject) => (
+                <option key={subject.id} value={subject.id}>
+                  {subject.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <div className="flex gap-2">
+              <i className="bi bi-info-circle mt-0.5 text-amber-600" />
+              <div>
+                <p className="font-semibold">ملاحظة هامة:</p>
+                <p className="mt-1">
+                  السجلات التاريخية للحضور ستبقى كما هي محفوظة بأسماء المعلم والمادة السابقة. التغيير سيؤثر على الحصص الجديدة فقط.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-col gap-3 text-sm sm:flex-row sm:justify-between">
+          <button
+            type="button"
+            onClick={onDelete}
+            className="rounded-2xl border-2 border-rose-200 bg-rose-50 px-6 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-50 sm:w-auto"
+            disabled={isSubmitting || isDeleting}
+          >
+            <i className="bi bi-trash ml-2" />
+            {isDeleting ? 'جاري الحذف...' : 'حذف الحصة'}
+          </button>
+          
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <button type="button" onClick={onCancel} className="button-secondary sm:w-auto" disabled={isSubmitting || isDeleting}>
+              إلغاء
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              className="button-primary sm:w-auto"
+              disabled={isSubmitting || isDeleting || !selectedTeacherId || !selectedSubjectId}
+            >
+              {isSubmitting ? 'جاري الحفظ...' : 'حفظ التغييرات'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function AdminClassSchedulesPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [gradeFilter, setGradeFilter] = useState<string>('all')
@@ -546,12 +683,19 @@ export function AdminClassSchedulesPage() {
   const [quickSessionContext, setQuickSessionContext] = useState<{ day?: string; period?: number } | null>(null)
   const [isApplyScheduleOpen, setIsApplyScheduleOpen] = useState(false)
   const [sessionToDelete, setSessionToDelete] = useState<{ slot: ClassScheduleSlot; day: string } | null>(null)
+  const [slotToQuickEdit, setSlotToQuickEdit] = useState<{ slot: ClassScheduleSlot; day: string } | null>(null)
 
   const classSummariesQuery = useClassScheduleSummaryQuery()
   const sessionDataQuery = useScheduleSessionDataQuery()
   const addQuickSessionMutation = useAddQuickClassSessionMutation()
   const applyScheduleMutation = useApplyScheduleToClassMutation()
   const deleteSessionMutation = useDeleteClassScheduleSessionMutation()
+  const updateSessionMutation = useUpdateClassSessionMutation()
+  const { data: teachersData } = useTeachersQuery()
+  const { data: subjectsData } = useSubjectsQuery()
+
+  const teacherOptions = useMemo(() => teachersData ?? [], [teachersData])
+  const subjectOptions = useMemo(() => subjectsData ?? [], [subjectsData])
 
   const gradeOptions = useMemo(() => {
     if (!classSummariesQuery.data) return []
@@ -655,6 +799,48 @@ export function AdminClassSchedulesPage() {
       {
         onSuccess: () => {
           setIsApplyScheduleOpen(false)
+        },
+      },
+    )
+  }
+
+  const handleQuickEditSlot = (teacherId: number, subjectId: number) => {
+    if (!slotToQuickEdit || !scheduleQuery.data?.class_info) return
+    
+    const slot = slotToQuickEdit.slot
+    const classInfo = scheduleQuery.data.class_info
+    const payload = {
+      teacher_id: teacherId,
+      subject_id: subjectId,
+      grade: classInfo.grade,
+      class_name: classInfo.class_name,
+      day: slotToQuickEdit.day,
+      period_number: slot.period_number,
+      start_time: formatTime(slot.start_time),
+      end_time: formatTime(slot.end_time),
+      status: 'active' as const,
+      notes: null,
+    }
+    
+    updateSessionMutation.mutate(
+      {
+        id: slot.id,
+        payload,
+      },
+      {
+        onSuccess: () => {
+          setSlotToQuickEdit(null)
+          scheduleQuery.refetch()
+        },
+        onError: (error: unknown) => {
+          const errorData = (error as { response?: { data?: unknown } })?.response?.data as { message?: string; conflict_details?: string } | undefined
+          
+          // عرض تفاصيل الحصة المتضاربة إن وجدت
+          if (errorData?.conflict_details) {
+            alert(`⚠️ ${errorData.message}\n\n${errorData.conflict_details}`)
+          } else if (errorData?.message) {
+            alert(`⚠️ ${errorData.message}`)
+          }
         },
       },
     )
@@ -903,35 +1089,30 @@ export function AdminClassSchedulesPage() {
                               </th>
                               {periods.map((period) => {
                                 const slot = daySessions?.[period] ?? null
-                                const isBeingDeleted =
-                                  deleteSessionMutation.isPending && sessionToDelete?.slot.id === slot?.id
 
                                 return (
-                                  <td key={period} className="border border-slate-200 px-2.5 py-2 align-top">
+                                  <td key={period} className="border border-slate-200 p-0">
                                     {slot ? (
-                                      <div className="flex h-full flex-col gap-1">
-                                        <p className="font-semibold text-slate-900 leading-tight">
+                                      <button
+                                        type="button"
+                                        onClick={() => setSlotToQuickEdit({ slot, day })}
+                                        className="w-full h-full min-h-[70px] flex flex-col justify-center gap-1 text-right transition-all hover:bg-teal-50 p-3 cursor-pointer"
+                                        disabled={deleteSessionMutation.isPending || updateSessionMutation.isPending}
+                                      >
+                                        <p className="font-semibold text-slate-900 leading-tight text-sm">
                                           {slot.subject_name}
                                         </p>
                                         {slot.teacher_name ? (
-                                          <p className="text-[11px] text-slate-500" title={slot.teacher_name}>
+                                          <p className="text-xs text-slate-500" title={slot.teacher_name}>
                                             {shortenTeacherName(slot.teacher_name)}
                                           </p>
                                         ) : null}
-                                        <button
-                                          type="button"
-                                          className="inline-flex w-fit items-center gap-1 rounded px-2 py-0.5 text-[10px] font-semibold text-rose-600 transition hover:text-rose-700 focus:outline-none focus:ring-1 focus:ring-rose-200"
-                                          onClick={() => setSessionToDelete({ slot, day })}
-                                          disabled={deleteSessionMutation.isPending}
-                                        >
-                                          {isBeingDeleted ? 'جارٍ الحذف…' : 'حذف الحصة'}
-                                        </button>
-                                      </div>
+                                      </button>
                                     ) : (
                                       <button
                                         type="button"
                                         onClick={() => handleOpenQuickSession(day, period)}
-                                        className="w-full rounded border border-dashed border-teal-300 bg-white py-2 text-[11px] font-semibold text-teal-600 transition hover:border-teal-400 hover:bg-teal-50"
+                                        className="w-full min-h-[70px] border border-dashed border-teal-300 bg-white py-2 text-xs font-semibold text-teal-600 transition hover:border-teal-400 hover:bg-teal-50"
                                         disabled={addQuickSessionMutation.isPending}
                                       >
                                         إضافة
@@ -947,7 +1128,7 @@ export function AdminClassSchedulesPage() {
                     </table>
                   </div>
                   <p className="text-xs text-muted">
-                    استخدم الأزرار داخل الخلايا لإضافة حصص جديدة مباشرة في المكان المطلوب، أو لحذف الحصص الحالية مع الحفاظ على سجلات الحضور التاريخية.
+                    اضغط على الحصة لتعديل المعلم والمادة أو حذفها. استخدم الخلايا الفارغة لإضافة حصص جديدة مع الحفاظ على سجلات الحضور التاريخية.
                   </p>
                 </div>
               )}
@@ -1003,6 +1184,24 @@ export function AdminClassSchedulesPage() {
               }
             : undefined
         }
+      />
+
+      <QuickEditScheduleDialog
+        open={Boolean(slotToQuickEdit)}
+        slot={slotToQuickEdit?.slot ?? null}
+        day={slotToQuickEdit?.day ?? ''}
+        onCancel={() => setSlotToQuickEdit(null)}
+        onConfirm={handleQuickEditSlot}
+        onDelete={() => {
+          if (slotToQuickEdit) {
+            setSessionToDelete(slotToQuickEdit)
+            setSlotToQuickEdit(null)
+          }
+        }}
+        isSubmitting={updateSessionMutation.isPending}
+        isDeleting={false}
+        teacherOptions={teacherOptions}
+        subjectOptions={subjectOptions}
       />
     </section>
   )

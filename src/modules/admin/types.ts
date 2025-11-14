@@ -171,6 +171,146 @@ export interface ClassScheduleResult {
   class_info: ClassScheduleClassInfo
 }
 
+export interface TeacherScheduleSummary {
+  id: number
+  name: string
+  national_id?: string
+  phone?: string | null
+  status: TeacherStatus
+  sessions_count: number
+  classes_count: number
+  earliest_start?: string | null
+  latest_end?: string | null
+}
+
+export interface TeacherScheduleSlot {
+  id: number
+  subject_name: string
+  grade: string
+  class_name: string
+  start_time?: string | null
+  end_time?: string | null
+  schedule_name?: string | null
+  period_number: number
+}
+
+export type TeacherScheduleGrid = Record<string, Record<number, TeacherScheduleSlot | null>>
+
+export interface TeacherScheduleResult {
+  schedule: TeacherScheduleGrid
+  teacher_info: {
+    id: number
+    name: string
+    national_id?: string | null
+    phone?: string | null
+    status: TeacherStatus
+    classes_count: number
+    subjects_count: number
+    sessions_count: number
+  }
+}
+
+export type TeacherScheduleDayLimits = Record<string, number>
+
+export interface TeacherScheduleDayLimitsResponse {
+  day_limits: TeacherScheduleDayLimits
+  defaults: {
+    max_periods: number
+    days: string[]
+  }
+}
+
+export type TeacherScheduleConflictPriority = 'P1' | 'P2' | 'P3'
+
+export interface TeacherScheduleMoveConflict {
+  priority: TeacherScheduleConflictPriority
+  code: string
+  message: string
+}
+
+export interface TeacherScheduleMoveResolutionStep {
+  session_id: number
+  target_day: string
+  target_period: number
+}
+
+export interface TeacherScheduleMoveSuggestionStep {
+  session_id: number
+  from_day: string
+  from_period: number
+  to_day: string
+  to_period: number
+  teacher_name?: string | null
+  subject_name?: string | null
+  grade: string
+  class_name: string
+}
+
+export interface TeacherScheduleMoveResolution {
+  mode: 'direct' | 'swap' | 'chain'
+  swap_session_id?: number
+  swap_target_day?: string
+  swap_target_period?: number
+  steps?: TeacherScheduleMoveResolutionStep[]
+  next_target_day?: string
+  next_target_period?: number
+  next_target_teacher_id?: number | null
+}
+
+export interface TeacherScheduleMoveSuggestion {
+  id: string
+  title: string
+  description: string
+  priority: TeacherScheduleConflictPriority
+  resolution: TeacherScheduleMoveResolution
+  resolves_conflicts?: boolean
+  strategy?: 'single_swap' | 'chain_swap' | 'delay' | string
+  steps?: TeacherScheduleMoveSuggestionStep[]
+  metadata?: Record<string, unknown>
+}
+
+export interface TeacherScheduleMovePreviewPayload {
+  source_session_id: number
+  target_day: string
+  target_period: number
+  target_teacher_id?: number | null
+}
+
+export interface TeacherScheduleMovePreviewResult {
+  can_move: boolean
+  conflicts: TeacherScheduleMoveConflict[]
+  suggestions: TeacherScheduleMoveSuggestion[]
+  source_session: TeacherScheduleMoveSession
+  target_slot: {
+    day: string
+    period_number: number
+    teacher_id: number
+    teacher_name: string
+    existing_session?: TeacherScheduleMoveSession | null
+  }
+  metrics: {
+    teacher_day_load_after_move: number
+    day_max_periods: number
+    class_day_load_after_move: number
+  }
+}
+
+export interface TeacherScheduleMoveSession extends TeacherScheduleSlot {
+  day: string
+  teacher_id: number
+  teacher_name?: string | null
+}
+
+export interface TeacherScheduleMoveConfirmPayload extends TeacherScheduleMovePreviewPayload {
+  resolution?: TeacherScheduleMoveResolution
+}
+
+export interface TeacherScheduleMoveConfirmResult {
+  success: boolean
+  message: string
+  affected_sessions: number[]
+}
+
 export interface ClassScheduleSessionData {
   teachers: Array<{
     id: number
@@ -611,7 +751,6 @@ export interface AdminSettings {
   school_phone: string
   school_region?: string | null
   school_principal_name?: string | null
-  whatsapp_webhook_url?: string | null
   attendance_notification: boolean
   weekly_report: boolean
   auto_approve_attendance: boolean
@@ -907,6 +1046,25 @@ export interface WhatsappSettings {
   is_connected: boolean
   last_sync_at?: string | null
   auto_send_enabled?: boolean
+}
+
+export interface WhatsappInstance {
+  id: number
+  school_id: number
+  instance_name: string
+  phone_number: string | null
+  status: 'disconnected' | 'connecting' | 'connected'
+  qr_code: string | null
+  department: string | null
+  metadata: Record<string, any> | null
+  last_connected_at: string | null
+  created_at: string
+  updated_at: string
+  status_text?: string
+}
+
+export interface WhatsappInstanceCreatePayload {
+  department?: string | null
 }
 
 export type LeaveRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled'

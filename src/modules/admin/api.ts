@@ -15,6 +15,14 @@ import type {
   ClassScheduleResult,
   ClassScheduleSessionData,
   ClassSessionRecord,
+  TeacherScheduleSummary,
+  TeacherScheduleResult,
+  TeacherScheduleMovePreviewPayload,
+  TeacherScheduleMovePreviewResult,
+  TeacherScheduleMoveConfirmPayload,
+  TeacherScheduleMoveConfirmResult,
+  TeacherScheduleDayLimits,
+  TeacherScheduleDayLimitsResponse,
   CreateTeacherResponse,
   UpdateTeacherResponse,
   ImportStudentsPayload,
@@ -54,6 +62,8 @@ import type {
   TeacherAttendanceDelayStatusUpdatePayload,
   WhatsappQueueItem,
   WhatsappSettings,
+  WhatsappInstance,
+  WhatsappInstanceCreatePayload,
   WhatsappStatistics,
   WhatsappTemplate,
   WhatsappTargetStudent,
@@ -1531,11 +1541,65 @@ export async function fetchClassScheduleSummary(): Promise<ClassScheduleSummary[
   return unwrapResponse(data, 'تعذر تحميل قوائم الجداول')
 }
 
+export async function fetchTeacherScheduleSummary(): Promise<TeacherScheduleSummary[]> {
+  const { data } = await apiClient.get<ApiResponse<TeacherScheduleSummary[]>>('/admin/teacher-schedules/teachers')
+  return unwrapResponse(data, 'تعذر تحميل قائمة المعلمين')
+}
+
 export async function fetchClassSchedule(grade: string, className: string): Promise<ClassScheduleResult> {
   const { data } = await apiClient.get<ApiResponse<ClassScheduleResult>>(
     `/admin/class-schedules/${encodeURIComponent(grade)}/${encodeURIComponent(className)}`,
   )
   return unwrapResponse(data, 'تعذر تحميل جدول الفصل')
+}
+
+export async function fetchTeacherSchedule(teacherId: number): Promise<TeacherScheduleResult> {
+  const { data } = await apiClient.get<ApiResponse<TeacherScheduleResult>>(
+    `/admin/teacher-schedules/${teacherId}`,
+  )
+  return unwrapResponse(data, 'تعذر تحميل جدول المعلم')
+}
+
+export async function previewTeacherScheduleMove(
+  payload: TeacherScheduleMovePreviewPayload,
+): Promise<TeacherScheduleMovePreviewResult> {
+  const { data } = await apiClient.post<ApiResponse<TeacherScheduleMovePreviewResult>>(
+    '/admin/teacher-schedules/moves/preview',
+    payload,
+  )
+
+  return unwrapResponse(data, 'تعذر تحليل التعارضات')
+}
+
+export async function confirmTeacherScheduleMove(
+  payload: TeacherScheduleMoveConfirmPayload,
+): Promise<TeacherScheduleMoveConfirmResult> {
+  const { data } = await apiClient.post<ApiResponse<TeacherScheduleMoveConfirmResult>>(
+    '/admin/teacher-schedules/moves/confirm',
+    payload,
+  )
+
+  return unwrapResponse(data, 'تعذر تنفيذ نقل الحصة')
+}
+
+export async function fetchTeacherScheduleDayLimits(): Promise<TeacherScheduleDayLimitsResponse> {
+  const { data } = await apiClient.get<ApiResponse<TeacherScheduleDayLimitsResponse>>(
+    '/admin/teacher-schedules/settings/day-limits',
+  )
+
+  return unwrapResponse(data, 'تعذر تحميل إعدادات حدود الحصص اليومية')
+}
+
+export async function updateTeacherScheduleDayLimits(
+  payload: TeacherScheduleDayLimits,
+): Promise<TeacherScheduleDayLimits> {
+  const { data } = await apiClient.put<ApiResponse<{ day_limits: TeacherScheduleDayLimits }>>(
+    '/admin/teacher-schedules/settings/day-limits',
+    { day_limits: payload },
+  )
+
+  const response = unwrapResponse(data, 'تعذر حفظ إعدادات حدود الحصص اليومية')
+  return response.day_limits
 }
 
 export async function addQuickClassSession(payload: Record<string, unknown>): Promise<ClassSessionRecord> {
@@ -2427,6 +2491,58 @@ export async function updateWhatsappSettings(payload: Partial<WhatsappSettings>)
   const { data } = await apiClient.put<ApiResponse<WhatsappSettings>>('/admin/whatsapp/settings', payload)
   return unwrapResponse(data, 'تعذر تحديث إعدادات الواتساب')
 }
+
+// ==================== Whatsapp Instances ====================
+
+export async function fetchWhatsappInstances(): Promise<WhatsappInstance[]> {
+  const { data } = await apiClient.get<ApiResponse<WhatsappInstance[]>>('/admin/whatsapp/instances')
+  return unwrapCollectionResponse<WhatsappInstance>(data, 'تعذر تحميل أرقام الواتساب', ['instances', 'data'])
+}
+
+export async function createWhatsappInstance(payload: WhatsappInstanceCreatePayload): Promise<WhatsappInstance> {
+  const { data } = await apiClient.post<ApiResponse<WhatsappInstance>>('/admin/whatsapp/instances', payload)
+  return unwrapResponse(data, 'تعذر إنشاء رقم واتساب جديد')
+}
+
+export async function getWhatsappInstanceQrCode(instanceId: number): Promise<{ qr_code: string; instance: WhatsappInstance }> {
+  const { data } = await apiClient.get<ApiResponse<{ qr_code: string; instance: WhatsappInstance }>>(`/admin/whatsapp/instances/${instanceId}/qr`)
+  return unwrapResponse(data, 'تعذر جلب رمز QR')
+}
+
+export async function checkWhatsappInstanceStatus(instanceId: number): Promise<WhatsappInstance> {
+  const { data } = await apiClient.get<ApiResponse<WhatsappInstance>>(`/admin/whatsapp/instances/${instanceId}/status`)
+  return unwrapResponse(data, 'تعذر فحص حالة الاتصال')
+}
+
+export async function reconnectWhatsappInstance(instanceId: number): Promise<WhatsappInstance> {
+  const { data } = await apiClient.post<ApiResponse<WhatsappInstance>>(`/admin/whatsapp/instances/${instanceId}/reconnect`)
+  return unwrapResponse(data, 'تعذر إعادة الاتصال')
+}
+
+export async function disconnectWhatsappInstance(instanceId: number): Promise<WhatsappInstance> {
+  const { data } = await apiClient.post<ApiResponse<WhatsappInstance>>(`/admin/whatsapp/instances/${instanceId}/disconnect`)
+  return unwrapResponse(data, 'تعذر قطع الاتصال')
+}
+
+export async function deleteWhatsappInstance(instanceId: number): Promise<void> {
+  await apiClient.delete(`/admin/whatsapp/instances/${instanceId}`)
+}
+
+export async function testWhatsappInstance(instanceId: number, phoneNumber: string): Promise<{ success: boolean; message: string }> {
+  const { data } = await apiClient.post<ApiResponse<{ success: boolean; message: string }>>(`/admin/whatsapp/instances/${instanceId}/test`, {
+    phone_number: phoneNumber
+  })
+  return unwrapResponse(data, 'تعذر اختبار الإرسال')
+}
+
+export async function testWhatsappInstanceQueue(instanceId: number, phoneNumber: string): Promise<{ success: boolean; message: string }> {
+  const { data } = await apiClient.post<ApiResponse<{ success: boolean; message: string }>>(`/admin/whatsapp/instances/${instanceId}/test-queue`, {
+    phone_number: phoneNumber
+  })
+  return unwrapResponse(data, 'تعذر اختبار الإرسال عبر Queue')
+}
+
+// ==================== End Whatsapp Instances ====================
 
 export async function fetchDutyRosterSettings(): Promise<DutyRosterSettingsRecord> {
   const { data } = await apiClient.get<ApiResponse<DutyRosterSettingsRecord>>('/admin/duty-roster-settings')

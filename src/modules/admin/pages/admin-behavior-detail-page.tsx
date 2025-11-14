@@ -20,7 +20,7 @@ import { useBehaviorStore } from '@/modules/admin/behavior/store/use-behavior-st
 import { ViolationBadge } from '@/modules/admin/behavior/components/violation-badge'
 import type { BehaviorStatus } from '@/modules/admin/behavior/types'
 import { generateCounselorReferralHtml } from '@/modules/admin/behavior/counselor-referral-template'
-import { generateGuardianInvitationHtml } from '@/modules/admin/behavior/guardian-invitation-template'
+import { generateGuardianInvitationHtml } from '@/modules/admin/behavior/generate-guardian-invitation.tsx'
 import { useAdminSettingsQuery } from '@/modules/admin/hooks'
 
 const STATUS_META: Record<BehaviorStatus, string> = {
@@ -127,7 +127,7 @@ export function AdminBehaviorDetailPage() {
     ) => {
       try {
         return new Intl.DateTimeFormat(locales, options).format(target)
-      } catch (error) {
+      } catch {
         return new Intl.DateTimeFormat(fallbackLocales, options).format(target)
       }
     }

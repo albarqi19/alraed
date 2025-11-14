@@ -95,8 +95,7 @@ interface DayDetailsDialogProps {
     query: string
   }) => void
   onClose: () => void
-  onEdit: (session: ClassSessionRecord) => void
-  onDelete: (session: ClassSessionRecord) => void
+  onQuickEdit: (session: ClassSessionRecord) => void
   teacherOptions: TeacherRecord[]
   subjectOptions: SubjectRecord[]
   gradeOptions: string[]
@@ -109,8 +108,7 @@ function DayDetailsDialog({
   filters,
   onFiltersChange,
   onClose,
-  onEdit,
-  onDelete,
+  onQuickEdit,
   teacherOptions,
   subjectOptions,
   gradeOptions,
@@ -240,9 +238,11 @@ function DayDetailsDialog({
           ) : (
             <div className="space-y-3">
               {sessions.map((session) => (
-                <div
+                <button
                   key={session.id}
-                  className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-teal-200 hover:shadow-md"
+                  type="button"
+                  onClick={() => onQuickEdit(session)}
+                  className="w-full rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-teal-300 hover:shadow-md hover:bg-teal-50/30 text-right"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="flex-1">
@@ -279,26 +279,11 @@ function DayDetailsDialog({
                       )}
                     </div>
 
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => onEdit(session)}
-                        className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-teal-200 hover:bg-teal-50 hover:text-teal-600"
-                      >
-                        <i className="bi bi-pencil ml-1" />
-                        تعديل
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onDelete(session)}
-                        className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-rose-600 transition hover:border-rose-200 hover:bg-rose-50"
-                      >
-                        <i className="bi bi-trash ml-1" />
-                        حذف
-                      </button>
+                    <div className="flex items-center text-slate-400">
+                      <i className="bi bi-chevron-left text-lg" />
                     </div>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           )}
@@ -703,6 +688,132 @@ function ConfirmDeleteDialog({ session, open, onCancel, onConfirm, isSubmitting 
   )
 }
 
+interface QuickEditDialogProps {
+  session: ClassSessionRecord | null
+  open: boolean
+  onCancel: () => void
+  onConfirm: (teacherId: number, subjectId: number) => void
+  onDelete: () => void
+  isSubmitting: boolean
+  isDeleting: boolean
+  teacherOptions: TeacherRecord[]
+  subjectOptions: SubjectRecord[]
+}
+
+function QuickEditDialog({ session, open, onCancel, onConfirm, onDelete, isSubmitting, isDeleting, teacherOptions, subjectOptions }: QuickEditDialogProps) {
+  const [selectedTeacherId, setSelectedTeacherId] = useState<number>(0)
+  const [selectedSubjectId, setSelectedSubjectId] = useState<number>(0)
+
+  useEffect(() => {
+    if (session) {
+      setSelectedTeacherId(session.teacher?.id ?? 0)
+      setSelectedSubjectId(session.subject?.id ?? 0)
+    }
+  }, [session])
+
+  if (!open || !session) return null
+
+  const handleSubmit = () => {
+    if (selectedTeacherId && selectedSubjectId) {
+      onConfirm(selectedTeacherId, selectedSubjectId)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" role="dialog">
+      <div className="w-full max-w-md rounded-3xl bg-white p-6 text-right shadow-xl">
+        <header className="mb-6 space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-widest text-teal-600">تعديل سريع</p>
+          <h2 className="text-xl font-semibold text-slate-900">تعديل المعلم والمادة</h2>
+          <p className="text-sm text-muted">
+            الحصة: {session.grade} - {session.class_name} | {session.day} | الحصة {session.period_number}
+          </p>
+        </header>
+
+        <div className="space-y-4">
+          <div className="grid gap-2 text-right">
+            <label htmlFor="quick-edit-teacher" className="text-sm font-medium text-slate-800">
+              المعلم
+            </label>
+            <select
+              id="quick-edit-teacher"
+              value={selectedTeacherId}
+              onChange={(e) => setSelectedTeacherId(Number(e.target.value))}
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+              disabled={isSubmitting}
+            >
+              <option value="0">اختر المعلم...</option>
+              {teacherOptions.map((teacher) => (
+                <option key={teacher.id} value={teacher.id}>
+                  {teacher.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid gap-2 text-right">
+            <label htmlFor="quick-edit-subject" className="text-sm font-medium text-slate-800">
+              المادة
+            </label>
+            <select
+              id="quick-edit-subject"
+              value={selectedSubjectId}
+              onChange={(e) => setSelectedSubjectId(Number(e.target.value))}
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+              disabled={isSubmitting}
+            >
+              <option value="0">اختر المادة...</option>
+              {subjectOptions.map((subject) => (
+                <option key={subject.id} value={subject.id}>
+                  {subject.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <div className="flex gap-2">
+              <i className="bi bi-info-circle mt-0.5 text-amber-600" />
+              <div>
+                <p className="font-semibold">ملاحظة هامة:</p>
+                <p className="mt-1">
+                  السجلات التاريخية للحضور ستبقى كما هي محفوظة بأسماء المعلم والمادة السابقة. التغيير سيؤثر على الحصص الجديدة فقط.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-col gap-3 text-sm sm:flex-row sm:justify-between">
+          <button
+            type="button"
+            onClick={onDelete}
+            className="rounded-2xl border-2 border-rose-200 bg-rose-50 px-6 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-50 sm:w-auto"
+            disabled={isSubmitting || isDeleting}
+          >
+            <i className="bi bi-trash ml-2" />
+            {isDeleting ? 'جاري الحذف...' : 'حذف الحصة'}
+          </button>
+          
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <button type="button" onClick={onCancel} className="button-secondary sm:w-auto" disabled={isSubmitting || isDeleting}>
+              إلغاء
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              className="button-primary sm:w-auto"
+              disabled={isSubmitting || isDeleting || !selectedTeacherId || !selectedSubjectId}
+            >
+              {isSubmitting ? 'جاري الحفظ...' : 'حفظ التغييرات'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
     <div className="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-16 text-center">
@@ -744,6 +855,7 @@ export function AdminClassSessionsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingSession, setEditingSession] = useState<ClassSessionRecord | null>(null)
   const [sessionToDelete, setSessionToDelete] = useState<ClassSessionRecord | null>(null)
+  const [sessionToQuickEdit, setSessionToQuickEdit] = useState<ClassSessionRecord | null>(null)
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [dayDialogFilters, setDayDialogFilters] = useState<{
     grade: string
@@ -856,11 +968,6 @@ export function AdminClassSessionsPage() {
     setIsFormOpen(true)
   }
 
-  const handleEdit = (session: ClassSessionRecord) => {
-    setEditingSession(session)
-    setIsFormOpen(true)
-  }
-
   const createSessionMutation = useCreateClassSessionMutation()
   const updateSessionMutation = useUpdateClassSessionMutation()
   const deleteSessionMutation = useDeleteClassSessionMutation()
@@ -908,6 +1015,36 @@ export function AdminClassSessionsPage() {
         setSessionToDelete(null)
       },
     })
+  }
+
+  const handleQuickEdit = (teacherId: number, subjectId: number) => {
+    if (!sessionToQuickEdit) return
+    
+    // نرسل جميع بيانات الحصة مع تغيير المعلم والمادة فقط
+    const payload = {
+      teacher_id: teacherId,
+      subject_id: subjectId,
+      grade: sessionToQuickEdit.grade,
+      class_name: sessionToQuickEdit.class_name,
+      day: sessionToQuickEdit.day,
+      period_number: sessionToQuickEdit.period_number,
+      start_time: toTimeInputValue(sessionToQuickEdit.start_time),
+      end_time: toTimeInputValue(sessionToQuickEdit.end_time),
+      status: sessionToQuickEdit.status,
+      notes: sessionToQuickEdit.notes ?? null,
+    }
+    
+    updateSessionMutation.mutate(
+      {
+        id: sessionToQuickEdit.id,
+        payload: payload as unknown as Partial<ClassSessionRecord>,
+      },
+      {
+        onSuccess: () => {
+          setSessionToQuickEdit(null)
+        },
+      },
+    )
   }
 
   return (
@@ -1029,8 +1166,7 @@ export function AdminClassSessionsPage() {
           filters={dayDialogFilters}
           onFiltersChange={setDayDialogFilters}
           onClose={() => setSelectedDay(null)}
-          onEdit={handleEdit}
-          onDelete={setSessionToDelete}
+          onQuickEdit={setSessionToQuickEdit}
           teacherOptions={teacherOptions}
           subjectOptions={subjectOptions}
           gradeOptions={gradeOptions}
@@ -1059,6 +1195,23 @@ export function AdminClassSessionsPage() {
         onCancel={() => setSessionToDelete(null)}
         onConfirm={handleDelete}
         isSubmitting={deleteSessionMutation.isPending}
+      />
+
+      <QuickEditDialog
+        open={Boolean(sessionToQuickEdit)}
+        session={sessionToQuickEdit}
+        onCancel={() => setSessionToQuickEdit(null)}
+        onConfirm={handleQuickEdit}
+        onDelete={() => {
+          if (sessionToQuickEdit) {
+            setSessionToDelete(sessionToQuickEdit)
+            setSessionToQuickEdit(null)
+          }
+        }}
+        isSubmitting={updateSessionMutation.isPending}
+        isDeleting={false}
+        teacherOptions={teacherOptions}
+        subjectOptions={subjectOptions}
       />
     </section>
   )

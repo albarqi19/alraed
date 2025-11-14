@@ -1,16 +1,15 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
   useAdminSettingsQuery,
-  useTestWebhookMutation,
   useUpdateAdminSettingsMutation,
-  useTestWhatsappConnectionMutation,
-  useWhatsappSettingsQuery,
 } from '../hooks'
+import { useQuery } from '@tanstack/react-query'
+import { fetchWhatsappInstances } from '../api'
+import { WhatsappInstancesManager } from '../components/whatsapp-instances-manager'
 
 type FormState = {
   school_name: string
   school_phone: string
-  whatsapp_webhook_url: string
   attendance_notification: boolean
   weekly_report: boolean
   auto_approve_attendance: boolean
@@ -19,7 +18,6 @@ type FormState = {
 const EMPTY_FORM: FormState = {
   school_name: '',
   school_phone: '',
-  whatsapp_webhook_url: '',
   attendance_notification: false,
   weekly_report: false,
   auto_approve_attendance: false,
@@ -59,13 +57,18 @@ function ToggleField({
 
 export function AdminSettingsPage() {
   const settingsQuery = useAdminSettingsQuery()
-  const whatsappSettingsQuery = useWhatsappSettingsQuery()
   const updateMutation = useUpdateAdminSettingsMutation()
-  const testWebhookMutation = useTestWebhookMutation()
-  const testWhatsappConnectionMutation = useTestWhatsappConnectionMutation()
+  
+  // جلب instances للعرض في حالة الاتصال
+  const { data: instances = [] } = useQuery({
+    queryKey: ['admin', 'whatsapp', 'instances'],
+    queryFn: fetchWhatsappInstances,
+    refetchInterval: 30000,
+  })
 
   const originalSettings = useMemo(() => settingsQuery.data ?? null, [settingsQuery.data])
 
+  const [activeTab, setActiveTab] = useState<'general' | 'whatsapp-instances'>('general')
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
 
   useEffect(() => {
@@ -73,7 +76,6 @@ export function AdminSettingsPage() {
       setForm({
         school_name: originalSettings.school_name ?? '',
         school_phone: originalSettings.school_phone ?? '',
-        whatsapp_webhook_url: originalSettings.whatsapp_webhook_url ?? '',
         attendance_notification: Boolean(originalSettings.attendance_notification),
         weekly_report: Boolean(originalSettings.weekly_report),
         auto_approve_attendance: Boolean(originalSettings.auto_approve_attendance),
@@ -83,15 +85,12 @@ export function AdminSettingsPage() {
 
   const isLoading = settingsQuery.isLoading
   const isSaving = updateMutation.isPending
-  const isTestingWebhook = testWebhookMutation.isPending
-  const isTestingConnection = testWhatsappConnectionMutation.isPending
 
   const isDirty = useMemo(() => {
     if (!originalSettings) return false
     const normalizedOriginal: FormState = {
       school_name: originalSettings.school_name ?? '',
       school_phone: originalSettings.school_phone ?? '',
-      whatsapp_webhook_url: originalSettings.whatsapp_webhook_url ?? '',
       attendance_notification: Boolean(originalSettings.attendance_notification),
       weekly_report: Boolean(originalSettings.weekly_report),
       auto_approve_attendance: Boolean(originalSettings.auto_approve_attendance),
@@ -139,6 +138,38 @@ export function AdminSettingsPage() {
         ) : null}
       </header>
 
+      {/* Tabs */}
+      <div className="border-b border-slate-200">
+        <div className="flex gap-6">
+          <button
+            type="button"
+            onClick={() => setActiveTab('general')}
+            className={`pb-3 text-sm font-medium transition ${
+              activeTab === 'general'
+                ? 'border-b-2 border-indigo-600 text-indigo-600'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            الإعدادات العامة
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('whatsapp-instances')}
+            className={`pb-3 text-sm font-medium transition ${
+              activeTab === 'whatsapp-instances'
+                ? 'border-b-2 border-indigo-600 text-indigo-600'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            أرقام الواتساب
+          </button>
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'whatsapp-instances' ? (
+        <WhatsappInstancesManager />
+      ) : (
       <section className="grid gap-6 xl:grid-cols-[minmax(0,2fr),minmax(360px,1fr)]">
         <form onSubmit={handleSubmit} className="glass-card space-y-6">
           <header className="space-y-1 text-right">
@@ -175,18 +206,6 @@ export function AdminSettingsPage() {
                   value={form.school_phone}
                   onChange={(event) => handleInputChange('school_phone', event.target.value)}
                   placeholder="مثال: 0501234567"
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  disabled={isSaving}
-                />
-              </div>
-
-              <div className="space-y-2 text-right">
-                <label className="text-xs font-semibold text-slate-600">رابط الويب هوك للواتساب</label>
-                <input
-                  type="url"
-                  value={form.whatsapp_webhook_url}
-                  onChange={(event) => handleInputChange('whatsapp_webhook_url', event.target.value)}
-                  placeholder="https://example.com/webhook"
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                   disabled={isSaving}
                 />
@@ -233,80 +252,86 @@ export function AdminSettingsPage() {
             <header className="space-y-1 text-right">
               <p className="text-xs font-semibold uppercase tracking-widest text-emerald-600">تكامل الواتساب</p>
               <h2 className="text-lg font-semibold text-slate-900">حالة الاتصال</h2>
-              <p className="text-sm text-muted">اختبر الاتصال بالمنصة وتأكد من صحة بيانات الويب هوك.</p>
+              <p className="text-sm text-muted">عرض حالة أرقام الواتساب المرتبطة بالمدرسة</p>
             </header>
 
-            <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm">
-              {whatsappSettingsQuery.isLoading ? (
-                <div className="space-y-2 text-muted">
-                  <div className="h-12 animate-pulse rounded-2xl bg-slate-100" />
+            <div className="space-y-3">
+              {instances.length === 0 ? (
+                <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-6 text-center">
+                  <p className="text-sm text-muted">لا توجد أرقام واتساب مرتبطة</p>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('whatsapp-instances')}
+                    className="button-secondary mt-3 text-xs"
+                  >
+                    إضافة رقم الآن
+                  </button>
                 </div>
-              ) : whatsappSettingsQuery.data ? (
-                <ul className="space-y-2 text-right text-sm text-slate-700">
-                  <li>
-                    <span className="font-semibold text-slate-500">اسم الجلسة:</span>{' '}
-                    {whatsappSettingsQuery.data.instance_name ?? 'غير محدد'}
-                  </li>
-                  <li>
-                    <span className="font-semibold text-slate-500">رقم الهاتف:</span>{' '}
-                    {whatsappSettingsQuery.data.phone_number ?? '—'}
-                  </li>
-                  <li>
-                    <span className="font-semibold text-slate-500">الحالة:</span>{' '}
-                    {whatsappSettingsQuery.data.is_connected ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                        <i className="bi bi-check-circle" /> متصل
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
-                        <i className="bi bi-exclamation-circle" /> غير متصل
-                      </span>
-                    )}
-                  </li>
-                  <li>
-                    <span className="font-semibold text-slate-500">آخر مزامنة:</span>{' '}
-                    {whatsappSettingsQuery.data.last_sync_at ?? '—'}
-                  </li>
-                </ul>
               ) : (
-                <p className="text-xs text-muted">تعذر تحميل حالة الاتصال.</p>
+                <>
+                  {instances.map((instance) => (
+                    <div
+                      key={instance.id}
+                      className="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm"
+                    >
+                      <div className="mb-3 flex items-start justify-between">
+                        <div className="space-y-1">
+                          <p className="font-semibold text-slate-900">{instance.instance_name}</p>
+                          {instance.phone_number && (
+                            <p className="text-xs text-slate-600">{instance.phone_number}</p>
+                          )}
+                          {instance.department && (
+                            <p className="text-xs text-muted">{instance.department}</p>
+                          )}
+                        </div>
+                        {instance.status === 'connected' && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
+                            <i className="bi bi-check-circle" /> متصل
+                          </span>
+                        )}
+                        {instance.status === 'connecting' && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700">
+                            <i className="bi bi-arrow-repeat" /> جاري الاتصال
+                          </span>
+                        )}
+                        {instance.status === 'disconnected' && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700">
+                            <i className="bi bi-exclamation-circle" /> غير متصل
+                          </span>
+                        )}
+                      </div>
+                      
+                      {instance.last_connected_at && (
+                        <p className="mt-2 text-xs text-muted">
+                          آخر اتصال: {new Date(instance.last_connected_at).toLocaleString('ar-SA')}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                  
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('whatsapp-instances')}
+                    className="button-secondary w-full text-xs"
+                  >
+                    إدارة الأرقام
+                  </button>
+                </>
               )}
             </div>
-
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              <button
-                type="button"
-                className="button-secondary"
-                onClick={() => testWebhookMutation.mutate()}
-                disabled={isTestingWebhook || isLoading}
-              >
-                {isTestingWebhook ? 'جارٍ الاختبار...' : 'اختبار الويب هوك'}
-              </button>
-              <button
-                type="button"
-                className="button-secondary"
-                onClick={() => testWhatsappConnectionMutation.mutate()}
-                disabled={isTestingConnection}
-              >
-                {isTestingConnection ? 'جارٍ التحقق...' : 'اختبار الاتصال'}
-              </button>
-            </div>
-
-            {testWebhookMutation.isError ? (
-              <p className="text-xs text-rose-600">فشل اختبار الويب هوك. تأكد من صحة الرابط.</p>
-            ) : null}
           </section>
 
           <section className="glass-card space-y-3 text-right text-sm text-muted">
             <h3 className="text-lg font-semibold text-slate-900">إرشادات</h3>
             <ul className="space-y-2">
-              <li>تأكد من أن رقم الهاتف بصيغة دولية صحيحة لرسائل الواتساب.</li>
-              <li>يجب أن يكون رابط الويب هوك متاحًا ويستقبل الطلبات من الخادم.</li>
-              <li>عند تعطيل الموافقة التلقائية، ستظهر طلبات الاعتماد في تبويب التحضير.</li>
+              <li>يمكنك إضافة أرقام واتساب متعددة لمدرستك من تبويب "أرقام الواتساب"</li>
+              <li>كل رقم يعمل بشكل مستقل ويمكن تخصيصه لقسم معين</li>
+              <li>عند تعطيل الموافقة التلقائية، ستظهر طلبات الاعتماد في تبويب التحضير</li>
             </ul>
           </section>
         </aside>
       </section>
+      )}
     </section>
   )
 }

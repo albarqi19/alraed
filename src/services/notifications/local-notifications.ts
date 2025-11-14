@@ -15,6 +15,16 @@ export interface ClassSessionNotification {
   notifyAt: Date
 }
 
+interface SessionInput {
+  day: string
+  start_time: string
+  subject: string | { name: string }
+  grade: string
+  class_name: string
+  id: number
+  teacher_id: number
+}
+
 class LocalNotificationService {
   private readonly STORAGE_KEY = 'scheduled_notifications'
   private readonly PERMISSION_KEY = 'notification_permission_requested'
@@ -66,7 +76,7 @@ class LocalNotificationService {
   /**
    * جدولة إشعارات للحصص الأسبوعية
    */
-  async scheduleWeeklyNotifications(sessions: any[]): Promise<void> {
+  async scheduleWeeklyNotifications(sessions: SessionInput[]): Promise<void> {
     if (!this.isSupported() || !this.hasPermission()) {
       console.warn('الإشعارات غير مدعومة أو لم يتم منح الإذن')
       return
@@ -93,7 +103,7 @@ class LocalNotificationService {
           id: `session_${session.id}_${notifyDate.getTime()}`,
           teacherId: session.teacher_id,
           sessionId: session.id,
-          subject: session.subject?.name || 'مادة',
+          subject: typeof session.subject === 'string' ? session.subject : session.subject?.name || 'مادة',
           grade: session.grade,
           className: session.class_name,
           startTime: session.start_time,
@@ -266,9 +276,9 @@ class LocalNotificationService {
       const data = localStorage.getItem(this.STORAGE_KEY)
       if (!data) return []
 
-      const notifications = JSON.parse(data)
+      const notifications = JSON.parse(data) as Array<Omit<ClassSessionNotification, 'notifyAt'> & { notifyAt: string }>
       // تحويل التواريخ من string إلى Date
-      return notifications.map((n: any) => ({
+      return notifications.map((n) => ({
         ...n,
         notifyAt: new Date(n.notifyAt),
       }))

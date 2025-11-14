@@ -18,6 +18,11 @@ export const adminQueryKeys = {
     summary: () => ['admin', 'class-schedules', 'summary'] as const,
     schedule: (grade: string, className: string) => ['admin', 'class-schedules', grade, className] as const,
   },
+  teacherSchedules: {
+    summary: () => ['admin', 'teacher-schedules', 'summary'] as const,
+    schedule: (teacherId: number) => ['admin', 'teacher-schedules', teacherId] as const,
+    dayLimits: () => ['admin', 'teacher-schedules', 'day-limits'] as const,
+  },
   schedules: {
     all: () => ['admin', 'schedules', 'list'] as const,
     detail: (id: number) => ['admin', 'schedules', id] as const,

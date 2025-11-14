@@ -10,6 +10,7 @@ import {
   type SortingState,
   type ColumnFiltersState,
 } from '@tanstack/react-table'
+import { useQuery } from '@tanstack/react-query'
 import {
   useCreateWhatsappTemplateMutation,
   useDeleteAllPendingWhatsappMessagesMutation,
@@ -17,15 +18,14 @@ import {
   useDeleteWhatsappTemplateMutation,
   useSendPendingWhatsappMessagesMutation,
   useSendSingleWhatsappMessageMutation,
-  useTestWhatsappConnectionMutation,
   useUpdateWhatsappTemplateMutation,
   useWhatsappHistoryQuery,
   useWhatsappQueueQuery,
-  useWhatsappSettingsQuery,
   useWhatsappStatisticsQuery,
   useWhatsappTemplatesQuery,
 } from '../hooks'
-import type { WhatsappHistoryItem, WhatsappQueueItem, WhatsappTemplate, WhatsappTemplateVariable } from '../types'
+import { fetchWhatsappInstances } from '../api'
+import type { WhatsappHistoryItem, WhatsappQueueItem, WhatsappTemplate, WhatsappTemplateVariable, WhatsappInstance } from '../types'
 
 type TabKey = 'queue' | 'history' | 'templates'
 
@@ -142,7 +142,11 @@ export function WhatsappHubPage() {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
 
   const statisticsQuery = useWhatsappStatisticsQuery()
-  const settingsQuery = useWhatsappSettingsQuery()
+  const { data: instances = [], isLoading: isLoadingInstances } = useQuery({
+    queryKey: ['admin', 'whatsapp', 'instances'],
+    queryFn: fetchWhatsappInstances,
+    refetchInterval: 30000,
+  })
   const queueQuery = useWhatsappQueueQuery()
   const historyQuery = useWhatsappHistoryQuery()
   const templatesQuery = useWhatsappTemplatesQuery()
@@ -151,7 +155,6 @@ export function WhatsappHubPage() {
   const sendSingleMutation = useSendSingleWhatsappMessageMutation()
   const deleteQueueMutation = useDeleteWhatsappQueueItemMutation()
   const deleteAllPendingMutation = useDeleteAllPendingWhatsappMessagesMutation()
-  const testConnectionMutation = useTestWhatsappConnectionMutation()
 
   const createTemplateMutation = useCreateWhatsappTemplateMutation()
   const updateTemplateMutation = useUpdateWhatsappTemplateMutation()
@@ -395,7 +398,6 @@ export function WhatsappHubPage() {
   }
 
   const isBusySendingAll = sendPendingMutation.isPending
-  const isTestingConnection = testConnectionMutation.isPending
 
   const deleteQueueTarget = deleteQueueMutation.variables ?? null
   const sendSingleTarget = sendSingleMutation.variables ?? null
@@ -453,39 +455,54 @@ export function WhatsappHubPage() {
         <aside className={`${PANEL_CLASS} space-y-4 p-6 lg:p-8`}>
           <div className="space-y-1 text-right">
             <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">حالة الاتصال</p>
-            <h2 className="text-lg font-semibold text-slate-900">تكامل منصة الواتساب</h2>
+            <h2 className="text-lg font-semibold text-slate-900">أرقام الواتساب</h2>
           </div>
-          {settingsQuery.isLoading ? (
+          {isLoadingInstances ? (
             <div className="h-24 rounded-2xl bg-slate-100 animate-pulse" />
-          ) : settingsQuery.data ? (
-            <dl className="space-y-3 text-sm text-slate-600">
-              <div className="flex items-center justify-between gap-3">
-                <dt className="text-slate-500">اسم الجلسة</dt>
-                <dd className="font-semibold text-slate-900">{settingsQuery.data.instance_name ?? 'غير محدد'}</dd>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <dt className="text-slate-500">حالة الربط</dt>
-                <dd>{settingsQuery.data.is_connected ? <StatusPill tone="success" icon="bi-check-circle" label="متصل" /> : <StatusPill tone="danger" icon="bi-exclamation-circle" label="غير متصل" />}</dd>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <dt className="text-slate-500">آخر مزامنة</dt>
-                <dd className="text-slate-900">{settingsQuery.data.last_sync_at ? formatDateTime(settingsQuery.data.last_sync_at) : '—'}</dd>
-              </div>
-            </dl>
+          ) : instances.length === 0 ? (
+            <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-6 text-center">
+              <p className="text-sm text-muted">لا توجد أرقام واتساب مرتبطة</p>
+              <p className="mt-2 text-xs text-slate-500">قم بإضافة رقم واتساب من صفحة الإعدادات</p>
+            </div>
           ) : (
-            <p className="text-xs text-muted">تعذر تحميل حالة الاتصال.</p>
+            <div className="space-y-3">
+              {instances.map((instance: WhatsappInstance) => (
+                <div
+                  key={instance.id}
+                  className="rounded-2xl border border-slate-200 bg-white/80 p-4"
+                >
+                  <div className="mb-2 flex items-start justify-between">
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-slate-900">{instance.instance_name}</p>
+                      {instance.phone_number && (
+                        <p className="text-xs text-slate-600">{instance.phone_number}</p>
+                      )}
+                      {instance.department && (
+                        <p className="text-xs text-muted">{instance.department}</p>
+                      )}
+                    </div>
+                    {instance.status === 'connected' && (
+                      <StatusPill tone="success" icon="bi-check-circle" label="متصل" />
+                    )}
+                    {instance.status === 'connecting' && (
+                      <StatusPill tone="warning" icon="bi-arrow-repeat" label="جاري الاتصال" />
+                    )}
+                    {instance.status === 'disconnected' && (
+                      <StatusPill tone="danger" icon="bi-exclamation-circle" label="غير متصل" />
+                    )}
+                  </div>
+                  {instance.last_connected_at && (
+                    <p className="text-xs text-muted">
+                      آخر اتصال: {formatDateTime(instance.last_connected_at)}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
           )}
           <div className="flex flex-wrap items-center justify-end gap-2">
             <button type="button" className="button-secondary" onClick={() => statisticsQuery.refetch()}>
               تحديث الإحصائيات
-            </button>
-            <button
-              type="button"
-              className="button-secondary"
-              onClick={() => testConnectionMutation.mutate()}
-              disabled={isTestingConnection}
-            >
-              {isTestingConnection ? 'جارٍ الفحص...' : 'اختبار الاتصال'}
             </button>
           </div>
         </aside>

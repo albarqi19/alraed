@@ -74,6 +74,7 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
     icon: Calendar,
     items: [
       { to: '/admin/class-schedules', label: 'جداول الفصول', icon: Calendar },
+      { to: '/admin/teacher-schedules', label: 'جداول المعلمين', icon: Users },
       // { to: '/admin/school-timetable', label: 'الجدول المدرسي', icon: CalendarRange },
       { to: '/admin/class-sessions', label: 'إدارة الحصص', icon: Clock },
       { to: '/admin/schedules', label: 'الخطط الزمنية', icon: ListTodo },

@@ -24,9 +24,6 @@ import {
   deleteClassSession,
   deleteLateArrival,
   deleteSchedule,
-  deleteStudent,
-  deleteSubject,
-  deleteTeacher,
   deleteAllPendingWhatsappMessages,
   deleteWhatsappQueueItem,
   deleteWhatsappTemplate,
@@ -52,11 +49,7 @@ import {
   fetchTeacherAttendanceSettings,
   fetchTeacherAttendanceDelays,
   fetchScheduleDetails,
-  fetchScheduleSessionData,
   fetchScheduleTemplates,
-  fetchSchedules,
-  fetchStudents,
-  fetchSubjects,
   fetchTeachers,
   fetchWhatsappAbsentStudents,
   fetchWhatsappHistory,
@@ -79,6 +72,12 @@ import {
   sendWhatsappBulkMessages,
   testWebhook,
   testWhatsappConnection,
+  fetchTeacherSchedule,
+  fetchTeacherScheduleSummary,
+  previewTeacherScheduleMove,
+  confirmTeacherScheduleMove,
+  fetchTeacherScheduleDayLimits,
+  updateTeacherScheduleDayLimits,
   updateAdminSettings,
   updateClassSession,
   updateLeaveRequest,
@@ -122,6 +121,13 @@ import {
   cancelStoreOrder,
   rejectStoreOrder,
   updateStoreSettings,
+  deleteTeacher,
+  deleteStudent,
+  deleteSubject,
+  fetchStudents,
+  fetchSubjects,
+  fetchScheduleSessionData,
+  fetchSchedules,
   createDutyRoster,
   markDutyRosterAssignmentAbsent,
   assignDutyRosterReplacement,
@@ -168,6 +174,14 @@ import type {
   SmsDeviceActivityLog,
   SendSmsPayload,
   RegisterDevicePayload,
+  TeacherScheduleResult,
+  TeacherScheduleSummary,
+  TeacherScheduleMovePreviewPayload,
+  TeacherScheduleMovePreviewResult,
+  TeacherScheduleMoveConfirmPayload,
+  TeacherScheduleMoveConfirmResult,
+  TeacherScheduleDayLimits,
+  TeacherScheduleDayLimitsResponse,
 } from './types'
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -689,6 +703,89 @@ export function useClassScheduleQuery(grade?: string, className?: string) {
     queryKey: grade && className ? adminQueryKeys.classSessions.schedule(grade, className) : ['admin', 'class-schedules'],
     queryFn: () => fetchClassSchedule(grade as string, className as string),
     enabled: Boolean(grade && className),
+  })
+}
+
+export function useTeacherScheduleSummaryQuery() {
+  return useQuery<TeacherScheduleSummary[]>({
+    queryKey: adminQueryKeys.teacherSchedules.summary(),
+    queryFn: fetchTeacherScheduleSummary,
+  })
+}
+
+export function useTeacherScheduleQuery(teacherId?: number) {
+  return useQuery<TeacherScheduleResult>({
+    queryKey: teacherId ? adminQueryKeys.teacherSchedules.schedule(teacherId) : ['admin', 'teacher-schedules'],
+    queryFn: () => fetchTeacherSchedule(teacherId as number),
+    enabled: Boolean(teacherId),
+  })
+}
+
+export function useTeacherScheduleDayLimitsQuery(options: { enabled?: boolean } = {}) {
+  return useQuery<TeacherScheduleDayLimitsResponse>({
+    queryKey: adminQueryKeys.teacherSchedules.dayLimits(),
+    queryFn: fetchTeacherScheduleDayLimits,
+    enabled: options.enabled ?? true,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+export function useUpdateTeacherScheduleDayLimitsMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation<TeacherScheduleDayLimits, unknown, TeacherScheduleDayLimits>({
+    mutationFn: (payload) => updateTeacherScheduleDayLimits(payload),
+    onSuccess: () => {
+      toast({ type: 'success', title: 'تم حفظ حدود الحصص اليومية' })
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.teacherSchedules.dayLimits() })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر حفظ حدود الحصص اليومية') })
+    },
+  })
+}
+
+export function useTeacherScheduleMovePreviewMutation() {
+  const toast = useToast()
+
+  return useMutation<TeacherScheduleMovePreviewResult, unknown, TeacherScheduleMovePreviewPayload>({
+    mutationFn: (payload) => previewTeacherScheduleMove(payload),
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تحليل التعارضات') })
+    },
+  })
+}
+
+type TeacherScheduleMoveConfirmVariables = TeacherScheduleMoveConfirmPayload & {
+  source_teacher_id?: number | null
+}
+
+export function useTeacherScheduleMoveMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation<TeacherScheduleMoveConfirmResult, unknown, TeacherScheduleMoveConfirmVariables>({
+    mutationFn: ({ source_teacher_id: _sourceTeacherId, ...payload }) => {
+      void _sourceTeacherId
+      return confirmTeacherScheduleMove(payload)
+    },
+    onSuccess: (result, variables) => {
+      toast({ type: 'success', title: result.message ?? 'تم نقل الحصة' })
+
+      const teacherIds = new Set<number>()
+      if (variables.target_teacher_id) teacherIds.add(variables.target_teacher_id)
+      if (variables.source_teacher_id) teacherIds.add(variables.source_teacher_id)
+
+      teacherIds.forEach((teacherId) => {
+        queryClient.invalidateQueries({ queryKey: adminQueryKeys.teacherSchedules.schedule(teacherId) })
+      })
+
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.teacherSchedules.summary() })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تنفيذ النقل') })
+    },
   })
 }
 

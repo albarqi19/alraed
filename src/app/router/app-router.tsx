@@ -18,6 +18,7 @@ import { AdminFormDetailPage } from '@/modules/admin/pages/admin-form-detail-pag
 import { AdminFormSubmissionsPage } from '@/modules/admin/pages/admin-form-submissions-page'
 import { AdminClassSessionsPage } from '@/modules/admin/pages/admin-class-sessions-page'
 import { AdminClassSchedulesPage } from '@/modules/admin/pages/admin-class-schedules-page'
+import { AdminTeacherSchedulesPage } from '@/modules/admin/pages/admin-teacher-schedules-page'
 import { AdminSchoolTimetablePage } from '@/modules/admin/pages/admin-school-timetable-page'
 import { AdminSchedulesPage } from '@/modules/admin/pages/admin-schedules-page'
 import { AdminImportPage } from '@/modules/admin/pages/admin-import-page'
@@ -149,6 +150,7 @@ const appRoutes = [
           { path: 'subjects', element: <AdminSubjectsPage /> },
           { path: 'class-sessions', element: <AdminClassSessionsPage /> },
           { path: 'class-schedules', element: <AdminClassSchedulesPage /> },
+          { path: 'teacher-schedules', element: <AdminTeacherSchedulesPage /> },
           { path: 'school-timetable', element: <AdminSchoolTimetablePage /> },
           { path: 'schedules', element: <AdminSchedulesPage /> },
           { path: 'import', element: <AdminImportPage /> },
