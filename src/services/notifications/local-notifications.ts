@@ -15,7 +15,7 @@ export interface ClassSessionNotification {
   notifyAt: Date
 }
 
-interface SessionInput {
+export interface SessionInput {
   day: string
   start_time: string
   subject: string | { name: string }
