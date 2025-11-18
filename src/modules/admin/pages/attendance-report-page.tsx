@@ -12,6 +12,7 @@ import type {
 } from '../types'
 import { useToast } from '@/shared/feedback/use-toast'
 import { AbsentStudentsPDFModal } from '../components/absent-students-pdf-modal'
+import { NoorSyncStatusModal } from '../components/noor-sync-status-modal'
 
 const REPORT_TYPES = [
   { value: 'class', label: 'كشف فصل كامل', description: 'حدد الصف والشعبة لعرض جميع الطلاب في الفصل.' },
@@ -314,6 +315,7 @@ export function AttendanceReportPage() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(PAGE_SIZE_OPTIONS[1])
   const [showAbsentPDFModal, setShowAbsentPDFModal] = useState(false)
+  const [showNoorSyncModal, setShowNoorSyncModal] = useState(false)
 
   const toast = useToast()
   const studentsQuery = useStudentsQuery()
@@ -568,21 +570,38 @@ export function AttendanceReportPage() {
             أنشئ كشف حضور وغياب شامل مع إمكان التصفية حسب الصف، الشعبة، الطالب، والفترة الزمنية، ثم صدّره إلى PDF أو Excel بسهولة.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowAbsentPDFModal(true)}
-          className="button-primary flex items-center gap-2 whitespace-nowrap"
-        >
-          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          كشف الغائبين
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowNoorSyncModal(true)}
+            className="button-secondary flex items-center gap-2 whitespace-nowrap"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            حالة الرصد في نور
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowAbsentPDFModal(true)}
+            className="button-primary flex items-center gap-2 whitespace-nowrap"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            كشف الغائبين
+          </button>
+        </div>
       </header>
 
       <AbsentStudentsPDFModal
         open={showAbsentPDFModal}
         onClose={() => setShowAbsentPDFModal(false)}
+      />
+
+      <NoorSyncStatusModal
+        isOpen={showNoorSyncModal}
+        onClose={() => setShowNoorSyncModal(false)}
       />
 
   <div className="grid gap-6 xl:grid-cols-[minmax(320px,360px),minmax(0,1fr)] 2xl:grid-cols-[minmax(320px,380px),minmax(0,1fr)]">

@@ -182,6 +182,7 @@ import type {
   TeacherScheduleMoveConfirmResult,
   TeacherScheduleDayLimits,
   TeacherScheduleDayLimitsResponse,
+  NoorSyncRecord,
 } from './types'
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -2276,6 +2277,22 @@ export function useToggleSmsDeviceStatusMutation() {
     },
     onError: (error) => {
       toast({ type: 'error', title: getErrorMessage(error, 'تعذر تغيير حالة الجهاز') })
+    },
+  })
+}
+
+// =====================================================
+// Noor Sync Hooks
+// =====================================================
+
+export function useNoorSyncRecordsQuery(filters: Record<string, string> = {}) {
+  const params = new URLSearchParams(filters)
+  return useQuery({
+    queryKey: ['admin', 'noor-sync', 'records', filters],
+    queryFn: async () => {
+      const { data } = await apiClient.get<ApiResponse<NoorSyncRecord[]>>(`/noor-sync/records?${params}`)
+      if (!data.success) throw new Error(data.message)
+      return data.data
     },
   })
 }

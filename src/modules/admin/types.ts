@@ -1546,6 +1546,34 @@ export interface SmsStatistics {
   messages_this_month: number
 }
 
+export interface NoorSyncRecord {
+  id: number
+  teacher_id: number
+  school_id: number
+  attendance_date: string
+  grade: string
+  class_name: string
+  subject_name: string
+  status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled'
+  total_students: number
+  processed_students: number
+  absent_students: number
+  failed_students: number
+  started_at: string | null
+  completed_at: string | null
+  duration_seconds: number | null
+  student_data: string | any[] | null // Can be JSON string or already parsed array
+  sync_results: string | null
+  noor_sync_status: string | null
+  synced_at: string | null
+  error_log: string | null
+  notes: string | null
+  extension_version: string | null
+  browser_info: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface SendSmsPayload {
   phone: string
   message: string
