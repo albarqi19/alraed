@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNoorSyncRecordsQuery } from '../hooks'
-import type { NoorSyncRecord } from '../types'
 
 type FilterState = {
   date: string
