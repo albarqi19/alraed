@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { login as loginRequest, logout as logoutRequest } from './api'
+import { login as loginRequest, logout as logoutRequest, requestPasswordReset } from './api'
 import type { LoginPayload } from './types'
 import { useAuthStore } from './store/auth-store'
 import { useToast } from '@/shared/feedback/use-toast'
@@ -50,5 +50,11 @@ export function useLogoutMutation() {
       navigate('/', { replace: true })
       showToast({ type: 'info', title: 'تم تسجيل الخروج' })
     },
+  })
+}
+
+export function useForgotPasswordMutation() {
+  return useMutation({
+    mutationFn: (payload: { national_id: string; phone_last_4: string }) => requestPasswordReset(payload),
   })
 }

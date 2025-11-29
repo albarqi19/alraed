@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { useLoginMutation } from '../hooks'
 
 interface LoginFormProps {
@@ -112,6 +113,18 @@ export function LoginForm({ role, heading, description, submitLabel }: LoginForm
               </span>
             )}
           </button>
+
+          {role === 'teacher' && (
+            <div className="text-center pt-2">
+              <Link
+                to="/auth/forgot-password"
+                className="text-sm font-medium text-teal-600 hover:text-teal-700 transition"
+              >
+                <i className="bi bi-key ml-1"></i>
+                نسيت كلمة المرور؟
+              </Link>
+            </div>
+          )}
         </form>
       </div>
     </section>

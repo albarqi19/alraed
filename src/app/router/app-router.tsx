@@ -3,6 +3,7 @@ import { RootLayout } from '../layouts/root-layout'
 import { LandingPage } from '@/modules/core/pages/landing-page'
 import { TeacherLoginPage } from '@/modules/auth/pages/teacher-login-page'
 import { AdminLoginPage } from '@/modules/auth/pages/admin-login-page'
+import { ForgotPasswordPage } from '@/modules/auth/pages/forgot-password-page'
 import { TeacherDashboardPage } from '@/modules/teacher/pages/teacher-dashboard-page'
 import { TeacherMessagesPage } from '@/modules/teacher/pages/teacher-messages-page'
 import { TeacherPointsPage } from '@/modules/teacher/pages/teacher-points-page'
@@ -98,6 +99,10 @@ const appRoutes = [
             <TeacherLoginPage />
           </RedirectIfAuthenticated>
         ),
+      },
+      {
+        path: 'auth/forgot-password',
+        element: <ForgotPasswordPage />,
       },
       {
         path: 'auth/admin',

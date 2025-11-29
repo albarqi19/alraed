@@ -35,8 +35,14 @@ function normalizeLoginResponse(raw: unknown): LoginResponse {
 }
 
 export async function login(payload: LoginPayload) {
-  const { data } = await apiClient.post('/auth/login', payload)
-  return normalizeLoginResponse(data)
+  try {
+    const { data } = await apiClient.post('/auth/login', payload)
+    return normalizeLoginResponse(data)
+  } catch (error: any) {
+    // استخراج رسالة الخطأ من response
+    const message = error.response?.data?.message || error.message || 'رقم الهوية أو كلمة المرور غير صحيحة'
+    throw new Error(message)
+  }
 }
 
 export async function logout() {
@@ -53,4 +59,15 @@ export async function fetchCurrentUser() {
     throw new Error(data.message ?? 'تعذر تحميل بيانات المستخدم')
   }
   return data.data.user
+}
+
+export async function requestPasswordReset(payload: { national_id: string; phone_last_4: string }) {
+  const { data } = await apiClient.post<ApiResponse<{ phone_masked: string }>>('/auth/forgot-password', payload)
+  if (!data.success) {
+    throw new Error(data.message ?? 'فشل إرسال طلب استرجاع كلمة المرور')
+  }
+  return {
+    message: data.message ?? 'تم إرسال كلمة المرور عبر الواتساب',
+    phone_masked: data.data.phone_masked,
+  }
 }
