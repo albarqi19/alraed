@@ -38,7 +38,15 @@ export interface AuthenticatedUser {
   email?: string | null
   phone?: string | null
   needs_password_change?: boolean
-  permissions?: string[] // صلاحيات المستخدم
+  permissions?: string[] // صلاحيات بسيطة للفرونت
+  permissions_simple?: string[] // نسخة بديلة
+  detailed_permissions?: Array<{
+    slug: string
+    name?: string
+    name_ar?: string
+    is_enabled?: boolean
+    actions?: string[]
+  }> // صلاحيات تفصيلية للإضافات الخارجية
 }
 
 export interface LoginPayload {
