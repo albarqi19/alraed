@@ -90,7 +90,7 @@ export const DEFAULT_SCHEDULES: BellSchedule[] = [
     id: createId(),
     name: 'الجدول الشتوي',
     description: 'مناسب للفترة الشتوية، يبدأ الدوام الساعة 6:45 صباحًا.',
-    isEnabled: true,
+    isEnabled: false,
     allowBackgroundExecution: true,
     toneProfileId: 'calm-voice-v1',
     createdAt: new Date().toISOString(),

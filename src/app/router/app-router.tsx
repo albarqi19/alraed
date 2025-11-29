@@ -74,6 +74,7 @@ import { AdminBehaviorPlansPage } from '@/modules/admin/pages/admin-behavior-pla
 import { AdminBehaviorAnalyticsPage } from '@/modules/admin/pages/admin-behavior-analytics-page'
 import { AdminPermissionsPage } from '@/modules/permissions/pages/admin-permissions-page'
 import { ExcuseSubmissionPage, AdminAbsenceExcusesPage } from '@/modules/excuse'
+import { AdminSupportPage } from '@/modules/admin/pages/admin-support-page'
 import {
   GuidanceAccessPage,
   GuidanceDashboardPage,
@@ -187,6 +188,7 @@ const appRoutes = [
           { path: 'settings', element: <AdminSettingsPage /> },
           { path: 'theme', element: <AdminThemeSettingsPage /> },
           { path: 'permissions', element: <AdminPermissionsPage /> },
+          { path: 'support', element: <AdminSupportPage /> },
           { path: 'whatsapp', element: <WhatsappHubPage /> },
           { path: 'sms-gateway', element: <AdminSmsGatewayPage /> },
           { path: 'whatsapp-send', element: <WhatsAppSendPage /> },
