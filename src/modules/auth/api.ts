@@ -21,10 +21,16 @@ function normalizeLoginResponse(raw: unknown): LoginResponse {
 
   const token = payload?.token ?? payload?.access_token ?? candidate.access_token ?? candidate.token
   const tokenType = payload?.token_type ?? candidate.token_type ?? 'Bearer'
-  const user = payload?.user ?? candidate.user ?? candidate.data?.user
+  const rawUser = payload?.user ?? candidate.user ?? candidate.data?.user
 
-  if (!token || !user) {
+  if (!token || !rawUser) {
     throw new Error('استجابة غير صالحة من الخادم عند تسجيل الدخول')
+  }
+
+  // استخدام permissions_simple للفرونت إذا كانت موجودة، وإلا permissions العادية
+  const user = {
+    ...rawUser,
+    permissions: rawUser.permissions_simple ?? rawUser.permissions ?? [],
   }
 
   return {
