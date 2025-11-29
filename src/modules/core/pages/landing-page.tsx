@@ -1,21 +1,22 @@
 import { Link } from 'react-router-dom'
 
-const features = [
-  {
-    title: 'دخول المعلم',
-    description: 'إدارة الحصص اليومية، تسجيل الحضور، وتتبع أداء الطلاب بسهولة.',
-    to: '/auth/teacher',
-    actionLabel: 'دخول المعلم',
-    icon: '',
-  },
-  {
-    title: 'دخول الإدارة',
-    description: 'إحصائيات فورية، إدارة البيانات، ومتابعة شاملة لجميع الأنشطة المدرسية.',
-    to: '/auth/admin',
-    actionLabel: 'دخول الإدارة',
-    icon: '',
-  },
-]
+// Unused for now
+// const features = [
+//   {
+//     title: 'دخول المعلم',
+//     description: 'إدارة الحصص اليومية، تسجيل الحضور، وتتبع أداء الطلاب بسهولة.',
+//     to: '/auth/teacher',
+//     actionLabel: 'دخول المعلم',
+//     icon: '',
+//   },
+//   {
+//     title: 'دخول الإدارة',
+//     description: 'إحصائيات فورية، إدارة البيانات، ومتابعة شاملة لجميع الأنشطة المدرسية.',
+//     to: '/auth/admin',
+//     actionLabel: 'دخول الإدارة',
+//     icon: '',
+//   },
+// ]
 
 const systemFeatures = [
   {
@@ -87,18 +88,12 @@ export function LandingPage() {
               منصة لإدارة جوانب العملية التعليمية والإدارية، من الحضور والغياب إلى التوجيه الطلابي والتواصل مع أولياء الأمور.
             </p>
             <div className="flex flex-wrap gap-3">
-              {/* <Link to="/register" className="button-primary">
-                <i className="bi bi-rocket-takeoff" /> ابدأ التسجيل
+              <Link to="/auth/teacher" className="button-primary">
+                <i className="bi bi-box-arrow-in-left" /> الدخول
               </Link>
-              <Link to="/plans" className="button-secondary">
-                <i className="bi bi-grid" /> استعراض الباقات
+              {/* <Link to="/register" className="button-secondary">
+                <i className="bi bi-pencil-square" /> التسجيل
               </Link> */}
-              <Link to="/auth/teacher" className="button-secondary">
-                <i className="bi bi-person-fill" /> دخول المعلم
-              </Link>
-              <Link to="/auth/admin" className="button-secondary">
-                <i className="bi bi-gear-fill" /> دخول الإدارة
-              </Link>
             </div>
           </div>
           <div className="grid gap-3 rounded-3xl bg-white/70 p-6 shadow-lg">
@@ -114,31 +109,16 @@ export function LandingPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {features.map((feature) => (
-          <article key={feature.title} className="glass-card h-full transition hover:shadow-xl">
-            <div className="flex flex-col gap-4">
-              <div className="text-5xl">{feature.icon}</div>
-              <h2 className="text-2xl font-semibold text-slate-900">{feature.title}</h2>
-              <p className="text-sm text-muted">{feature.description}</p>
-              <Link to={feature.to} className="button-secondary self-start">
-                {feature.actionLabel} <i className="bi bi-arrow-left mr-2" />
-              </Link>
-            </div>
-          </article>
-        ))}
-      </div>
-
       <div className="space-y-6">
         <div className="text-center space-y-2">
           <h2 className="text-3xl font-bold text-slate-900">مميزات النظام</h2>
           <p className="text-muted">حل شامل ومتكامل لجميع احتياجات إدارة المدرسة</p>
         </div>
-        
+
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {systemFeatures.map((feature) => (
-            <article 
-              key={feature.title} 
+            <article
+              key={feature.title}
               className="glass-card h-full transition hover:shadow-lg hover:scale-105"
             >
               <div className="flex flex-col gap-3 text-center">
@@ -159,11 +139,11 @@ export function LandingPage() {
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
             <Link to="/auth/teacher" className="button-primary">
-              <i className="bi bi-person-fill" /> دخول المعلم
+              <i className="bi bi-box-arrow-in-left" /> الدخول
             </Link>
-            <Link to="/auth/admin" className="button-secondary">
-              <i className="bi bi-gear-fill" /> دخول الإدارة
-            </Link>
+            {/* <Link to="/register" className="button-secondary">
+              <i className="bi bi-pencil-square" /> التسجيل
+            </Link> */}
           </div>
         </div>
       </div>

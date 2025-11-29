@@ -38,6 +38,7 @@ export interface AuthenticatedUser {
   email?: string | null
   phone?: string | null
   needs_password_change?: boolean
+  permissions?: string[] // صلاحيات المستخدم
 }
 
 export interface LoginPayload {

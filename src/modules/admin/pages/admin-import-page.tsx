@@ -248,9 +248,9 @@ function StudentPreviewDetails({ preview }: { preview: ImportStudentsPreview }) 
               <thead className="bg-emerald-50/80 text-xs uppercase text-emerald-700">
                 <tr>
                   <th className="px-4 py-3 font-semibold">الاسم</th>
+                  <th className="px-4 py-3 font-semibold">هوية الطالب</th>
                   <th className="px-4 py-3 font-semibold">الصف</th>
                   <th className="px-4 py-3 font-semibold">الفصل</th>
-                  <th className="px-4 py-3 font-semibold">هوية ولي الأمر</th>
                   <th className="px-4 py-3 font-semibold">هاتف ولي الأمر</th>
                 </tr>
               </thead>
@@ -258,9 +258,9 @@ function StudentPreviewDetails({ preview }: { preview: ImportStudentsPreview }) 
                 {newStudents.map((student) => (
                   <tr key={`${student.national_id}-${student.name}`} className="border-t border-slate-100">
                     <td className="px-4 py-3 text-slate-700">{student.name}</td>
+                    <td className="px-4 py-3 text-slate-600">{student.national_id ?? '—'}</td>
                     <td className="px-4 py-3 text-slate-600">{student.grade}</td>
                     <td className="px-4 py-3 text-slate-600">{student.class_name}</td>
-                    <td className="px-4 py-3 text-slate-600">{student.parent_name ?? '—'}</td>
                     <td className="px-4 py-3 text-slate-600">{student.parent_phone ?? '—'}</td>
                   </tr>
                 ))}

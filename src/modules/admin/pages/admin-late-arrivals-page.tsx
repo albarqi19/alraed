@@ -215,33 +215,33 @@ function LateArrivalFormDialog({
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" role="dialog">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-2 sm:p-4 backdrop-blur-sm" role="dialog">
       <form
-        className="relative w-full max-w-5xl rounded-3xl bg-white p-6 shadow-xl"
+        className="relative w-full max-w-5xl max-h-[95vh] overflow-y-auto rounded-2xl sm:rounded-3xl bg-white p-4 sm:p-6 shadow-xl"
         onSubmit={handleSubmit}
         noValidate
       >
         <button
           type="button"
           onClick={onClose}
-          className="absolute left-5 top-5 text-sm font-semibold text-slate-400 transition hover:text-slate-600"
+          className="absolute left-3 top-3 sm:left-5 sm:top-5 text-xs sm:text-sm font-semibold text-slate-400 transition hover:text-slate-600 z-10"
           disabled={isSubmitting}
         >
-          إغلاق
+          ✕ إغلاق
         </button>
 
-        <header className="mb-6 space-y-1 text-right">
-          <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">تسجيل تأخير جديد</p>
-          <h2 className="text-2xl font-bold text-slate-900">حدّد الطلاب المتأخرين وأرسل تنبيهاتهم فوراً</h2>
-          <p className="text-sm text-muted">
+        <header className="mb-4 sm:mb-6 space-y-1 text-right pr-12 sm:pr-0">
+          <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-widest text-indigo-600">تسجيل تأخير جديد</p>
+          <h2 className="text-lg sm:text-2xl font-bold text-slate-900">حدّد الطلاب المتأخرين وأرسل تنبيهاتهم فوراً</h2>
+          <p className="text-xs sm:text-sm text-muted">
             اختر تاريخ التأخير، حدّد الطلاب من أي فصل، وسيتم إرسال رسائل واتساب تلقائياً بعد التسجيل.
           </p>
         </header>
 
-        <div className="grid gap-6 lg:grid-cols-[280px,minmax(0,1fr)]">
-          <section className="space-y-4 rounded-3xl border border-slate-100 bg-white/80 p-4 shadow-sm">
-            <div className="space-y-2 text-right">
-              <label className="text-xs font-semibold text-slate-600" htmlFor="late-arrival-date">
+        <div className="flex flex-col gap-4 sm:gap-6 lg:grid lg:grid-cols-[280px,minmax(0,1fr)]">
+          <section className="space-y-3 sm:space-y-4 rounded-2xl sm:rounded-3xl border border-slate-100 bg-white/80 p-3 sm:p-4 shadow-sm">
+            <div className="hidden sm:block space-y-1.5 sm:space-y-2 text-right">
+              <label className="text-[10px] sm:text-xs font-semibold text-slate-600" htmlFor="late-arrival-date">
                 تاريخ التأخير
               </label>
               <input
@@ -249,21 +249,21 @@ function LateArrivalFormDialog({
                 type="date"
                 value={lateDate}
                 onChange={(event) => setLateDate(event.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                className="w-full rounded-xl sm:rounded-2xl border border-slate-200 bg-white px-3 sm:px-4 py-2 text-xs sm:text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 disabled={isSubmitting}
                 required
               />
             </div>
 
-            <div className="space-y-2 text-right">
-              <label className="text-xs font-semibold text-slate-600" htmlFor="late-arrival-class-filter">
+            <div className="space-y-1.5 sm:space-y-2 text-right">
+              <label className="text-[10px] sm:text-xs font-semibold text-slate-600" htmlFor="late-arrival-class-filter">
                 تصفية بالفصل
               </label>
               <select
                 id="late-arrival-class-filter"
                 value={classFilter}
                 onChange={(event) => setClassFilter(event.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                className="w-full rounded-xl sm:rounded-2xl border border-slate-200 bg-white px-3 sm:px-4 py-2 text-xs sm:text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 disabled={isSubmitting || classOptions.length === 0}
               >
                 <option value="">جميع الفصول</option>
@@ -275,8 +275,8 @@ function LateArrivalFormDialog({
               </select>
             </div>
 
-            <div className="space-y-2 text-right">
-              <label className="text-xs font-semibold text-slate-600" htmlFor="late-arrival-search">
+            <div className="space-y-1.5 sm:space-y-2 text-right">
+              <label className="text-[10px] sm:text-xs font-semibold text-slate-600" htmlFor="late-arrival-search">
                 البحث بالاسم أو الهوية
               </label>
               <input
@@ -285,13 +285,13 @@ function LateArrivalFormDialog({
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="أدخل اسم الطالب أو رقم الهوية"
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                className="w-full rounded-xl sm:rounded-2xl border border-slate-200 bg-white px-3 sm:px-4 py-2 text-xs sm:text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 disabled={isSubmitting}
               />
             </div>
 
-            <div className="space-y-2 text-right">
-              <label className="text-xs font-semibold text-slate-600" htmlFor="late-arrival-notes">
+            <div className="space-y-1.5 sm:space-y-2 text-right">
+              <label className="text-[10px] sm:text-xs font-semibold text-slate-600" htmlFor="late-arrival-notes">
                 ملاحظات (اختياري)
               </label>
               <textarea
@@ -299,38 +299,38 @@ function LateArrivalFormDialog({
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
                 placeholder="مثال: تأخر بسبب مواصلات"
-                rows={5}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                rows={3}
+                className="w-full rounded-xl sm:rounded-2xl border border-slate-200 bg-white px-3 sm:px-4 py-2 text-xs sm:text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 disabled={isSubmitting}
               />
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3 text-xs text-slate-600">
+            <div className="rounded-xl sm:rounded-2xl border border-slate-200 bg-slate-50/70 p-2 sm:p-3 text-[10px] sm:text-xs text-slate-600 space-y-0.5">
               <p>عدد الطلاب المحددين: {selectedCount.toLocaleString('ar-SA')}</p>
               <p>النتائج الحالية: {filteredStudents.length.toLocaleString('ar-SA')}</p>
               <p>إجمالي القائمة: {(students?.length ?? 0).toLocaleString('ar-SA')}</p>
             </div>
           </section>
 
-          <section className="flex h-[520px] flex-col rounded-3xl border border-slate-100 bg-white/80 p-4 shadow-sm">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-slate-700">قائمة الطلاب</h3>
-              <div className="flex items-center gap-2">
+          <section className="flex h-[400px] sm:h-[520px] flex-col rounded-2xl sm:rounded-3xl border border-slate-100 bg-white/80 p-3 sm:p-4 shadow-sm">
+            <div className="mb-2 sm:mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-xs sm:text-sm font-semibold text-slate-700">قائمة الطلاب</h3>
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <button
                   type="button"
                   onClick={handleToggleFiltered}
-                  className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
+                  className="rounded-full border border-slate-200 px-2 sm:px-3 py-1 text-[10px] sm:text-xs font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
                   disabled={filteredIds.length === 0 || isSubmitting}
                 >
                   {allFilteredSelected ? 'إلغاء تحديد النتائج' : 'تحديد كل النتائج'}
                 </button>
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">
+                <span className="rounded-full bg-slate-100 px-2 sm:px-3 py-1 text-[10px] sm:text-xs font-semibold text-slate-500">
                   تم اختيار {selectedCount.toLocaleString('ar-SA')} طالب
                 </span>
               </div>
             </div>
 
-            <div className="grow overflow-y-auto rounded-2xl border border-dashed border-slate-200 bg-white/60 p-3">
+            <div className="grow overflow-y-auto rounded-xl sm:rounded-2xl border border-dashed border-slate-200 bg-white/60 p-2 sm:p-3">
               {isLoading ? (
                 <div className="flex h-full flex-col items-center justify-center gap-3 text-sm text-muted">
                   <span className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
@@ -368,34 +368,34 @@ function LateArrivalFormDialog({
                   ) : null}
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   {groupedStudents.map(([className, classStudents]) => {
                     const classSelected = classStudents.length > 0 && classStudents.every((student) => selectedIds.has(student.id))
                     return (
                       <article
                         key={className}
-                        className="space-y-3 rounded-2xl border border-slate-200 bg-white/70 p-3 shadow-sm"
+                        className="space-y-2 sm:space-y-3 rounded-xl sm:rounded-2xl border border-slate-200 bg-white/70 p-2 sm:p-3 shadow-sm"
                       >
-                        <header className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 text-xs text-slate-500">
-                            <span className="rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-600">
+                        <header className="flex flex-wrap items-center justify-between gap-1.5 sm:gap-2">
+                          <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-slate-500">
+                            <span className="rounded-full bg-indigo-50 px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-semibold text-indigo-600">
                               {className}
                             </span>
-                            <span className="text-[11px] text-muted">
+                            <span className="text-[10px] sm:text-[11px] text-muted">
                               {classStudents.length.toLocaleString('ar-SA')} طالب
                             </span>
                           </div>
                           <button
                             type="button"
                             onClick={() => handleToggleClass(className)}
-                            className="rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
+                            className="rounded-full border border-slate-200 px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
                             disabled={isSubmitting}
                           >
                             {classSelected ? 'إلغاء تحديد الفصل' : 'تحديد الفصل'}
                           </button>
                         </header>
 
-                        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                        <div className="grid gap-1.5 sm:gap-2 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
                           {classStudents.map((student) => {
                             const checked = selectedIds.has(student.id)
                             const lateCount = lateCountByStudent.get(student.id) ?? 0
@@ -403,29 +403,29 @@ function LateArrivalFormDialog({
                               <label
                                 key={student.id}
                                 htmlFor={`late-student-${student.id}`}
-                                className={`flex cursor-pointer items-center justify-between gap-3 rounded-2xl border px-3 py-2 text-right text-sm transition ${
+                                className={`flex cursor-pointer items-center justify-between gap-2 sm:gap-3 rounded-xl sm:rounded-2xl border px-2 sm:px-3 py-2 text-right text-xs sm:text-sm transition ${
                                   checked
                                     ? 'border-indigo-300 bg-indigo-50/70 text-indigo-700'
                                     : 'border-slate-200 bg-white/60 hover:border-indigo-200'
                                 }`}
                               >
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2">
-                                    <p className="font-semibold text-slate-900">{student.name}</p>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-1.5 sm:gap-2">
+                                    <p className="font-semibold text-slate-900 text-xs sm:text-sm truncate">{student.name}</p>
                                     {lateCount > 0 && (
-                                      <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-100 px-1.5 text-[10px] font-bold text-rose-700">
+                                      <span className="inline-flex h-4 sm:h-5 min-w-[1rem] sm:min-w-[1.25rem] items-center justify-center rounded-full bg-rose-100 px-1 sm:px-1.5 text-[9px] sm:text-[10px] font-bold text-rose-700 shrink-0">
                                         {lateCount}
                                       </span>
                                     )}
                                   </div>
-                                  <p className="text-xs text-muted">
+                                  <p className="text-[10px] sm:text-xs text-muted truncate">
                                     {student.national_id ? `هوية: ${student.national_id}` : 'بدون رقم هوية'}
                                   </p>
                                 </div>
                                 <input
                                   id={`late-student-${student.id}`}
                                   type="checkbox"
-                                  className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                  className="h-4 w-4 sm:h-4 sm:w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 shrink-0"
                                   checked={checked}
                                   onChange={() => handleToggleStudent(student.id)}
                                   disabled={isSubmitting}
@@ -443,24 +443,24 @@ function LateArrivalFormDialog({
           </section>
         </div>
 
-        <footer className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <footer className="mt-4 sm:mt-6 flex flex-col-reverse gap-2 sm:gap-3 sm:flex-row sm:items-center sm:justify-between">
           {validationError ? (
-            <p className="text-xs font-semibold text-rose-600">{validationError}</p>
+            <p className="text-[10px] sm:text-xs font-semibold text-rose-600">{validationError}</p>
           ) : (
-            <p className="text-xs text-muted">
+            <p className="text-[10px] sm:text-xs text-muted">
               سيتم إرسال رسائل واتساب تلقائياً للأرقام المتوفرة بعد إتمام التسجيل.
             </p>
           )}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
             <button
               type="button"
               onClick={onClose}
-              className="button-secondary"
+              className="button-secondary flex-1 sm:flex-initial text-xs sm:text-sm py-2 sm:py-2.5"
               disabled={isSubmitting}
             >
               إلغاء
             </button>
-            <button type="submit" className="button-primary" disabled={isSubmitting || filteredStudents.length === 0}>
+            <button type="submit" className="button-primary flex-1 sm:flex-initial text-xs sm:text-sm py-2 sm:py-2.5" disabled={isSubmitting || filteredStudents.length === 0}>
               {isSubmitting ? 'جاري التسجيل...' : 'تسجيل التأخير'}
             </button>
           </div>
@@ -712,8 +712,8 @@ export function AdminLateArrivalsPage() {
           </label>
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr),420px]">
-          <div className="rounded-3xl border border-slate-100 bg-white/80 shadow-sm">
+        <div className="grid gap-6 lg:grid-cols-[1fr,minmax(360px,420px)]">
+          <div className="min-w-0 overflow-hidden rounded-3xl border border-slate-100 bg-white/80 shadow-sm">
             {isLoading ? (
               <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-sm text-muted">
                 <span className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
@@ -725,17 +725,17 @@ export function AdminLateArrivalsPage() {
                 لا توجد حالات تأخر بالمعايير الحالية.
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-[880px] table-fixed text-right text-sm">
+              <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-inner">
+                <table className="w-full min-w-[880px] text-right text-sm">
                   <thead className="bg-slate-50/80 text-[11px] uppercase tracking-wide text-slate-500">
                     <tr>
-                      <th className="px-4 py-2.5 font-semibold">الطالب</th>
-                      <th className="px-4 py-2.5 font-semibold">الفصل</th>
-                      <th className="px-4 py-2.5 font-semibold">تاريخ التأخر</th>
-                      <th className="px-4 py-2.5 font-semibold">وقت التسجيل</th>
-                      <th className="px-4 py-2.5 font-semibold">الملاحظات</th>
-                      <th className="px-4 py-2.5 font-semibold">حالة الرسالة</th>
-                      <th className="px-4 py-2.5 font-semibold">الإجراء</th>
+                      <th className="px-3 py-2.5 font-semibold sm:px-4">الطالب</th>
+                      <th className="px-3 py-2.5 font-semibold sm:px-4">الفصل</th>
+                      <th className="px-3 py-2.5 font-semibold sm:px-4">تاريخ التأخر</th>
+                      <th className="px-3 py-2.5 font-semibold sm:px-4">وقت التسجيل</th>
+                      <th className="px-3 py-2.5 font-semibold sm:px-4">الملاحظات</th>
+                      <th className="px-3 py-2.5 font-semibold sm:px-4">حالة الرسالة</th>
+                      <th className="px-3 py-2.5 font-semibold sm:px-4">الإجراء</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -750,42 +750,42 @@ export function AdminLateArrivalsPage() {
                             isSelected ? 'bg-indigo-50/70' : 'hover:bg-slate-50'
                           }`}
                         >
-                          <td className="px-4 py-2 align-middle">
+                          <td className="px-3 py-2 align-middle sm:px-4">
                             <button
                               type="button"
                               onClick={() => setSelectedId(record.id)}
-                              className="text-[13px] font-semibold text-slate-900 transition hover:text-indigo-600"
+                              className="text-xs font-semibold text-slate-900 transition hover:text-indigo-600 sm:text-[13px]"
                             >
                               {record.student_name}
                             </button>
-                            <p className="text-[11px] leading-4 text-muted">معرّف الطالب: {record.student_id}</p>
+                            <p className="text-[10px] leading-4 text-muted sm:text-[11px]">{record.student_id}</p>
                           </td>
-                          <td className="px-4 py-2 text-[13px] text-slate-600">{record.student_class}</td>
-                          <td className="px-4 py-2 text-[13px] text-slate-600">{formatDate(record.late_date)}</td>
-                          <td className="px-4 py-2 text-[13px] text-slate-600">{formatTime(record.recorded_at)}</td>
-                          <td className="px-4 py-2 text-[12px] text-slate-500">{record.notes ?? '—'}</td>
-                          <td className="px-4 py-2 align-middle">
+                          <td className="px-3 py-2 text-xs text-slate-600 sm:px-4 sm:text-[13px]">{record.student_class}</td>
+                          <td className="whitespace-nowrap px-3 py-2 text-xs text-slate-600 sm:px-4 sm:text-[13px]">{formatDate(record.late_date)}</td>
+                          <td className="whitespace-nowrap px-3 py-2 text-xs text-slate-600 sm:px-4 sm:text-[13px]">{formatTime(record.recorded_at)}</td>
+                          <td className="px-3 py-2 text-[11px] text-slate-500 sm:px-4 sm:text-[12px]">{record.notes ?? '—'}</td>
+                          <td className="px-3 py-2 align-middle sm:px-4">
                             <MessageStatusBadge sent={record.whatsapp_sent} sentAt={record.whatsapp_sent_at} />
                           </td>
-                          <td className="px-4 py-2 align-middle">
-                            <div className="flex items-center justify-end gap-1">
+                          <td className="px-3 py-2 align-middle sm:px-4">
+                            <div className="flex flex-col items-stretch gap-1 sm:flex-row sm:items-center sm:justify-end">
                               <button
                                 type="button"
-                                className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[10px] font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="inline-flex items-center justify-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[10px] font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-60"
                                 onClick={() => handleSendMessage(record)}
                                 disabled={record.whatsapp_sent || isSending}
                               >
                                 <i className="bi bi-send" />
-                                {isSending ? 'جارٍ الإرسال' : 'إعادة الإرسال'}
+                                {isSending ? 'جارٍ ...' : 'إرسال'}
                               </button>
                               <button
                                 type="button"
-                                className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[10px] font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="inline-flex items-center justify-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[10px] font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-60"
                                 onClick={() => handleResolve(record)}
                                 disabled={isDeleting}
                               >
                                 <i className="bi bi-check-circle" />
-                                {isDeleting ? 'جارٍ المعالجة' : 'تمت المعالجة'}
+                                {isDeleting ? 'جارٍ ...' : 'تمت'}
                               </button>
                             </div>
                           </td>

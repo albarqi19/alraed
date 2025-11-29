@@ -8,12 +8,20 @@ import type { RegisterSchoolPayload } from '../types'
 const initialForm: RegisterSchoolPayload = {
   school_name: '',
   subdomain: '',
+  school_level: 'elementary',
+  ministry_number: '',
   admin_name: '',
   admin_national_id: '',
   admin_phone: '',
   admin_email: '',
   plan_code: '',
 }
+
+const schoolLevelOptions = [
+  { value: 'elementary', label: 'ابتدائي' },
+  { value: 'middle', label: 'متوسط' },
+  { value: 'high', label: 'ثانوي' },
+] as const
 
 export function SchoolRegistrationPage() {
   const [searchParams] = useSearchParams()
@@ -36,7 +44,7 @@ export function SchoolRegistrationPage() {
     event.preventDefault()
     setHasSubmitted(true)
 
-    if (!form.school_name || !form.admin_name || !form.admin_national_id) {
+    if (!form.school_name || !form.admin_name || !form.admin_national_id || !form.admin_phone || !form.school_level) {
       return
     }
 
@@ -86,6 +94,34 @@ export function SchoolRegistrationPage() {
               ) : null}
             </label>
             <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+              المرحلة الدراسية
+              <select
+                required
+                value={form.school_level}
+                onChange={(event) => handleChange('school_level', event.target.value)}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-normal text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+              >
+                {schoolLevelOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              {hasSubmitted && !form.school_level ? (
+                <span className="text-xs font-normal text-rose-600">هذا الحقل مطلوب</span>
+              ) : null}
+            </label>
+            <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+              الرقم الوزاري للمدرسة (اختياري)
+              <input
+                type="text"
+                value={form.ministry_number ?? ''}
+                onChange={(event) => handleChange('ministry_number', event.target.value)}
+                placeholder="مثال: 12345678"
+                className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-normal text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+              />
+            </label>
+            <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
               النطاق الفرعي (اختياري)
               <input
                 type="text"
@@ -95,55 +131,70 @@ export function SchoolRegistrationPage() {
                 className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-normal text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
               />
             </label>
-            <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
-              اسم مدير المدرسة
-              <input
-                type="text"
-                required
-                value={form.admin_name}
-                onChange={(event) => handleChange('admin_name', event.target.value)}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-normal text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
-              />
-              {hasSubmitted && !form.admin_name ? (
-                <span className="text-xs font-normal text-rose-600">هذا الحقل مطلوب</span>
-              ) : null}
-            </label>
-            <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
-              رقم هوية المدير
-              <input
-                type="text"
-                required
-                value={form.admin_national_id}
-                onChange={(event) => handleChange('admin_national_id', event.target.value)}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-normal text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
-              />
-              {hasSubmitted && !form.admin_national_id ? (
-                <span className="text-xs font-normal text-rose-600">هذا الحقل مطلوب</span>
-              ) : null}
-            </label>
-            <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
-              هاتف المدير
-              <input
-                type="tel"
-                value={form.admin_phone ?? ''}
-                onChange={(event) => handleChange('admin_phone', event.target.value)}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-normal text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
-              />
-            </label>
-            <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
-              البريد الإلكتروني للمدير
-              <input
-                type="email"
-                value={form.admin_email ?? ''}
-                onChange={(event) => handleChange('admin_email', event.target.value)}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-normal text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
-              />
-            </label>
           </div>
 
-          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4 text-xs text-emerald-700">
-            سيتم إنشاء حساب مدير المدرسة تلقائياً وإرسال كلمة مرور مؤقتة يمكن تغييرها بعد تسجيل الدخول الأول.
+          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4">
+            <h3 className="text-sm font-semibold text-emerald-800 mb-3">بيانات مدير المدرسة (للدخول على النظام)</h3>
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+                اسم مدير المدرسة
+                <input
+                  type="text"
+                  required
+                  value={form.admin_name}
+                  onChange={(event) => handleChange('admin_name', event.target.value)}
+                  placeholder="الاسم الرباعي"
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-normal text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                />
+                {hasSubmitted && !form.admin_name ? (
+                  <span className="text-xs font-normal text-rose-600">هذا الحقل مطلوب</span>
+                ) : null}
+              </label>
+              <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+                رقم جوال مدير المدرسة
+                <input
+                  type="tel"
+                  required
+                  value={form.admin_phone ?? ''}
+                  onChange={(event) => handleChange('admin_phone', event.target.value)}
+                  placeholder="05xxxxxxxx"
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-normal text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                />
+                {hasSubmitted && !form.admin_phone ? (
+                  <span className="text-xs font-normal text-rose-600">هذا الحقل مطلوب</span>
+                ) : null}
+              </label>
+              <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+                رقم الهوية (للدخول على النظام)
+                <input
+                  type="text"
+                  required
+                  value={form.admin_national_id}
+                  onChange={(event) => handleChange('admin_national_id', event.target.value)}
+                  placeholder="رقم الهوية الوطنية"
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-normal text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                />
+                {hasSubmitted && !form.admin_national_id ? (
+                  <span className="text-xs font-normal text-rose-600">هذا الحقل مطلوب</span>
+                ) : null}
+              </label>
+              <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+                البريد الإلكتروني (اختياري)
+                <input
+                  type="email"
+                  value={form.admin_email ?? ''}
+                  onChange={(event) => handleChange('admin_email', event.target.value)}
+                  placeholder="example@school.com"
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-normal text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                />
+              </label>
+            </div>
+            <p className="mt-3 text-xs text-emerald-700">
+              💡 سيتم إنشاء حساب دخول لمدير المدرسة تلقائياً باستخدام رقم الهوية وكلمة مرور مؤقتة.
+            </p>
           </div>
+
+
 
           <div className="flex items-center justify-between gap-4">
             <div className="text-xs text-muted">
@@ -170,7 +221,7 @@ export function SchoolRegistrationPage() {
           ) : null}
         </form>
 
-        <aside className="space-y-4">
+        <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
           <div className="glass-card space-y-4">
             <h2 className="text-lg font-semibold text-slate-900">اختر الباقة المناسبة</h2>
             {isPlansLoading ? (
@@ -196,7 +247,9 @@ export function SchoolRegistrationPage() {
           </div>
 
           {selectedPlan ? (
-            <PlanCard plan={selectedPlan} highlight current actionLabel="" badge="الباقة المختارة" />
+            <div className="max-h-[60vh] overflow-y-auto rounded-2xl">
+              <PlanCard plan={selectedPlan} highlight current actionLabel="" badge="الباقة المختارة" />
+            </div>
           ) : null}
         </aside>
       </div>

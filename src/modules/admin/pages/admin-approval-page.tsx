@@ -472,8 +472,8 @@ export function AdminApprovalPage() {
           </div>
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr),420px]">
-          <div className="rounded-3xl border border-slate-100 bg-white/80 shadow-sm">
+        <div className="grid gap-6 lg:grid-cols-[minmax(880px,1fr),420px]">
+          <div className="min-w-0 rounded-3xl border border-slate-100 bg-white/80 shadow-sm">
             {approvalsQuery.isLoading ? (
               <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-sm text-muted">
                 <span className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
@@ -485,16 +485,16 @@ export function AdminApprovalPage() {
                 لا توجد حصص معلقة بالمعايير الحالية.
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-[880px] table-fixed text-right text-sm">
+              <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-inner">
+                <table className="w-full min-w-[880px] text-right text-sm">
                   <thead className="bg-slate-50/80 text-xs uppercase text-slate-500">
                     <tr>
-                      <th className="px-4 py-3 font-semibold">المعلم</th>
-                      <th className="px-4 py-3 font-semibold">المادة</th>
-                      <th className="px-4 py-3 font-semibold">الصف / الفصل</th>
-                      <th className="px-4 py-3 font-semibold">التاريخ</th>
-                      <th className="px-4 py-3 font-semibold">ملخص الحالة</th>
-                      <th className="px-4 py-3 font-semibold">الإجراء</th>
+                      <th className="px-3 py-3 font-semibold sm:px-4">المعلم</th>
+                      <th className="px-3 py-3 font-semibold sm:px-4">المادة</th>
+                      <th className="px-3 py-3 font-semibold sm:px-4">الصف / الفصل</th>
+                      <th className="px-3 py-3 font-semibold sm:px-4">التاريخ</th>
+                      <th className="px-3 py-3 font-semibold sm:px-4">ملخص الحالة</th>
+                      <th className="px-3 py-3 font-semibold sm:px-4">الإجراء</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -507,47 +507,47 @@ export function AdminApprovalPage() {
                             isSelected ? 'bg-indigo-50/70' : 'hover:bg-slate-50'
                           }`}
                         >
-                          <td className="px-4 py-3">
+                          <td className="px-3 py-3 sm:px-4">
                             <button
                               type="button"
                               onClick={() => setSelectedId(item.id)}
-                              className="text-sm font-semibold text-slate-900 transition hover:text-indigo-600"
+                              className="text-xs font-semibold text-slate-900 transition hover:text-indigo-600 sm:text-sm"
                             >
                               {item.teacher_name}
                             </button>
-                            <p className="text-xs text-muted">مسجل بتاريخ {formatDate(item.recorded_at)}</p>
+                            <p className="text-[10px] text-muted sm:text-xs">مسجل {formatDate(item.recorded_at)}</p>
                           </td>
-                          <td className="px-4 py-3 text-sm text-slate-600">{item.subject_name}</td>
-                          <td className="px-4 py-3 text-sm text-slate-600">
+                          <td className="px-3 py-3 text-xs text-slate-600 sm:px-4 sm:text-sm">{item.subject_name}</td>
+                          <td className="px-3 py-3 text-xs text-slate-600 sm:px-4 sm:text-sm">
                             {item.grade} — {item.class_name}
                           </td>
-                          <td className="px-4 py-3 text-sm text-slate-600">{formatDate(item.attendance_date)}</td>
-                          <td className="px-4 py-3">
-                            <div className="flex flex-wrap items-center gap-2 text-xs">
-                              <span className="rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-700">
+                          <td className="whitespace-nowrap px-3 py-3 text-xs text-slate-600 sm:px-4 sm:text-sm">{formatDate(item.attendance_date)}</td>
+                          <td className="px-3 py-3 sm:px-4">
+                            <div className="flex flex-wrap items-center gap-1.5 text-[10px] sm:gap-2 sm:text-xs">
+                              <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-700 sm:px-3 sm:py-1">
                                 حاضر: {item.present_count}
                               </span>
-                              <span className="rounded-full bg-rose-50 px-3 py-1 font-semibold text-rose-700">
+                              <span className="rounded-full bg-rose-50 px-2 py-0.5 font-semibold text-rose-700 sm:px-3 sm:py-1">
                                 غائب: {item.absent_count}
                               </span>
-                              <span className="rounded-full bg-amber-50 px-3 py-1 font-semibold text-amber-700">
+                              <span className="rounded-full bg-amber-50 px-2 py-0.5 font-semibold text-amber-700 sm:px-3 sm:py-1">
                                 متأخر: {item.late_count ?? 0}
                               </span>
                             </div>
                           </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
+                          <td className="px-3 py-3 sm:px-4">
+                            <div className="flex flex-col items-stretch gap-1.5 sm:flex-row sm:items-center sm:gap-2">
                               <button
                                 type="button"
-                                className="button-secondary"
+                                className="button-secondary text-xs sm:text-sm"
                                 onClick={() => handleApprove(item)}
                                 disabled={approveMutation.isPending}
                               >
-                                {approveMutation.isPending && selectedId === item.id ? 'جارٍ الاعتماد...' : 'اعتماد'}
+                                {approveMutation.isPending && selectedId === item.id ? 'جارِ ...' : 'اعتماد'}
                               </button>
                               <button
                                 type="button"
-                                className="button-secondary"
+                                className="button-secondary text-xs sm:text-sm"
                                 onClick={() => setRejectTarget(item)}
                                 disabled={rejectMutation.isPending}
                               >

@@ -13,6 +13,7 @@ import {
   sanitizeWhatsappVariableKey,
 } from '../utils/whatsapp-templates'
 import type { WhatsappPlaceholder } from '../utils/whatsapp-templates'
+import { WhatsappVariablesDialog } from '../components/whatsapp-variables-dialog'
 
 type TemplateFormState = {
   name: string
@@ -118,43 +119,6 @@ function normalizeVariablesForPayload(body: string, variables: TemplateFormState
   })
 }
 
-function upsertVariableList(
-  current: TemplateFormState['variables'],
-  placeholder: string,
-): TemplateFormState['variables'] {
-  const key = sanitizeVariableKey(placeholder)
-  if (!key) {
-    return current
-  }
-
-  const quick = QUICK_VARIABLE_LOOKUP[key]
-  const fallbackLabel = quick?.label || beautifyPlaceholderLabel(key)
-  const fallbackExample = quick?.example || ''
-  const displayKey = quick?.placeholder ?? formatKeyForDisplay(key)
-
-  const existingIndex = current.findIndex((variable) => sanitizeVariableKey(variable.key) === key)
-  if (existingIndex >= 0) {
-    const updated = [...current]
-    const existing = updated[existingIndex]
-    updated[existingIndex] = {
-      ...existing,
-      key: existing.key || displayKey,
-      label: existing.label || fallbackLabel,
-      example: existing.example || fallbackExample,
-    }
-    return updated
-  }
-
-  return [
-    ...current,
-    {
-      key: displayKey,
-      label: fallbackLabel,
-      example: fallbackExample,
-    },
-  ]
-}
-
 const DEFAULT_TEMPLATE_FORM: TemplateFormState = {
   name: '',
   category: '',
@@ -216,6 +180,7 @@ function TemplateDialog({
   mode: 'create' | 'edit'
 }) {
   const bodyRef = useRef<HTMLTextAreaElement | null>(null)
+  const [variablesDialogOpen, setVariablesDialogOpen] = useState(false)
 
   const handleFieldChange = <Key extends keyof TemplateFormState>(key: Key, value: TemplateFormState[Key]) => {
     setState((prev) => ({ ...prev, [key]: value }))
@@ -244,28 +209,42 @@ function TemplateDialog({
   }
 
   const handleInsertVariable = (placeholder: string) => {
+    console.log('🟢 handleInsertVariable called with:', placeholder)
+    if (!placeholder || typeof placeholder !== 'string') {
+      console.log('❌ Invalid placeholder')
+      return
+    }
+
     const textarea = bodyRef.current
+    console.log('📝 Textarea element:', textarea)
+    const selectionStart = textarea?.selectionStart ?? 0
+    const selectionEnd = textarea?.selectionEnd ?? 0
+    console.log('📍 Selection:', { selectionStart, selectionEnd })
 
     setState((prev) => {
       const baseBody = prev.body ?? ''
-      const selectionStart = textarea?.selectionStart ?? baseBody.length
-      const selectionEnd = textarea?.selectionEnd ?? selectionStart
+      console.log('📄 Current body length:', baseBody.length)
+      const actualStart = textarea ? selectionStart : baseBody.length
+      const actualEnd = textarea ? selectionEnd : actualStart
 
       const nextBody =
-        baseBody.slice(0, selectionStart) + placeholder + baseBody.slice(selectionEnd)
+        baseBody.slice(0, actualStart) + placeholder + baseBody.slice(actualEnd)
 
-      requestAnimationFrame(() => {
+      console.log('✅ New body length:', nextBody.length)
+      console.log('✅ Added text:', placeholder)
+
+      // Focus and set caret position after state update
+      setTimeout(() => {
         if (textarea) {
           textarea.focus()
-          const caretPosition = selectionStart + placeholder.length
+          const caretPosition = actualStart + placeholder.length
           textarea.setSelectionRange(caretPosition, caretPosition)
         }
-      })
+      }, 0)
 
       return {
         ...prev,
         body: nextBody,
-        variables: upsertVariableList(prev.variables, placeholder),
       }
     })
   }
@@ -273,16 +252,23 @@ function TemplateDialog({
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
-      <div className="relative w-full max-w-3xl rounded-3xl bg-white p-6 shadow-xl">
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute left-5 top-5 text-sm font-semibold text-slate-400 transition hover:text-slate-600"
-          disabled={isSubmitting}
-        >
-          إغلاق
-        </button>
+    <Fragment>
+      <WhatsappVariablesDialog
+        open={variablesDialogOpen}
+        onClose={() => setVariablesDialogOpen(false)}
+        onInsert={handleInsertVariable}
+      />
+
+      <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+        <div className="relative w-full max-w-3xl rounded-3xl bg-white p-6 shadow-xl">
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute left-5 top-5 text-sm font-semibold text-slate-400 transition hover:text-slate-600"
+            disabled={isSubmitting}
+          >
+            إغلاق
+          </button>
 
         <div className="mb-6 space-y-2 text-right">
           <p className="text-xs font-semibold uppercase tracking-wider text-indigo-500">
@@ -338,7 +324,17 @@ function TemplateDialog({
           </div>
 
           <div className="space-y-3">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">نص الرسالة</label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">نص الرسالة</label>
+              <button
+                type="button"
+                onClick={() => setVariablesDialogOpen(true)}
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 px-3 py-1.5 text-xs font-semibold text-white shadow-md transition hover:shadow-lg"
+              >
+                <i className="bi bi-braces"></i>
+                المتغيرات المتاحة
+              </button>
+            </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
               <div className="flex items-center justify-between text-[11px] text-slate-500">
                 <span className="font-semibold text-slate-600">المتغيرات السريعة</span>
@@ -463,6 +459,7 @@ function TemplateDialog({
         </form>
       </div>
     </div>
+    </Fragment>
   )
 }
 

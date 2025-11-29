@@ -71,6 +71,8 @@ import { AdminBehaviorPage } from '@/modules/admin/pages/admin-behavior-page'
 import { AdminBehaviorDetailPage } from '@/modules/admin/pages/admin-behavior-detail-page'
 import { AdminBehaviorPlansPage } from '@/modules/admin/pages/admin-behavior-plans-page'
 import { AdminBehaviorAnalyticsPage } from '@/modules/admin/pages/admin-behavior-analytics-page'
+import { AdminPermissionsPage } from '@/modules/permissions/pages/admin-permissions-page'
+import { ExcuseSubmissionPage, AdminAbsenceExcusesPage } from '@/modules/excuse'
 import {
   GuidanceAccessPage,
   GuidanceDashboardPage,
@@ -179,10 +181,12 @@ const appRoutes = [
           { path: 'summons', element: <SummonsPage /> },
           { path: 'settings', element: <AdminSettingsPage /> },
           { path: 'theme', element: <AdminThemeSettingsPage /> },
+          { path: 'permissions', element: <AdminPermissionsPage /> },
           { path: 'whatsapp', element: <WhatsappHubPage /> },
           { path: 'sms-gateway', element: <AdminSmsGatewayPage /> },
           { path: 'whatsapp-send', element: <WhatsAppSendPage /> },
           { path: 'whatsapp-templates', element: <WhatsAppTemplatesPage /> },
+          { path: 'absence-excuses', element: <AdminAbsenceExcusesPage /> },
           { path: 'attendance-report', element: <AttendanceReportPage /> },
           { path: 'school-tools/bell', element: <AdminSchoolBellPage /> },
           { path: 'school-tools/auto-call', element: <AdminAutoCallPage /> },
@@ -207,6 +211,10 @@ const appRoutes = [
       {
         path: 'guardian/leave-request',
         element: <GuardianLeaveRequestPage />,
+      },
+      {
+        path: 'excuse/:token',
+        element: <ExcuseSubmissionPage />,
       },
       {
         path: 'display/auto-call',

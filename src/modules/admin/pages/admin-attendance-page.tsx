@@ -270,8 +270,8 @@ export function AdminAttendancePage() {
 
         <StatsGrid records={records} />
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr),420px]">
-          <div className="rounded-3xl border border-slate-100 bg-white/80 shadow-sm">
+        <div className="grid gap-6 lg:grid-cols-[minmax(600px,1fr),420px]">
+          <div className="min-w-0 rounded-3xl border border-slate-100 bg-white/80 shadow-sm">
             {reportsQuery.isLoading ? (
               <div className="flex min-h-[360px] flex-col items-center justify-center gap-3 text-sm text-muted">
                 <span className="h-10 w-10 animate-spin rounded-full border-2 border-teal-500 border-t-transparent" />
@@ -283,14 +283,14 @@ export function AdminAttendancePage() {
                 لا توجد سجلات مطابقة لمعايير البحث الحالية.
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-[960px] table-fixed text-right text-sm">
+              <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-inner">
+                <table className="w-full min-w-[600px] text-right text-sm">
                   <thead className="bg-slate-50/80 text-xs uppercase text-slate-500">
                     <tr>
-                      <th className="px-4 py-3 font-semibold">المعلم</th>
-                      <th className="px-4 py-3 font-semibold">الصف / الشعبة</th>
-                      <th className="px-4 py-3 font-semibold">عدد الطلاب</th>
-                      <th className="px-4 py-3 font-semibold">التاريخ</th>
+                      <th className="px-3 py-3 font-semibold sm:px-4">المعلم</th>
+                      <th className="px-3 py-3 font-semibold sm:px-4">الصف / الشعبة</th>
+                      <th className="px-3 py-3 font-semibold sm:px-4">عدد الطلاب</th>
+                      <th className="px-3 py-3 font-semibold sm:px-4">التاريخ</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -305,24 +305,26 @@ export function AdminAttendancePage() {
                             isSelected ? 'bg-teal-50/80' : 'hover:bg-slate-50'
                           }`}
                         >
-                          <td className="px-4 py-3">
-                            <div className="space-y-1">
-                              <p className="text-sm font-semibold text-slate-900">{record.teacher_name}</p>
-                              <p className="text-xs text-muted">رقم الهوية: {record.teacher_id_number}</p>
+                          <td className="px-3 py-3 sm:px-4">
+                            <div className="space-y-0.5">
+                              <p className="text-xs font-semibold text-slate-900 sm:text-sm">{record.teacher_name}</p>
+                              <p className="text-[10px] text-muted sm:text-xs">
+                                {record.teacher_id_number}
+                              </p>
                             </div>
                           </td>
-                          <td className="px-4 py-3">
-                            <p className="text-sm font-semibold text-slate-900">
+                          <td className="px-3 py-3 sm:px-4">
+                            <p className="text-xs font-semibold text-slate-900 sm:text-sm">
                               {record.grade} - {record.class_name}
                             </p>
                           </td>
-                          <td className="px-4 py-3">
-                            <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700">
+                          <td className="px-3 py-3 sm:px-4">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-semibold text-teal-700 sm:px-3 sm:py-1 sm:text-xs">
                               <i className="bi bi-people-fill" />
-                              {record.students_count} طالب
+                              {record.students_count}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-sm text-slate-600">{formatDate(record.attendance_date)}</td>
+                          <td className="whitespace-nowrap px-3 py-3 text-xs text-slate-600 sm:px-4 sm:text-sm">{formatDate(record.attendance_date)}</td>
                         </tr>
                       )
                     })}

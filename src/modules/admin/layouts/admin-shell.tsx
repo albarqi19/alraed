@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/modules/auth/store/auth-store'
 import { useLogoutMutation } from '@/modules/auth/hooks'
-import { CalendarClock, ChevronDown } from 'lucide-react'
+import { usePermissions } from '@/hooks/use-permissions'
+import { CalendarClock, ChevronDown, Menu, X } from 'lucide-react'
 import clsx from 'classnames'
 import { primaryAdminNavGroups, secondaryAdminNav, settingsAdminNav } from '../constants/navigation'
 import { getCurrentAcademicWeek } from '../constants/academic-calendar-data'
@@ -15,6 +16,9 @@ export function AdminShell() {
   const admin = useAuthStore((state) => state.user)
   const logoutMutation = useLogoutMutation()
   const location = useLocation()
+  const navigate = useNavigate()
+  const { hasPermission } = usePermissions()
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {}
 
@@ -27,8 +31,78 @@ export function AdminShell() {
     return initial
   })
 
+  // تصفية العناصر حسب الصلاحيات
+  const filteredPrimaryGroups = primaryAdminNavGroups.map(group => ({
+    ...group,
+    items: group.items.filter(item => !item.permission || hasPermission(item.permission))
+  })).filter(group => group.items.length > 0)
+
+  const filteredSecondaryNav = secondaryAdminNav.filter(item => !item.permission || hasPermission(item.permission))
+  
+  const filteredSettingsNav = {
+    ...settingsAdminNav,
+    items: settingsAdminNav.items.filter(item => !item.permission || hasPermission(item.permission))
+  }
+
+  // إعادة توجيه المستخدم إلى أول صفحة متاحة إذا كان في الصفحة الرئيسية
   useEffect(() => {
-    const activeGroup = primaryAdminNavGroups.find((group) =>
+    if (location.pathname === '/admin' || location.pathname === '/admin/') {
+      // البحث عن أول صفحة متاحة
+      for (const group of filteredPrimaryGroups) {
+        if (group.items.length > 0) {
+          navigate(group.items[0].to, { replace: true })
+          return
+        }
+      }
+      
+      // إذا لم يوجد أي صفحة متاحة، نتحقق من القائمة الثانوية
+      if (filteredSecondaryNav.length > 0) {
+        navigate(filteredSecondaryNav[0].to, { replace: true })
+        return
+      }
+      
+      // إذا لم يوجد أي صفحة متاحة على الإطلاق
+      if (filteredSettingsNav.items.length > 0) {
+        navigate(filteredSettingsNav.items[0].to, { replace: true })
+      }
+    }
+  }, [location.pathname, filteredPrimaryGroups, filteredSecondaryNav, filteredSettingsNav, navigate])
+
+  // حماية الصفحات - إعادة توجيه إذا حاول الوصول لصفحة غير مصرح بها
+  useEffect(() => {
+    // جمع جميع الصفحات المتاحة
+    const allAvailablePages = [
+      ...filteredPrimaryGroups.flatMap(g => g.items.map(i => i.to)),
+      ...filteredSecondaryNav.map(i => i.to),
+      ...filteredSettingsNav.items.map(i => i.to),
+    ]
+
+    // التحقق من أن الصفحة الحالية متاحة
+    const currentPath = location.pathname
+    const isPageAvailable = allAvailablePages.some(page => {
+      // للصفحات التي لها exact match
+      if (page === '/admin/dashboard') {
+        return currentPath === page
+      }
+      // للصفحات الأخرى
+      return currentPath === page || currentPath.startsWith(page + '/')
+    })
+
+    // إذا كانت الصفحة غير متاحة، إعادة التوجيه
+    if (!isPageAvailable && currentPath !== '/admin' && currentPath !== '/admin/') {
+      // البحث عن أول صفحة متاحة
+      if (filteredPrimaryGroups.length > 0 && filteredPrimaryGroups[0].items.length > 0) {
+        navigate(filteredPrimaryGroups[0].items[0].to, { replace: true })
+      } else if (filteredSecondaryNav.length > 0) {
+        navigate(filteredSecondaryNav[0].to, { replace: true })
+      } else if (filteredSettingsNav.items.length > 0) {
+        navigate(filteredSettingsNav.items[0].to, { replace: true })
+      }
+    }
+  }, [location.pathname, filteredPrimaryGroups, filteredSecondaryNav, filteredSettingsNav, navigate])
+
+  useEffect(() => {
+    const activeGroup = filteredPrimaryGroups.find((group) =>
       group.items.some((item) => {
         if (item.exact) {
           return location.pathname === item.to
@@ -40,7 +114,7 @@ export function AdminShell() {
 
     if (!activeGroup) {
       // Check settings group
-      const settingsActive = settingsAdminNav.items.some((item) => {
+      const settingsActive = filteredSettingsNav.items.some((item) => {
         if (item.exact) {
           return location.pathname === item.to
         }
@@ -49,10 +123,10 @@ export function AdminShell() {
 
       if (settingsActive) {
         setExpandedGroups((prev) => {
-          if (prev[settingsAdminNav.title]) {
+          if (prev[filteredSettingsNav.title]) {
             return prev
           }
-          return { ...prev, [settingsAdminNav.title]: true }
+          return { ...prev, [filteredSettingsNav.title]: true }
         })
       }
       return
@@ -65,6 +139,9 @@ export function AdminShell() {
 
       return { ...prev, [activeGroup.title]: true }
     })
+    
+    // إغلاق القائمة عند تغيير الصفحة في الجوال
+    setIsSidebarOpen(false)
   }, [location.pathname])
 
   const toggleGroup = (title: string) => {
@@ -97,14 +174,34 @@ export function AdminShell() {
 
   return (
     <div className="flex min-h-screen w-full" style={{ backgroundColor: 'var(--color-background)' }}>
-      <aside className="admin-sidebar fixed right-0 top-0 hidden h-screen w-72 flex-col overflow-y-auto border-l border-slate-700/20 text-right shadow-md md:flex" style={{ backgroundColor: 'var(--color-sidebar)' }}>
+      {/* Overlay للجوال */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+      
+      {/* Sidebar */}
+      <aside className={clsx(
+        "admin-sidebar fixed right-0 top-0 z-50 h-screen w-72 flex-col overflow-y-auto border-l border-slate-700/20 text-right shadow-md transition-transform duration-300 md:flex",
+        isSidebarOpen ? "flex translate-x-0" : "hidden md:flex md:translate-x-0 translate-x-full"
+      )} style={{ backgroundColor: 'var(--color-sidebar)' }}>
+        {/* زر إغلاق للجوال */}
+        <button
+          onClick={() => setIsSidebarOpen(false)}
+          className="absolute left-4 top-4 rounded-lg p-2 text-white hover:bg-white/10 md:hidden"
+          aria-label="إغلاق القائمة"
+        >
+          <X className="h-5 w-5" />
+        </button>
         {/* Header with Logo */}
         <div className="border-b border-white/20 px-6 py-6 text-center">
           <p className="text-1g font-bold text-white" style={{ fontFamily: 'IBM Plex Sans Arabic, sans-serif' }}>نظام الرائد</p>
         </div>
 
         <div className="flex-1 space-y-1 p-4">
-          {primaryAdminNavGroups.map((group, index) => {
+          {filteredPrimaryGroups.map((group, index) => {
             const isExpanded = expandedGroups[group.title] ?? true
             const panelId = `admin-nav-group-${index}`
             const GroupIcon = group.icon
@@ -195,7 +292,7 @@ export function AdminShell() {
               أدوات مباشرة
             </p>
             <nav className="space-y-0.5">
-              {secondaryAdminNav.map((link) => {
+              {filteredSecondaryNav.map((link) => {
                 const LinkIcon = link.icon
                 return (
                   <NavLink
@@ -236,15 +333,15 @@ export function AdminShell() {
           {/* الإعدادات والدعم */}
           <div className="space-y-1">
             {(() => {
-              const isExpanded = expandedGroups[settingsAdminNav.title] ?? true
+              const isExpanded = expandedGroups[filteredSettingsNav.title] ?? true
               const panelId = 'settings-nav-group'
-              const GroupIcon = settingsAdminNav.icon
+              const GroupIcon = filteredSettingsNav.icon
 
               return (
                 <div className="space-y-1">
                   <button
                     type="button"
-                    onClick={() => toggleGroup(settingsAdminNav.title)}
+                    onClick={() => toggleGroup(filteredSettingsNav.title)}
                     aria-expanded={isExpanded}
                     aria-controls={panelId}
                     className="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-all hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-400/40"
@@ -259,7 +356,7 @@ export function AdminShell() {
                         style={{ color: 'var(--color-sidebar-text)', opacity: 0.7 }}
                       />
                       <GroupIcon className="h-4 w-4" style={{ color: 'var(--color-sidebar-text)', opacity: 0.9 }} />
-                      <span className="flex-1 text-right" style={{ color: 'var(--color-sidebar-text)', opacity: 0.9 }}>{settingsAdminNav.title}</span>
+                      <span className="flex-1 text-right" style={{ color: 'var(--color-sidebar-text)', opacity: 0.9 }}>{filteredSettingsNav.title}</span>
                     </div>
                   </button>
                   <div
@@ -271,7 +368,7 @@ export function AdminShell() {
                     )}
                   >
                     <nav id={panelId} className="space-y-0.5 overflow-hidden">
-                      {settingsAdminNav.items.map((link) => {
+                      {filteredSettingsNav.items.map((link) => {
                         const LinkIcon = link.icon
                         return (
                           <NavLink
@@ -324,6 +421,15 @@ export function AdminShell() {
       <div className="flex min-h-screen w-full flex-1 flex-col md:mr-72">
         <header className="sticky top-0 z-10 border-b shadow-sm" style={{ backgroundColor: 'var(--color-header)', borderColor: 'rgba(0, 0, 0, 0.1)' }}>
           <div className="flex w-full items-center justify-between px-6 py-4 lg:px-10">
+            {/* زر القائمة للجوال */}
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="rounded-lg p-2 text-white hover:bg-white/10 md:hidden"
+              aria-label="فتح القائمة"
+            >
+              <Menu className="h-6 w-6" />
+            </button>
+
             <div>
               <p className="text-xs font-semibold" style={{ color: 'var(--color-sidebar-text)', opacity: 0.8 }}>مدير النظام</p>
               <h1 className="text-lg font-bold" style={{ color: 'var(--color-sidebar-text)' }}>{admin?.name ?? 'الإدارة'}</h1>

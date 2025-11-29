@@ -563,33 +563,35 @@ export function AttendanceReportPage() {
 
   return (
   <section className="w-full space-y-8">
-      <header className="flex items-start justify-between gap-4 text-right">
+      <header className="flex flex-col gap-4 text-right sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-3xl font-bold text-slate-900">كشف الغياب</h1>
           <p className="text-sm text-muted">
             أنشئ كشف حضور وغياب شامل مع إمكان التصفية حسب الصف، الشعبة، الطالب، والفترة الزمنية، ثم صدّره إلى PDF أو Excel بسهولة.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
             type="button"
             onClick={() => setShowNoorSyncModal(true)}
-            className="button-secondary flex items-center gap-2 whitespace-nowrap"
+            className="button-secondary flex items-center gap-1.5 whitespace-nowrap text-xs sm:gap-2 sm:text-sm"
           >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            حالة الرصد في نور
+            <span className="hidden sm:inline">حالة الرصد في نور</span>
+            <span className="sm:hidden">نور</span>
           </button>
           <button
             type="button"
             onClick={() => setShowAbsentPDFModal(true)}
-            className="button-primary flex items-center gap-2 whitespace-nowrap"
+            className="button-primary flex items-center gap-1.5 whitespace-nowrap text-xs sm:gap-2 sm:text-sm"
           >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            كشف الغائبين
+            <span className="hidden sm:inline">كشف الغائبين</span>
+            <span className="sm:hidden">الغائبين</span>
           </button>
         </div>
       </header>
@@ -604,7 +606,7 @@ export function AttendanceReportPage() {
         onClose={() => setShowNoorSyncModal(false)}
       />
 
-  <div className="grid gap-6 xl:grid-cols-[minmax(320px,360px),minmax(0,1fr)] 2xl:grid-cols-[minmax(320px,380px),minmax(0,1fr)]">
+  <div className="grid gap-6 lg:grid-cols-[minmax(320px,360px),1fr] xl:grid-cols-[minmax(320px,380px),1fr]">
         <form
           className="glass-card space-y-6"
           onSubmit={(event) => {
@@ -784,39 +786,42 @@ export function AttendanceReportPage() {
           </footer>
         </form>
 
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-white/60 px-4 py-3 shadow-sm">
+        <div className="min-w-0 space-y-4">
+          <div className="flex flex-col gap-3 rounded-3xl bg-white/60 px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
             <div className="text-right">
               <p className="text-sm font-medium text-slate-800">{metaLabel}</p>
               <p className="text-xs text-slate-500">الفترة: {rangeLabel}</p>
             </div>
-            <div className="flex flex-wrap items-center justify-end gap-2">
+            <div className="flex items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={() => handleExport('excel')}
                 disabled={!canExport || isExporting}
-                className="flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-2xl border border-slate-200 px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                title="تصدير Excel"
               >
                 <i className="bi bi-file-earmark-excel" />
-                Excel
+                <span className="hidden sm:inline">Excel</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleExport('pdf')}
                 disabled={!canExport || isExporting}
-                className="flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-2xl border border-slate-200 px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                title="تصدير PDF"
               >
                 <i className="bi bi-filetype-pdf" />
-                PDF
+                <span className="hidden sm:inline">PDF</span>
               </button>
               <button
                 type="button"
                 onClick={handlePrint}
                 disabled={!hasData}
-                className="flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-2xl border border-slate-200 px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                title="طباعة"
               >
                 <i className="bi bi-printer" />
-                طباعة
+                <span className="hidden sm:inline">طباعة</span>
               </button>
             </div>
           </div>
@@ -904,43 +909,47 @@ export function AttendanceReportPage() {
                   </div>
                 </section>
 
-                <div className="relative max-h-[70vh] overflow-auto rounded-2xl border border-slate-200">
-                  <table className="min-w-full table-fixed border-collapse text-sm">
-                    <thead>
-                      <tr className="bg-slate-100 text-right text-xs font-semibold uppercase tracking-wider text-slate-600">
-                        <th className="sticky top-0 z-20 w-64 border-b border-slate-200 bg-slate-100 px-4 py-3 shadow-sm">الطالب</th>
-                        {report.dates.map((date) => (
-                          <th
-                            key={date}
-                            className="sticky top-0 z-10 border-b border-slate-200 bg-slate-100 px-3 py-3 text-center shadow-sm"
-                          >
-                            {formatDateLabel(date)}
+                <div className="relative max-h-[70vh] overflow-x-auto overflow-y-auto rounded-2xl border border-slate-200 shadow-inner">
+                  <div className="inline-block min-w-full">
+                    <table className="w-full border-collapse text-sm">
+                      <thead>
+                        <tr className="bg-slate-100 text-right text-xs font-semibold uppercase tracking-wider text-slate-600">
+                          <th className="sticky right-0 top-0 z-30 w-48 border-b border-l border-slate-200 bg-slate-100 px-3 py-3 shadow-[2px_0_8px_rgba(0,0,0,0.08)] sm:w-56 lg:w-64">
+                            الطالب
                           </th>
-                        ))}
-                        {statusesForTotals.map((status) => (
-                          <th
-                            key={`total-header-${status}`}
-                            className="sticky top-0 z-10 border-b border-slate-200 bg-slate-100 px-3 py-3 text-center shadow-sm"
-                          >
-                            {STATUS_CONFIG[status].label}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {paginatedStudents.map((student) => {
-                        const attendanceIndex = buildAttendanceIndex(student)
+                          {report.dates.map((date) => (
+                            <th
+                              key={date}
+                              className="sticky top-0 z-10 min-w-[80px] border-b border-slate-200 bg-slate-100 px-2 py-3 text-center shadow-sm sm:min-w-[100px] sm:px-3"
+                            >
+                              {formatDateLabel(date)}
+                            </th>
+                          ))}
+                          {statusesForTotals.map((status) => (
+                            <th
+                              key={`total-header-${status}`}
+                              className="sticky top-0 z-10 min-w-[70px] border-b border-slate-200 bg-slate-100 px-2 py-3 text-center shadow-sm sm:min-w-[80px] sm:px-3"
+                            >
+                              <span className="hidden sm:inline">{STATUS_CONFIG[status].label}</span>
+                              <span className="sm:hidden">{STATUS_CONFIG[status].symbol}</span>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedStudents.map((student) => {
+                          const attendanceIndex = buildAttendanceIndex(student)
 
-                        return (
-                          <tr key={student.student_id} className="border-b border-slate-100 last:border-b-0">
-                            <td className="border-slate-100 px-4 py-3 text-right">
-                              <div className="space-y-1">
-                                <p className="text-sm font-semibold text-slate-800">{student.name}</p>
-                                <p className="text-xs text-slate-500">
-                                  الصف {student.grade} — الشعبة {student.class_name}
+                          return (
+                            <tr key={student.student_id} className="border-b border-slate-100 last:border-b-0">
+                              <td className="sticky right-0 z-20 border-l border-slate-100 bg-white px-3 py-3 text-right shadow-[2px_0_8px_rgba(0,0,0,0.04)]">
+                              <div className="space-y-0.5">
+                                <p className="text-xs font-semibold text-slate-800 sm:text-sm">{student.name}</p>
+                                <p className="text-[10px] text-slate-500 sm:text-xs">
+                                  {student.grade} — {student.class_name}
                                 </p>
                                 {student.national_id ? (
-                                  <p className="text-xs text-slate-400">رقم الهوية: {student.national_id}</p>
+                                  <p className="hidden text-xs text-slate-400 lg:block">{student.national_id}</p>
                                 ) : null}
                               </div>
                             </td>
@@ -949,7 +958,7 @@ export function AttendanceReportPage() {
                               const entry = attendanceIndex[date]
                               if (!entry) {
                                 return (
-                                  <td key={`${student.student_id}-${date}`} className="px-3 py-2 text-center text-xs text-slate-400">
+                                  <td key={`${student.student_id}-${date}`} className="px-2 py-2 text-center text-xs text-slate-400 sm:px-3">
                                     —
                                   </td>
                                 )
@@ -962,7 +971,7 @@ export function AttendanceReportPage() {
                                 <td
                                   key={`${student.student_id}-${date}`}
                                   className={clsx(
-                                    'px-3 py-2 text-center text-sm transition',
+                                    'px-2 py-2 text-center text-sm transition sm:px-3',
                                     isHighlighted ? STATUS_CONFIG[status].cellClass : 'text-slate-500',
                                   )}
                                   title={entry.notes ?? undefined}
@@ -973,7 +982,7 @@ export function AttendanceReportPage() {
                             })}
 
                             {statusesForTotals.map((status) => (
-                              <td key={`${student.student_id}-total-${status}`} className="px-3 py-2 text-center text-sm font-semibold text-slate-700">
+                              <td key={`${student.student_id}-total-${status}`} className="px-2 py-2 text-center text-xs font-semibold text-slate-700 sm:px-3 sm:text-sm">
                                 {getRowTotal(student, status)}
                               </td>
                             ))}
@@ -982,16 +991,17 @@ export function AttendanceReportPage() {
                       })}
                     </tbody>
                   </table>
+                  </div>
                 </div>
 
                 {totalStudents > 0 ? (
                   <div className="flex flex-col gap-4 rounded-2xl border border-slate-100 bg-white/70 px-4 py-4 text-sm text-slate-600 shadow-sm lg:flex-row lg:items-center lg:justify-between">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span>عرض</span>
+                    <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
+                      <span className="hidden sm:inline">عرض</span>
                       <select
                         value={pageSize}
                         onChange={(event) => setPageSize(Number(event.target.value))}
-                        className="rounded-2xl border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                        className="rounded-2xl border border-slate-200 bg-white px-2 py-1 text-xs shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 sm:px-3 sm:text-sm"
                       >
                         {PAGE_SIZE_OPTIONS.map((option) => (
                           <option key={option} value={option}>
@@ -999,18 +1009,18 @@ export function AttendanceReportPage() {
                           </option>
                         ))}
                       </select>
-                      <span>سجل لكل صفحة</span>
+                      <span className="hidden sm:inline">سجل</span>
                       <span className="text-xs text-slate-400 sm:text-sm">
-                        {startIndex + 1} - {endIndex} من {totalStudents.toLocaleString('ar-SA')}
+                        {startIndex + 1}-{endIndex} من {totalStudents.toLocaleString('ar-SA')}
                       </span>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex items-center justify-center gap-1.5 sm:gap-2">
                       <button
                         type="button"
                         onClick={() => setPage(1)}
                         disabled={page === 1}
-                        className="rounded-2xl border border-slate-200 px-3 py-1 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="hidden rounded-2xl border border-slate-200 px-3 py-1 text-xs transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 sm:inline-block sm:text-sm"
                       >
                         الأولى
                       </button>
@@ -1018,26 +1028,28 @@ export function AttendanceReportPage() {
                         type="button"
                         onClick={() => setPage((prev) => Math.max(1, prev - 1))}
                         disabled={page === 1}
-                        className="rounded-2xl border border-slate-200 px-3 py-1 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="rounded-2xl border border-slate-200 px-2.5 py-1 text-xs transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:text-sm"
                       >
-                        السابق
+                        <span className="hidden sm:inline">السابق</span>
+                        <span className="sm:hidden">←</span>
                       </button>
-                      <span className="rounded-2xl bg-slate-100 px-4 py-1 text-sm font-semibold text-slate-700">
-                        الصفحة {page} من {totalPages}
+                      <span className="rounded-2xl bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 sm:px-4 sm:text-sm">
+                        <span className="hidden sm:inline">الصفحة </span>{page}<span className="hidden sm:inline"> من {totalPages}</span><span className="sm:hidden">/{totalPages}</span>
                       </span>
                       <button
                         type="button"
                         onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
                         disabled={page === totalPages}
-                        className="rounded-2xl border border-slate-200 px-3 py-1 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="rounded-2xl border border-slate-200 px-2.5 py-1 text-xs transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:text-sm"
                       >
-                        التالي
+                        <span className="hidden sm:inline">التالي</span>
+                        <span className="sm:hidden">→</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setPage(totalPages)}
                         disabled={page === totalPages}
-                        className="rounded-2xl border border-slate-200 px-3 py-1 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="hidden rounded-2xl border border-slate-200 px-3 py-1 text-xs transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 sm:inline-block sm:text-sm"
                       >
                         الأخيرة
                       </button>

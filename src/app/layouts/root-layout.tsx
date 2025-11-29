@@ -4,14 +4,14 @@ import { GlobalBellWidget } from '@/modules/admin/school-bell/components/global-
 const navLinks = [
   { to: '/', label: 'الرئيسية' },
   // { to: '/plans', label: 'الباقات' },
-  // { to: '/register', label: 'تسجيل مدرسة' },
-  { to: '/auth/teacher', label: 'دخول المعلم' },
-  { to: '/auth/admin', label: 'دخول الإدارة' },
+  // { to: '/register', label: 'التسجيل' },
+  { to: '/auth/teacher', label: 'الدخول' },
 ]
 
 const APP_SHELL_PREFIXES = ['/admin', '/teacher']
 const FULLSCREEN_ROUTES = ['/display/auto-call']
 const GUARDIAN_PORTAL_PREFIXES = ['/guardian']
+const NO_HEADER_ROUTES = ['/register']
 
 export function RootLayout() {
   const location = useLocation()
@@ -22,6 +22,7 @@ export function RootLayout() {
   const isGuardianPortal = GUARDIAN_PORTAL_PREFIXES.some((prefix) =>
     location.pathname.startsWith(prefix),
   )
+  const isNoHeaderRoute = NO_HEADER_ROUTES.includes(location.pathname)
 
   if (isFullscreenRoute) {
     return <Outlet />
@@ -29,7 +30,7 @@ export function RootLayout() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-slate-900">
-      {isAppShellRoute || isGuardianPortal ? null : (
+      {isAppShellRoute || isGuardianPortal || isNoHeaderRoute ? null : (
         <header className="sticky top-0 z-50 border-b border-white/20 bg-white/80 shadow-sm backdrop-blur-md">
           <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-5 py-4 md:flex-row md:items-center md:justify-between">
             <Link to="/" className="flex items-center gap-3">
@@ -42,15 +43,21 @@ export function RootLayout() {
               </div>
             </Link>
             <nav className="flex flex-wrap items-center justify-center gap-2 text-sm font-medium text-slate-700 md:justify-start">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  className="rounded-full px-4 py-2 transition hover:bg-teal-500/10 hover:text-teal-700"
-                >
-                  {link.label}
-                </Link>
-              ))}
+              {navLinks.map((link) => {
+                // إخفاء زر الرئيسية عندما نكون في صفحة الرئيسية
+                if (link.to === '/' && location.pathname === '/') {
+                  return null
+                }
+                return (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    className="rounded-full px-4 py-2 transition hover:bg-teal-500/10 hover:text-teal-700"
+                  >
+                    {link.label}
+                  </Link>
+                )
+              })}
             </nav>
           </div>
         </header>
@@ -74,7 +81,7 @@ export function RootLayout() {
         )}
       </main>
 
-      {isAppShellRoute ? null : (
+      {isAppShellRoute || isNoHeaderRoute ? null : (
         <footer
           className={
             isGuardianPortal

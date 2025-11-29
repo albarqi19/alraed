@@ -2423,6 +2423,29 @@ export async function fetchWhatsappTemplates(): Promise<WhatsappTemplate[]> {
     .filter((template): template is WhatsappTemplate => template !== null)
 }
 
+export async function fetchWhatsappVariables(): Promise<Record<string, unknown>> {
+  const { data } = await apiClient.get<ApiResponse<Record<string, unknown>>>('/admin/whatsapp/variables')
+  return unwrapResponse<Record<string, unknown>>(data, 'تعذر تحميل متغيرات الواتساب')
+}
+
+export async function fetchWhatsappVariablesFlat(): Promise<Array<Record<string, unknown>>> {
+  const { data } = await apiClient.get<ApiResponse<unknown>>('/admin/whatsapp/variables/flat')
+  return unwrapCollectionResponse<Record<string, unknown>>(
+    data,
+    'تعذر تحميل متغيرات الواتساب',
+    ['data', 'variables', 'items']
+  )
+}
+
+export async function fetchWhatsappVariablesByCategory(category: string): Promise<Array<Record<string, unknown>>> {
+  const { data } = await apiClient.get<ApiResponse<unknown>>(`/admin/whatsapp/variables/category/${category}`)
+  return unwrapCollectionResponse<Record<string, unknown>>(
+    data,
+    'تعذر تحميل متغيرات الفئة',
+    ['data', 'variables', 'items']
+  )
+}
+
 export async function sendWhatsappBulkMessages(payload: WhatsappBulkMessagePayload): Promise<{ queued: number }> {
   const { data } = await apiClient.post<ApiResponse<Record<string, unknown> | null>>('/admin/whatsapp/send-bulk', payload)
   const response = unwrapResponse<Record<string, unknown> | null>(data, 'تعذر إرسال رسائل الواتساب')

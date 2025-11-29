@@ -26,11 +26,26 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // معالجة خطأ 401 - غير مصرح
     if (error.response?.status === 401) {
       window.localStorage.removeItem('auth_token')
       const { clearAuth } = useAuthStore.getState()
       clearAuth()
     }
+    
+    // معالجة خطأ 402 - انتهاء الاشتراك
+    if (error.response?.status === 402) {
+      const message = error.response?.data?.message || 'انتهى اشتراكك في النظام'
+      
+      // إظهار رسالة واضحة للمستخدم
+      if (window.confirm(`⚠️ ${message}\n\nهل تريد الانتقال إلى صفحة الاشتراكات لتجديد اشتراكك؟`)) {
+        window.location.href = '/admin/subscription'
+      }
+      
+      // تعديل رسالة الخطأ لتكون واضحة
+      error.message = message
+    }
+    
     return Promise.reject(error)
   },
 )

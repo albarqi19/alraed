@@ -5,6 +5,8 @@ import { apiClient } from '@/services/api/client'
 import { useToast } from '@/shared/feedback/use-toast'
 import { sendTeacherMessages } from '../api'
 import clsx from 'classnames'
+import { HolidayBanner } from '@/shared/components/holiday-banner'
+import { useCanSendMessages } from '@/hooks/use-academic-calendar'
 
 interface MessageTemplate {
   id: number
@@ -258,8 +260,20 @@ export function TeacherMessagesPage() {
     }
   }, [])
 
-  // التحقق من وقت الإرسال
+  // التحقق من حالة الإجازة الأكاديمية
+  const { data: canSendMessagesData } = useCanSendMessages()
+
+  // التحقق من وقت الإرسال (مع دمج حالة الإجازة الأكاديمية)
   const checkSendingTime = useMemo(() => {
+    // أولاً: التحقق من الإجازة الأكاديمية
+    if (canSendMessagesData && !canSendMessagesData.can_send) {
+      return {
+        allowed: false,
+        reason: canSendMessagesData.message || 'لا يمكن إرسال الرسائل خلال الإجازة الأكاديمية',
+        isAcademicHoliday: true,
+      }
+    }
+
     const now = new Date()
     const hour = now.getHours()
     const day = now.getDay() // 0 = الأحد، 6 = السبت
@@ -278,9 +292,10 @@ export function TeacherMessagesPage() {
         ? 'لا يمكن إرسال الرسائل في أيام العطلة (الجمعة والسبت)'
         : !isAllowedTime 
         ? `يمكن إرسال الرسائل فقط من الساعة ${settings.allowed_start_hour} صباحاً إلى ${settings.allowed_end_hour} صباحاً`
-        : ''
+        : '',
+      isAcademicHoliday: false,
     }
-  }, [settings])
+  }, [settings, canSendMessagesData])
 
   const selectedTemplateData = templates.find(t => t.id === selectedTemplate)
 
@@ -453,6 +468,9 @@ export function TeacherMessagesPage() {
 
       {/* الصفحة الرئيسية */}
       <section className="space-y-6">
+        {/* Holiday Banner - عرض بانر الإجازة */}
+        <HolidayBanner />
+        
         {/* Header */}
         <header className="flex items-center gap-4 text-right">
           <button

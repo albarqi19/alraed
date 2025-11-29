@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import clsx from 'classnames'
 import { useTeacherSessionsQuery } from '../hooks'
 import type { TeacherSession } from '../types'
+import { HolidayBanner } from '@/shared/components/holiday-banner'
+import { useTodayStatus } from '@/hooks/use-academic-calendar'
 
 function formatTime(time?: string) {
   if (!time) return 'غير محدد'
@@ -31,8 +33,12 @@ function classifySession(session: TeacherSession) {
 
 export function TeacherDashboardPage() {
   const { data, isLoading, isError, refetch } = useTeacherSessionsQuery()
+  const { data: todayStatus } = useTodayStatus()
   const [showStats, setShowStats] = useState(false)
   const [alertModal, setAlertModal] = useState<{ type: 'error' | 'warning'; text: string; icon: string } | null>(null)
+
+  // التحقق من أن اليوم إجازة
+  const isHoliday = todayStatus && !todayStatus.is_working_day
 
   const sessions: TeacherSession[] = useMemo(() => {
     // فلترة الحصص لعرض حصص اليوم فقط
@@ -150,9 +156,14 @@ export function TeacherDashboardPage() {
       )}
 
       <section className="space-y-8">
+        {/* Holiday Banner */}
+        <HolidayBanner />
+        
         <header className="space-y-3 text-right">
           <div className="flex items-center justify-between gap-3">
-            <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">حصص اليوم</h1>
+            <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">
+              {isHoliday ? 'لوحة المعلم' : 'حصص اليوم'}
+            </h1>
             <Link
               to="/teacher/points"
               className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-700 sm:px-4 sm:py-2 sm:text-sm"
@@ -161,13 +172,16 @@ export function TeacherDashboardPage() {
               <span>نقاطي</span>
             </Link>
           </div>
-          <p className="text-sm text-muted">
-            {data?.currentDay ?? '—'}{' '}
-            {data?.saudiTime ? `— ${new Date(data.saudiTime).toLocaleString('ar-SA')}` : null}
-          </p>
+          {!isHoliday && (
+            <p className="text-sm text-muted">
+              {data?.currentDay ?? '—'}{' '}
+              {data?.saudiTime ? `— ${new Date(data.saudiTime).toLocaleString('ar-SA')}` : null}
+            </p>
+          )}
         </header>
 
-      {actionableSession ? (
+      {/* إخفاء الحصص أثناء الإجازة */}
+      {!isHoliday && actionableSession ? (
         <article className="rounded-3xl border border-emerald-300 bg-white p-6 text-right">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-2">
@@ -193,12 +207,14 @@ export function TeacherDashboardPage() {
             </Link>
           </div>
         </article>
-      ) : (
+      ) : !isHoliday ? (
         <div className="rounded-3xl border border-slate-200 bg-white p-6 text-center text-sm text-muted">
           لا توجد حصص متاحة للتحضير في الوقت الحالي.
         </div>
-      )}
+      ) : null}
 
+      {/* سجل حصص اليوم - يختفي أثناء الإجازة */}
+      {!isHoliday && (
       <div className="glass-card space-y-4">
         <div className="text-right">
           <h2 className="text-xl font-semibold text-slate-900">سجل حصص اليوم</h2>
@@ -269,7 +285,9 @@ export function TeacherDashboardPage() {
           </div>
         )}
       </div>
+      )}
 
+      {/* إحصائيات اليوم - تظهر دائماً */}
       <div className="glass-card space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-xl font-semibold text-slate-900">إحصائيات اليوم</h2>

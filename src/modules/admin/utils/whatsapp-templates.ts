@@ -11,7 +11,10 @@ export type WhatsappPlaceholder = {
   placeholder: string
 }
 
-export function sanitizeWhatsappVariableKey(raw: string): string {
+export function sanitizeWhatsappVariableKey(raw: string | undefined | null): string {
+  if (!raw || typeof raw !== 'string') {
+    return ''
+  }
   return raw
     .replace(/\u200B/g, '')
     .replace(/^[{]+|[}]+$/g, '')

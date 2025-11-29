@@ -77,9 +77,11 @@ export interface PublicSubscriptionPlansPayload {
 export interface RegisterSchoolPayload {
   school_name: string
   subdomain?: string | null
+  school_level: 'elementary' | 'middle' | 'high'
+  ministry_number?: string | null
   admin_name: string
   admin_national_id: string
-  admin_phone?: string | null
+  admin_phone: string
   admin_email?: string | null
   plan_code?: string | null
 }
