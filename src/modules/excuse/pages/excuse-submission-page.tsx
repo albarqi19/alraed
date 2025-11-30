@@ -243,21 +243,21 @@ export function ExcuseSubmissionPage() {
   // Form state
   const { data } = pageState
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-indigo-600 py-8 px-4" dir="rtl">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4" dir="rtl">
       <div className="max-w-lg mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <svg className="w-8 h-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-white">تقديم عذر غياب</h1>
-          <p className="text-blue-100 mt-2">يرجى تعبئة النموذج لتقديم عذر الغياب</p>
+          <h1 className="text-2xl font-bold text-slate-800">تقديم عذر غياب</h1>
+          <p className="text-slate-600 mt-2">يرجى تعبئة النموذج لتقديم عذر الغياب</p>
         </div>
 
         {/* Student Info Card */}
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-6 mb-6">
+        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
           <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
             <span className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
               <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -288,7 +288,7 @@ export function ExcuseSubmissionPage() {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-6">
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-lg p-6">
           <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
             <span className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
               <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -422,7 +422,7 @@ export function ExcuseSubmissionPage() {
         </form>
 
         {/* Footer */}
-        <p className="text-center text-xs text-white/70 mt-6">
+        <p className="text-center text-xs text-slate-500 mt-6">
           سيتم مراجعة العذر من قبل إدارة المدرسة وإشعاركم بالقرار عبر الواتساب
         </p>
       </div>
