@@ -495,9 +495,17 @@ function SettingsDialog({
         if (response.ok) {
           const data = await response.json()
           setSendToUnprepared(data.settings?.send_whatsapp_for_unprepared ?? false)
+        } else if (response.status === 404) {
+          // إذا كان الـ endpoint غير موجود، استخدم القيمة الافتراضية
+          console.warn('Settings endpoint not found (404), using default value')
+          setSendToUnprepared(false)
+        } else {
+          console.error('Error fetching settings:', response.status, response.statusText)
         }
       } catch (error) {
         console.error('Error fetching settings:', error)
+        // في حالة الخطأ، استخدم القيمة الافتراضية
+        setSendToUnprepared(false)
       } finally {
         setIsLoadingSettings(false)
       }
