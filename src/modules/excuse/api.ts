@@ -127,7 +127,7 @@ export async function approveExcuse(id: number, message?: string): Promise<{ suc
 export async function rejectExcuse(id: number, reason: string): Promise<{ success: boolean; message: string; data: AbsenceExcuseRecord }> {
   const response = await apiClient.post<{ success: boolean; message: string; data: AbsenceExcuseRecord }>(
     `/admin/absence-excuses/${id}/reject`,
-    { response_message: reason }
+    { notes: reason }
   )
   return response.data
 }

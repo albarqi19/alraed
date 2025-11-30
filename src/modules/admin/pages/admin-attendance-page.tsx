@@ -3,8 +3,9 @@ import {
   useAttendanceReportsQuery,
   useAttendanceSessionDetailsQuery,
   useExportAttendanceReportMutation,
+  useUpdateAttendanceStatusMutation,
 } from '../hooks'
-import type { AttendanceReportRecord } from '../types'
+import type { AttendanceReportRecord, AttendanceSessionDetails } from '../types'
 
 type FilterState = {
   grade: string
@@ -17,11 +18,11 @@ type FilterState = {
 
 type StatusKey = 'present' | 'absent' | 'late' | 'excused'
 
-const statusMeta: Record<StatusKey, { label: string; tone: string }> = {
-  present: { label: 'حاضر', tone: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
-  absent: { label: 'غائب', tone: 'bg-rose-50 text-rose-700 border border-rose-200' },
-  late: { label: 'متأخر', tone: 'bg-amber-50 text-amber-700 border border-amber-200' },
-  excused: { label: 'مستأذن', tone: 'bg-sky-50 text-sky-700 border border-sky-200' },
+const statusMeta: Record<StatusKey, { label: string; tone: string; icon: string }> = {
+  present: { label: 'حاضر', tone: 'bg-emerald-50 text-emerald-700 border border-emerald-200', icon: 'bi-check-circle-fill' },
+  absent: { label: 'غائب', tone: 'bg-rose-50 text-rose-700 border border-rose-200', icon: 'bi-x-circle-fill' },
+  late: { label: 'متأخر', tone: 'bg-amber-50 text-amber-700 border border-amber-200', icon: 'bi-clock-fill' },
+  excused: { label: 'مستأذن', tone: 'bg-sky-50 text-sky-700 border border-sky-200', icon: 'bi-person-badge-fill' },
 }
 
 function formatDate(value?: string | null, options: Intl.DateTimeFormatOptions = { dateStyle: 'medium' }) {
@@ -35,13 +36,161 @@ function formatDate(value?: string | null, options: Intl.DateTimeFormatOptions =
   }
 }
 
-function StatusBadge({ status }: { status: StatusKey }) {
+function StatusBadge({ status, onClick, isEditable }: { status: StatusKey; onClick?: () => void; isEditable?: boolean }) {
   const meta = statusMeta[status]
   return (
-    <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${meta.tone}`}>
-      <span className={`h-2 w-2 rounded-full ${status === 'present' ? 'bg-emerald-500' : status === 'absent' ? 'bg-rose-500' : status === 'late' ? 'bg-amber-500' : 'bg-sky-500'}`} />
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!isEditable}
+      className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold transition ${meta.tone} ${
+        isEditable ? 'cursor-pointer hover:opacity-80 hover:shadow-md' : 'cursor-default'
+      }`}
+    >
+      <i className={`bi ${meta.icon}`} />
       {meta.label}
-    </span>
+      {isEditable && <i className="bi bi-pencil-fill text-[10px] opacity-60" />}
+    </button>
+  )
+}
+
+// مودال تغيير حالة الطالب
+function ChangeStatusModal({
+  student,
+  isOpen,
+  onClose,
+  onConfirm,
+  isLoading,
+  isToday,
+}: {
+  student: AttendanceSessionDetails['students'][number] | null
+  isOpen: boolean
+  onClose: () => void
+  onConfirm: (newStatus: StatusKey) => void
+  isLoading: boolean
+  isToday: boolean
+}) {
+  const [selectedStatus, setSelectedStatus] = useState<StatusKey | null>(null)
+
+  useEffect(() => {
+    if (student) {
+      setSelectedStatus(null)
+    }
+  }, [student])
+
+  if (!isOpen || !student) return null
+
+  const currentStatus = student.status
+  const availableStatuses: StatusKey[] = ['present', 'absent', 'late', 'excused']
+
+  // رسالة التحذير حسب التغيير
+  const getWarningMessage = () => {
+    if (!selectedStatus) return null
+    
+    if (currentStatus === 'absent' && selectedStatus === 'present') {
+      return '⚠️ سيتم إرسال رسالة تصحيح لولي الأمر تفيد بأن ابنه حاضر وليس غائباً.'
+    }
+    if ((currentStatus === 'present' || currentStatus === 'late') && selectedStatus === 'absent') {
+      return '⚠️ سيتم إرسال رسالة غياب لولي الأمر.'
+    }
+    if (selectedStatus === 'late' && currentStatus !== 'late') {
+      return '⚠️ سيتم إرسال رسالة تأخر لولي الأمر.'
+    }
+    return null
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+        <header className="mb-4 text-right">
+          <h3 className="text-lg font-bold text-slate-900">تغيير حالة الطالب</h3>
+          <p className="text-sm text-slate-500">{student.name}</p>
+        </header>
+
+        {!isToday ? (
+          <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-right">
+            <p className="text-sm font-semibold text-rose-700">
+              <i className="bi bi-exclamation-triangle-fill ml-2" />
+              لا يمكن تعديل سجلات الحضور لأيام سابقة
+            </p>
+            <p className="mt-1 text-xs text-rose-600">التعديل متاح فقط لسجلات اليوم الحالي.</p>
+          </div>
+        ) : (
+          <>
+            <div className="mb-4">
+              <p className="mb-2 text-xs font-semibold text-slate-600">الحالة الحالية:</p>
+              <StatusBadge status={currentStatus} />
+            </div>
+
+            <div className="mb-4">
+              <p className="mb-2 text-xs font-semibold text-slate-600">اختر الحالة الجديدة:</p>
+              <div className="grid grid-cols-2 gap-2">
+                {availableStatuses.map((status) => {
+                  const meta = statusMeta[status]
+                  const isSelected = selectedStatus === status
+                  const isCurrent = currentStatus === status
+                  return (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() => !isCurrent && setSelectedStatus(status)}
+                      disabled={isCurrent}
+                      className={`flex items-center justify-center gap-2 rounded-2xl border-2 px-4 py-3 text-sm font-semibold transition ${
+                        isCurrent
+                          ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400'
+                          : isSelected
+                          ? 'border-teal-500 bg-teal-50 text-teal-700 shadow-md'
+                          : `${meta.tone} hover:shadow-md`
+                      }`}
+                    >
+                      <i className={`bi ${meta.icon}`} />
+                      {meta.label}
+                      {isCurrent && <span className="text-[10px]">(الحالية)</span>}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {getWarningMessage() && (
+              <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-right">
+                <p className="text-xs text-amber-700">{getWarningMessage()}</p>
+              </div>
+            )}
+          </>
+        )}
+
+        <footer className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+          >
+            إلغاء
+          </button>
+          {isToday && (
+            <button
+              type="button"
+              onClick={() => selectedStatus && onConfirm(selectedStatus)}
+              disabled={!selectedStatus || isLoading}
+              className="rounded-xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isLoading ? (
+                <>
+                  <i className="bi bi-arrow-repeat animate-spin ml-2" />
+                  جاري التحديث...
+                </>
+              ) : (
+                <>
+                  <i className="bi bi-check-lg ml-2" />
+                  تأكيد التغيير
+                </>
+              )}
+            </button>
+          )}
+        </footer>
+      </div>
+    </div>
   )
 }
 
@@ -79,6 +228,8 @@ export function AdminAttendancePage() {
     search: '',
   })
   const [selectedRecordId, setSelectedRecordId] = useState<number | null>(null)
+  const [selectedStudent, setSelectedStudent] = useState<AttendanceSessionDetails['students'][number] | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   const queryFilters = useMemo(() => {
     const entries: Record<string, string> = {}
@@ -93,6 +244,7 @@ export function AdminAttendancePage() {
 
   const reportsQuery = useAttendanceReportsQuery(queryFilters)
   const exportMutation = useExportAttendanceReportMutation()
+  const updateStatusMutation = useUpdateAttendanceStatusMutation()
 
   const records = useMemo(() => reportsQuery.data ?? [], [reportsQuery.data])
 
@@ -112,6 +264,13 @@ export function AdminAttendancePage() {
   }, [records, selectedRecordId])
 
   const detailsQuery = useAttendanceSessionDetailsQuery(selectedRecord?.first_id || selectedRecord?.id)
+
+  // التحقق مما إذا كان التاريخ المحدد هو اليوم
+  const isSelectedDateToday = useMemo(() => {
+    if (!selectedRecord?.attendance_date) return false
+    const selectedDate = new Date(selectedRecord.attendance_date).toISOString().split('T')[0]
+    return selectedDate === today
+  }, [selectedRecord, today])
 
   const handleFilterChange = (field: keyof FilterState, value: string) => {
     setFilters((prev) => ({ ...prev, [field]: value }))
@@ -144,6 +303,29 @@ export function AdminAttendancePage() {
     )
   }
 
+  const handleStudentClick = (student: AttendanceSessionDetails['students'][number]) => {
+    setSelectedStudent(student)
+    setIsModalOpen(true)
+  }
+
+  const handleStatusChange = (newStatus: StatusKey) => {
+    if (!selectedStudent) return
+
+    updateStatusMutation.mutate(
+      {
+        attendanceId: selectedStudent.attendance_id,
+        sessionDetailId: selectedRecord?.first_id || selectedRecord?.id,
+        status: newStatus,
+      },
+      {
+        onSuccess: () => {
+          setIsModalOpen(false)
+          setSelectedStudent(null)
+        },
+      },
+    )
+  }
+
   return (
     <section className="space-y-6">
       <header className="space-y-2">
@@ -152,6 +334,12 @@ export function AdminAttendancePage() {
             <h1 className="text-3xl font-bold text-slate-900">تقارير الحضور</h1>
             <p className="text-sm text-muted">
               استعرض سجلات الحضور اليومية وقم بالتصفية والتصدير حسب الحاجة.
+              {isSelectedDateToday && (
+                <span className="mr-2 inline-flex items-center gap-1 rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700">
+                  <i className="bi bi-pencil-square" />
+                  يمكنك تعديل حالة الطلاب
+                </span>
+              )}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -364,6 +552,15 @@ export function AdminAttendancePage() {
                   </div>
                 </dl>
 
+                {isSelectedDateToday && (
+                  <div className="rounded-2xl border border-teal-200 bg-teal-50 p-3 text-right">
+                    <p className="text-xs font-semibold text-teal-700">
+                      <i className="bi bi-info-circle-fill ml-1" />
+                      اضغط على حالة الطالب لتغييرها
+                    </p>
+                  </div>
+                )}
+
                 <div className="rounded-3xl border border-slate-100 bg-slate-50/70 p-4">
                   {detailsQuery.isLoading ? (
                     <div className="space-y-2 text-xs text-muted">
@@ -401,10 +598,17 @@ export function AdminAttendancePage() {
                           {detailsQuery.data.students.map((student) => (
                             <li
                               key={student.attendance_id}
-                              className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/70 px-3 py-2"
+                              className={`flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/70 px-3 py-2 transition ${
+                                isSelectedDateToday ? 'hover:bg-slate-100 hover:shadow-sm cursor-pointer' : ''
+                              }`}
+                              onClick={() => isSelectedDateToday && handleStudentClick(student)}
                             >
                               <span className="text-[11px] font-semibold text-slate-700">{student.name}</span>
-                              <StatusBadge status={student.status} />
+                              <StatusBadge
+                                status={student.status}
+                                isEditable={isSelectedDateToday}
+                                onClick={() => isSelectedDateToday && handleStudentClick(student)}
+                              />
                             </li>
                           ))}
                         </ul>
@@ -429,6 +633,19 @@ export function AdminAttendancePage() {
           </aside>
         </div>
       </section>
+
+      {/* مودال تغيير الحالة */}
+      <ChangeStatusModal
+        student={selectedStudent}
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false)
+          setSelectedStudent(null)
+        }}
+        onConfirm={handleStatusChange}
+        isLoading={updateStatusMutation.isPending}
+        isToday={isSelectedDateToday}
+      />
     </section>
   )
 }
