@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useEffect, useMemo, useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/modules/auth/store/auth-store'
+import { useToast } from '@/shared/feedback/use-toast'
 
 type PreparationStatus = 'prepared' | 'waiting' | 'warning' | 'activity' | 'empty'
 
@@ -11,17 +12,31 @@ type Lesson = {
   grade: string | null
   class_name: string | null
   status: PreparationStatus
+  notification_sent_at?: string | null
+}
+
+type LinkedUser = {
+  id: number
+  name: string
+  phone: string | null
+  has_phone: boolean
 }
 
 type TeacherPreparation = {
   teacher_id: string
   teacher_name: string
+  is_linked: boolean
+  linked_user: LinkedUser | null
+  notification_sent: boolean
   lessons: Lesson[]
 }
 
 type TeacherSummary = {
   teacher_id: string
   teacher_name: string
+  is_linked: boolean
+  linked_user: LinkedUser | null
+  notification_sent: boolean
   total_lessons: number
   prepared_count: number
   waiting_count: number
@@ -31,6 +46,14 @@ type TeacherSummary = {
   unprepared_count: number
   all_prepared: boolean
   lessons: Lesson[]
+}
+
+type SuggestedTeacher = {
+  id: number
+  name: string
+  phone: string | null
+  national_id: string | null
+  similarity: number
 }
 
 function getStatusLabel(status: PreparationStatus): string {
@@ -80,6 +103,9 @@ function calculateTeacherSummary(teacher: TeacherPreparation): TeacherSummary {
   return {
     teacher_id: teacher.teacher_id,
     teacher_name: teacher.teacher_name,
+    is_linked: teacher.is_linked,
+    linked_user: teacher.linked_user,
+    notification_sent: teacher.notification_sent,
     total_lessons: teacher.lessons.length,
     prepared_count,
     waiting_count,
@@ -92,7 +118,188 @@ function calculateTeacherSummary(teacher: TeacherPreparation): TeacherSummary {
   }
 }
 
-function TeacherCard({ summary, onExpand }: { summary: TeacherSummary; onExpand: () => void }) {
+function LinkTeacherDialog({
+  madrasatiTeacherName,
+  onClose,
+  onLink,
+}: {
+  madrasatiTeacherName: string
+  onClose: () => void
+  onLink: (userId: number) => void
+}) {
+  const token = useAuthStore((state) => state.token)
+  const user = useAuthStore((state) => state.user)
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null)
+
+  const { data: suggestions, isLoading } = useQuery({
+    queryKey: ['teacher-suggestions', madrasatiTeacherName],
+    queryFn: async () => {
+      const schoolId = user?.school_id ? String(user.school_id) : ''
+      const url = `${import.meta.env.VITE_API_BASE_URL}/attendance/teacher-preparation-links/suggest?name=${encodeURIComponent(madrasatiTeacherName)}`
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'X-School-Id': schoolId,
+        },
+      })
+      if (!response.ok) throw new Error('فشل جلب الاقتراحات')
+      return response.json()
+    },
+    enabled: !!token && !!user?.school_id,
+  })
+
+  const highSuggestions: SuggestedTeacher[] = suggestions?.high_suggestions ?? []
+  const otherTeachers: SuggestedTeacher[] = suggestions?.other_teachers ?? []
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="max-h-[90vh] w-full max-w-lg overflow-hidden rounded-xl bg-white shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-6 py-4">
+          <div className="flex items-center gap-3">
+            <i className="bi bi-link-45deg text-2xl text-blue-600" />
+            <div>
+              <h2 className="text-lg font-bold text-slate-800">ربط المعلم</h2>
+              <p className="text-sm text-slate-600">{madrasatiTeacherName}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700"
+          >
+            <i className="bi bi-x-lg text-xl" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="max-h-[60vh] overflow-y-auto p-6">
+          {isLoading ? (
+            <div className="py-8 text-center">
+              <i className="bi bi-arrow-repeat animate-spin text-3xl text-blue-600" />
+              <p className="mt-2 text-slate-600">جاري البحث عن المعلمين...</p>
+            </div>
+          ) : (
+            <>
+              {/* الاقتراحات العالية */}
+              {highSuggestions.length > 0 && (
+                <div className="mb-4">
+                  <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-emerald-700">
+                    <i className="bi bi-star-fill text-emerald-500" />
+                    الأقرب تطابقاً
+                  </h3>
+                  <div className="space-y-2">
+                    {highSuggestions.map((teacher) => (
+                      <label
+                        key={teacher.id}
+                        className={`flex cursor-pointer items-center gap-3 rounded-lg border-2 p-3 transition-all ${
+                          selectedUserId === teacher.id
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="teacher"
+                          value={teacher.id}
+                          checked={selectedUserId === teacher.id}
+                          onChange={() => setSelectedUserId(teacher.id)}
+                          className="h-4 w-4 text-blue-600"
+                        />
+                        <div className="flex-1">
+                          <div className="font-semibold text-slate-800">{teacher.name}</div>
+                          <div className="text-xs text-slate-500">
+                            {teacher.phone ? `📱 ${teacher.phone}` : '❌ لا يوجد رقم'}
+                            {teacher.national_id && ` • 🆔 ${teacher.national_id}`}
+                          </div>
+                        </div>
+                        <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700">
+                          {teacher.similarity}%
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* بقية المعلمين */}
+              {otherTeachers.length > 0 && (
+                <div>
+                  <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-600">
+                    <i className="bi bi-people-fill text-slate-400" />
+                    بقية المعلمين
+                  </h3>
+                  <div className="max-h-48 space-y-2 overflow-y-auto">
+                    {otherTeachers.map((teacher) => (
+                      <label
+                        key={teacher.id}
+                        className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-all ${
+                          selectedUserId === teacher.id
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="teacher"
+                          value={teacher.id}
+                          checked={selectedUserId === teacher.id}
+                          onChange={() => setSelectedUserId(teacher.id)}
+                          className="h-4 w-4 text-blue-600"
+                        />
+                        <div className="flex-1">
+                          <div className="font-medium text-slate-700">{teacher.name}</div>
+                          <div className="text-xs text-slate-500">
+                            {teacher.phone ? `📱 ${teacher.phone}` : '❌ لا يوجد رقم'}
+                          </div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {highSuggestions.length === 0 && otherTeachers.length === 0 && (
+                <div className="py-8 text-center">
+                  <i className="bi bi-person-x text-4xl text-slate-300" />
+                  <p className="mt-2 text-slate-600">لا يوجد معلمين متاحين للربط</p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
+          <button
+            onClick={onClose}
+            className="flex-1 rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700 transition-colors hover:bg-slate-100"
+          >
+            إلغاء
+          </button>
+          <button
+            onClick={() => selectedUserId && onLink(selectedUserId)}
+            disabled={!selectedUserId}
+            className="flex-1 rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+          >
+            <i className="bi bi-link-45deg ml-1" />
+            ربط
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function TeacherCard({
+  summary,
+  onExpand,
+  onLinkClick,
+}: {
+  summary: TeacherSummary
+  onExpand: () => void
+  onLinkClick: (e: React.MouseEvent) => void
+}) {
   return (
     <div
       onClick={onExpand}
@@ -102,6 +309,24 @@ function TeacherCard({ summary, onExpand }: { summary: TeacherSummary; onExpand:
         <div className="flex items-center gap-2">
           <i className="bi bi-person-fill text-xl text-slate-600" />
           <h3 className="text-base font-semibold text-slate-800">{summary.teacher_name}</h3>
+          {/* أيقونة الربط */}
+          <button
+            onClick={onLinkClick}
+            title={summary.is_linked ? `مربوط بـ: ${summary.linked_user?.name}` : 'غير مربوط - اضغط للربط'}
+            className={`rounded-full p-1 transition-all ${
+              summary.is_linked
+                ? 'text-emerald-600 hover:bg-emerald-50'
+                : 'text-rose-500 hover:bg-rose-50'
+            }`}
+          >
+            <i className={`bi ${summary.is_linked ? 'bi-link-45deg' : 'bi-link'} text-lg`} />
+          </button>
+          {/* مؤشر الإشعار المرسل */}
+          {summary.notification_sent && (
+            <span title="تم إرسال إشعار" className="text-blue-500">
+              <i className="bi bi-bell-fill text-sm" />
+            </span>
+          )}
         </div>
         {summary.all_prepared ? (
           <span className="text-2xl">✅</span>
@@ -232,9 +457,84 @@ function TeacherDetailDialog({ summary, onClose }: { summary: TeacherSummary; on
   )
 }
 
-function SettingsDialog({ onClose }: { onClose: () => void }) {
+function SettingsDialog({
+  onClose,
+  onSendNotifications,
+  isSendingNotifications,
+  stats,
+  token,
+  schoolId,
+}: {
+  onClose: () => void
+  onSendNotifications: () => void
+  isSendingNotifications: boolean
+  stats: { total_teachers: number; has_unprepared: number }
+  token: string
+  schoolId: string
+}) {
   const [sendToUnprepared, setSendToUnprepared] = useState(false)
   const [sendMotivational, setSendMotivational] = useState(false)
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const toast = useToast()
+
+  // جلب الإعدادات الحالية
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/attendance/teacher-preparation/settings`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+              'X-School-Id': schoolId,
+            },
+          }
+        )
+        if (response.ok) {
+          const data = await response.json()
+          setSendToUnprepared(data.settings?.send_whatsapp_for_unprepared ?? false)
+        }
+      } catch (error) {
+        console.error('Error fetching settings:', error)
+      } finally {
+        setIsLoadingSettings(false)
+      }
+    }
+    fetchSettings()
+  }, [token, schoolId])
+
+  // تحديث إعداد الإرسال التلقائي
+  const handleToggleAutoSend = async (enabled: boolean) => {
+    setSendToUnprepared(enabled)
+    setIsSaving(true)
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/attendance/teacher-preparation/settings`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'X-School-Id': schoolId,
+          },
+          body: JSON.stringify({ send_whatsapp_for_unprepared: enabled }),
+        }
+      )
+      if (response.ok) {
+        toast({ title: enabled ? 'تم تفعيل الإرسال التلقائي' : 'تم إيقاف الإرسال التلقائي', type: 'success' })
+      } else {
+        setSendToUnprepared(!enabled) // revert
+        toast({ title: 'فشل في تحديث الإعدادات', type: 'error' })
+      }
+    } catch (error) {
+      setSendToUnprepared(!enabled) // revert
+      toast({ title: 'حدث خطأ في حفظ الإعدادات', type: 'error' })
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -255,34 +555,74 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
 
         {/* Content */}
         <div className="space-y-4 p-6">
-          {/* رسائل غير المحضرين */}
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-            <div className="mb-3 flex items-start justify-between">
-              <div className="flex-1">
-                <h3 className="mb-1 font-semibold text-slate-800">
-                  <i className="bi bi-exclamation-triangle-fill text-amber-600" /> إرسال رسائل للمعلمين غير المحضرين
-                </h3>
-                <p className="text-sm text-slate-600">
-                  إرسال تنبيه تلقائي للمعلمين الذين لم يحضّروا دروسهم
-                </p>
+          {isLoadingSettings ? (
+            <div className="flex items-center justify-center py-8">
+              <i className="bi bi-arrow-repeat animate-spin text-2xl text-blue-600" />
+              <span className="mr-2 text-slate-600">جاري تحميل الإعدادات...</span>
+            </div>
+          ) : (
+            <>
+              {/* إرسال رسائل لغير المحضرين - الآن يعمل */}
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <div className="mb-3 flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="mb-1 font-semibold text-slate-800">
+                      <i className="bi bi-exclamation-triangle-fill text-amber-600" /> إرسال رسائل للمعلمين غير المحضرين
+                    </h3>
+                    <p className="text-sm text-slate-600">
+                      إرسال تنبيه للمعلمين الذين لم يحضّروا دروسهم ({stats.has_unprepared} معلم)
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={onSendNotifications}
+                  disabled={isSendingNotifications || stats.has_unprepared === 0}
+                  className="mt-2 w-full rounded-lg bg-amber-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
+                >
+                  {isSendingNotifications ? (
+                    <>
+                      <i className="bi bi-arrow-repeat animate-spin ml-2" />
+                      جاري الإرسال...
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-send-fill ml-2" />
+                      إرسال الآن
+                    </>
+                  )}
+                </button>
               </div>
-              <label className="relative inline-flex cursor-pointer items-center">
-                <input
-                  type="checkbox"
-                  checked={sendToUnprepared}
-                  onChange={(e) => setSendToUnprepared(e.target.checked)}
-                  className="peer sr-only"
-                />
-                <div className="peer h-6 w-11 rounded-full bg-slate-300 after:absolute after:right-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-blue-600 peer-checked:after:translate-x-[-20px]"></div>
-              </label>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-              <i className="bi bi-info-circle" />
-              <span>قريباً - قيد التطوير</span>
-            </div>
-          </div>
 
-          {/* رسائل تحفيزية */}
+              {/* الإرسال التلقائي */}
+              <div className={`rounded-lg border p-4 ${sendToUnprepared ? 'border-blue-300 bg-blue-50' : 'border-slate-200 bg-slate-50'}`}>
+                <div className="mb-3 flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="mb-1 font-semibold text-slate-800">
+                      <i className={`bi bi-robot ${sendToUnprepared ? 'text-blue-600' : 'text-slate-400'}`} /> الإرسال التلقائي عند جلب البيانات
+                    </h3>
+                    <p className="text-sm text-slate-600">
+                      إرسال تلقائي للمعلمين غير المحضرين عند استيراد بيانات جديدة
+                    </p>
+                  </div>
+                  <label className="relative inline-flex cursor-pointer items-center">
+                    <input
+                      type="checkbox"
+                      checked={sendToUnprepared}
+                      onChange={(e) => handleToggleAutoSend(e.target.checked)}
+                      disabled={isSaving}
+                      className="peer sr-only"
+                    />
+                    <div className="peer h-6 w-11 rounded-full bg-slate-300 after:absolute after:right-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-blue-600 peer-checked:after:translate-x-[-20px] peer-disabled:opacity-50"></div>
+                  </label>
+                </div>
+                <div className={`flex items-center gap-2 text-xs ${sendToUnprepared ? 'text-blue-600' : 'text-slate-500'}`}>
+                  <i className={`bi ${sendToUnprepared ? 'bi-check-circle-fill' : 'bi-info-circle'}`} />
+                  <span>{sendToUnprepared ? 'مفعّل - سيتم إرسال الإشعارات تلقائياً عند استيراد بيانات جديدة' : 'معطّل - لن يتم إرسال إشعارات تلقائية'}</span>
+                  {isSaving && <i className="bi bi-arrow-repeat animate-spin mr-1" />}
+                </div>
+              </div>
+
+              {/* رسائل تحفيزية */}
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
             <div className="mb-3 flex items-start justify-between">
               <div className="flex-1">
@@ -299,8 +639,9 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
                   checked={sendMotivational}
                   onChange={(e) => setSendMotivational(e.target.checked)}
                   className="peer sr-only"
+                  disabled
                 />
-                <div className="peer h-6 w-11 rounded-full bg-slate-300 after:absolute after:right-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-green-600 peer-checked:after:translate-x-[-20px]"></div>
+                <div className="peer h-6 w-11 rounded-full bg-slate-300 after:absolute after:right-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-green-600 peer-checked:after:translate-x-[-20px] peer-disabled:opacity-50"></div>
               </label>
             </div>
             <div className="flex items-center gap-2 text-xs text-slate-500">
@@ -308,6 +649,8 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
               <span>قريباً - قيد التطوير</span>
             </div>
           </div>
+            </>
+          )}
         </div>
 
         {/* Footer */}
@@ -316,7 +659,7 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
             onClick={onClose}
             className="w-full rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-blue-700"
           >
-            حفظ وإغلاق
+            إغلاق
           </button>
         </div>
       </div>
@@ -327,10 +670,13 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
 export function AdminTeacherPreparationPage() {
   const token = useAuthStore((state) => state.token)
   const user = useAuthStore((state) => state.user)
+  const queryClient = useQueryClient()
+  const toast = useToast()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherSummary | null>(null)
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10))
   const [showSettings, setShowSettings] = useState(false)
+  const [teacherToLink, setTeacherToLink] = useState<{ id: string; name: string } | null>(null)
 
   const { data: preparations, isLoading, error, refetch } = useQuery({
     queryKey: ['teacher-preparations', selectedDate],
@@ -356,6 +702,67 @@ export function AdminTeacherPreparationPage() {
     enabled: !!token && !!user?.school_id,
   })
 
+  // Mutation لربط المعلم
+  const linkMutation = useMutation({
+    mutationFn: async ({ madrasatiTeacherId, madrasatiTeacherName, userId }: { madrasatiTeacherId: string; madrasatiTeacherName: string; userId: number }) => {
+      const schoolId = user?.school_id ? String(user.school_id) : ''
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/attendance/teacher-preparation-links`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'X-School-Id': schoolId,
+        },
+        body: JSON.stringify({
+          madrasati_teacher_id: madrasatiTeacherId,
+          madrasati_teacher_name: madrasatiTeacherName,
+          user_id: userId,
+        }),
+      })
+      if (!response.ok) throw new Error('فشل ربط المعلم')
+      return response.json()
+    },
+    onSuccess: () => {
+      toast({ title: 'تم ربط المعلم بنجاح', type: 'success' })
+      setTeacherToLink(null)
+      queryClient.invalidateQueries({ queryKey: ['teacher-preparations'] })
+    },
+    onError: () => {
+      toast({ title: 'فشل ربط المعلم', type: 'error' })
+    },
+  })
+
+  // Mutation لإرسال الإشعارات
+  const sendNotificationsMutation = useMutation({
+    mutationFn: async () => {
+      const schoolId = user?.school_id ? String(user.school_id) : ''
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/attendance/teacher-preparation/send-notifications?date=${selectedDate}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'X-School-Id': schoolId,
+        },
+      })
+      if (!response.ok) throw new Error('فشل إرسال الإشعارات')
+      return response.json()
+    },
+    onSuccess: (data) => {
+      if (data.queued > 0) {
+        toast({ title: `تم جدولة ${data.queued} إشعار للإرسال`, type: 'success' })
+      } else {
+        toast({ title: data.message || 'لا يوجد إشعارات للإرسال', type: 'info' })
+      }
+      if (data.skipped > 0) {
+        toast({ title: `تم تخطي ${data.skipped} معلم (غير مربوطين أو بدون رقم هاتف)`, type: 'warning' })
+      }
+      queryClient.invalidateQueries({ queryKey: ['teacher-preparations'] })
+    },
+    onError: () => {
+      toast({ title: 'فشل إرسال الإشعارات', type: 'error' })
+    },
+  })
+
   const summaries = useMemo(() => {
     if (!preparations) return []
     return preparations.map(calculateTeacherSummary)
@@ -374,6 +781,8 @@ export function AdminTeacherPreparationPage() {
     const total_lessons = summaries.reduce((acc, s) => acc + s.total_lessons, 0)
     const total_prepared = summaries.reduce((acc, s) => acc + s.prepared_count, 0)
     const total_unprepared = summaries.reduce((acc, s) => acc + s.unprepared_count, 0)
+    const linked_count = summaries.filter((s) => s.is_linked).length
+    const unlinked_count = summaries.filter((s) => !s.is_linked).length
 
     return {
       total_teachers,
@@ -382,8 +791,27 @@ export function AdminTeacherPreparationPage() {
       total_lessons,
       total_prepared,
       total_unprepared,
+      linked_count,
+      unlinked_count,
     }
   }, [summaries])
+
+  const handleLinkClick = (e: React.MouseEvent, summary: TeacherSummary) => {
+    e.stopPropagation()
+    if (!summary.is_linked) {
+      setTeacherToLink({ id: summary.teacher_id, name: summary.teacher_name })
+    }
+  }
+
+  const handleLinkTeacher = (userId: number) => {
+    if (teacherToLink) {
+      linkMutation.mutate({
+        madrasatiTeacherId: teacherToLink.id,
+        madrasatiTeacherName: teacherToLink.name,
+        userId,
+      })
+    }
+  }
 
   if (isLoading) {
     return (
@@ -419,7 +847,7 @@ export function AdminTeacherPreparationPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-7">
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <div className="text-xs text-slate-500">عدد المعلمين</div>
           <div className="text-2xl font-bold text-slate-700">{stats.total_teachers}</div>
@@ -443,6 +871,14 @@ export function AdminTeacherPreparationPage() {
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 shadow-sm">
           <div className="text-xs text-amber-600">غير محضّر</div>
           <div className="text-2xl font-bold text-amber-700">{stats.total_unprepared}</div>
+        </div>
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm">
+          <div className="text-xs text-blue-600">مربوط / غير مربوط</div>
+          <div className="text-2xl font-bold text-blue-700">
+            <span className="text-emerald-600">{stats.linked_count}</span>
+            <span className="text-slate-400"> / </span>
+            <span className="text-rose-600">{stats.unlinked_count}</span>
+          </div>
         </div>
       </div>
 
@@ -508,7 +944,12 @@ export function AdminTeacherPreparationPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
           {filteredSummaries.map((summary) => (
-            <TeacherCard key={summary.teacher_id} summary={summary} onExpand={() => setSelectedTeacher(summary)} />
+            <TeacherCard
+              key={summary.teacher_id}
+              summary={summary}
+              onExpand={() => setSelectedTeacher(summary)}
+              onLinkClick={(e) => handleLinkClick(e, summary)}
+            />
           ))}
         </div>
       )}
@@ -517,7 +958,25 @@ export function AdminTeacherPreparationPage() {
       {selectedTeacher && <TeacherDetailDialog summary={selectedTeacher} onClose={() => setSelectedTeacher(null)} />}
 
       {/* Settings Dialog */}
-      {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
+      {showSettings && (
+        <SettingsDialog
+          onClose={() => setShowSettings(false)}
+          onSendNotifications={() => sendNotificationsMutation.mutate()}
+          isSendingNotifications={sendNotificationsMutation.isPending}
+          stats={stats}
+          token={token || ''}
+          schoolId={user?.school_id ? String(user.school_id) : ''}
+        />
+      )}
+
+      {/* Link Teacher Dialog */}
+      {teacherToLink && (
+        <LinkTeacherDialog
+          madrasatiTeacherName={teacherToLink.name}
+          onClose={() => setTeacherToLink(null)}
+          onLink={handleLinkTeacher}
+        />
+      )}
     </div>
   )
 }
