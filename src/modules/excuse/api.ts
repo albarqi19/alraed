@@ -9,7 +9,8 @@ import type {
   ApprovedNotSyncedResponse,
 } from './types'
 
-const API_BASE = '/api'
+// استخدام نفس الـ base URL المستخدم في apiClient
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://api.brqq.site/api'
 
 // ==================== Public APIs (لولي الأمر - بدون تسجيل دخول) ====================
 
@@ -17,7 +18,7 @@ const API_BASE = '/api'
  * الحصول على بيانات العذر بالتوكن
  */
 export async function getExcuseByToken(token: string): Promise<ExcuseApiResponse> {
-  const response = await fetch(`${API_BASE}/excuse/${token}`, {
+  const response = await fetch(`${API_BASE_URL}/excuse/${token}`, {
     method: 'GET',
     headers: {
       'Accept': 'application/json',
@@ -41,7 +42,7 @@ export async function submitExcuse(token: string, payload: SubmitExcusePayload):
     formData.append('parent_name', payload.parent_name)
   }
 
-  const response = await fetch(`${API_BASE}/excuse/${token}`, {
+  const response = await fetch(`${API_BASE_URL}/excuse/${token}`, {
     method: 'POST',
     headers: {
       'Accept': 'application/json',
@@ -55,7 +56,7 @@ export async function submitExcuse(token: string, payload: SubmitExcusePayload):
  * التحقق من حالة العذر
  */
 export async function checkExcuseStatus(token: string): Promise<ExcuseApiResponse> {
-  const response = await fetch(`${API_BASE}/excuse/${token}/status`, {
+  const response = await fetch(`${API_BASE_URL}/excuse/${token}/status`, {
     method: 'GET',
     headers: {
       'Accept': 'application/json',
@@ -178,5 +179,5 @@ export async function deleteExcuse(id: number): Promise<{ success: boolean; mess
  * الحصول على رابط الملف المرفق
  */
 export function getExcuseFileUrl(id: number): string {
-  return `${API_BASE}/admin/absence-excuses/${id}/file`
+  return `${API_BASE_URL}/admin/absence-excuses/${id}/file`
 }

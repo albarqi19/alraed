@@ -34,6 +34,9 @@ export const adminQueryKeys = {
     missingSessions: () => ['admin', 'attendance', 'missing-sessions'] as const,
     sessionDetails: (attendanceId: number) => ['admin', 'attendance', 'session-details', attendanceId] as const,
     reportMatrix: (filters: Record<string, unknown>) => ['admin', 'attendance', 'report-matrix', filters] as const,
+    classesForManualAbsence: () => ['admin', 'attendance', 'classes-for-manual-absence'] as const,
+    studentsForManualAbsence: (grade: string, className: string) => 
+      ['admin', 'attendance', 'students-for-manual-absence', grade, className] as const,
   },
   teacherAttendance: {
     root: () => ['admin', 'teacher-attendance'] as const,

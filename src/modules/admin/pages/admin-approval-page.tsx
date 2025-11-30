@@ -9,7 +9,8 @@ import {
 } from '../hooks'
 import type { PendingApprovalRecord, AttendanceSessionDetails } from '../types'
 import { MissingSessionsModal } from '../components/missing-sessions-modal'
-import { Clock, Loader2, AlertCircle } from 'lucide-react'
+import { ManualAbsenceModal } from '../components/manual-absence-modal'
+import { Clock, Loader2, AlertCircle, Plus } from 'lucide-react'
 
 interface ApprovalProgress {
   totalRecords: number
@@ -142,6 +143,7 @@ export function AdminApprovalPage() {
   const [rejectTarget, setRejectTarget] = useState<PendingApprovalRecord | null>(null)
   const [showApproveAllDialog, setShowApproveAllDialog] = useState(false)
   const [showMissingSessionsModal, setShowMissingSessionsModal] = useState(false)
+  const [showManualAbsenceModal, setShowManualAbsenceModal] = useState(false)
   const [updatingAttendanceId, setUpdatingAttendanceId] = useState<number | null>(null)
   const [showStudentsModal, setShowStudentsModal] = useState(false)
   const [isApproving, setIsApproving] = useState(false)
@@ -227,16 +229,18 @@ export function AdminApprovalPage() {
     })
     
     setIsApproving(true)
-    await approveInBatches(approval.class_session_id, attendanceDate, 0)
+    await approveInBatches(approval.class_session_id, attendanceDate, 0, 0, approval.grade, approval.class_name)
   }
 
-  const approveInBatches = async (sessionId: number, date: string, offset = 0, totalSent = 0) => {
+  const approveInBatches = async (sessionId: number, date: string, offset = 0, totalSent = 0, grade?: string, className?: string) => {
     try {
       const result = await approveMutation.mutateAsync({
         session_id: sessionId,
         date,
         offset,
         total_sent: totalSent,
+        grade,
+        class_name: className,
       })
 
       setProgress((prev) => ({
@@ -276,11 +280,11 @@ export function AdminApprovalPage() {
                 isOnBreak: false,
                 breakTimeRemaining: 0,
               }))
-              approveInBatches(sessionId, date, result.next_offset, result.total_messages_sent)
+              approveInBatches(sessionId, date, result.next_offset, result.total_messages_sent, grade, className)
             }
           }, 1000)
         } else {
-          approveInBatches(sessionId, date, result.next_offset, result.total_messages_sent)
+          approveInBatches(sessionId, date, result.next_offset, result.total_messages_sent, grade, className)
         }
       } else {
         if (breakTimerRef.current) {
@@ -305,7 +309,13 @@ export function AdminApprovalPage() {
   const handleReject = (approval: PendingApprovalRecord, reason?: string) => {
     const attendanceDate = normalizeAttendanceDate(approval.attendance_date)
     rejectMutation.mutate(
-      { session_id: approval.class_session_id, date: attendanceDate, reason: reason ?? null },
+      { 
+        session_id: approval.class_session_id, 
+        date: attendanceDate, 
+        reason: reason ?? null,
+        grade: approval.grade,
+        class_name: approval.class_name,
+      },
       {
         onSuccess: () => {
           setRejectTarget(null)
@@ -398,6 +408,14 @@ export function AdminApprovalPage() {
             <h1 className="text-2xl font-semibold text-slate-900">إدارة التحضير المعلّق</h1>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className="button-secondary flex items-center gap-2"
+              onClick={() => setShowManualAbsenceModal(true)}
+              disabled={approvalsQuery.isLoading}
+            >
+              <Plus className="h-4 w-4" /> إضافة غياب يدوي
+            </button>
             <button
               type="button"
               className="button-secondary"
@@ -874,6 +892,11 @@ export function AdminApprovalPage() {
           </div>
         </div>
       )}
+
+      <ManualAbsenceModal
+        open={showManualAbsenceModal}
+        onClose={() => setShowManualAbsenceModal(false)}
+      />
     </section>
   )
 }

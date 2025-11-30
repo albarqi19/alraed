@@ -1822,6 +1822,8 @@ export async function approveAttendanceSession(payload: {
   date: string
   offset?: number
   total_sent?: number
+  grade?: string
+  class_name?: string
 }): Promise<{
   session_id: number
   date: string
@@ -1859,6 +1861,8 @@ export async function rejectAttendanceSession(payload: {
   session_id: number
   date: string
   reason?: string | null
+  grade?: string
+  class_name?: string
 }): Promise<void> {
   const { data } = await apiClient.post<ApiResponse<null>>('/admin/attendance-reports/reject-session', payload)
   unwrapResponse(data, 'تعذر رفض التحضير')
@@ -2868,4 +2872,76 @@ export async function fetchTeacherMessagesByPeriod(
     { params: { period } },
   )
   return unwrapResponse(response.data, 'تعذر جلب تفاصيل رسائل المعلمين')
+}
+
+// ========== APIs إضافة غياب يدوي من الإدارة ==========
+
+export interface ClassForManualAbsence {
+  grade: string
+  classes: Array<{
+    class_name: string
+    student_count: number
+  }>
+}
+
+export interface StudentForManualAbsence {
+  id: number
+  name: string
+  national_id: string | null
+  grade: string
+  class_name: string
+}
+
+export interface ManualAbsencePayload {
+  grade: string
+  class_name: string
+  attendance_date: string
+  attendance: Array<{
+    student_id: number
+    status: 'present' | 'absent' | 'late' | 'excused'
+    notes?: string | null
+  }>
+  notes?: string | null
+}
+
+export interface ManualAbsenceResponse {
+  saved_count: number
+  grade: string
+  class_name: string
+  attendance_date: string
+  recorded_by: string
+  stats: {
+    present: number
+    absent: number
+    late: number
+    excused: number
+  }
+  errors: string[]
+}
+
+export async function fetchClassesForManualAbsence(): Promise<ClassForManualAbsence[]> {
+  const { data } = await apiClient.get<ApiResponse<ClassForManualAbsence[]>>(
+    '/admin/attendance-reports/classes-for-manual-absence',
+  )
+  return unwrapResponse(data, 'تعذر تحميل قائمة الفصول')
+}
+
+export async function fetchStudentsForManualAbsence(
+  grade: string,
+  className: string,
+): Promise<{ grade: string; class_name: string; students: StudentForManualAbsence[]; total_count: number }> {
+  const { data } = await apiClient.get<
+    ApiResponse<{ grade: string; class_name: string; students: StudentForManualAbsence[]; total_count: number }>
+  >('/admin/attendance-reports/students-for-manual-absence', {
+    params: { grade, class_name: className },
+  })
+  return unwrapResponse(data, 'تعذر تحميل طلاب الفصل')
+}
+
+export async function createManualAbsence(payload: ManualAbsencePayload): Promise<ManualAbsenceResponse> {
+  const { data } = await apiClient.post<ApiResponse<ManualAbsenceResponse>>(
+    '/admin/attendance-reports/manual-absence',
+    payload,
+  )
+  return unwrapResponse(data, 'تعذر تسجيل الغياب اليدوي')
 }

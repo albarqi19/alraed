@@ -2297,3 +2297,62 @@ export function useNoorSyncRecordsQuery(filters: Record<string, string> = {}) {
   })
 }
 
+// =====================================================
+// Manual Absence Hooks (إضافة غياب يدوي من الإدارة)
+// =====================================================
+
+import {
+  fetchClassesForManualAbsence,
+  fetchStudentsForManualAbsence,
+  createManualAbsence,
+  type ClassForManualAbsence,
+  type ManualAbsencePayload,
+  type ManualAbsenceResponse,
+} from './api'
+
+export function useClassesForManualAbsenceQuery(options: { enabled?: boolean } = {}) {
+  return useQuery<ClassForManualAbsence[]>({
+    queryKey: adminQueryKeys.attendance.classesForManualAbsence(),
+    queryFn: fetchClassesForManualAbsence,
+    enabled: options.enabled ?? true,
+    staleTime: 5 * 60 * 1000, // 5 دقائق
+  })
+}
+
+export function useStudentsForManualAbsenceQuery(
+  grade: string | null,
+  className: string | null,
+  options: { enabled?: boolean } = {},
+) {
+  const enabled = options.enabled ?? (Boolean(grade) && Boolean(className))
+
+  return useQuery({
+    queryKey: adminQueryKeys.attendance.studentsForManualAbsence(grade ?? '', className ?? ''),
+    queryFn: () => fetchStudentsForManualAbsence(grade!, className!),
+    enabled,
+    staleTime: 2 * 60 * 1000, // دقيقتين
+  })
+}
+
+export function useCreateManualAbsenceMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation<ManualAbsenceResponse, unknown, ManualAbsencePayload>({
+    mutationFn: createManualAbsence,
+    onSuccess: (result) => {
+      toast({
+        type: 'success',
+        title: `تم تسجيل حضور ${result.saved_count} طالب`,
+        description: `الفصل ${result.grade} ${result.class_name}`,
+      })
+      // تحديث قائمة التحضير المعلق
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.attendance.pending() })
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.dashboard() })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تسجيل الغياب اليدوي') })
+    },
+  })
+}
+
