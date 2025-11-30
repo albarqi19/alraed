@@ -10,6 +10,7 @@ const navLinks = [
 
 const APP_SHELL_PREFIXES = ['/admin', '/teacher']
 const FULLSCREEN_ROUTES = ['/display/auto-call']
+const FULLSCREEN_PREFIXES = ['/excuse']
 const GUARDIAN_PORTAL_PREFIXES = ['/guardian']
 const NO_HEADER_ROUTES = ['/register']
 
@@ -18,7 +19,8 @@ export function RootLayout() {
   const isAppShellRoute = APP_SHELL_PREFIXES.some((prefix) =>
     location.pathname.startsWith(prefix),
   )
-  const isFullscreenRoute = FULLSCREEN_ROUTES.includes(location.pathname)
+  const isFullscreenRoute = FULLSCREEN_ROUTES.includes(location.pathname) || 
+    FULLSCREEN_PREFIXES.some((prefix) => location.pathname.startsWith(prefix))
   const isGuardianPortal = GUARDIAN_PORTAL_PREFIXES.some((prefix) =>
     location.pathname.startsWith(prefix),
   )

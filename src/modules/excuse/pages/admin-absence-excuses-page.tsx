@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Check,
@@ -22,6 +22,7 @@ import {
 } from '../api'
 import type { AbsenceExcuseRecord } from '../types'
 import { useToast } from '@/shared/feedback/use-toast'
+import { useAuthStore } from '@/modules/auth/store/auth-store'
 
 type TabValue = 'all' | 'pending' | 'approved' | 'rejected'
 
@@ -41,6 +42,7 @@ const tabs: { value: TabValue; label: string }[] = [
 export function AdminAbsenceExcusesPage() {
   const toast = useToast()
   const queryClient = useQueryClient()
+  const { token } = useAuthStore()
   const [page, setPage] = useState(1)
   const [activeTab, setActiveTab] = useState<TabValue>('all')
   const [searchQuery, setSearchQuery] = useState('')
@@ -57,6 +59,15 @@ export function AdminAbsenceExcusesPage() {
   // Reject dialog
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
+
+  // Helper function to add auth token to file URLs
+  const getAuthenticatedFileUrl = useMemo(() => {
+    return (fileUrl: string | null | undefined): string | null => {
+      if (!fileUrl || !token) return null
+      const separator = fileUrl.includes('?') ? '&' : '?'
+      return `${fileUrl}${separator}token=${token}`
+    }
+  }, [token])
 
   // Query
   const excusesQuery = useQuery({
@@ -496,20 +507,20 @@ export function AdminAbsenceExcusesPage() {
                   <p className="text-xs text-slate-500 mb-2">الملف المرفق</p>
                   {selectedExcuse.file_type?.startsWith('image/') && (
                     <img
-                      src={selectedExcuse.file_url}
+                      src={getAuthenticatedFileUrl(selectedExcuse.file_url) ?? ''}
                       alt="صورة العذر"
                       className="max-w-full max-h-96 rounded-xl border border-slate-200"
                     />
                   )}
                   {selectedExcuse.file_type === 'application/pdf' && (
                     <iframe
-                      src={selectedExcuse.file_url}
+                      src={getAuthenticatedFileUrl(selectedExcuse.file_url) ?? ''}
                       title="ملف العذر PDF"
                       className="w-full h-96 rounded-xl border border-slate-200"
                     />
                   )}
                   <a
-                    href={selectedExcuse.file_url}
+                    href={getAuthenticatedFileUrl(selectedExcuse.file_url) ?? '#'}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="button-secondary mt-2 inline-flex items-center gap-2"
