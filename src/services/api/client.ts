@@ -23,6 +23,47 @@ export function getStorageUrl(relativePath: string | null | undefined): string |
   return `${API_ORIGIN}${cleanPath}`
 }
 
+/**
+ * بناء رابط لصورة تقرير نشاط مع التوثيق
+ * @param activityId معرف النشاط
+ * @param reportId معرف التقرير
+ * @param imageIndex رقم الصورة (0-based)
+ * @param isTeacher هل هو معلم
+ * @returns الرابط الكامل مع التوكن
+ */
+export function getActivityReportImageUrl(
+  activityId: number,
+  reportId: number | null,
+  imageIndex: number,
+  isTeacher: boolean = false
+): string {
+  const token = window.localStorage.getItem('auth_token')
+  let url: string
+  
+  if (isTeacher) {
+    // للمعلم - لا يحتاج reportId لأنه يجلب تقريره الخاص
+    url = `${API_BASE_URL}/teacher/activities/${activityId}/report/images/${imageIndex}`
+  } else {
+    // للإدارة
+    url = `${API_BASE_URL}/admin/activities/${activityId}/reports/${reportId}/images/${imageIndex}`
+  }
+  
+  return token ? `${url}?token=${token}` : url
+}
+
+/**
+ * بناء رابط لملف PDF النشاط مع التوثيق
+ * @param activityId معرف النشاط
+ * @param isTeacher هل هو معلم
+ * @returns الرابط الكامل مع التوكن
+ */
+export function getActivityPdfUrl(activityId: number, isTeacher: boolean = false): string {
+  const token = window.localStorage.getItem('auth_token')
+  const prefix = isTeacher ? 'teacher' : 'admin'
+  const url = `${API_BASE_URL}/${prefix}/activities/${activityId}/pdf`
+  return token ? `${url}?token=${token}` : url
+}
+
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {

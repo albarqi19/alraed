@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react'
-import { getStorageUrl } from '@/services/api/client'
+import { getActivityReportImageUrl } from '@/services/api/client'
 import type { ReportStatus } from '../types'
 
 interface ReportData {
   id: number
+  activity_id?: number
   execution_location: string | null
   achieved_objectives: string | null
   students_count: number
@@ -17,6 +18,7 @@ interface ReportData {
 
 interface Props {
   report: ReportData
+  activityId: number
   activityTitle: string
   onClose: () => void
   onApprove?: () => void
@@ -45,6 +47,7 @@ function formatDate(value: string | null | undefined): string {
 
 export function ReportViewModal({
   report,
+  activityId,
   activityTitle,
   onClose,
   onApprove,
@@ -55,10 +58,13 @@ export function ReportViewModal({
   const [viewingImageIndex, setViewingImageIndex] = useState<number | null>(null)
   const statusConfig = STATUS_CONFIG[report.status]
   
-  // تحويل روابط الصور إلى روابط كاملة
+  // تحويل روابط الصور إلى روابط كاملة عبر API
   const fullImageUrls = useMemo(() => {
-    return report.images?.map(img => getStorageUrl(img)).filter((url): url is string => url !== null) ?? []
-  }, [report.images])
+    if (!report.images || report.images.length === 0) return []
+    return report.images.map((_, index) => 
+      getActivityReportImageUrl(activityId, report.id, index, false)
+    )
+  }, [report.images, activityId, report.id])
 
   return (
     <>

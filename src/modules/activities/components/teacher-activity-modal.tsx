@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from 'react'
 import { useTeacherActivityDetails, useSubmitReport, useUpdateTeacherReport } from '../hooks'
-import { getStorageUrl } from '@/services/api/client'
+import { getActivityReportImageUrl, getActivityPdfUrl } from '@/services/api/client'
 import type { ReportStatus } from '../types'
 
 interface Props {
@@ -46,10 +46,13 @@ export function TeacherActivityModal({ activityId, onClose }: Props) {
   const [formError, setFormError] = useState<string | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   
-  // تحويل روابط الصور إلى روابط كاملة - يجب أن يكون قبل أي early return
+  // تحويل روابط الصور إلى روابط كاملة عبر API - يجب أن يكون قبل أي early return
   const fullImageUrls = useMemo(() => {
-    return data?.report?.images?.map(img => getStorageUrl(img)).filter((url): url is string => url !== null) ?? []
-  }, [data?.report?.images])
+    if (!data?.report?.images || data.report.images.length === 0) return []
+    return data.report.images.map((_, index) => 
+      getActivityReportImageUrl(activityId, data.report!.id, index, true)
+    )
+  }, [data?.report?.images, data?.report?.id, activityId])
 
   // تحديث النموذج عند تحميل البيانات
   const initializeForm = () => {
@@ -234,7 +237,7 @@ export function TeacherActivityModal({ activityId, onClose }: Props) {
             {activity.pdf_file && (
               <div className="rounded-xl bg-slate-50 p-4">
                 <a
-                  href={activity.pdf_file}
+                  href={getActivityPdfUrl(activityId, true)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 text-indigo-600 hover:underline"

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useActivityDetails, useApproveReport, useRejectReport } from '../hooks'
 import { ReportViewModal } from './report-view-modal'
+import { getActivityPdfUrl } from '@/services/api/client'
 import type { ReportStatus } from '../types'
 
 interface Props {
@@ -167,7 +168,7 @@ export function ActivityDetailsModal({ activityId, onClose }: Props) {
                     ملف مرفق
                   </h3>
                   <a
-                    href={activity.pdf_file}
+                    href={getActivityPdfUrl(activity.id, false)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 text-sm text-indigo-600 hover:underline"
