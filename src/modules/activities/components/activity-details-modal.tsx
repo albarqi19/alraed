@@ -308,6 +308,7 @@ export function ActivityDetailsModal({ activityId, onClose }: Props) {
       {selectedReport && (
         <ReportViewModal
           report={selectedReport}
+          activityId={activity.id}
           activityTitle={activity.title}
           onClose={() => setSelectedReport(null)}
           onApprove={
