@@ -20,7 +20,6 @@ import {
   Target,
   Award,
   Lightbulb,
-  UserPlus,
   Send,
   FileEdit,
   DoorOpen,

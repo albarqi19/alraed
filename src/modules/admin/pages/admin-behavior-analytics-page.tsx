@@ -27,15 +27,6 @@ import { fetchBehaviorAnalytics } from '@/modules/admin/behavior/api'
 
 const COLORS = ['#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#10b981']
 
-// Mock Impact Data (Keep this mock for now as we don't have programs table yet)
-const IMPACT_DATA = [
-  { name: 'الأسبوع 1', before: 40, after: 40 },
-  { name: 'الأسبوع 2', before: 38, after: 35 },
-  { name: 'الأسبوع 3', before: 42, after: 30 },
-  { name: 'الأسبوع 4', before: 35, after: 22 },
-  { name: 'الأسبوع 5', before: 39, after: 18 },
-]
-
 export function AdminBehaviorAnalyticsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['behavior-analytics'],
@@ -52,11 +43,67 @@ export function AdminBehaviorAnalyticsPage() {
   const monthlyTrend = data?.monthlyTrend ?? []
   const violationTypes = data?.violationTypes ?? []
   const gradeDistribution = data?.gradeDistribution ?? []
+  const alerts = data?.alerts ?? []
+  const recommendations = data?.recommendations ?? []
+  const hasActiveProgram = data?.hasActiveProgram ?? false
 
   if (isLoading) {
     return (
-      <div className="flex h-96 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+      <div className="space-y-8 animate-pulse">
+        {/* Header Skeleton */}
+        <div className="space-y-2">
+          <div className="h-9 w-48 bg-slate-200 rounded"></div>
+          <div className="h-4 w-96 bg-slate-200 rounded"></div>
+        </div>
+
+        {/* Stats Cards Skeleton */}
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="rounded-2xl border bg-white p-5 shadow-sm">
+              <div className="flex items-start justify-between">
+                <div className="space-y-3 flex-1">
+                  <div className="h-3 w-32 bg-slate-200 rounded"></div>
+                  <div className="h-8 w-20 bg-slate-200 rounded"></div>
+                </div>
+                <div className="h-12 w-12 bg-slate-200 rounded-xl"></div>
+              </div>
+              <div className="mt-4 h-3 w-40 bg-slate-200 rounded"></div>
+            </div>
+          ))}
+        </div>
+
+        {/* Charts Skeleton */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          {[1, 2].map((i) => (
+            <div key={i} className="glass-card p-6">
+              <div className="mb-6 space-y-2">
+                <div className="h-5 w-40 bg-slate-200 rounded"></div>
+                <div className="h-3 w-60 bg-slate-200 rounded"></div>
+              </div>
+              <div className="h-[300px] bg-slate-100 rounded-lg"></div>
+            </div>
+          ))}
+        </div>
+
+        {/* Alerts Skeleton */}
+        <div className="grid gap-6 md:grid-cols-2">
+          {[1, 2].map((i) => (
+            <div key={i} className="glass-card p-6">
+              <div className="mb-4 flex items-center gap-2">
+                <div className="h-8 w-8 bg-slate-200 rounded-full"></div>
+                <div className="h-5 w-32 bg-slate-200 rounded"></div>
+              </div>
+              <div className="space-y-3">
+                {[1, 2, 3].map((j) => (
+                  <div key={j} className="p-3 bg-slate-50 rounded-xl">
+                    <div className="h-4 w-3/4 bg-slate-200 rounded mb-2"></div>
+                    <div className="h-3 w-full bg-slate-200 rounded"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
@@ -194,7 +241,7 @@ export function AdminBehaviorAnalyticsPage() {
                   paddingAngle={5}
                   dataKey="value"
                 >
-                  {violationTypes.map((entry, index) => (
+                  {violationTypes.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} strokeWidth={0} />
                   ))}
                 </Pie>
@@ -218,34 +265,39 @@ export function AdminBehaviorAnalyticsPage() {
           <header className="mb-6 flex items-center justify-between">
             <div>
               <h2 className="text-lg font-bold text-slate-900">قياس أثر البرامج الوقائية</h2>
-              <p className="text-xs text-muted">مقارنة معدلات المخالفات قبل وبعد تطبيق برنامج "انضباطي"</p>
+              <p className="text-xs text-muted">مقارنة معدلات المخالفات قبل وبعد تطبيق البرامج الوقائية</p>
             </div>
-            <div className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-              برنامج نشط
-            </div>
+            {hasActiveProgram ? (
+              <div className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                برنامج نشط
+              </div>
+            ) : (
+              <div className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
+                غير مفعل
+              </div>
+            )}
           </header>
-          <div className="h-[250px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={IMPACT_DATA} barSize={20}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis 
-                  dataKey="name" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fill: '#64748b', fontSize: 12 }} 
-                  dy={10}
-                />
-                <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fill: '#64748b', fontSize: 12 }} 
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend />
-                <Bar name="قبل البرنامج" dataKey="before" fill="#cbd5e1" radius={[4, 4, 0, 0]} />
-                <Bar name="بعد البرنامج" dataKey="after" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="flex h-[250px] w-full items-center justify-center">
+            {hasActiveProgram ? (
+              <ResponsiveContainer width="100%" height="100%">
+                {/* Add chart here when program data is available */}
+                <div className="flex flex-col items-center justify-center text-center">
+                  <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                    <TrendingUp className="h-8 w-8 text-primary" />
+                  </div>
+                  <p className="text-sm font-medium text-slate-700">بيانات البرنامج ستظهر هنا</p>
+                  <p className="text-xs text-muted">بعد تفعيل البرنامج لفترة كافية</p>
+                </div>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex flex-col items-center justify-center text-center">
+                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
+                  <AlertTriangle className="h-8 w-8 text-slate-400" />
+                </div>
+                <p className="text-sm font-medium text-slate-700">لا يوجد برنامج نشط</p>
+                <p className="text-xs text-muted">ليتم قياس أثره يجب تفعيل برنامج وقائي أولاً</p>
+              </div>
+            )}
           </div>
         </section>
 
@@ -286,20 +338,36 @@ export function AdminBehaviorAnalyticsPage() {
             <h2 className="text-lg font-bold text-slate-900">تنبيهات استباقية</h2>
           </header>
           <ul className="space-y-3">
-            <li className="flex items-start gap-3 rounded-xl bg-amber-50/50 p-3 text-sm text-amber-900">
-              <span className="mt-0.5 h-2 w-2 rounded-full bg-amber-500" />
-              <div>
-                <p className="font-semibold">ارتفاع ملحوظ في التأخر الصباحي</p>
-                <p className="text-xs opacity-80">لوحظ زيادة بنسبة 15% في الصف الرابع خلال هذا الأسبوع.</p>
-              </div>
-            </li>
-            <li className="flex items-start gap-3 rounded-xl bg-rose-50/50 p-3 text-sm text-rose-900">
-              <span className="mt-0.5 h-2 w-2 rounded-full bg-rose-500" />
-              <div>
-                <p className="font-semibold">تكرار مخالفات الزي المدرسي</p>
-                <p className="text-xs opacity-80">5 طلاب تكررت مخالفتهم أكثر من 3 مرات هذا الشهر.</p>
-              </div>
-            </li>
+            {alerts.map((alert, index) => (
+              <li
+                key={index}
+                className={`flex items-start gap-3 rounded-xl p-3 text-sm ${
+                  alert.type === 'danger'
+                    ? 'bg-rose-50/50 text-rose-900'
+                    : alert.type === 'warning'
+                      ? 'bg-amber-50/50 text-amber-900'
+                      : alert.type === 'info'
+                        ? 'bg-sky-50/50 text-sky-900'
+                        : 'bg-emerald-50/50 text-emerald-900'
+                }`}
+              >
+                <span
+                  className={`mt-0.5 h-2 w-2 rounded-full ${
+                    alert.type === 'danger'
+                      ? 'bg-rose-500'
+                      : alert.type === 'warning'
+                        ? 'bg-amber-500'
+                        : alert.type === 'info'
+                          ? 'bg-sky-500'
+                          : 'bg-emerald-500'
+                  }`}
+                />
+                <div>
+                  <p className="font-semibold">{alert.title}</p>
+                  <p className="text-xs opacity-80">{alert.description}</p>
+                </div>
+              </li>
+            ))}
           </ul>
         </section>
 
@@ -311,20 +379,36 @@ export function AdminBehaviorAnalyticsPage() {
             <h2 className="text-lg font-bold text-slate-900">توصيات التحسين</h2>
           </header>
           <ul className="space-y-3">
-            <li className="flex items-start gap-3 rounded-xl bg-emerald-50/50 p-3 text-sm text-emerald-900">
-              <span className="mt-0.5 h-2 w-2 rounded-full bg-emerald-500" />
-              <div>
-                <p className="font-semibold">تكريم الصفوف الملتزمة</p>
-                <p className="text-xs opacity-80">الصف السادس حقق أعلى نسبة انضباط (98%) - يوصى بتكريمهم.</p>
-              </div>
-            </li>
-            <li className="flex items-start gap-3 rounded-xl bg-sky-50/50 p-3 text-sm text-sky-900">
-              <span className="mt-0.5 h-2 w-2 rounded-full bg-sky-500" />
-              <div>
-                <p className="font-semibold">تفعيل برنامج "القدوة"</p>
-                <p className="text-xs opacity-80">نتائج إيجابية متوقعة عند إشراك الطلاب القياديين في التوجيه.</p>
-              </div>
-            </li>
+            {recommendations.map((rec, index) => (
+              <li
+                key={index}
+                className={`flex items-start gap-3 rounded-xl p-3 text-sm ${
+                  rec.type === 'danger'
+                    ? 'bg-rose-50/50 text-rose-900'
+                    : rec.type === 'warning'
+                      ? 'bg-amber-50/50 text-amber-900'
+                      : rec.type === 'info'
+                        ? 'bg-sky-50/50 text-sky-900'
+                        : 'bg-emerald-50/50 text-emerald-900'
+                }`}
+              >
+                <span
+                  className={`mt-0.5 h-2 w-2 rounded-full ${
+                    rec.type === 'danger'
+                      ? 'bg-rose-500'
+                      : rec.type === 'warning'
+                        ? 'bg-amber-500'
+                        : rec.type === 'info'
+                          ? 'bg-sky-500'
+                          : 'bg-emerald-500'
+                  }`}
+                />
+                <div>
+                  <p className="font-semibold">{rec.title}</p>
+                  <p className="text-xs opacity-80">{rec.description}</p>
+                </div>
+              </li>
+            ))}
           </ul>
         </section>
       </div>

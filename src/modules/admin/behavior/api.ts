@@ -155,6 +155,17 @@ export interface BehaviorAnalytics {
     name: string
     count: number
   }[]
+  alerts: {
+    type: 'success' | 'info' | 'warning' | 'danger'
+    title: string
+    description: string
+  }[]
+  recommendations: {
+    type: 'success' | 'info' | 'warning' | 'danger'
+    title: string
+    description: string
+  }[]
+  hasActiveProgram: boolean
 }
 
 export async function fetchBehaviorAnalytics(): Promise<BehaviorAnalytics> {

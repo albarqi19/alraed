@@ -1,8 +1,8 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAdminGuidanceCases, useAdminGuidanceStats, useAdminGuidanceCaseMutations } from '../api/guidance-hooks'
 import { useTheme } from '@/shared/themes/theme-context'
-import type { GuidanceCaseFilters, GuidanceCaseRecord } from '@/modules/guidance/types'
+import type { GuidanceCaseFilters } from '@/modules/guidance/types'
 
 type Severity = 'low' | 'medium' | 'high' | 'critical'
 type CaseStatus = 'open' | 'in_progress' | 'on_hold' | 'closed'

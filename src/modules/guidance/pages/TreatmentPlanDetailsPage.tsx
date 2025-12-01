@@ -9,10 +9,12 @@ import type {
 } from '../types'
 
 const STATUS_LABELS: Record<TreatmentPlanStatus, string> = {
+  draft: 'مسودة',
   active: 'نشطة',
+  suspended: 'معلقة',
   completed: 'مكتملة',
-  on_hold: 'معلقة',
   cancelled: 'ملغاة',
+  on_hold: 'معلقة',
 }
 
 const GOAL_STATUS_LABELS: Record<GoalStatus, string> = {
@@ -68,7 +70,7 @@ export function TreatmentPlanDetailsPage() {
   }
 
   const handleAddEvaluation = async () => {
-    if (!planId || !evaluationData.evaluation.trim()) {
+    if (!planId || !evaluationData.evaluation?.trim()) {
       alert('يرجى إدخال نص التقييم')
       return
     }

@@ -3,32 +3,19 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   fetchSummons,
   createSummon,
-  updateSummon,
-  deleteSummon,
   sendSummonMessage,
   fetchCounselingSessions,
   createCounselingSession,
-  updateCounselingSession,
-  deleteCounselingSession,
   fetchRecommendations,
   createRecommendation,
-  updateRecommendation,
-  deleteRecommendation,
 } from '@/modules/admin/guidance/api'
 import {
-  Calendar,
   MessageCircle,
   Plus,
-  Search,
-  Trash2,
   Users,
   FileText,
   CheckCircle2,
   Clock,
-  AlertCircle,
-  MoreVertical,
-  X,
-  Edit2,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ar } from 'date-fns/locale'
@@ -40,7 +27,6 @@ type Tab = 'summons' | 'counseling' | 'recommendations'
 // --- Main Component ---
 export function AdminSummonsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('summons')
-  const queryClient = useQueryClient()
 
   return (
     <div className="space-y-6 p-6">

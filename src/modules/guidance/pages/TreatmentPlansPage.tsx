@@ -3,21 +3,25 @@ import { Link } from 'react-router-dom'
 import { useTreatmentPlans, useGuidanceStudents, useGuidanceSession } from '../hooks'
 import type { TreatmentPlanFilters, ProblemType, TreatmentPlanStatus } from '../types'
 
-const PROBLEM_TYPES: ProblemType[] = ['سلوكية', 'دراسية', 'نفسية', 'اجتماعية', 'صحية']
-const STATUSES: TreatmentPlanStatus[] = ['active', 'completed', 'on_hold', 'cancelled']
+const PROBLEM_TYPES: ProblemType[] = ['سلوكية', 'دراسية', 'نفسية', 'اجتماعية', 'صحية', 'مختلطة']
+const STATUSES: TreatmentPlanStatus[] = ['draft', 'active', 'suspended', 'completed', 'cancelled', 'on_hold']
 
 const STATUS_LABELS: Record<TreatmentPlanStatus, string> = {
+  draft: 'مسودة',
   active: 'نشطة',
+  suspended: 'معلقة',
   completed: 'مكتملة',
-  on_hold: 'معلقة',
   cancelled: 'ملغاة',
+  on_hold: 'معلقة',
 }
 
 const STATUS_COLORS: Record<TreatmentPlanStatus, string> = {
+  draft: 'bg-gray-100 text-gray-800',
   active: 'bg-green-100 text-green-800',
+  suspended: 'bg-yellow-100 text-yellow-800',
   completed: 'bg-blue-100 text-blue-800',
-  on_hold: 'bg-yellow-100 text-yellow-800',
   cancelled: 'bg-gray-100 text-gray-800',
+  on_hold: 'bg-yellow-100 text-yellow-800',
 }
 
 export function TreatmentPlansPage() {

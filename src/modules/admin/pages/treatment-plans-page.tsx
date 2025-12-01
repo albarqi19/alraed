@@ -5,7 +5,7 @@ import { useTheme } from '@/shared/themes/theme-context'
 import type { TreatmentPlanFilters, ProblemType, TreatmentPlanStatus, TreatmentPlan } from '@/modules/guidance/types'
 
 const PROBLEM_TYPES: ProblemType[] = ['سلوكية', 'دراسية', 'نفسية', 'اجتماعية', 'صحية', 'مختلطة']
-const STATUSES: TreatmentPlanStatus[] = ['draft', 'active', 'suspended', 'completed', 'cancelled']
+const STATUSES: TreatmentPlanStatus[] = ['draft', 'active', 'suspended', 'completed', 'cancelled', 'on_hold']
 
 const STATUS_LABELS: Record<TreatmentPlanStatus, string> = {
   draft: 'مسودة',
@@ -13,6 +13,7 @@ const STATUS_LABELS: Record<TreatmentPlanStatus, string> = {
   suspended: 'معلقة',
   completed: 'مكتملة',
   cancelled: 'ملغاة',
+  on_hold: 'معلقة',
 }
 
 const STATUS_COLORS: Record<TreatmentPlanStatus, string> = {
@@ -21,14 +22,7 @@ const STATUS_COLORS: Record<TreatmentPlanStatus, string> = {
   suspended: 'bg-amber-50 text-amber-700 border-amber-200',
   completed: 'bg-sky-50 text-sky-700 border-sky-200',
   cancelled: 'bg-rose-50 text-rose-700 border-rose-200',
-}
-
-const STATUS_ICONS: Record<TreatmentPlanStatus, string> = {
-  draft: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z',
-  active: 'M13 10V3L4 14h7v7l9-11h-7z',
-  suspended: 'M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z',
-  completed: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
-  cancelled: 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z',
+  on_hold: 'bg-amber-50 text-amber-700 border-amber-200',
 }
 
 const PROBLEM_TYPE_COLORS: Record<ProblemType, string> = {
@@ -91,13 +85,13 @@ export function TreatmentPlansPage() {
 
   // حساب الإحصائيات
   const stats = useMemo(() => {
-    const plans = plansData?.data || []
+    const plans: TreatmentPlan[] = (plansData?.data as unknown as TreatmentPlan[]) || []
     return {
-      total: plansData?.total || plans.length,
-      active: plans.filter(p => p.status === 'active').length,
-      completed: plans.filter(p => p.status === 'completed').length,
-      suspended: plans.filter(p => p.status === 'suspended').length,
-      draft: plans.filter(p => p.status === 'draft').length,
+      total: plansData?.total || 0,
+      active: plans.filter((p: TreatmentPlan) => p.status === 'active').length,
+      completed: plans.filter((p: TreatmentPlan) => p.status === 'completed').length,
+      suspended: plans.filter((p: TreatmentPlan) => p.status === 'suspended').length,
+      draft: plans.filter((p: TreatmentPlan) => p.status === 'draft').length,
     }
   }, [plansData])
 
@@ -316,7 +310,7 @@ export function TreatmentPlansPage() {
           <h3 className="text-lg font-medium text-red-800 mb-2">حدث خطأ</h3>
           <p className="text-red-600">تعذر تحميل الخطط العلاجية. يرجى المحاولة مرة أخرى.</p>
         </div>
-      ) : !plansData || (Array.isArray(plansData) ? plansData.length === 0 : !plansData.data || plansData.data.length === 0) ? (
+      ) : !plansData || !plansData.data || ((plansData.data as unknown) as TreatmentPlan[]).length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm p-12 text-center">
           <div className="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-10 h-10 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -340,7 +334,7 @@ export function TreatmentPlansPage() {
           {/* Cards View */}
           {viewMode === 'cards' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {plansData.data.map((plan) => {
+              {((plansData?.data as unknown) as TreatmentPlan[] | undefined)?.map((plan: TreatmentPlan) => {
                 const progress = getGoalProgress(plan)
                 const daysRemaining = getDaysRemaining(plan.end_date)
                 
@@ -371,16 +365,16 @@ export function TreatmentPlansPage() {
                             </p>
                           </div>
                         </div>
-                        <span className={`px-2.5 py-1 rounded-lg text-xs font-medium border ${STATUS_COLORS[plan.status]}`}>
-                          {STATUS_LABELS[plan.status]}
+                        <span className={`px-2.5 py-1 rounded-lg text-xs font-medium border ${STATUS_COLORS[plan.status as TreatmentPlanStatus]}`}>
+                          {STATUS_LABELS[plan.status as TreatmentPlanStatus]}
                         </span>
                       </div>
 
                       {/* Problem Type Badge */}
                       <div className="flex items-center gap-2 mb-3">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${PROBLEM_TYPE_COLORS[plan.problem_type]}`}>
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${PROBLEM_TYPE_COLORS[plan.problem_type as ProblemType]}`}>
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={PROBLEM_TYPE_ICONS[plan.problem_type]} />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={PROBLEM_TYPE_ICONS[plan.problem_type as ProblemType]} />
                           </svg>
                           {plan.problem_type}
                         </span>
@@ -452,7 +446,7 @@ export function TreatmentPlansPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {plansData.data.map((plan) => {
+                  {((plansData?.data as unknown) as TreatmentPlan[] | undefined)?.map((plan: TreatmentPlan) => {
                     const progress = getGoalProgress(plan)
                     const daysRemaining = getDaysRemaining(plan.end_date)
                     
@@ -474,13 +468,13 @@ export function TreatmentPlansPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium ${PROBLEM_TYPE_COLORS[plan.problem_type]}`}>
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium ${PROBLEM_TYPE_COLORS[plan.problem_type as ProblemType]}`}>
                             {plan.problem_type}
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <span className={`px-2.5 py-1 rounded-lg text-xs font-medium border ${STATUS_COLORS[plan.status]}`}>
-                            {STATUS_LABELS[plan.status]}
+                          <span className={`px-2.5 py-1 rounded-lg text-xs font-medium border ${STATUS_COLORS[plan.status as TreatmentPlanStatus]}`}>
+                            {STATUS_LABELS[plan.status as TreatmentPlanStatus]}
                           </span>
                         </td>
                         <td className="px-6 py-4">
@@ -517,7 +511,7 @@ export function TreatmentPlansPage() {
           {/* Compact View */}
           {viewMode === 'compact' && (
             <div className="bg-white rounded-xl shadow-sm divide-y divide-gray-100">
-              {plansData.data.map((plan) => {
+              {((plansData?.data as unknown) as TreatmentPlan[] | undefined)?.map((plan: TreatmentPlan) => {
                 const progress = getGoalProgress(plan)
                 
                 return (
@@ -534,7 +528,7 @@ export function TreatmentPlansPage() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <h3 className="font-medium text-gray-900 truncate">{plan.student?.name || `طالب #${plan.student_id}`}</h3>
-                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${PROBLEM_TYPE_COLORS[plan.problem_type]}`}>
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${PROBLEM_TYPE_COLORS[plan.problem_type as ProblemType]}`}>
                             {plan.problem_type}
                           </span>
                         </div>
@@ -550,8 +544,8 @@ export function TreatmentPlansPage() {
                         <p className="text-lg font-bold text-gray-900">{plan.goals?.length || 0}</p>
                         <p className="text-xs text-gray-500">أهداف</p>
                       </div>
-                      <span className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${STATUS_COLORS[plan.status]}`}>
-                        {STATUS_LABELS[plan.status]}
+                      <span className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${STATUS_COLORS[plan.status as TreatmentPlanStatus]}`}>
+                        {STATUS_LABELS[plan.status as TreatmentPlanStatus]}
                       </span>
                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

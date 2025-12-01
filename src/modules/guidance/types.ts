@@ -124,7 +124,7 @@ export interface GuidanceStatsSummary {
 
 // Treatment Plans Types
 export type ProblemType = 'سلوكية' | 'دراسية' | 'نفسية' | 'اجتماعية' | 'صحية' | 'مختلطة'
-export type TreatmentPlanStatus = 'draft' | 'active' | 'suspended' | 'completed' | 'cancelled'
+export type TreatmentPlanStatus = 'draft' | 'active' | 'suspended' | 'completed' | 'cancelled' | 'on_hold'
 export type GoalStatus = 'not_started' | 'in_progress' | 'achieved' | 'partially_achieved' | 'not_achieved'
 export type InterventionType = 'تعليمية' | 'سلوكية' | 'نفسية' | 'أسرية' | 'جماعية' | 'فردية' | 'إرشادية'
 
@@ -171,6 +171,7 @@ export interface TreatmentEvaluation {
   id: number
   treatment_plan_id: number
   evaluation_type?: string
+  evaluation?: string
   evaluation_date: string
   overall_effectiveness?: string
   overall_progress_percentage?: number
@@ -240,6 +241,7 @@ export interface TreatmentFollowupFormData {
 
 export interface TreatmentEvaluationFormData {
   evaluation_type?: string
+  evaluation?: string
   evaluation_date: string
   overall_effectiveness?: string
   overall_progress_percentage?: number
