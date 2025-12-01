@@ -102,7 +102,7 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
     items: [
       { to: '/admin/behavior', label: 'سجل المخالفات', icon: AlertTriangle, permission: 'admin.behavior' },
       { to: '/admin/behavior/plans', label: 'خطط المعالجة', icon: ClipboardList, soon: true, permission: 'admin.behavior' },
-      { to: '/admin/behavior/analytics', label: 'مؤشرات السلوك', icon: Activity, soon: true, permission: 'admin.behavior' },
+      { to: '/admin/behavior/analytics', label: 'مؤشرات السلوك', icon: Activity, permission: 'admin.behavior' },
     ],
   },
   {
@@ -115,7 +115,7 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
       { to: '/admin/points-program', label: 'برنامج نقاطي', icon: Award, permission: 'admin.points-program' },
       { to: '/admin/e-store', label: 'المتجر الالكتروني', icon: ShoppingCart, permission: 'admin.e-store' },
       { to: '/admin/guidance-programs', label: 'البرامج الإرشادية', icon: Lightbulb, soon: true, permission: 'admin.guidance-programs' },
-      { to: '/admin/summons', label: 'الاستدعاءات والتوصيات', icon: UserPlus, soon: true, permission: 'admin.summons' },
+      // { to: '/admin/summons', label: 'الاستدعاءات والتوصيات', icon: UserPlus, permission: 'admin.summons' },
     ],
   },
   {

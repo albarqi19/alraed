@@ -7,7 +7,7 @@ const SEVERITY_LABELS = {
   low: 'منخفضة',
   medium: 'متوسطة',
   high: 'عالية',
-  critical: 'حرجة',
+  critical: 'عاجلة',
 }
 
 const SEVERITY_COLORS = {
@@ -173,7 +173,7 @@ export function GuidanceCasesPage() {
               <option value="low">منخفضة</option>
               <option value="medium">متوسطة</option>
               <option value="high">عالية</option>
-              <option value="critical">حرجة</option>
+              <option value="critical">عاجلة</option>
             </select>
 
             <select

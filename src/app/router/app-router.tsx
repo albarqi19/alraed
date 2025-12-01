@@ -41,12 +41,14 @@ import { TreatmentPlansPage } from '@/modules/admin/pages/treatment-plans-page'
 import { PointsProgramPage } from '@/modules/admin/pages/points-program-page'
 import { AdminEStorePage } from '@/modules/admin/pages/admin-e-store-page'
 import { GuidanceProgramsPage } from '@/modules/admin/pages/guidance-programs-page'
-import { SummonsPage } from '@/modules/admin/pages/summons-page'
+import { AdminSummonsPage } from '@/modules/admin/pages/admin-summons-page'
 import { WhatsAppSendPage } from '@/modules/admin/pages/whatsapp-send-page'
 import { WhatsAppTemplatesPage } from '@/modules/admin/pages/whatsapp-templates-page'
 import { StudentCasesListPage } from '@/modules/admin/pages/student-cases-list-page'
-import { StudentCaseDetailsPage } from '@/modules/admin/pages/student-case-details-page'
-import { StudentCaseFormPage } from '@/modules/admin/pages/student-case-form-page'
+import { AdminStudentCaseFormPage } from '@/modules/admin/pages/admin-student-case-form-page'
+import { AdminStudentCaseDetailsPage } from '@/modules/admin/pages/admin-student-case-details-page'
+import { AdminTreatmentPlanDetailsPage } from '@/modules/admin/pages/admin-treatment-plan-details-page'
+import { AdminTreatmentPlanFormPage } from '@/modules/admin/pages/admin-treatment-plan-form-page'
 import { AdminLeaveRequestsPage } from '@/modules/admin/pages/admin-leave-requests-page'
 import { GuardianLeaveRequestPage } from '@/modules/guardian/pages/guardian-leave-request-page'
 import { NotFoundPage } from '@/modules/core/pages/not-found-page'
@@ -180,14 +182,16 @@ const appRoutes = [
           { path: 'teacher-messages', element: <AdminTeacherMessagesPage /> },
           { path: 'student-cases', element: <StudentCasesPage /> },
           { path: 'student-cases/list', element: <StudentCasesListPage /> },
-          { path: 'student-cases/new', element: <StudentCaseFormPage /> },
-          { path: 'student-cases/:caseId', element: <StudentCaseDetailsPage /> },
+          { path: 'student-cases/new', element: <AdminStudentCaseFormPage mode="create" /> },
+          { path: 'student-cases/:caseId', element: <AdminStudentCaseDetailsPage /> },
           { path: 'subscription', element: <AdminSubscriptionPage /> },
           { path: 'treatment-plans', element: <TreatmentPlansPage /> },
+          { path: 'treatment-plans/new', element: <AdminTreatmentPlanFormPage /> },
+          { path: 'treatment-plans/:planId', element: <AdminTreatmentPlanDetailsPage /> },
           { path: 'points-program', element: <PointsProgramPage /> },
           { path: 'e-store', element: <AdminEStorePage /> },
           { path: 'guidance-programs', element: <GuidanceProgramsPage /> },
-          { path: 'summons', element: <SummonsPage /> },
+          { path: 'summons', element: <AdminSummonsPage /> },
           { path: 'settings', element: <AdminSettingsPage /> },
           { path: 'theme', element: <AdminThemeSettingsPage /> },
           { path: 'permissions', element: <AdminPermissionsPage /> },

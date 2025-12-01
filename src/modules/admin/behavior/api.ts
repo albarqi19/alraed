@@ -134,3 +134,30 @@ export async function updateBehaviorProcedureNotes(
 
   return response.data.data
 }
+
+export interface BehaviorAnalytics {
+  summary: {
+    totalViolations: number
+    avgScore: number
+    improvementRate: number
+    committedStudents: number
+  }
+  monthlyTrend: {
+    name: string
+    violations: number
+    score: number
+  }[]
+  violationTypes: {
+    name: string
+    value: number
+  }[]
+  gradeDistribution: {
+    name: string
+    count: number
+  }[]
+}
+
+export async function fetchBehaviorAnalytics(): Promise<BehaviorAnalytics> {
+  const response = await apiClient.get<ApiResponse<BehaviorAnalytics>>('/admin/behavior/stats')
+  return response.data.data
+}

@@ -123,8 +123,8 @@ export interface GuidanceStatsSummary {
 }
 
 // Treatment Plans Types
-export type ProblemType = 'سلوكية' | 'دراسية' | 'نفسية' | 'اجتماعية' | 'صحية'
-export type TreatmentPlanStatus = 'active' | 'completed' | 'on_hold' | 'cancelled'
+export type ProblemType = 'سلوكية' | 'دراسية' | 'نفسية' | 'اجتماعية' | 'صحية' | 'مختلطة'
+export type TreatmentPlanStatus = 'draft' | 'active' | 'suspended' | 'completed' | 'cancelled'
 export type GoalStatus = 'not_started' | 'in_progress' | 'achieved' | 'partially_achieved' | 'not_achieved'
 export type InterventionType = 'تعليمية' | 'سلوكية' | 'نفسية' | 'أسرية' | 'جماعية' | 'فردية' | 'إرشادية'
 
@@ -153,9 +153,16 @@ export interface TreatmentGoal {
 export interface TreatmentFollowup {
   id: number
   treatment_plan_id: number
+  title?: string
   notes: string
+  type?: string
+  student_progress?: string
+  observations?: string
+  recommendations?: string
   followup_date: string
-  by_user_id?: number | null
+  next_followup_date?: string | null
+  conducted_by_user_id?: number | null
+  conducted_by?: { id: number; name: string } | null
   created_at: string
   updated_at: string
 }
@@ -163,9 +170,19 @@ export interface TreatmentFollowup {
 export interface TreatmentEvaluation {
   id: number
   treatment_plan_id: number
-  evaluation: string
+  evaluation_type?: string
   evaluation_date: string
-  by_user_id?: number | null
+  overall_effectiveness?: string
+  overall_progress_percentage?: number
+  key_findings?: string
+  student_strengths?: string
+  areas_for_improvement?: string
+  recommendations?: string
+  decision?: string
+  decision_notes?: string
+  next_evaluation_date?: string | null
+  conducted_by_user_id?: number | null
+  conducted_by?: { id: number; name: string } | null
   created_at: string
   updated_at: string
 }
@@ -214,11 +231,25 @@ export interface TreatmentGoalFormData {
 export interface TreatmentFollowupFormData {
   notes: string
   followup_date: string
+  type?: string
+  student_progress?: string
+  observations?: string
+  recommendations?: string
+  next_followup_date?: string
 }
 
 export interface TreatmentEvaluationFormData {
-  evaluation: string
+  evaluation_type?: string
   evaluation_date: string
+  overall_effectiveness?: string
+  overall_progress_percentage?: number
+  key_findings?: string
+  student_strengths?: string
+  areas_for_improvement?: string
+  recommendations?: string
+  decision?: string
+  decision_notes?: string
+  next_evaluation_date?: string
 }
 
 export interface TreatmentPlanFilters {

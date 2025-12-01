@@ -9,7 +9,7 @@ const SEVERITY_LABELS = {
   low: 'منخفضة',
   medium: 'متوسطة',
   high: 'عالية',
-  critical: 'حرجة',
+  critical: 'عاجلة',
 }
 
 interface CaseFormProps {
