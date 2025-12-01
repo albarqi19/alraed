@@ -64,6 +64,30 @@ export function getActivityPdfUrl(activityId: number, isTeacher: boolean = false
   return token ? `${url}?token=${token}` : url
 }
 
+/**
+ * بناء رابط لصفحة طباعة التقرير المعتمد
+ * @param activityId معرف النشاط
+ * @param reportId معرف التقرير (للإدارة فقط)
+ * @param isTeacher هل هو معلم
+ * @returns الرابط الكامل مع التوكن
+ */
+export function getActivityReportPrintUrl(
+  activityId: number,
+  reportId: number | null,
+  isTeacher: boolean = false
+): string {
+  const token = window.localStorage.getItem('auth_token')
+  let url: string
+  
+  if (isTeacher) {
+    url = `${API_BASE_URL}/teacher/activities/${activityId}/report/print`
+  } else {
+    url = `${API_BASE_URL}/admin/activities/${activityId}/reports/${reportId}/print`
+  }
+  
+  return token ? `${url}?token=${token}` : url
+}
+
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {

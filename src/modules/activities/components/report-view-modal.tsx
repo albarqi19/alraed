@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { getActivityReportImageUrl } from '@/services/api/client'
+import { getActivityReportImageUrl, getActivityReportPrintUrl } from '@/services/api/client'
 import type { ReportStatus } from '../types'
 
 interface ReportData {
@@ -203,47 +203,65 @@ export function ReportViewModal({
           </div>
 
           {/* Footer Actions */}
-          {report.status === 'pending' && (onApprove || onReject) && (
-            <footer className="border-t bg-slate-50 px-6 py-4">
-              <div className="flex items-center justify-end gap-3">
-                {onReject && (
-                  <button
-                    type="button"
-                    onClick={onReject}
-                    disabled={isRejecting}
-                    className="rounded-full border border-red-200 bg-white px-5 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50 transition"
-                  >
-                    {isRejecting ? (
-                      <i className="bi bi-arrow-repeat animate-spin" />
-                    ) : (
-                      <>
-                        <i className="bi bi-x-circle ml-2" />
-                        رفض التقرير
-                      </>
-                    )}
-                  </button>
-                )}
-                {onApprove && (
-                  <button
-                    type="button"
-                    onClick={onApprove}
-                    disabled={isApproving}
-                    className="rounded-full px-5 py-2 text-sm font-semibold text-white disabled:opacity-50 transition"
-                    style={{ background: 'var(--color-primary)' }}
-                  >
-                    {isApproving ? (
-                      <i className="bi bi-arrow-repeat animate-spin" />
-                    ) : (
-                      <>
-                        <i className="bi bi-check-circle ml-2" />
-                        اعتماد التقرير
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
-            </footer>
-          )}
+          <footer className="border-t bg-slate-50 px-6 py-4">
+            <div className="flex items-center justify-between gap-3">
+              {/* زر ملف التقرير - يظهر فقط عند الاعتماد */}
+              {report.status === 'approved' && (
+                <a
+                  href={getActivityReportPrintUrl(activityId, report.id, false)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-5 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 transition"
+                >
+                  <i className="bi bi-file-earmark-pdf" />
+                  ملف التقرير
+                </a>
+              )}
+              
+              {/* أزرار الاعتماد/الرفض */}
+              {report.status === 'pending' && (onApprove || onReject) ? (
+                <div className="flex items-center gap-3 mr-auto">
+                  {onReject && (
+                    <button
+                      type="button"
+                      onClick={onReject}
+                      disabled={isRejecting}
+                      className="rounded-full border border-red-200 bg-white px-5 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50 transition"
+                    >
+                      {isRejecting ? (
+                        <i className="bi bi-arrow-repeat animate-spin" />
+                      ) : (
+                        <>
+                          <i className="bi bi-x-circle ml-2" />
+                          رفض التقرير
+                        </>
+                      )}
+                    </button>
+                  )}
+                  {onApprove && (
+                    <button
+                      type="button"
+                      onClick={onApprove}
+                      disabled={isApproving}
+                      className="rounded-full px-5 py-2 text-sm font-semibold text-white disabled:opacity-50 transition"
+                      style={{ background: 'var(--color-primary)' }}
+                    >
+                      {isApproving ? (
+                        <i className="bi bi-arrow-repeat animate-spin" />
+                      ) : (
+                        <>
+                          <i className="bi bi-check-circle ml-2" />
+                          اعتماد التقرير
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              ) : report.status !== 'approved' && (
+                <div /> // placeholder للمحاذاة
+              )}
+            </div>
+          </footer>
         </div>
       </div>
 

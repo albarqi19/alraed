@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from 'react'
 import { useTeacherActivityDetails, useSubmitReport, useUpdateTeacherReport } from '../hooks'
-import { getActivityReportImageUrl, getActivityPdfUrl } from '@/services/api/client'
+import { getActivityReportImageUrl, getActivityPdfUrl, getActivityReportPrintUrl } from '@/services/api/client'
 import type { ReportStatus } from '../types'
 
 interface Props {
@@ -313,6 +313,30 @@ export function TeacherActivityModal({ activityId, onClose }: Props) {
                     <i className="bi bi-pencil" />
                     تعديل وإعادة الإرسال
                   </button>
+                </div>
+              )}
+
+              {/* زر ملف التقرير - يظهر فقط عند الاعتماد */}
+              {report.status === 'approved' && (
+                <div className="mt-4 p-4 rounded-lg bg-emerald-50 border border-emerald-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-emerald-700">
+                        <i className="bi bi-check-circle ml-2" />
+                        تم اعتماد التقرير
+                      </p>
+                      <p className="text-sm text-emerald-600 mt-1">يمكنك الآن تحميل أو طباعة ملف التقرير</p>
+                    </div>
+                    <a
+                      href={getActivityReportPrintUrl(activityId, null, true)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 transition shadow-md"
+                    >
+                      <i className="bi bi-file-earmark-pdf" />
+                      ملف التقرير
+                    </a>
+                  </div>
                 </div>
               )}
 
