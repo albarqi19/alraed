@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { NotificationModal } from '../components/notification-modal'
 
 type ServiceCard = {
@@ -9,6 +10,7 @@ type ServiceCard = {
   iconColor: string
   iconBg: string
   accentBar: string
+  to?: string
 }
 
 const SERVICES: ServiceCard[] = [
@@ -20,6 +22,16 @@ const SERVICES: ServiceCard[] = [
     iconColor: 'text-violet-600',
     iconBg: 'bg-violet-100/80',
     accentBar: 'from-violet-400/50 via-violet-200/40 to-transparent',
+  },
+  {
+    id: 'activities',
+    title: 'الأنشطة',
+    description: 'عرض وتنفيذ الأنشطة المدرسية',
+    icon: 'bi-stars',
+    iconColor: 'text-pink-600',
+    iconBg: 'bg-pink-100/80',
+    accentBar: 'from-pink-400/50 via-pink-200/40 to-transparent',
+    to: '/teacher/activities',
   },
   {
     id: 'my-services',
@@ -71,10 +83,16 @@ const SERVICES: ServiceCard[] = [
 export function TeacherServicesPage() {
   const [comingSoonMessage, setComingSoonMessage] = useState<string | null>(null)
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false)
+  const navigate = useNavigate()
 
-  const handleServiceClick = (serviceId: string, serviceName: string) => {
+  const handleServiceClick = (serviceId: string, serviceName: string, to?: string) => {
     if (serviceId === 'notifications') {
       setIsNotificationModalOpen(true)
+      return
+    }
+
+    if (to) {
+      navigate(to)
       return
     }
 
@@ -103,7 +121,7 @@ export function TeacherServicesPage() {
           <button
             key={service.id}
             type="button"
-            onClick={() => handleServiceClick(service.id, service.title)}
+            onClick={() => handleServiceClick(service.id, service.title, service.to)}
             className="group w-full text-right transition-transform duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50"
           >
             <span className="glass-card relative flex h-[90px] w-full flex-col justify-center overflow-hidden p-3 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-lg">

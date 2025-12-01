@@ -75,6 +75,8 @@ import { AdminBehaviorAnalyticsPage } from '@/modules/admin/pages/admin-behavior
 import { AdminPermissionsPage } from '@/modules/permissions/pages/admin-permissions-page'
 import { ExcuseSubmissionPage, AdminAbsenceExcusesPage } from '@/modules/excuse'
 import { AdminSupportPage } from '@/modules/admin/pages/admin-support-page'
+import { AdminActivitiesPage } from '@/modules/activities/pages/admin-activities-page'
+import { TeacherActivitiesPage } from '@/modules/activities/pages/teacher-activities-page'
 import {
   GuidanceAccessPage,
   GuidanceDashboardPage,
@@ -135,6 +137,7 @@ const appRoutes = [
           { path: 'messages', element: <TeacherMessagesPage /> },
           { path: 'points', element: <TeacherPointsPage /> },
           { path: 'services', element: <TeacherServicesPage /> },
+          { path: 'activities', element: <TeacherActivitiesPage /> },
           { path: 'sessions/:sessionId', element: <TeacherSessionAttendancePage /> },
         ],
       },
@@ -198,6 +201,7 @@ const appRoutes = [
           { path: 'school-tools/bell', element: <AdminSchoolBellPage /> },
           { path: 'school-tools/auto-call', element: <AdminAutoCallPage /> },
           { path: 'school-tools/academic-calendar', element: <AdminAcademicCalendarPage /> },
+          { path: 'activities', element: <AdminActivitiesPage /> },
         ],
       },
       {

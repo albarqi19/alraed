@@ -6,6 +6,23 @@ const FALLBACK_API_BASE_URL = 'https://api.brqq.site/api'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? FALLBACK_API_BASE_URL
 
+// استخراج الـ base URL بدون /api للوصول للـ storage
+const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, '')
+
+/**
+ * بناء رابط كامل لملف في الـ storage
+ * @param relativePath المسار النسبي مثل /storage/activities/reports/8/image.jpg
+ * @returns الرابط الكامل
+ */
+export function getStorageUrl(relativePath: string | null | undefined): string | null {
+  if (!relativePath) return null
+  // إذا كان المسار يبدأ بـ http فهو رابط كامل بالفعل
+  if (relativePath.startsWith('http')) return relativePath
+  // إزالة الـ / في البداية إذا وُجد لتجنب التكرار
+  const cleanPath = relativePath.startsWith('/') ? relativePath : '/' + relativePath
+  return `${API_ORIGIN}${cleanPath}`
+}
+
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
