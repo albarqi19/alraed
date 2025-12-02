@@ -13,16 +13,34 @@ export function ActivityCreateModal({ grades, onClose }: Props) {
   const [form, setForm] = useState({
     title: '',
     description: '',
-    objectives: '',
+    objectives: [] as string[], // الأهداف كمصفوفة
     examples: '',
     start_date: '',
     end_date: '',
     target_grades: [] as string[],
     status: 'active' as ActivityStatus,
   })
+  const [newObjective, setNewObjective] = useState('') // هدف جديد
   const [pdfFile, setPdfFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [step, setStep] = useState(1)
+
+  const handleAddObjective = () => {
+    if (newObjective.trim()) {
+      setForm(prev => ({
+        ...prev,
+        objectives: [...prev.objectives, newObjective.trim()]
+      }))
+      setNewObjective('')
+    }
+  }
+
+  const handleRemoveObjective = (index: number) => {
+    setForm(prev => ({
+      ...prev,
+      objectives: prev.objectives.filter((_, i) => i !== index)
+    }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -47,6 +65,7 @@ export function ActivityCreateModal({ grades, onClose }: Props) {
     try {
       await createActivity.mutateAsync({
         ...form,
+        objectives: form.objectives.length > 0 ? form.objectives : undefined,
         pdf_file: pdfFile ?? undefined,
       })
       onClose()
@@ -223,20 +242,72 @@ export function ActivityCreateModal({ grades, onClose }: Props) {
                 </div>
 
                 {/* الأهداف */}
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
                     <i className="bi bi-bullseye" style={{ color: 'var(--color-warning)' }} />
                     الأهداف
+                    <span className="text-xs font-normal text-slate-400">(أضف كل هدف على حدة)</span>
                   </label>
-                  <textarea
-                    value={form.objectives}
-                    onChange={(e) => setForm({ ...form, objectives: e.target.value })}
-                    rows={3}
-                    className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 transition focus:bg-white focus:outline-none resize-none"
-                    onFocus={(e) => e.target.style.borderColor = 'var(--color-primary)'}
-                    onBlur={(e) => e.target.style.borderColor = ''}
-                    placeholder="الأهداف المتوقعة من النشاط..."
-                  />
+                  
+                  {/* قائمة الأهداف المضافة */}
+                  {form.objectives.length > 0 && (
+                    <div className="rounded-xl border-2 border-slate-200 bg-slate-50 p-3 space-y-2">
+                      {form.objectives.map((objective, index) => (
+                        <div 
+                          key={index} 
+                          className="flex items-center gap-3 bg-white rounded-lg px-3 py-2 border border-slate-200"
+                        >
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                                style={{ background: 'var(--color-primary)' }}>
+                            {index + 1}
+                          </span>
+                          <span className="flex-1 text-sm text-slate-700">{objective}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveObjective(index)}
+                            className="shrink-0 rounded-full p-1 text-red-400 hover:bg-red-50 hover:text-red-600 transition"
+                          >
+                            <i className="bi bi-x-circle" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* إضافة هدف جديد */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newObjective}
+                      onChange={(e) => setNewObjective(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          handleAddObjective()
+                        }
+                      }}
+                      className="flex-1 rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 transition focus:bg-white focus:outline-none"
+                      onFocus={(e) => e.target.style.borderColor = 'var(--color-primary)'}
+                      onBlur={(e) => e.target.style.borderColor = ''}
+                      placeholder="اكتب الهدف ثم اضغط Enter أو زر الإضافة..."
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddObjective}
+                      disabled={!newObjective.trim()}
+                      className="shrink-0 rounded-xl px-4 py-3 text-white font-semibold transition disabled:opacity-50"
+                      style={{ background: 'var(--color-primary)' }}
+                    >
+                      <i className="bi bi-plus-lg" />
+                    </button>
+                  </div>
+                  
+                  {form.objectives.length > 0 && (
+                    <p className="text-xs text-slate-500">
+                      <i className="bi bi-info-circle ml-1" />
+                      تم إضافة {form.objectives.length} هدف
+                    </p>
+                  )}
                 </div>
 
                 {/* أمثلة تطبيقية */}

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useActivityDetails, useApproveReport, useRejectReport } from '../hooks'
 import { ReportViewModal } from './report-view-modal'
 import { getActivityPdfUrl } from '@/services/api/client'
-import type { ReportStatus } from '../types'
+import type { ReportStatus, ActivityReport } from '../types'
 
 interface Props {
   activityId: number
@@ -37,18 +37,8 @@ export function ActivityDetailsModal({ activityId, onClose }: Props) {
   
   const [rejectModalOpen, setRejectModalOpen] = useState<number | null>(null)
   const [rejectionReason, setRejectionReason] = useState('')
-  const [selectedReport, setSelectedReport] = useState<{
-    id: number
-    execution_location: string | null
-    achieved_objectives: string | null
-    students_count: number
-    images: string[]
-    status: ReportStatus
-    rejection_reason: string | null
-    teacher?: { id: number; name: string }
-    created_at: string
-    reviewed_at?: string | null
-  } | null>(null)
+  const [expandedTeacher, setExpandedTeacher] = useState<number | null>(null)
+  const [selectedReport, setSelectedReport] = useState<ActivityReport | null>(null)
 
   const handleApprove = async (reportId: number) => {
     try {
@@ -143,13 +133,22 @@ export function ActivityDetailsModal({ activityId, onClose }: Props) {
                   <p className="text-sm text-slate-600 whitespace-pre-wrap">{activity.description}</p>
                 </div>
               )}
-              {activity.objectives && (
+              {activity.objectives && Array.isArray(activity.objectives) && activity.objectives.length > 0 && (
                 <div className="rounded-xl bg-slate-50 p-4">
-                  <h3 className="font-semibold text-slate-700 mb-2">
+                  <h3 className="font-semibold text-slate-700 mb-3">
                     <i className="bi bi-bullseye ml-2" />
-                    الأهداف
+                    الأهداف ({activity.objectives.length})
                   </h3>
-                  <p className="text-sm text-slate-600 whitespace-pre-wrap">{activity.objectives}</p>
+                  <div className="space-y-2">
+                    {activity.objectives.map((objective, index) => (
+                      <div key={index} className="flex items-start gap-2 bg-white rounded-lg px-3 py-2 border border-slate-200">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white bg-indigo-500">
+                          {index + 1}
+                        </span>
+                        <span className="text-sm text-slate-700">{objective}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
               {activity.examples && (
@@ -233,66 +232,123 @@ export function ActivityDetailsModal({ activityId, onClose }: Props) {
                   </div>
                 ) : (
                   target_teachers.map((teacher) => (
-                    <div
-                      key={teacher.id}
-                      className="flex items-center justify-between px-4 py-3 hover:bg-slate-50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-slate-200 flex items-center justify-center">
-                          <i className="bi bi-person text-slate-500" />
+                    <div key={teacher.id} className="border-b last:border-b-0">
+                      {/* رأس المعلم */}
+                      <div
+                        className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 cursor-pointer"
+                        onClick={() => setExpandedTeacher(expandedTeacher === teacher.id ? null : teacher.id)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-full bg-slate-200 flex items-center justify-center">
+                            <i className="bi bi-person text-slate-500" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-slate-900">{teacher.name}</p>
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className="text-slate-500">
+                                سلّم {teacher.submitted_grades} من {teacher.total_grades} صفوف
+                              </span>
+                              {teacher.submitted_grades === teacher.total_grades && (
+                                <span className="text-emerald-600">
+                                  <i className="bi bi-check-circle-fill ml-1" />
+                                  مكتمل
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium text-slate-900">{teacher.name}</p>
-                          {teacher.has_report ? (
-                            <span
-                              className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${REPORT_STATUS_COLORS[teacher.report_status!]}`}
-                            >
-                              {REPORT_STATUS_LABELS[teacher.report_status!]}
-                            </span>
-                          ) : (
-                            <span className="text-xs text-muted">لم يسلم التقرير</span>
-                          )}
+                        <div className="flex items-center gap-3">
+                          {/* شريط التقدم */}
+                          <div className="w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-emerald-500 rounded-full transition-all"
+                              style={{ width: `${(teacher.submitted_grades / teacher.total_grades) * 100}%` }}
+                            />
+                          </div>
+                          <i className={`bi ${expandedTeacher === teacher.id ? 'bi-chevron-up' : 'bi-chevron-down'} text-slate-400`} />
                         </div>
                       </div>
-                      {teacher.has_report && teacher.report_id && (
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const report = activity.reports?.find((r) => r.id === teacher.report_id)
-                              if (report) {
-                                setSelectedReport({
-                                  ...report,
-                                  teacher: { id: teacher.id, name: teacher.name },
-                                })
-                              }
-                            }}
-                            className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:border-indigo-200 hover:text-indigo-600"
-                          >
-                            <i className="bi bi-eye ml-1" />
-                            عرض التقرير
-                          </button>
-                          {teacher.report_status === 'pending' && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => handleApprove(teacher.report_id!)}
-                                disabled={approveReport.isPending}
-                                className="rounded-full bg-emerald-500 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-600 disabled:opacity-50"
+                      
+                      {/* تفاصيل التقارير حسب الصفوف */}
+                      {expandedTeacher === teacher.id && (
+                        <div className="px-4 pb-4 pt-2 bg-slate-50/50">
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {teacher.grade_reports.map((gradeReport) => (
+                              <div 
+                                key={gradeReport.grade}
+                                className={`rounded-xl border-2 p-3 ${
+                                  gradeReport.has_report 
+                                    ? gradeReport.report_status === 'approved'
+                                      ? 'border-emerald-200 bg-emerald-50'
+                                      : gradeReport.report_status === 'rejected'
+                                        ? 'border-red-200 bg-red-50'
+                                        : 'border-amber-200 bg-amber-50'
+                                    : 'border-slate-200 bg-white'
+                                }`}
                               >
-                                <i className="bi bi-check ml-1" />
-                                قبول
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setRejectModalOpen(teacher.report_id)}
-                                className="rounded-full bg-red-500 px-3 py-1 text-xs font-semibold text-white hover:bg-red-600"
-                              >
-                                <i className="bi bi-x ml-1" />
-                                رفض
-                              </button>
-                            </>
-                          )}
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="font-semibold text-slate-800">{gradeReport.grade}</span>
+                                  {gradeReport.has_report ? (
+                                    <span className={`text-xs px-2 py-1 rounded-full border ${REPORT_STATUS_COLORS[gradeReport.report_status!]}`}>
+                                      {REPORT_STATUS_LABELS[gradeReport.report_status!]}
+                                    </span>
+                                  ) : (
+                                    <span className="text-xs text-slate-400">
+                                      <i className="bi bi-clock ml-1" />
+                                      لم يسلّم
+                                    </span>
+                                  )}
+                                </div>
+                                
+                                {gradeReport.has_report && gradeReport.report_id && (
+                                  <div className="flex items-center gap-2 mt-2">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        const report = activity.reports?.find((r) => r.id === gradeReport.report_id)
+                                        if (report) {
+                                          setSelectedReport({
+                                            ...report,
+                                            teacher: { id: teacher.id, name: teacher.name },
+                                          } as ActivityReport)
+                                        }
+                                      }}
+                                      className="flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold text-slate-600 hover:border-indigo-200 hover:text-indigo-600"
+                                    >
+                                      <i className="bi bi-eye ml-1" />
+                                      عرض
+                                    </button>
+                                    {gradeReport.report_status === 'pending' && (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            handleApprove(gradeReport.report_id!)
+                                          }}
+                                          disabled={approveReport.isPending}
+                                          className="rounded-lg bg-emerald-500 px-2 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600 disabled:opacity-50"
+                                        >
+                                          <i className="bi bi-check" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            setRejectModalOpen(gradeReport.report_id)
+                                          }}
+                                          className="rounded-lg bg-red-500 px-2 py-1.5 text-xs font-semibold text-white hover:bg-red-600"
+                                        >
+                                          <i className="bi bi-x" />
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>

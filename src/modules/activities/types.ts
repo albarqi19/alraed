@@ -8,11 +8,20 @@ export interface ActivityCreator {
   name: string
 }
 
+// مكان التنفيذ
+export interface ExecutionLocation {
+  id: number
+  name: string
+  name_ar: string
+  is_active: boolean
+  sort_order: number
+}
+
 export interface Activity {
   id: number
   title: string
   description: string | null
-  objectives: string | null
+  objectives: string[] | null // تم تغييرها من string إلى مصفوفة
   examples: string | null
   start_date: string
   end_date: string
@@ -33,8 +42,10 @@ export interface ActivityReport {
   id: number
   activity_id: number
   teacher_id: number
+  grade: string | null // الصف الدراسي للتقرير
+  execution_location_id: number | null
   execution_location: string | null
-  achieved_objectives: string | null
+  achieved_objectives: string[] | null // تم تغييرها من string إلى مصفوفة
   students_count: number
   images: string[]
   status: ReportStatus
@@ -53,12 +64,20 @@ export interface ActivityReport {
   }
 }
 
+// معلومات تقرير صف لمعلم معين (للوحة الإدارة)
+export interface TeacherGradeReportInfo {
+  grade: string
+  has_report: boolean
+  report_id: number | null
+  report_status: ReportStatus | null
+}
+
 export interface TeacherWithReportStatus {
   id: number
   name: string
-  has_report: boolean
-  report_status: ReportStatus | null
-  report_id: number | null
+  total_grades: number
+  submitted_grades: number
+  grade_reports: TeacherGradeReportInfo[]
 }
 
 export interface ActivityWithDetails extends Activity {
@@ -76,34 +95,24 @@ export interface ActivityStats {
   rejected_reports: number
 }
 
-export interface TeacherActivityView {
-  id: number
-  title: string
-  description: string | null
-  objectives: string | null
-  examples: string | null
-  start_date: string
-  end_date: string
-  pdf_file: string | null
-  target_grades: string[]
-  creator?: ActivityCreator
-  is_active: boolean
-  report: {
-    id: number
-    status: ReportStatus
-    rejection_reason: string | null
-    submitted_at: string
-    reviewed_at: string | null
-  } | null
+// معلومات الصف للمعلم مع حالة التقرير
+export interface GradeReportInfo {
+  grade: string
+  has_report: boolean
+  report_id: number | null
+  report_status: ReportStatus | null
 }
 
-export interface TeacherActivityDetails {
-  data: TeacherActivityView
+// معلومات تفصيلية للصف (للشاشة التفصيلية)
+export interface GradeDetailInfo {
+  grade: string
   students_count: number
+  has_report: boolean
   report: {
     id: number
+    execution_location_id: number | null
     execution_location: string | null
-    achieved_objectives: string | null
+    achieved_objectives: string[] | null
     students_count: number
     images: string[]
     status: ReportStatus
@@ -113,10 +122,49 @@ export interface TeacherActivityDetails {
   } | null
 }
 
+export interface TeacherActivityView {
+  id: number
+  title: string
+  description: string | null
+  objectives: string[] | null // تم تغييرها من string إلى مصفوفة
+  examples: string | null
+  start_date: string
+  end_date: string
+  pdf_file: string | null
+  target_grades: string[]
+  teacher_grades: string[] // الصفوف المشتركة بين المعلم والنشاط
+  creator?: ActivityCreator
+  is_active: boolean
+  grades_reports: GradeReportInfo[] // حالة التقارير لكل صف
+  total_reports: number
+  pending_reports: number
+  approved_reports: number
+  rejected_reports: number
+}
+
+export interface TeacherActivityDetails {
+  data: {
+    id: number
+    title: string
+    description: string | null
+    objectives: string[] | null
+    examples: string | null
+    start_date: string
+    end_date: string
+    pdf_file: string | null
+    target_grades: string[]
+    creator?: ActivityCreator
+    is_active: boolean
+  }
+  teacher_grades: string[]
+  grades_info: GradeDetailInfo[]
+  execution_locations: ExecutionLocation[]
+}
+
 export interface ActivityCreatePayload {
   title: string
   description?: string
-  objectives?: string
+  objectives?: string[] // تم تغييرها من string إلى مصفوفة
   examples?: string
   start_date: string
   end_date: string
@@ -128,8 +176,9 @@ export interface ActivityCreatePayload {
 export interface ActivityUpdatePayload extends Partial<ActivityCreatePayload> {}
 
 export interface ReportSubmitPayload {
-  execution_location: string
-  achieved_objectives: string
+  grade: string // الصف المستهدف للتقرير
+  execution_location_id: number // مكان التنفيذ
+  achieved_objectives: string[] // الأهداف المحققة كمصفوفة
   students_count: number
   images?: File[]
 }

@@ -14,6 +14,8 @@ import type {
   ActivityUpdatePayload,
   ReportSubmitPayload,
   ReportStatus,
+  ExecutionLocation,
+  GradeDetailInfo,
 } from './types'
 
 // ===================== Admin API =====================
@@ -79,13 +81,29 @@ export async function fetchAvailableGrades(): Promise<string[]> {
 }
 
 /**
+ * جلب أماكن التنفيذ المتاحة
+ */
+export async function fetchExecutionLocations(): Promise<ExecutionLocation[]> {
+  const { data } = await apiClient.get<ApiResponse<ExecutionLocation[]>>('/admin/activities/execution-locations')
+  
+  if (!data.success) {
+    throw new Error(data.message ?? 'تعذر تحميل أماكن التنفيذ')
+  }
+  
+  return data.data
+}
+
+/**
  * جلب تفاصيل نشاط محدد مع المعلمين المعنيين (للإدارة)
  */
 export async function fetchActivityDetails(activityId: number): Promise<{
   activity: ActivityWithDetails
   target_teachers: TeacherWithReportStatus[]
+  target_grades: string[]
   stats: {
     total_teachers: number
+    total_grades: number
+    expected_reports: number
     submitted_count: number
     pending_count: number
     approved_count: number
@@ -97,8 +115,11 @@ export async function fetchActivityDetails(activityId: number): Promise<{
     message?: string
     data: ActivityWithDetails
     target_teachers: TeacherWithReportStatus[]
+    target_grades: string[]
     stats: {
       total_teachers: number
+      total_grades: number
+      expected_reports: number
       submitted_count: number
       pending_count: number
       approved_count: number
@@ -113,6 +134,7 @@ export async function fetchActivityDetails(activityId: number): Promise<{
   return {
     activity: data.data,
     target_teachers: data.target_teachers,
+    target_grades: data.target_grades,
     stats: data.stats,
   }
 }
@@ -128,9 +150,15 @@ export async function createActivity(payload: ActivityCreatePayload): Promise<Ac
   formData.append('end_date', payload.end_date)
   
   if (payload.description) formData.append('description', payload.description)
-  if (payload.objectives) formData.append('objectives', payload.objectives)
   if (payload.examples) formData.append('examples', payload.examples)
   if (payload.status) formData.append('status', payload.status)
+  
+  // الأهداف كمصفوفة
+  if (payload.objectives && payload.objectives.length > 0) {
+    payload.objectives.forEach((objective, index) => {
+      formData.append(`objectives[${index}]`, objective)
+    })
+  }
   
   payload.target_grades.forEach((grade, index) => {
     formData.append(`target_grades[${index}]`, grade)
@@ -164,9 +192,17 @@ export async function updateActivity(activityId: number, payload: ActivityUpdate
   if (payload.start_date) formData.append('start_date', payload.start_date)
   if (payload.end_date) formData.append('end_date', payload.end_date)
   if (payload.description !== undefined) formData.append('description', payload.description || '')
-  if (payload.objectives !== undefined) formData.append('objectives', payload.objectives || '')
   if (payload.examples !== undefined) formData.append('examples', payload.examples || '')
   if (payload.status) formData.append('status', payload.status)
+  
+  // الأهداف كمصفوفة
+  if (payload.objectives !== undefined) {
+    if (payload.objectives && payload.objectives.length > 0) {
+      payload.objectives.forEach((objective, index) => {
+        formData.append(`objectives[${index}]`, objective)
+      })
+    }
+  }
   
   if (payload.target_grades) {
     payload.target_grades.forEach((grade, index) => {
@@ -297,8 +333,9 @@ export async function fetchTeacherActivityDetails(activityId: number): Promise<T
     success: boolean
     message?: string
     data: TeacherActivityDetails['data']
-    students_count: number
-    report: TeacherActivityDetails['report']
+    teacher_grades: string[]
+    grades_info: GradeDetailInfo[]
+    execution_locations: ExecutionLocation[]
   }>(`/teacher/activities/${activityId}`)
   
   if (!data.success) {
@@ -307,8 +344,9 @@ export async function fetchTeacherActivityDetails(activityId: number): Promise<T
   
   return {
     data: data.data,
-    students_count: data.students_count,
-    report: data.report,
+    teacher_grades: data.teacher_grades,
+    grades_info: data.grades_info,
+    execution_locations: data.execution_locations,
   }
 }
 
@@ -321,9 +359,14 @@ export async function submitTeacherReport(
 ): Promise<ActivityReport> {
   const formData = new FormData()
   
-  formData.append('execution_location', payload.execution_location)
-  formData.append('achieved_objectives', payload.achieved_objectives)
+  formData.append('grade', payload.grade)
+  formData.append('execution_location_id', payload.execution_location_id.toString())
   formData.append('students_count', payload.students_count.toString())
+  
+  // الأهداف المحققة كمصفوفة
+  payload.achieved_objectives.forEach((objective, index) => {
+    formData.append(`achieved_objectives[${index}]`, objective)
+  })
   
   if (payload.images) {
     payload.images.forEach((image, index) => {
@@ -354,9 +397,14 @@ export async function updateTeacherReport(
   const formData = new FormData()
   
   formData.append('_method', 'PUT')
-  formData.append('execution_location', payload.execution_location)
-  formData.append('achieved_objectives', payload.achieved_objectives)
+  formData.append('grade', payload.grade)
+  formData.append('execution_location_id', payload.execution_location_id.toString())
   formData.append('students_count', payload.students_count.toString())
+  
+  // الأهداف المحققة كمصفوفة
+  payload.achieved_objectives.forEach((objective, index) => {
+    formData.append(`achieved_objectives[${index}]`, objective)
+  })
   
   if (payload.images) {
     payload.images.forEach((image, index) => {

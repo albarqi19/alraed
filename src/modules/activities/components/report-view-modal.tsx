@@ -5,8 +5,10 @@ import type { ReportStatus } from '../types'
 interface ReportData {
   id: number
   activity_id?: number
-  execution_location: string | null
-  achieved_objectives: string | null
+  grade?: string | null
+  execution_location?: string | null
+  execution_location_name?: string | null
+  achieved_objectives?: string[] | string | null
   students_count: number
   images: string[]
   status: ReportStatus
@@ -107,10 +109,17 @@ export function ReportViewModal({
                 </div>
                 <div>
                   <p className="font-semibold text-slate-900">{report.teacher?.name || 'معلم'}</p>
-                  <p className="text-xs text-muted">
-                    <i className="bi bi-calendar3 ml-1" />
-                    {formatDate(report.created_at)}
-                  </p>
+                  <div className="flex items-center gap-2 text-xs text-muted">
+                    {report.grade && (
+                      <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">
+                        {report.grade}
+                      </span>
+                    )}
+                    <span>
+                      <i className="bi bi-calendar3 ml-1" />
+                      {formatDate(report.created_at)}
+                    </span>
+                  </div>
                 </div>
               </div>
               <span className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium ${statusConfig.bg}`}>
@@ -127,7 +136,9 @@ export function ReportViewModal({
                   <i className="bi bi-geo-alt" />
                   <span className="text-xs font-medium">مكان التنفيذ</span>
                 </div>
-                <p className="text-slate-800 font-medium">{report.execution_location || '—'}</p>
+                <p className="text-slate-800 font-medium">
+                  {report.execution_location_name || report.execution_location || '—'}
+                </p>
               </div>
 
               {/* عدد الطلاب */}
@@ -148,9 +159,26 @@ export function ReportViewModal({
                 <i className="bi bi-bullseye" />
                 <span className="text-xs font-medium">الأهداف المحققة</span>
               </div>
-              <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">
-                {report.achieved_objectives || 'لم يتم تحديد أهداف'}
-              </p>
+              {report.achieved_objectives ? (
+                Array.isArray(report.achieved_objectives) ? (
+                  <div className="space-y-2">
+                    {report.achieved_objectives.map((objective, index) => (
+                      <div key={index} className="flex items-start gap-2 bg-emerald-50 rounded-lg px-3 py-2 border border-emerald-200">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white bg-emerald-500">
+                          {index + 1}
+                        </span>
+                        <span className="text-sm text-emerald-800">{objective}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">
+                    {report.achieved_objectives}
+                  </p>
+                )
+              ) : (
+                <p className="text-slate-400 text-sm">لم يتم تحديد أهداف</p>
+              )}
             </div>
 
             {/* سبب الرفض */}

@@ -17,6 +17,7 @@ export const activityKeys = {
   detail: (id: number) => [...activityKeys.details(), id] as const,
   stats: () => [...activityKeys.all, 'stats'] as const,
   grades: () => [...activityKeys.all, 'grades'] as const,
+  executionLocations: () => [...activityKeys.all, 'execution-locations'] as const,
   reports: (activityId: number) => [...activityKeys.all, activityId, 'reports'] as const,
   teacherActivities: () => [...activityKeys.all, 'teacher'] as const,
   teacherDetail: (id: number) => [...activityKeys.all, 'teacher', id] as const,
@@ -52,6 +53,16 @@ export function useAvailableGrades() {
   return useQuery({
     queryKey: activityKeys.grades(),
     queryFn: api.fetchAvailableGrades,
+  })
+}
+
+/**
+ * جلب أماكن التنفيذ المتاحة
+ */
+export function useExecutionLocations() {
+  return useQuery({
+    queryKey: activityKeys.executionLocations(),
+    queryFn: api.fetchExecutionLocations,
   })
 }
 
