@@ -81,6 +81,9 @@ export function ExcuseSubmissionPage() {
     if (excuseText.trim().length < 10) {
       newErrors.excuse_text = 'يرجى كتابة سبب الغياب بشكل أوضح (10 أحرف على الأقل)'
     }
+    if (!file) {
+      newErrors.file = 'يرجى رفع صورة أو مستند للعذر'
+    }
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
       return
@@ -341,8 +344,12 @@ export function ExcuseSubmissionPage() {
             {/* File Upload */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
-                مرفق (صورة أو مستند) <span className="text-slate-400">(اختياري)</span>
+                مرفق (صورة أو مستند) <span className="text-red-500">*</span>
               </label>
+
+              <div className="mb-2 bg-blue-50 border border-blue-200 rounded-lg p-2 text-xs text-blue-700">
+                📎 يجب إرفاق صورة أو مستند يثبت سبب الغياب (شهادة طبية، تقرير، إلخ)
+              </div>
               
               {!file ? (
                 <label className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed ${errors.file ? 'border-red-300 bg-red-50' : 'border-slate-300 bg-slate-50'} rounded-xl cursor-pointer hover:bg-slate-100 transition`}>
