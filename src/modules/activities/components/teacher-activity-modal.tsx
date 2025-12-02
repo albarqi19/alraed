@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useTeacherActivityDetails, useSubmitReport, useUpdateTeacherReport } from '../hooks'
-import { getActivityReportImageUrl, getActivityPdfUrl, getActivityReportPrintUrl } from '@/services/api/client'
-import type { ReportStatus, GradeDetailInfo } from '../types'
+import { getActivityPdfUrl, getActivityReportPrintUrl } from '@/services/api/client'
+import type { ReportStatus } from '../types'
 
 interface Props {
   activityId: number
