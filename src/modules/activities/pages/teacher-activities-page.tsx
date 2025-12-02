@@ -28,6 +28,34 @@ function isActivityExpired(endDate: string): boolean {
   return new Date(endDate) < new Date()
 }
 
+// حساب الحالة العامة للنشاط بناءً على تقارير الصفوف
+function getActivityOverallStatus(activity: TeacherActivityView): { 
+  hasAnyReport: boolean
+  allSubmitted: boolean
+  hasRejected: boolean
+  hasPending: boolean
+  hasApproved: boolean
+  submittedCount: number
+  totalGrades: number
+} {
+  const gradesReports = activity.grades_reports ?? []
+  const totalGrades = gradesReports.length
+  const submittedCount = gradesReports.filter(g => g.has_report).length
+  const hasRejected = gradesReports.some(g => g.report_status === 'rejected')
+  const hasPending = gradesReports.some(g => g.report_status === 'pending')
+  const hasApproved = gradesReports.some(g => g.report_status === 'approved')
+  
+  return {
+    hasAnyReport: submittedCount > 0,
+    allSubmitted: submittedCount === totalGrades && totalGrades > 0,
+    hasRejected,
+    hasPending,
+    hasApproved,
+    submittedCount,
+    totalGrades,
+  }
+}
+
 export function TeacherActivitiesPage() {
   const { data, isLoading, error } = useTeacherActivities()
   const [selectedActivityId, setSelectedActivityId] = useState<number | null>(null)
@@ -35,9 +63,17 @@ export function TeacherActivitiesPage() {
   const activities = data?.data ?? []
   const teacherGrades = data?.teacher_grades ?? []
 
-  // فصل الأنشطة حسب حالة التقرير
-  const pendingActivities = activities.filter((a) => !a.report || a.report.status === 'rejected')
-  const submittedActivities = activities.filter((a) => a.report && a.report.status !== 'rejected')
+  // فصل الأنشطة حسب حالة التقارير
+  const pendingActivities = activities.filter((a) => {
+    const status = getActivityOverallStatus(a)
+    // أنشطة تحتاج تسليم: لم تكتمل كل التقارير أو فيها تقرير مرفوض
+    return !status.allSubmitted || status.hasRejected
+  })
+  const submittedActivities = activities.filter((a) => {
+    const status = getActivityOverallStatus(a)
+    // أنشطة مكتملة: كل التقارير مسلمة وليس فيها مرفوض
+    return status.allSubmitted && !status.hasRejected
+  })
 
   if (isLoading) {
     return (
@@ -143,7 +179,52 @@ interface ActivityCardProps {
 
 function ActivityCard({ activity, onClick }: ActivityCardProps) {
   const isExpired = isActivityExpired(activity.end_date)
-  const hasRejectedReport = activity.report?.status === 'rejected'
+  const status = getActivityOverallStatus(activity)
+  
+  // عرض حالة ملخصة للنشاط
+  const getStatusBadge = () => {
+    if (status.hasRejected) {
+      return (
+        <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${REPORT_STATUS_COLORS.rejected}`}>
+          <i className="bi bi-x-circle" />
+          يوجد تقرير مرفوض
+        </span>
+      )
+    }
+    
+    if (status.allSubmitted) {
+      if (status.hasPending) {
+        return (
+          <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${REPORT_STATUS_COLORS.pending}`}>
+            <i className="bi bi-clock" />
+            {REPORT_STATUS_LABELS.pending}
+          </span>
+        )
+      }
+      return (
+        <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${REPORT_STATUS_COLORS.approved}`}>
+          <i className="bi bi-check-circle" />
+          {REPORT_STATUS_LABELS.approved}
+        </span>
+      )
+    }
+    
+    if (isExpired) {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
+          <i className="bi bi-exclamation-triangle" />
+          منتهي
+        </span>
+      )
+    }
+    
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+        <i className="bi bi-file-earmark-plus" />
+        {status.submittedCount}/{status.totalGrades} صفوف
+      </span>
+    )
+  }
 
   return (
     <button
@@ -153,26 +234,7 @@ function ActivityCard({ activity, onClick }: ActivityCardProps) {
     >
       {/* Status Badge */}
       <div className="flex items-start justify-between mb-3">
-        {activity.report ? (
-          <span
-            className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${REPORT_STATUS_COLORS[activity.report.status]}`}
-          >
-            {activity.report.status === 'pending' && <i className="bi bi-clock" />}
-            {activity.report.status === 'approved' && <i className="bi bi-check-circle" />}
-            {activity.report.status === 'rejected' && <i className="bi bi-x-circle" />}
-            {REPORT_STATUS_LABELS[activity.report.status]}
-          </span>
-        ) : isExpired ? (
-          <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
-            <i className="bi bi-exclamation-triangle" />
-            منتهي
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-            <i className="bi bi-file-earmark-plus" />
-            يتطلب تسليم
-          </span>
-        )}
+        {getStatusBadge()}
         <i className="bi bi-chevron-left text-slate-300 group-hover:text-indigo-500 transition" />
       </div>
 
@@ -197,31 +259,44 @@ function ActivityCard({ activity, onClick }: ActivityCardProps) {
         </span>
       </div>
 
-      {/* Target Grades */}
+      {/* Target Grades with Status */}
       <div className="mt-3 flex flex-wrap gap-1">
-        {activity.target_grades?.slice(0, 3).map((grade) => (
+        {activity.grades_reports?.slice(0, 4).map((gradeInfo) => (
           <span
-            key={grade}
-            className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
+            key={gradeInfo.grade}
+            className={`rounded-full px-2 py-0.5 text-xs ${
+              gradeInfo.has_report
+                ? gradeInfo.report_status === 'approved'
+                  ? 'bg-emerald-100 text-emerald-700'
+                  : gradeInfo.report_status === 'rejected'
+                  ? 'bg-red-100 text-red-700'
+                  : 'bg-amber-100 text-amber-700'
+                : 'bg-slate-100 text-slate-600'
+            }`}
           >
-            {grade}
+            {gradeInfo.grade}
+            {gradeInfo.has_report && (
+              <i className={`bi ${
+                gradeInfo.report_status === 'approved' ? 'bi-check' :
+                gradeInfo.report_status === 'rejected' ? 'bi-x' : 'bi-clock'
+              } mr-1`} />
+            )}
           </span>
         ))}
-        {(activity.target_grades?.length ?? 0) > 3 && (
+        {(activity.grades_reports?.length ?? 0) > 4 && (
           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-            +{(activity.target_grades?.length ?? 0) - 3}
+            +{(activity.grades_reports?.length ?? 0) - 4}
           </span>
         )}
       </div>
 
-      {/* Rejection Reason Warning */}
-      {hasRejectedReport && activity.report?.rejection_reason && (
+      {/* Rejection Warning */}
+      {status.hasRejected && (
         <div className="mt-3 rounded-lg bg-red-50 border border-red-200 p-2">
           <p className="text-xs text-red-700 font-medium">
             <i className="bi bi-exclamation-circle ml-1" />
-            سبب الرفض: {activity.report.rejection_reason}
+            يوجد تقرير مرفوض يتطلب إعادة التعديل
           </p>
-          <p className="text-xs text-red-600 mt-1">اضغط لإعادة تعديل التقرير</p>
         </div>
       )}
     </button>
