@@ -175,9 +175,9 @@ export const themes: Record<string, Theme> = {
     colors: {
       background: '#F8F5F0',
       surface: '#FFFFFF',
-      primary: '#1A1A2E',
-      primaryDark: '#0F0F1A',
-      primaryLight: '#2D2D44',
+      primary: '#C9A961',
+      primaryDark: '#A68B4B',
+      primaryLight: '#D4BC7A',
       accent: '#E2D9C9',
       danger: '#C53030',
       success: '#276749',

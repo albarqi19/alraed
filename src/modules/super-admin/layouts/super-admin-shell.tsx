@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import clsx from 'classnames'
+import { Menu, X } from 'lucide-react'
 import { primaryPlatformNav, secondaryPlatformNav } from '../constants/navigation'
 import { useAuthStore } from '@/modules/auth/store/auth-store'
 import { useLogoutMutation } from '@/modules/auth/hooks'
@@ -7,10 +9,30 @@ import { useLogoutMutation } from '@/modules/auth/hooks'
 export function SuperAdminShell() {
   const user = useAuthStore((state) => state.user)
   const logoutMutation = useLogoutMutation()
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   return (
     <div className="flex min-h-screen w-full bg-slate-50/80">
-      <aside className="hidden w-72 flex-col border-l border-slate-200 bg-[#0F172A] text-white md:flex">
+      {/* Overlay للشاشات الصغيرة */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+      
+      <aside className={clsx(
+        "fixed right-0 top-0 z-50 h-screen w-72 flex-col border-l border-slate-200 bg-[#0F172A] text-white transition-transform duration-300 lg:flex",
+        isSidebarOpen ? "flex translate-x-0" : "hidden lg:flex lg:translate-x-0 translate-x-full"
+      )}>
+        {/* زر إغلاق للشاشات الصغيرة */}
+        <button
+          onClick={() => setIsSidebarOpen(false)}
+          className="absolute left-4 top-4 rounded-lg p-2 text-white hover:bg-white/10 lg:hidden"
+          aria-label="إغلاق القائمة"
+        >
+          <X className="h-5 w-5" />
+        </button>
         <div className="px-6 py-8">
           <p className="text-sm text-slate-200/80">منصة الإدارة العليا</p>
           <h2 className="mt-2 text-2xl font-bold">لوحة التحكم الشاملة</h2>
@@ -96,17 +118,26 @@ export function SuperAdminShell() {
         </nav>
       </aside>
 
-      <div className="flex min-h-screen flex-1 flex-col">
+      <div className="flex min-h-screen flex-1 flex-col lg:mr-72">
         <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 shadow-sm backdrop-blur">
           <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
+            {/* زر القائمة للشاشات الصغيرة */}
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 lg:hidden"
+              aria-label="فتح القائمة"
+            >
+              <Menu className="h-6 w-6" />
+            </button>
+            
             <div>
               <p className="text-xs font-semibold text-slate-500">إدارة المنصة</p>
               <h1 className="mt-1 text-2xl font-bold text-slate-900">{user?.name ?? 'المدير العام للنظام'}</h1>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 hidden text-xs text-slate-500 sm:block">
                 تحكم كامل في المدارس والإيرادات والباقات على مستوى المنصة.
               </p>
             </div>
-            <div className="hidden items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600 shadow-sm md:flex">
+            <div className="hidden items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600 shadow-sm lg:flex">
               <div className="text-right">
                 <p className="font-semibold text-slate-700">الوصول المميز</p>
                 <p>الدخول بصلاحية المدير العام</p>

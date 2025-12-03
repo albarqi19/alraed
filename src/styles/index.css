@@ -914,6 +914,13 @@
     color: #1A1A2E !important;
   }
 
+  /* تحسين القائمة الجانبية - جعل النص أسود عند التحديد */
+  [data-theme='enterprise-compact'] .admin-sidebar a[style*="background-color: var(--color-primary)"],
+  [data-theme='enterprise-compact'] .admin-sidebar a[style*="background-color: var(--color-primary)"] span,
+  [data-theme='enterprise-compact'] .admin-sidebar a[style*="background-color: var(--color-primary)"] svg {
+    color: #1A1A1A !important;
+  }
+
   /* تحسين الـ Scrollbar */
   [data-theme='enterprise-compact'] ::-webkit-scrollbar {
     width: 6px;

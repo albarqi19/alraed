@@ -177,20 +177,20 @@ export function AdminShell() {
       {/* Overlay للجوال */}
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
       
       {/* Sidebar */}
       <aside className={clsx(
-        "admin-sidebar fixed right-0 top-0 z-50 h-screen w-72 flex-col overflow-y-auto border-l border-slate-700/20 text-right shadow-md transition-transform duration-300 md:flex",
-        isSidebarOpen ? "flex translate-x-0" : "hidden md:flex md:translate-x-0 translate-x-full"
+        "admin-sidebar fixed right-0 top-0 z-50 h-screen w-72 flex-col overflow-y-auto border-l border-slate-700/20 text-right shadow-md transition-transform duration-300 lg:flex",
+        isSidebarOpen ? "flex translate-x-0" : "hidden lg:flex lg:translate-x-0 translate-x-full"
       )} style={{ backgroundColor: 'var(--color-sidebar)' }}>
         {/* زر إغلاق للجوال */}
         <button
           onClick={() => setIsSidebarOpen(false)}
-          className="absolute left-4 top-4 rounded-lg p-2 text-white hover:bg-white/10 md:hidden"
+          className="absolute left-4 top-4 rounded-lg p-2 text-white hover:bg-white/10 lg:hidden"
           aria-label="إغلاق القائمة"
         >
           <X className="h-5 w-5" />
@@ -418,13 +418,13 @@ export function AdminShell() {
         </div>
       </aside>
 
-      <div className="flex min-h-screen w-full flex-1 flex-col md:mr-72">
+      <div className="flex min-h-screen w-full flex-1 flex-col lg:mr-72">
         <header className="sticky top-0 z-10 border-b shadow-sm" style={{ backgroundColor: 'var(--color-header)', borderColor: 'rgba(0, 0, 0, 0.1)' }}>
           <div className="flex w-full items-center justify-between px-6 py-4 lg:px-10">
             {/* زر القائمة للجوال */}
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="rounded-lg p-2 text-white hover:bg-white/10 md:hidden"
+              className="rounded-lg p-2 text-white hover:bg-white/10 lg:hidden"
               aria-label="فتح القائمة"
             >
               <Menu className="h-6 w-6" />
