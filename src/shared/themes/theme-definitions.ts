@@ -17,6 +17,44 @@ export interface ThemeColors {
   sidebarText: string
 }
 
+export interface ThemeDensity {
+  fontSize: {
+    xs: string
+    sm: string
+    base: string
+    lg: string
+    xl: string
+  }
+  spacing: {
+    xs: string
+    sm: string
+    md: string
+    lg: string
+    xl: string
+  }
+  borderRadius: {
+    sm: string
+    md: string
+    lg: string
+    xl: string
+  }
+  buttonPadding: {
+    sm: string
+    md: string
+    lg: string
+  }
+  tablePadding: {
+    cell: string
+    header: string
+  }
+  cardPadding: string
+  inputHeight: {
+    sm: string
+    md: string
+    lg: string
+  }
+}
+
 export interface Theme {
   id: string
   name: string
@@ -24,6 +62,7 @@ export interface Theme {
   description: string
   descriptionAr: string
   colors: ThemeColors
+  density?: ThemeDensity
 }
 
 export const themes: Record<string, Theme> = {
@@ -125,6 +164,68 @@ export const themes: Record<string, Theme> = {
       sidebar: '#0F172A',
       header: '#1F2933',
       sidebarText: '#E5E7EB',
+    },
+  },
+  'enterprise-compact': {
+    id: 'enterprise-compact',
+    name: 'Enterprise Compact',
+    nameAr: 'المؤسسي المضغوط',
+    description: 'Ultra-compact enterprise theme with minimal spacing for maximum data density',
+    descriptionAr: 'مظهر مؤسسي مضغوط بأقصى كثافة للبيانات وأقل فراغات',
+    colors: {
+      background: '#EBEEF2',
+      surface: '#FFFFFF',
+      primary: '#2563EB',
+      primaryDark: '#1D4ED8',
+      primaryLight: '#3B82F6',
+      accent: '#E2E8F0',
+      danger: '#DC2626',
+      success: '#16A34A',
+      warning: '#CA8A04',
+      muted: '#64748B',
+      textPrimary: '#0F172A',
+      textSecondary: '#475569',
+      border: '#CBD5E1',
+      sidebar: '#1E293B',
+      header: '#334155',
+      sidebarText: '#F1F5F9',
+    },
+    density: {
+      fontSize: {
+        xs: '0.75rem',
+        sm: '0.8125rem',
+        base: '0.875rem',
+        lg: '0.9375rem',
+        xl: '1.0625rem',
+      },
+      spacing: {
+        xs: '0.1875rem',
+        sm: '0.3125rem',
+        md: '0.5rem',
+        lg: '0.625rem',
+        xl: '0.875rem',
+      },
+      borderRadius: {
+        sm: '0.1875rem',
+        md: '0.3125rem',
+        lg: '0.4375rem',
+        xl: '0.5625rem',
+      },
+      buttonPadding: {
+        sm: '0.3125rem 0.625rem',
+        md: '0.4375rem 0.875rem',
+        lg: '0.5625rem 1.125rem',
+      },
+      tablePadding: {
+        cell: '0.4375rem 0.625rem',
+        header: '0.5625rem 0.625rem',
+      },
+      cardPadding: '0.875rem',
+      inputHeight: {
+        sm: '1.625rem',
+        md: '1.875rem',
+        lg: '2.125rem',
+      },
     },
   },
 }

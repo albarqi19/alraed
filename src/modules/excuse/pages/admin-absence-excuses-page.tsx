@@ -482,23 +482,34 @@ export function AdminAbsenceExcusesPage() {
                 </div>
               </div>
 
-              {selectedExcuse.response_message && (
+              {selectedExcuse.status === 'approved' && selectedExcuse.response_message && (
                 <div>
-                  <p className="text-xs text-slate-500 mb-2">رد الإدارة</p>
-                  <div className={`rounded-xl border p-4 ${
-                    selectedExcuse.status === 'approved'
-                      ? 'border-emerald-200 bg-emerald-50'
-                      : 'border-rose-200 bg-rose-50'
-                  }`}>
+                  <p className="text-xs text-slate-500 mb-2">رسالة الموافقة</p>
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
                     <p className="text-slate-900">{selectedExcuse.response_message}</p>
                   </div>
                 </div>
               )}
 
-              {selectedExcuse.reviewed_at && (
+              {selectedExcuse.status === 'rejected' && (selectedExcuse.review_notes || selectedExcuse.response_message) && (
                 <div>
-                  <p className="text-xs text-slate-500">تاريخ المراجعة</p>
-                  <p className="text-slate-900">{formatDate(selectedExcuse.reviewed_at)}</p>
+                  <p className="text-xs text-slate-500 mb-2">سبب الرفض</p>
+                  <div className="rounded-xl border border-rose-200 bg-rose-50 p-4">
+                    <p className="text-slate-900">{selectedExcuse.review_notes || selectedExcuse.response_message}</p>
+                  </div>
+                </div>
+              )}
+
+              {selectedExcuse.reviewed_at && (
+                <div className="grid grid-cols-2 gap-4 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+                  <div>
+                    <p className="text-xs text-slate-500">تم المراجعة بواسطة</p>
+                    <p className="font-semibold text-slate-900">{selectedExcuse.reviewer?.name || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">تاريخ المراجعة</p>
+                    <p className="text-slate-900">{formatDate(selectedExcuse.reviewed_at)}</p>
+                  </div>
                 </div>
               )}
 
