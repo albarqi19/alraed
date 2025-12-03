@@ -260,11 +260,19 @@ export function AutoCallProvider({
 
   useEffect(() => {
     try {
-      firestoreRef.current = getFirestoreClient()
-      setError(null)
+      const client = getFirestoreClient()
+      if (client) {
+        firestoreRef.current = client
+        setError(null)
+      } else {
+        // Firebase غير متاح - هذا طبيعي للمعلمين أو عندما لا يكون مُعدّاً
+        firestoreRef.current = null
+        setError(null) // لا نعتبره خطأ
+      }
     } catch (initializationError) {
-      console.error('فشل تهيئة Firebase للاستخدام في النداء الآلي', initializationError)
-      setError(initializationError instanceof Error ? initializationError.message : 'تعذر تهيئة Firebase')
+      console.warn('فشل تهيئة Firebase للاستخدام في النداء الآلي', initializationError)
+      firestoreRef.current = null
+      setError(null) // لا نعتبره خطأ لتجنب كسر الصفحة
     }
   }, [])
 

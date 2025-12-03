@@ -63,14 +63,30 @@ class LocalNotificationService {
    * التحقق من دعم الإشعارات
    */
   isSupported(): boolean {
-    return 'Notification' in window && 'serviceWorker' in navigator
+    try {
+      // في iOS Safari قد يكون Notification موجود لكن غير مدعوم بشكل كامل
+      if (typeof window === 'undefined') return false
+      if (!('Notification' in window)) return false
+      if (!('serviceWorker' in navigator)) return false
+      // التحقق من إمكانية الوصول لـ permission (قد يرمي خطأ في بعض المتصفحات)
+      void Notification.permission
+      return true
+    } catch {
+      // iOS Safari قد يرمي خطأ عند الوصول لـ Notification
+      return false
+    }
   }
 
   /**
    * التحقق من حالة الإذن
    */
   hasPermission(): boolean {
-    return Notification.permission === 'granted'
+    try {
+      if (!this.isSupported()) return false
+      return Notification.permission === 'granted'
+    } catch {
+      return false
+    }
   }
 
   /**

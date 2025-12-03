@@ -16,14 +16,32 @@ interface UseLocalNotificationsResult {
  * Hook لإدارة الإشعارات المحلية
  */
 export function useLocalNotifications(): UseLocalNotificationsResult {
-  const [isSupported] = useState(() => localNotificationService.isSupported())
-  const [hasPermission, setHasPermission] = useState(() =>
-    localNotificationService.hasPermission()
-  )
+  // استخدام try-catch للحماية من أخطاء iOS Safari
+  const [isSupported] = useState(() => {
+    try {
+      return localNotificationService.isSupported()
+    } catch {
+      return false
+    }
+  })
+  
+  const [hasPermission, setHasPermission] = useState(() => {
+    try {
+      return localNotificationService.hasPermission()
+    } catch {
+      return false
+    }
+  })
+  
   const [isRequesting, setIsRequesting] = useState(false)
+  
   const [scheduledCount, setScheduledCount] = useState(() => {
-    const scheduled = localNotificationService.getScheduledNotifications()
-    return scheduled.filter((n) => n.notifyAt > new Date()).length
+    try {
+      const scheduled = localNotificationService.getScheduledNotifications()
+      return scheduled.filter((n) => n.notifyAt > new Date()).length
+    } catch {
+      return 0
+    }
   })
 
   // طلب الإذن
