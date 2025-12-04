@@ -425,6 +425,14 @@
    ======================================== */
 
 @layer base {
+  /* تنسيق خاص لعنوان نظام الرائد في الثيم المؤسسي المضغوط */
+  [data-theme='enterprise-compact'] .sidebar-brand-title {
+    font-size: 2rem !important;
+    font-weight: 700 !important;
+    font-family: 'IBM Plex Sans Arabic', sans-serif !important;
+    letter-spacing: 0.02em;
+  }
+
   [data-theme='enterprise-compact'] {
     --radius-base: 6px;
     --radius-sm: 4px;

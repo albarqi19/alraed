@@ -197,7 +197,7 @@ export function AdminShell() {
         </button>
         {/* Header with Logo */}
         <div className="border-b border-white/20 px-6 py-6 text-center">
-          <p className="text-1g font-bold text-white" style={{ fontFamily: 'IBM Plex Sans Arabic, sans-serif' }}>نظام الرائد</p>
+          <p className="sidebar-brand-title text-lg font-bold" style={{ fontFamily: 'IBM Plex Sans Arabic, sans-serif', color: 'var(--color-sidebar-text)' }}>نظام الرائد</p>
         </div>
 
         <div className="flex-1 space-y-1 p-4">
