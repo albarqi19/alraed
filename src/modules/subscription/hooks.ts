@@ -30,21 +30,8 @@ export function usePublicSubscriptionPlansQuery() {
 }
 
 export function useRegisterSchoolMutation() {
-  const toast = useToast()
-
   return useMutation({
     mutationFn: (payload: RegisterSchoolPayload) => registerSchool(payload),
-    onSuccess: (response) => {
-      toast({
-        type: 'success',
-        title: 'تم إنشاء المدرسة بنجاح',
-        description: `رقم هوية المدير: ${response.admin_credentials.national_id}`,
-      })
-    },
-    onError: (error: unknown) => {
-      const message = error instanceof Error ? error.message : 'تعذر تسجيل المدرسة'
-      toast({ type: 'error', title: message })
-    },
   })
 }
 

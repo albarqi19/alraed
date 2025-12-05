@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import confetti from 'canvas-confetti'
 import { usePublicSubscriptionPlansQuery, useRegisterSchoolMutation } from '../hooks'
 import { PlanCard } from '../components/plan-card'
 import type { RegisterSchoolPayload } from '../types'
@@ -36,6 +37,37 @@ export function SchoolRegistrationPage() {
 
   const selectedPlan = useMemo(() => plans.find((plan) => plan.code === form.plan_code) ?? plans[0], [plans, form.plan_code])
 
+  // تفعيل Confetti عند نجاح التسجيل
+  useEffect(() => {
+    if (registerMutation.isSuccess) {
+      const duration = 3000
+      const end = Date.now() + duration
+
+      const frame = () => {
+        confetti({
+          particleCount: 3,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0 },
+          colors: ['#10b981', '#34d399', '#6ee7b7']
+        })
+        confetti({
+          particleCount: 3,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1 },
+          colors: ['#10b981', '#34d399', '#6ee7b7']
+        })
+
+        if (Date.now() < end) {
+          requestAnimationFrame(frame)
+        }
+      }
+
+      frame()
+    }
+  }, [registerMutation.isSuccess])
+
   const handleChange = (field: keyof RegisterSchoolPayload, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
@@ -53,32 +85,135 @@ export function SchoolRegistrationPage() {
 
   return (
     <section className="space-y-10">
-      <header className="glass-card">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-4">
-            <span className="badge-soft">تسجيل مدرسة جديدة</span>
-            <h1 className="text-3xl font-bold text-slate-900 lg:text-4xl">ابدأ رحلتك مع نظام الرائد</h1>
-            <p className="max-w-2xl text-sm leading-relaxed text-muted">
-              قم بتعبئة البيانات التالية لتفعيل حساب مدرستك مباشرة، سنقوم بإنشاء حساب لمدير المدرسة وإرسال بيانات الدخول فوراً.
+      {/* شاشة التحميل الكاملة أثناء التسجيل */}
+      {registerMutation.isPending ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
+          <div className="rounded-3xl bg-white p-8 shadow-2xl">
+            <div className="flex flex-col items-center gap-6">
+              {/* Spinner متحرك */}
+              <div className="relative h-20 w-20">
+                <div className="absolute inset-0 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600"></div>
+                <div className="absolute inset-2 animate-pulse rounded-full bg-emerald-50"></div>
+              </div>
+              
+              {/* نص التحميل */}
+              <div className="text-center">
+                <h3 className="text-xl font-bold text-slate-800">جارِ تسجيل مدرستك</h3>
+                <p className="mt-2 text-sm text-slate-600">يُرجى الانتظار قليلاً...</p>
+              </div>
+              
+              {/* شريط تقدم متحرك */}
+              <div className="h-1 w-64 overflow-hidden rounded-full bg-slate-200">
+                <div className="h-full animate-progress bg-gradient-to-r from-emerald-500 to-teal-500"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* صفحة النجاح الكاملة */}
+      {registerMutation.isSuccess && registerMutation.data?.school ? (
+        <div className="glass-card mx-auto max-w-2xl">
+          <div className="rounded-2xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 to-teal-50 p-8 text-center shadow-lg">
+            {/* تأثير احتفالي */}
+            <div className="mb-6 flex justify-center">
+              <div className="relative">
+                <div className="absolute inset-0 animate-ping rounded-full bg-emerald-400 opacity-30"></div>
+                <div className="relative rounded-full bg-emerald-500 p-6 text-white shadow-xl">
+                  <svg className="h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* عنوان رئيسي */}
+            <h2 className="mb-3 text-3xl font-bold text-emerald-800">
+              🎉 مرحباً بك في نظام الرائد!
+            </h2>
+            
+            {/* نص توضيحي */}
+            <p className="mb-6 text-lg font-medium text-emerald-700">
+              تم تسجيل مدرستك بنجاح
+            </p>
+
+            {/* معلومات إضافية */}
+            <div className="mx-auto mb-6 max-w-md space-y-3 rounded-xl bg-white/80 p-5 text-right shadow-sm">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">📱</span>
+                <div>
+                  <p className="font-semibold text-slate-800">ستصلك بيانات الدخول عبر واتساب</p>
+                  <p className="text-sm text-slate-600">تحقق من رسائل واتساب على رقمك المسجل</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">⏰</span>
+                <div>
+                  <p className="font-semibold text-slate-800">فترة تجريبية مجانية</p>
+                  <p className="text-sm text-slate-600">
+                    7 أيام للاستفادة من جميع المميزات
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">🎯</span>
+                <div>
+                  <p className="font-semibold text-slate-800">وصول كامل</p>
+                  <p className="text-sm text-slate-600">جميع مميزات النظام متاحة لك الآن</p>
+                </div>
+              </div>
+            </div>
+
+            {/* زر الانتقال للدخول */}
+            <a
+              href="/auth/admin"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-8 py-3 text-lg font-semibold text-white shadow-md transition hover:bg-emerald-700"
+            >
+              الانتقال لتسجيل الدخول
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </a>
+
+            {/* ملاحظة */}
+            <p className="mt-6 text-xs text-slate-500">
+              💡 لم تستلم الرسالة؟ تواصل مع الدعم الفني
             </p>
           </div>
-          {selectedPlan ? (
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
-              <p className="text-xs font-semibold text-emerald-700">الباقة المختارة</p>
-              <h2 className="text-xl font-bold text-slate-900">{selectedPlan.name}</h2>
-              <p className="mt-1 text-xs text-emerald-700">
-                يمكنك تعديل الباقة لاحقاً من لوحة الإدارة.
-              </p>
-            </div>
-          ) : null}
         </div>
-      </header>
+      ) : null}
 
-      <div className="grid gap-8 lg:grid-cols-[1fr,320px]">
-        <form
-          onSubmit={handleSubmit}
-          className="glass-card space-y-6"
-        >
+      {/* نموذج التسجيل */}
+      {!registerMutation.isSuccess && (
+        <>
+          <header className="glass-card">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-4">
+                <span className="badge-soft">تسجيل مدرسة جديدة</span>
+                <h1 className="text-3xl font-bold text-slate-900 lg:text-4xl">ابدأ رحلتك مع نظام الرائد</h1>
+                <p className="max-w-2xl text-sm leading-relaxed text-muted">
+                  قم بتعبئة البيانات التالية لتفعيل حساب مدرستك مباشرة، سنقوم بإنشاء حساب لمدير المدرسة وإرسال بيانات الدخول فوراً.
+                </p>
+              </div>
+              {selectedPlan ? (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
+                  <p className="text-xs font-semibold text-emerald-700">الباقة المختارة</p>
+                  <h2 className="text-xl font-bold text-slate-900">{selectedPlan.name}</h2>
+                  <p className="mt-1 text-xs text-emerald-700">
+                    يمكنك تعديل الباقة لاحقاً من لوحة الإدارة.
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          </header>
+
+          <div className="grid gap-8 lg:grid-cols-[1fr,320px]">
+            <form
+              onSubmit={handleSubmit}
+              className="glass-card space-y-6"
+            >
           <div className="grid gap-4 md:grid-cols-2">
             <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
               اسم المدرسة
@@ -208,20 +343,9 @@ export function SchoolRegistrationPage() {
               {registerMutation.isPending ? 'جاري تسجيل المدرسة...' : 'إكمال التسجيل'}
             </button>
           </div>
-
-          {registerMutation.isSuccess ? (
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 text-sm text-emerald-700">
-              <p className="font-semibold text-emerald-800">تم إنشاء المدرسة بنجاح!</p>
-              <p className="mt-2">يمكن للمدير تسجيل الدخول باستخدام البيانات التالية:</p>
-              <ul className="mt-3 space-y-2 text-xs font-mono">
-                <li>رقم الهوية: {registerMutation.data.admin_credentials.national_id}</li>
-                <li>كلمة المرور المؤقتة: {registerMutation.data.admin_credentials.password}</li>
-              </ul>
-            </div>
-          ) : null}
         </form>
 
-        <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+        <aside className="space-y-6">
           <div className="glass-card space-y-4">
             <h2 className="text-lg font-semibold text-slate-900">اختر الباقة المناسبة</h2>
             {isPlansLoading ? (
@@ -253,6 +377,8 @@ export function SchoolRegistrationPage() {
           ) : null}
         </aside>
       </div>
+    </>
+  )}
     </section>
-  )
-}
+  );
+};
