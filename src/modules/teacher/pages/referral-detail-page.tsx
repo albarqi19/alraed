@@ -218,11 +218,14 @@ export function ReferralDetailPage() {
         </div>
       )}
       
-      {/* Documents - المعلم يرى فقط نموذج الإحالة وخطاب التحويل */}
+      {/* Documents - المعلم يرى فقط المستندات الأساسية التي تُنشأ تلقائياً */}
       {referral.documents && referral.documents.length > 0 && (
         (() => {
-          // فلترة المستندات للمعلم - يرى فقط نموذج الإحالة وخطاب التحويل
-          const teacherAllowedDocs = ['referral_form', 'teacher_to_admin'];
+          // فلترة المستندات للمعلم - يرى فقط المستندات الأساسية التلقائية
+          // referral_form - نموذج الإحالة
+          // teacher_to_admin - خطاب تحويل من معلم لإدارة (مخالفات سلوكية)
+          // admin_to_counselor - خطاب تحويل من إدارة لموجه (ضعف دراسي)
+          const teacherAllowedDocs = ['referral_form', 'teacher_to_admin', 'admin_to_counselor'];
           const visibleDocs = referral.documents.filter(doc => 
             teacherAllowedDocs.includes(doc.document_type)
           );
