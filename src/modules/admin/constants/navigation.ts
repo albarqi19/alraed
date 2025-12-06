@@ -39,6 +39,9 @@ import {
   CreditCard,
   FileCheck,
   Sparkles,
+  ArrowRightLeft,
+  BookOpenCheck,
+  UserX,
 } from 'lucide-react'
 
 export interface AdminNavItem {
@@ -115,6 +118,15 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
       { to: '/admin/e-store', label: 'المتجر الالكتروني', icon: ShoppingCart, permission: 'admin.e-store' },
       { to: '/admin/guidance-programs', label: 'البرامج الإرشادية', icon: Lightbulb, soon: true, permission: 'admin.guidance-programs' },
       // { to: '/admin/summons', label: 'الاستدعاءات والتوصيات', icon: UserPlus, permission: 'admin.summons' },
+    ],
+  },
+  {
+    title: 'إدارة الإحالات',
+    icon: ArrowRightLeft,
+    items: [
+      { to: '/admin/referrals', label: 'جميع الإحالات', icon: ClipboardList, permission: 'admin.referrals' },
+      { to: '/admin/referrals/guidance', label: 'إحالات الضعف الدراسي', icon: BookOpenCheck, permission: 'admin.referrals.guidance' },
+      { to: '/admin/referrals/behavioral', label: 'إحالات المخالفات', icon: UserX, permission: 'admin.referrals.behavioral' },
     ],
   },
   {

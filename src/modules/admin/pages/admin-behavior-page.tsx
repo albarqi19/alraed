@@ -21,8 +21,6 @@ import {
   BEHAVIOR_LOCATIONS,
   BEHAVIOR_REPORTERS,
   BEHAVIOR_STATUSES,
-  PROCEDURES_BY_DEGREE,
-  VIOLATIONS_BY_DEGREE,
 } from '@/modules/admin/behavior/constants'
 import type {
   BehaviorDegree,
@@ -32,6 +30,7 @@ import type {
 } from '@/modules/admin/behavior/types'
 import type { CreateBehaviorViolationPayload } from '@/modules/admin/behavior/api'
 import { useBehaviorStore } from '@/modules/admin/behavior/store/use-behavior-store'
+import { useBehaviorConfigStore } from '@/modules/admin/behavior/store/use-behavior-config-store'
 
 type RecordStep = 1 | 2 | 3 | 4 | 5
 
@@ -88,6 +87,13 @@ export function AdminBehaviorPage() {
   const deleteViolation = useBehaviorStore((state) => state.deleteViolation)
   const isCreating = useBehaviorStore((state) => state.isCreating)
 
+  // Config Store - البيانات من قاعدة البيانات
+  const loadConfig = useBehaviorConfigStore((state) => state.loadConfig)
+  const loadViolationTypes = useBehaviorConfigStore((state) => state.loadViolationTypes)
+  const loadProcedures = useBehaviorConfigStore((state) => state.loadProcedures)
+  const getViolationsForDegree = useBehaviorConfigStore((state) => state.getViolationsForDegree)
+  const getProceduresForDegree = useBehaviorConfigStore((state) => state.getProceduresForDegree)
+
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isProceduresModalOpen, setIsProceduresModalOpen] = useState(false)
   const [recordStep, setRecordStep] = useState<RecordStep>(1)
@@ -104,11 +110,14 @@ export function AdminBehaviorPage() {
     [selectedStudentIds, students],
   )
 
-  // Load students and violations on mount
+  // Load students, violations and config on mount
   useEffect(() => {
     fetchStudents()
     fetchViolations()
-  }, [fetchStudents, fetchViolations])
+    loadConfig()
+    loadViolationTypes()
+    loadProcedures()
+  }, [fetchStudents, fetchViolations, loadConfig, loadViolationTypes, loadProcedures])
 
   // Load reporters when modal is opened
   useEffect(() => {
@@ -134,7 +143,9 @@ export function AdminBehaviorPage() {
   const [logStatus, setLogStatus] = useState<'all' | BehaviorStatus>('all')
   const [logPage, setLogPage] = useState(1)
 
-  const availableProcedures = selectedDegree ? PROCEDURES_BY_DEGREE[selectedDegree] : []
+  // الحصول على البيانات من الـ Store (ديناميكي من قاعدة البيانات)
+  const availableProcedures = selectedDegree ? getProceduresForDegree(selectedDegree) : []
+  const availableViolations = selectedDegree ? getViolationsForDegree(selectedDegree) : []
 
   const procedurePreview = useMemo<{
     assignments: ProcedureAssignment[]
@@ -145,7 +156,7 @@ export function AdminBehaviorPage() {
       return null
     }
 
-    const template = PROCEDURES_BY_DEGREE[selectedDegree] ?? []
+    const template = getProceduresForDegree(selectedDegree) ?? []
     if (template.length === 0) {
       return null
     }
@@ -158,12 +169,19 @@ export function AdminBehaviorPage() {
           violation.type === selectedViolationType,
       ).length
 
-      const targetIndex = Math.min(occurrences, template.length - 1)
+      // نبحث عن الإجراء المناسب بناءً على التكرار
+      const targetRepetition = occurrences + 1
+      let targetProcedure = template.find(p => p.repetition === targetRepetition || p.step === targetRepetition)
+
+      // إذا لم نجد، نأخذ آخر إجراء متاح
+      if (!targetProcedure) {
+        targetProcedure = template[template.length - 1]
+      }
 
       return {
         student,
         occurrence: occurrences + 1,
-        procedure: template[targetIndex],
+        procedure: targetProcedure,
       }
     })
 
@@ -194,7 +212,7 @@ export function AdminBehaviorPage() {
       groups,
       assignmentsByStudentId,
     }
-  }, [selectedStudents, selectedDegree, selectedViolationType, violations])
+  }, [selectedStudents, selectedDegree, selectedViolationType, violations, getProceduresForDegree])
 
   const procedureSummaryGroups = useMemo<ProcedureGroup[]>(() => {
     if (procedurePreview) {
@@ -202,7 +220,7 @@ export function AdminBehaviorPage() {
     }
 
     if (selectedDegree) {
-      const template = PROCEDURES_BY_DEGREE[selectedDegree] ?? []
+      const template = getProceduresForDegree(selectedDegree) ?? []
       return template.map((procedure) => ({
         procedure,
         students: [],
@@ -210,7 +228,7 @@ export function AdminBehaviorPage() {
     }
 
     return []
-  }, [procedurePreview, selectedDegree])
+  }, [procedurePreview, selectedDegree, getProceduresForDegree])
 
   const procedureAssignmentsByStudentId = procedurePreview?.assignmentsByStudentId ??
     ({} as Record<string, ProcedureAssignment>)
@@ -221,14 +239,14 @@ export function AdminBehaviorPage() {
       const matchesSearch = !query
         ? true
         : [
-            violation.studentName,
-            violation.studentNumber,
-            violation.type,
-            violation.location,
-            violation.reportedBy,
-          ]
-            .filter(Boolean)
-            .some((value) => value.includes(query))
+          violation.studentName,
+          violation.studentNumber,
+          violation.type,
+          violation.location,
+          violation.reportedBy,
+        ]
+          .filter(Boolean)
+          .some((value) => value.includes(query))
 
       const matchesDegree = logDegree === 'all' ? true : violation.degree === logDegree
       const matchesStatus = logStatus === 'all' ? true : violation.status === logStatus
@@ -295,11 +313,11 @@ export function AdminBehaviorPage() {
       toast({ type: 'error', title: 'اختر موقع المخالفة' })
       return
     }
-  setRecordStep((prev) => clampRecordStep(prev + 1))
+    setRecordStep((prev) => clampRecordStep(prev + 1))
   }
 
   const handlePrevStep = () => {
-  setRecordStep((prev) => clampRecordStep(prev - 1))
+    setRecordStep((prev) => clampRecordStep(prev - 1))
   }
 
   const resetRecordForm = () => {
@@ -347,9 +365,9 @@ export function AdminBehaviorPage() {
       await createViolations(payload)
 
       const studentCount = selectedStudentIds.length
-      toast({ 
-        type: 'success', 
-        title: `تم رصد المخالفة بنجاح لـ ${studentCount} ${studentCount === 1 ? 'طالب' : 'طلاب'}` 
+      toast({
+        type: 'success',
+        title: `تم رصد المخالفة بنجاح لـ ${studentCount} ${studentCount === 1 ? 'طالب' : 'طلاب'}`
       })
       handleCloseModal()
     } catch (error) {
@@ -575,8 +593,8 @@ export function AdminBehaviorPage() {
 
             <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
               {BEHAVIOR_DEGREE_OPTIONS.map((degree) => {
-                const violationsByDegree = VIOLATIONS_BY_DEGREE[degree] ?? []
-                const proceduresByDegree = PROCEDURES_BY_DEGREE[degree] ?? []
+                const violationsByDegree = getViolationsForDegree(degree)
+                const proceduresByDegree = getProceduresForDegree(degree)
 
                 return (
                   <section key={degree} className="space-y-4">
@@ -660,13 +678,12 @@ export function AdminBehaviorPage() {
                         <button
                           type="button"
                           onClick={() => setRecordStep(step.id)}
-                          className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition ${
-                            isActive
+                          className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition ${isActive
                               ? 'bg-primary text-white shadow-sm'
                               : isDone
-                              ? 'bg-emerald-500/10 text-emerald-700 border border-emerald-200'
-                              : 'bg-slate-100 text-slate-500'
-                          }`}
+                                ? 'bg-emerald-500/10 text-emerald-700 border border-emerald-200'
+                                : 'bg-slate-100 text-slate-500'
+                            }`}
                         >
                           {step.id}
                         </button>
@@ -746,17 +763,16 @@ export function AdminBehaviorPage() {
                               key={student.id}
                               type="button"
                               onClick={() => {
-                                setSelectedStudentIds(prev => 
-                                  isSelected 
+                                setSelectedStudentIds(prev =>
+                                  isSelected
                                     ? prev.filter(id => id !== student.id)
                                     : [...prev, student.id]
                                 )
                               }}
-                              className={`flex flex-col gap-2 rounded-2xl border px-4 py-3 text-right transition ${
-                                isSelected
+                              className={`flex flex-col gap-2 rounded-2xl border px-4 py-3 text-right transition ${isSelected
                                   ? 'border-primary bg-primary/5 shadow-sm'
                                   : 'border-slate-200 bg-white hover:border-primary/50'
-                              }`}
+                                }`}
                             >
                               <div className="flex items-start justify-between gap-3">
                                 <div className="flex-1">
@@ -794,11 +810,10 @@ export function AdminBehaviorPage() {
                               setSelectedDegree(degree)
                               setSelectedViolationType('')
                             }}
-                            className={`rounded-2xl border px-3 py-3 transition ${
-                              selectedDegree === degree
+                            className={`rounded-2xl border px-3 py-3 transition ${selectedDegree === degree
                                 ? 'border-primary bg-primary/5 shadow-sm'
                                 : 'border-slate-200 bg-white hover:border-primary/50'
-                            }`}
+                              }`}
                           >
                             <ViolationBadge degree={degree} size="sm" />
                           </button>
@@ -817,7 +832,7 @@ export function AdminBehaviorPage() {
                           <option value="" disabled>
                             اختر نوع المخالفة
                           </option>
-                          {VIOLATIONS_BY_DEGREE[selectedDegree].map((violation) => (
+                          {availableViolations.map((violation) => (
                             <option key={violation} value={violation}>
                               {violation}
                             </option>
@@ -1024,10 +1039,10 @@ export function AdminBehaviorPage() {
               {/* أزرار التنقل */}
               <div className="border-t border-slate-200 px-6 py-3 bg-white rounded-b-3xl">
                 <div className="flex items-center justify-between gap-3">
-                  <button 
-                    type="button" 
-                    onClick={handlePrevStep} 
-                    className="button-secondary flex items-center gap-1 text-sm" 
+                  <button
+                    type="button"
+                    onClick={handlePrevStep}
+                    className="button-secondary flex items-center gap-1 text-sm"
                     disabled={recordStep === 1}
                   >
                     <ChevronRight className="h-4 w-4" />
@@ -1040,9 +1055,8 @@ export function AdminBehaviorPage() {
                     type="button"
                     onClick={recordStep < 5 ? handleNextStep : handleSubmitViolation}
                     disabled={isCreating}
-                    className={`button-primary flex items-center gap-1 text-sm ${
-                      recordStep === 5 ? 'bg-emerald-600 hover:bg-emerald-700' : ''
-                    } ${isCreating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`button-primary flex items-center gap-1 text-sm ${recordStep === 5 ? 'bg-emerald-600 hover:bg-emerald-700' : ''
+                      } ${isCreating ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     {isCreating ? 'جاري الحفظ...' : recordStep === 5 ? 'تأكيد وحفظ' : 'التالي'}
                     <ChevronLeft className="h-4 w-4" />
@@ -1143,9 +1157,8 @@ function Pagination({ page, totalPages, onChange }: { page: number; totalPages: 
           key={item}
           type="button"
           onClick={() => onChange(item)}
-          className={`h-10 w-10 rounded-full text-sm font-semibold transition ${
-            item === page ? 'bg-primary text-white shadow' : 'bg-slate-100 text-slate-600 hover:bg-primary/10'
-          }`}
+          className={`h-10 w-10 rounded-full text-sm font-semibold transition ${item === page ? 'bg-primary text-white shadow' : 'bg-slate-100 text-slate-600 hover:bg-primary/10'
+            }`}
         >
           {item}
         </button>

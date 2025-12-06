@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo, useState } from 'react'
+import { type ReactNode, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   AlertCircle,
@@ -11,17 +11,23 @@ import {
   FileText,
   Loader2,
   MapPin,
+  Minus,
   Printer,
   ShieldAlert,
+  Tag,
+  User,
   UserRoundCheck,
   X,
+  Zap,
 } from 'lucide-react'
 import { useBehaviorStore } from '@/modules/admin/behavior/store/use-behavior-store'
 import { ViolationBadge } from '@/modules/admin/behavior/components/violation-badge'
-import type { BehaviorStatus } from '@/modules/admin/behavior/types'
+import { AutomationTriggerButton } from '@/modules/admin/behavior/components/automation-trigger-button'
+import type { BehaviorStatus, BehaviorSystemTrigger } from '@/modules/admin/behavior/types'
 import { generateCounselorReferralHtml } from '@/modules/admin/behavior/counselor-referral-template'
 import { generateGuardianInvitationHtml } from '@/modules/admin/behavior/generate-guardian-invitation.tsx'
 import { useAdminSettingsQuery } from '@/modules/admin/hooks'
+import { executeAutomation } from '@/modules/admin/behavior/api'
 
 const STATUS_META: Record<BehaviorStatus, string> = {
   'قيد المعالجة': 'bg-amber-50 text-amber-700 border border-amber-200',
@@ -38,6 +44,7 @@ export function AdminBehaviorDetailPage() {
   const toggleProcedureTask = useBehaviorStore((state) => state.toggleProcedureTask)
   const updateProcedureNotes = useBehaviorStore((state) => state.updateProcedureNotes)
   const procedureMutations = useBehaviorStore((state) => state.procedureMutations)
+  const fetchViolationById = useBehaviorStore((state) => state.fetchViolationById)
 
   const adminSettingsQuery = useAdminSettingsQuery()
 
@@ -46,6 +53,17 @@ export function AdminBehaviorDetailPage() {
     html: string
     fileName: string
   } | null>(null)
+
+  // جلب المخالفة عند تحميل الصفحة أو تغيير المعرف
+  useEffect(() => {
+    if (violationId) {
+      // التحقق إذا كانت المخالفة موجودة بالفعل في المتجر
+      const existingViolation = violations.find((item) => item.id === violationId)
+      if (!existingViolation) {
+        fetchViolationById(violationId)
+      }
+    }
+  }, [violationId, fetchViolationById])
 
   const violation = useMemo(
     () => violations.find((item) => item.id === violationId) ?? null,
@@ -346,11 +364,10 @@ export function AdminBehaviorDetailPage() {
                           void toggleProcedure(violation.id, procedure.step).catch(() => undefined)
                         }}
                         disabled={isProcedureMutating}
-                        className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                          procedure.completed
+                        className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${procedure.completed
                             ? 'border-emerald-400 bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
                             : 'border-slate-200 text-slate-500 hover:border-primary hover:text-primary'
-                        }`}
+                          }`}
                       >
                         {isProcedureMutating ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -397,11 +414,10 @@ export function AdminBehaviorDetailPage() {
                             return (
                               <li
                                 key={task.id}
-                                className={`flex items-start gap-3 rounded-xl border px-3 py-2 text-sm transition ${
-                                  task.completed
+                                className={`flex items-start gap-3 rounded-xl border px-3 py-2 text-sm transition ${task.completed
                                     ? 'border-emerald-200 bg-emerald-50/70'
                                     : 'border-slate-200 bg-white/80'
-                                }`}
+                                  }`}
                               >
                                 <button
                                   type="button"
@@ -427,20 +443,56 @@ export function AdminBehaviorDetailPage() {
                                   <p className="text-sm font-medium text-slate-800">{task.title}</p>
                                   <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted">
                                     <span
-                                      className={`rounded-full px-2 py-0.5 font-semibold ${
-                                        task.mandatory
+                                      className={`rounded-full px-2 py-0.5 font-semibold ${task.mandatory
                                           ? 'bg-rose-50 text-rose-600'
                                           : 'bg-sky-50 text-sky-700'
-                                      }`}
+                                        }`}
                                     >
                                       {task.mandatory ? 'إلزامية' : 'اختيارية'}
                                     </span>
+                                    {task.roleLabel ? (
+                                      <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2 py-0.5 font-semibold text-purple-600">
+                                        <User className="h-3 w-3" />
+                                        {task.roleLabel}
+                                      </span>
+                                    ) : null}
+                                    {task.actionCategoryLabel ? (
+                                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 font-semibold text-blue-600">
+                                        <Tag className="h-3 w-3" />
+                                        {task.actionCategoryLabel}
+                                      </span>
+                                    ) : null}
+                                    {task.pointsToDeduct && task.pointsToDeduct > 0 ? (
+                                      <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 font-semibold text-red-600">
+                                        <Minus className="h-3 w-3" />
+                                        {task.pointsToDeduct} نقطة
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                  {task.systemTriggerLabel ? (
+                                    <div className="mt-1 flex items-center gap-1.5">
+                                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200">
+                                        <Zap className="h-3 w-3" />
+                                        أتمتة: {task.systemTriggerLabel}
+                                      </span>
+                                    </div>
+                                  ) : null}
+                                  <div className="flex items-center gap-1 text-[10px] text-muted mt-1">
                                     {task.completedDate ? (
-                                      <span>أُنجز بتاريخ {task.completedDate}</span>
+                                      <span className="inline-flex items-center gap-1">
+                                        <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                                        أُنجز بتاريخ {task.completedDate}
+                                      </span>
                                     ) : task.completed ? (
-                                      <span>تم التعليم كمكتمل</span>
+                                      <span className="inline-flex items-center gap-1">
+                                        <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                                        تم التعليم كمكتمل
+                                      </span>
                                     ) : task.mandatory ? (
-                                      <span>بانتظار التنفيذ</span>
+                                      <span className="inline-flex items-center gap-1 text-amber-600">
+                                        <Clock className="h-3 w-3" />
+                                        بانتظار التنفيذ
+                                      </span>
                                     ) : (
                                       <span>خطوة اختيارية</span>
                                     )}
@@ -489,6 +541,21 @@ export function AdminBehaviorDetailPage() {
                                       </svg>
                                       دعوة ولي الأمر
                                     </button>
+                                  ) : task.systemTrigger ? (
+                                    <AutomationTriggerButton
+                                      systemTrigger={task.systemTrigger as BehaviorSystemTrigger}
+                                      systemTriggerLabel={task.systemTriggerLabel ?? task.systemTrigger}
+                                      pointsToDeduct={task.pointsToDeduct}
+                                      disabled={task.completed}
+                                      onExecute={async () => {
+                                        await executeAutomation({
+                                          violationId: violation.id,
+                                          procedureStep: procedure.step,
+                                          taskId: task.id,
+                                          systemTrigger: task.systemTrigger as string,
+                                        })
+                                      }}
+                                    />
                                   ) : null}
                                 </div>
                               </li>

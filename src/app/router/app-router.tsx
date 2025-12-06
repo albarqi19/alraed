@@ -79,6 +79,11 @@ import { ExcuseSubmissionPage, AdminAbsenceExcusesPage } from '@/modules/excuse'
 import { AdminSupportPage } from '@/modules/admin/pages/admin-support-page'
 import { AdminActivitiesPage } from '@/modules/activities/pages/admin-activities-page'
 import { TeacherActivitiesPage } from '@/modules/activities/pages/teacher-activities-page'
+import { TeacherReferralsPage } from '@/modules/teacher/pages/teacher-referrals-page'
+import { NewReferralPage } from '@/modules/teacher/pages/new-referral-page'
+import { ReferralDetailPage } from '@/modules/teacher/pages/referral-detail-page'
+import { AdminReferralsPage } from '@/modules/admin/pages/admin-referrals-page'
+import { AdminReferralDetailPage } from '@/modules/admin/pages/admin-referral-detail-page'
 import {
   GuidanceAccessPage,
   GuidanceDashboardPage,
@@ -87,6 +92,8 @@ import {
   TreatmentPlansPage as GuidanceTreatmentPlansPage,
   TreatmentPlanFormPage,
   TreatmentPlanDetailsPage,
+  GuidanceReferralsPage,
+  GuidanceReferralDetailsPage,
 } from '@/modules/guidance/pages'
 
 const appRoutes = [
@@ -140,6 +147,9 @@ const appRoutes = [
           { path: 'points', element: <TeacherPointsPage /> },
           { path: 'services', element: <TeacherServicesPage /> },
           { path: 'activities', element: <TeacherActivitiesPage /> },
+          { path: 'referrals', element: <TeacherReferralsPage /> },
+          { path: 'referrals/new', element: <NewReferralPage /> },
+          { path: 'referrals/:id', element: <ReferralDetailPage /> },
           { path: 'sessions/:sessionId', element: <TeacherSessionAttendancePage /> },
         ],
       },
@@ -206,6 +216,10 @@ const appRoutes = [
           { path: 'school-tools/auto-call', element: <AdminAutoCallPage /> },
           { path: 'school-tools/academic-calendar', element: <AdminAcademicCalendarPage /> },
           { path: 'activities', element: <AdminActivitiesPage /> },
+          { path: 'referrals', element: <AdminReferralsPage /> },
+          { path: 'referrals/guidance', element: <AdminReferralsPage /> },
+          { path: 'referrals/behavioral', element: <AdminReferralsPage /> },
+          { path: 'referrals/:id', element: <AdminReferralDetailPage /> },
         ],
       },
       {
@@ -245,6 +259,8 @@ const appRoutes = [
           { path: 'treatment-plans', element: <GuidanceTreatmentPlansPage /> },
           { path: 'treatment-plans/new', element: <TreatmentPlanFormPage /> },
           { path: 'treatment-plans/:id', element: <TreatmentPlanDetailsPage /> },
+          { path: 'referrals', element: <GuidanceReferralsPage /> },
+          { path: 'referrals/:id', element: <GuidanceReferralDetailsPage /> },
         ],
       },
       { path: '*', element: <NotFoundPage /> },

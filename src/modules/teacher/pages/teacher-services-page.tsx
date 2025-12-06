@@ -50,6 +50,7 @@ const SERVICES: ServiceCard[] = [
     iconColor: 'text-sky-600',
     iconBg: 'bg-sky-100/80',
     accentBar: 'from-sky-400/50 via-sky-200/40 to-transparent',
+    to: '/teacher/referrals',
   },
   {
     id: 'certificates',

@@ -5,4 +5,6 @@ export { GuidanceCaseDetailsPage } from './GuidanceCaseDetailsPage'
 export { TreatmentPlansPage } from './TreatmentPlansPage'
 export { TreatmentPlanFormPage } from './TreatmentPlanFormPage'
 export { TreatmentPlanDetailsPage } from './TreatmentPlanDetailsPage'
+export { GuidanceReferralsPage } from './GuidanceReferralsPage'
+export { GuidanceReferralDetailsPage } from './GuidanceReferralDetailsPage'
 
