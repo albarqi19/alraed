@@ -7,18 +7,18 @@ const REFERRAL_TYPES = [
   {
     value: 'academic_weakness' as ReferralType,
     label: 'ضعف دراسي',
-    description: 'إحالة الطالب للموجه الطلابي بسبب ضعف في التحصيل الدراسي',
+    description: 'إحالة الطالب لوكالة شؤون الطلاب بسبب ضعف في التحصيل الدراسي',
     icon: 'bi-book',
     color: 'amber',
-    targetRole: 'الموجه الطلابي',
+    targetRole: 'إحالة إلى وكالة شؤون الطلاب',
   },
   {
     value: 'behavioral_violation' as ReferralType,
     label: 'مخالفة سلوكية',
-    description: 'إحالة الطالب لوكيل المدرسة بسبب مخالفة سلوكية',
+    description: 'إحالة الطالب لوكالة شؤون الطلاب بسبب مخالفة سلوكية',
     icon: 'bi-exclamation-triangle',
     color: 'red',
-    targetRole: 'وكيل المدرسة',
+    targetRole: 'إحالة إلى وكالة شؤون الطلاب',
   },
 ]
 
@@ -169,10 +169,6 @@ export function NewReferralPage() {
                 <div className="flex-1">
                   <p className="font-semibold text-slate-900">{type.label}</p>
                   <p className="text-sm text-slate-500 mt-0.5">{type.description}</p>
-                  <p className="text-xs text-slate-400 mt-1">
-                    <i className="bi bi-arrow-left ml-1" />
-                    سيتم التحويل إلى: {type.targetRole}
-                  </p>
                 </div>
                 {referralType === type.value && (
                   <i className={`bi bi-check-circle-fill text-xl ${
