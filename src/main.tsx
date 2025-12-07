@@ -6,6 +6,10 @@ import './styles/index.css'
 // Register PWA Service Worker
 import { registerSW } from 'virtual:pwa-register'
 
+// Initialize Vercel Web Analytics
+import { inject } from '@vercel/analytics'
+inject()
+
 const updateSW = registerSW({
   onNeedRefresh() {
     if (confirm('يوجد تحديث جديد متاح. هل تريد إعادة تحميل الصفحة؟')) {
