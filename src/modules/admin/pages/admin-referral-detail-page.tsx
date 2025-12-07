@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { 
+import {
   useAdminReferralDetailQuery,
   useReceiveReferralMutation,
   useAssignReferralMutation,
@@ -21,6 +21,10 @@ import type { BehaviorDegree, BehaviorProcedureDefinition } from '../behavior/ty
 import type { CreateBehaviorViolationPayload } from '../behavior/api'
 import { useToast } from '@/shared/feedback/use-toast'
 import { CheckCircle, ChevronLeft, ChevronRight, X, ExternalLink, Trash2 } from 'lucide-react'
+import { DocumentPreviewModal } from '../referrals/components/document-preview-modal'
+import { CaseFormModal } from '../referrals/components/CaseFormModal'
+import { TreatmentPlanFormModal } from '../referrals/components/TreatmentPlanFormModal'
+import { useAuthStore } from '@/modules/auth/store/auth-store'
 
 type ViolationRecordStep = 1 | 2 | 3 | 4
 
@@ -72,9 +76,9 @@ const DOCUMENT_TYPES = [
 export function AdminReferralDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  
+
   const { data: referral, isLoading, error, refetch } = useAdminReferralDetailQuery(Number(id) || 0)
-  
+
   const receiveMutation = useReceiveReferralMutation()
   const assignMutation = useAssignReferralMutation()
   const transferMutation = useTransferReferralMutation()
@@ -84,20 +88,33 @@ export function AdminReferralDetailPage() {
   const documentMutation = useGenerateDocumentMutation()
   const parentNotifyMutation = useNotifyParentMutation()
   const deleteMutation = useDeleteReferralMutation()
-  
+
   const toast = useToast()
-  
+  const user = useAuthStore((state) => state.user)
+
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [showTransferModal, setShowTransferModal] = useState(false)
   const [showNoteModal, setShowNoteModal] = useState(false)
   const [showDocumentModal, setShowDocumentModal] = useState(false)
   const [showViolationModal, setShowViolationModal] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showDocumentPreview, setShowDocumentPreview] = useState(false)
+  const [previewDocument, setPreviewDocument] = useState<{ html: string; title: string } | null>(null)
+  const [showParentMessageModal, setShowParentMessageModal] = useState(false)
+  const [parentMessageText, setParentMessageText] = useState('')
+  const [meetingDate, setMeetingDate] = useState<string | null>(null)
+  const [showDatePicker, setShowDatePicker] = useState(false)
+  const [showCaseModal, setShowCaseModal] = useState(false)
+  const [showTreatmentPlanModal, setShowTreatmentPlanModal] = useState(false)
+
+  // تحديد ما إذا كانت الإحالة محولة للموجه الطلابي
+  // هذه الإحالات يمكن إنشاء دراسة حالة وخطة علاجية منها (سواء ضعف دراسي أو مخالفة سلوكية)
+  const canCreateCaseOrPlan = referral?.target_role === 'counselor'
   const [selectedAssignee, setSelectedAssignee] = useState<number | null>(null)
   const [transferTarget, setTransferTarget] = useState<ReferralTargetRole>('counselor')
   const [noteText, setNoteText] = useState('')
   const [selectedDocType, setSelectedDocType] = useState('')
-  
+
   // حالة نموذج المخالفة السلوكية (نظام الخطوات الكامل)
   const [violationRecordStep, setViolationRecordStep] = useState<ViolationRecordStep>(1)
   const [selectedDegree, setSelectedDegree] = useState<BehaviorDegree | null>(null)
@@ -110,20 +127,20 @@ export function AdminReferralDetailPage() {
   })
   const [sendParentMessage, setSendParentMessage] = useState(false)
   const [parentMessage, setParentMessage] = useState('')
-  
+
   // Behavior stores
   const violations = useBehaviorStore((state) => state.violations)
   const fetchViolations = useBehaviorStore((state) => state.fetchViolations)
   const createViolations = useBehaviorStore((state) => state.createViolations)
   const isCreatingViolation = useBehaviorStore((state) => state.isCreating)
-  
+
   const loadConfig = useBehaviorConfigStore((state) => state.loadConfig)
   const loadViolationTypes = useBehaviorConfigStore((state) => state.loadViolationTypes)
   const loadProcedures = useBehaviorConfigStore((state) => state.loadProcedures)
   const getViolationsForDegree = useBehaviorConfigStore((state) => state.getViolationsForDegree)
   const getProceduresForDegree = useBehaviorConfigStore((state) => state.getProceduresForDegree)
   const isConfigLoading = useBehaviorConfigStore((state) => state.isLoading)
-  
+
   // Load behavior config when modal opens
   useEffect(() => {
     if (showViolationModal) {
@@ -133,15 +150,15 @@ export function AdminReferralDetailPage() {
       fetchViolations()
     }
   }, [showViolationModal, loadConfig, loadViolationTypes, loadProcedures, fetchViolations])
-  
+
   // الحصول على أنواع المخالفات والإجراءات للدرجة المختارة
   const availableViolations = selectedDegree ? getViolationsForDegree(selectedDegree) : []
   const availableProcedures = selectedDegree ? getProceduresForDegree(selectedDegree) : []
-  
+
   // حساب التكرار للطالب
   const studentViolationOccurrence = useMemo(() => {
     if (!referral?.student?.id || !selectedDegree || !selectedViolationType) return 1
-    
+
     const studentId = String(referral.student.id)
     const occurrences = violations.filter(
       (violation) =>
@@ -149,22 +166,22 @@ export function AdminReferralDetailPage() {
         violation.degree === selectedDegree &&
         violation.type === selectedViolationType,
     ).length
-    
+
     return occurrences + 1
   }, [referral?.student?.id, selectedDegree, selectedViolationType, violations])
-  
+
   // الحصول على الإجراء المناسب بناءً على التكرار
   const targetProcedure = useMemo<BehaviorProcedureDefinition | null>(() => {
     if (!selectedDegree || availableProcedures.length === 0) return null
-    
+
     let procedure = availableProcedures.find(p => p.repetition === studentViolationOccurrence || p.step === studentViolationOccurrence)
     if (!procedure) {
       procedure = availableProcedures[availableProcedures.length - 1]
     }
-    
+
     return procedure || null
   }, [selectedDegree, availableProcedures, studentViolationOccurrence])
-  
+
   const handleReceive = async () => {
     if (!referral) return
     try {
@@ -175,7 +192,7 @@ export function AdminReferralDetailPage() {
       alert('حدث خطأ أثناء استلام الإحالة')
     }
   }
-  
+
   const handleAssign = async () => {
     if (!referral || !selectedAssignee) return
     try {
@@ -191,7 +208,7 @@ export function AdminReferralDetailPage() {
       alert('حدث خطأ أثناء تعيين الإحالة')
     }
   }
-  
+
   const handleTransfer = async () => {
     if (!referral || !noteText.trim()) return
     try {
@@ -207,7 +224,7 @@ export function AdminReferralDetailPage() {
       alert('حدث خطأ أثناء تحويل الإحالة')
     }
   }
-  
+
   const handleComplete = async () => {
     if (!referral) return
     if (window.confirm('هل أنت متأكد من إكمال هذه الإحالة؟')) {
@@ -220,7 +237,7 @@ export function AdminReferralDetailPage() {
       }
     }
   }
-  
+
   // دوال نموذج المخالفة السلوكية (نظام الخطوات)
   const handleViolationNextStep = () => {
     if (violationRecordStep === 1) {
@@ -239,11 +256,11 @@ export function AdminReferralDetailPage() {
     }
     setViolationRecordStep((prev) => clampViolationStep(prev + 1))
   }
-  
+
   const handleViolationPrevStep = () => {
     setViolationRecordStep((prev) => clampViolationStep(prev - 1))
   }
-  
+
   const resetViolationForm = () => {
     setViolationRecordStep(1)
     setSelectedDegree(null)
@@ -257,7 +274,7 @@ export function AdminReferralDetailPage() {
     setSendParentMessage(false)
     setParentMessage('')
   }
-  
+
   const handleOpenViolationModal = () => {
     // تعبئة البيانات من الإحالة
     if (referral) {
@@ -270,18 +287,18 @@ export function AdminReferralDetailPage() {
     }
     setShowViolationModal(true)
   }
-  
+
   const handleCloseViolationModal = () => {
     setShowViolationModal(false)
     resetViolationForm()
   }
-  
+
   const handleSubmitViolation = async () => {
     if (!referral || !selectedDegree || !selectedViolationType) {
       toast({ type: 'error', title: 'أكمل بيانات المخالفة قبل الحفظ' })
       return
     }
-    
+
     if (!referral.student?.id) {
       toast({ type: 'error', title: 'لم يتم العثور على بيانات الطالب' })
       return
@@ -301,10 +318,10 @@ export function AdminReferralDetailPage() {
       }
 
       const createdViolations = await createViolations(payload)
-      
+
       if (createdViolations && createdViolations.length > 0) {
         const violationId = createdViolations[0].id
-        
+
         // ربط المخالفة بالإحالة عبر API الإحالات
         try {
           await violationMutation.mutateAsync({
@@ -322,7 +339,7 @@ export function AdminReferralDetailPage() {
           // المخالفة تم إنشاؤها بنجاح، لكن الربط فشل - نعرض نجاح جزئي
           console.warn('Violation created but linking failed:', linkError)
         }
-        
+
         toast({ type: 'success', title: 'تم رصد المخالفة بنجاح وتم ربطها بسجل المخالفات' })
         handleCloseViolationModal()
         refetch()
@@ -332,7 +349,7 @@ export function AdminReferralDetailPage() {
       toast({ type: 'error', title: 'حدث خطأ أثناء حفظ المخالفة' })
     }
   }
-  
+
   const handleAddNote = async () => {
     if (!referral || !noteText.trim()) return
     try {
@@ -345,7 +362,7 @@ export function AdminReferralDetailPage() {
       alert('حدث خطأ أثناء إضافة الملاحظة')
     }
   }
-  
+
   const handleGenerateDocument = async () => {
     if (!referral || !selectedDocType) return
     try {
@@ -355,18 +372,14 @@ export function AdminReferralDetailPage() {
       })
       setShowDocumentModal(false)
       setSelectedDocType('')
-      
-      // فتح المستند في نافذة جديدة وعرض الـ HTML
-      const newWindow = window.open('', '_blank')
-      if (newWindow && result.content) {
-        newWindow.document.write(result.content)
-        newWindow.document.close()
-      } else {
-        // fallback: فتح الـ API endpoint
-        const token = window.localStorage.getItem('auth_token')
-        window.open(`${import.meta.env.VITE_API_BASE_URL || 'https://api.brqq.site/api'}/admin/referrals/${referral.id}/documents/${result.id}?token=${token}`, '_blank')
+
+      // عرض المستند في Modal عائم
+      if (result.content) {
+        const docTitle = DOCUMENT_TYPES.find(d => d.value === selectedDocType)?.label || 'مستند'
+        setPreviewDocument({ html: result.content, title: docTitle })
+        setShowDocumentPreview(true)
       }
-      
+
       toast({ type: 'success', title: 'تم إنشاء المستند بنجاح' })
       refetch()
     } catch (err) {
@@ -374,21 +387,55 @@ export function AdminReferralDetailPage() {
       alert('حدث خطأ أثناء إنشاء المستند')
     }
   }
-  
-  const handleNotifyParent = async () => {
-    if (!referral) return
-    if (window.confirm('هل تريد إرسال إشعار لولي الأمر؟')) {
-      try {
-        await parentNotifyMutation.mutateAsync({ id: referral.id })
-        refetch()
-        alert('تم إرسال الإشعار بنجاح')
-      } catch (err) {
-        console.error('Error notifying parent:', err)
-        alert('حدث خطأ أثناء إرسال الإشعار')
-      }
+
+  const handleNotifyParent = () => {
+    setShowParentMessageModal(true)
+  }
+
+  const buildCompleteMessage = () => {
+    if (!referral) return ''
+
+    const studentName = referral.student?.name || 'الطالب'
+    const schoolName = user?.school?.name || 'المدرسة'
+
+    let message = `ولي أمر الطالب: ${studentName}\n\n`
+    message += parentMessageText.trim() || 'اكتب رسالتك هنا...'
+
+    if (meetingDate) {
+      const date = new Date(meetingDate)
+      const dayName = date.toLocaleDateString('ar-SA', { weekday: 'long' })
+      const formattedDate = date.toLocaleDateString('ar-SA')
+      message += `\n\nنرجو منكم الحضور إلى المدرسة يوم ${dayName} بتاريخ ${formattedDate}`
+    }
+
+    message += `\n\nإدارة ${schoolName}`
+
+    return message
+  }
+
+  const handleSendParentNotification = async () => {
+    if (!referral || !parentMessageText.trim()) {
+      toast({ type: 'error', title: 'اكتب رسالة أولاً' })
+      return
+    }
+
+    const completeMessage = buildCompleteMessage()
+
+    try {
+      await parentNotifyMutation.mutateAsync({
+        id: referral.id,
+        message: completeMessage
+      })
+      setShowParentMessageModal(false)
+      setParentMessageText('')
+      setMeetingDate(null)
+      refetch()
+      toast({ type: 'success', title: 'تم إرسال الإشعار بنجاح' })
+    } catch (err) {
+      toast({ type: 'error', title: 'حدث خطأ في الإرسال' })
     }
   }
-  
+
   const handleDeleteReferral = async () => {
     if (!referral) return
     try {
@@ -401,13 +448,33 @@ export function AdminReferralDetailPage() {
     }
     setShowDeleteConfirm(false)
   }
-  
-  const handlePrintDocument = (documentId: number) => {
-    const token = window.localStorage.getItem('auth_token')
-    const url = `${import.meta.env.VITE_API_BASE_URL || 'https://api.brqq.site/api'}/admin/referrals/${id}/documents/${documentId}?token=${token}`
-    window.open(url, '_blank')
+
+  const handlePrintDocument = async (documentId: number) => {
+    const document = referral?.documents?.find(d => d.id === documentId)
+    if (!document) return
+
+    try {
+      // جلب HTML المستند من API
+      const token = window.localStorage.getItem('auth_token')
+      const url = `${import.meta.env.VITE_API_BASE_URL || 'https://api.brqq.site/api'}/admin/referrals/${id}/documents/${documentId}?token=${token}`
+
+      const response = await fetch(url)
+      const data = await response.json()
+
+      const html = data.data?.content || data.content
+
+      if (html) {
+        setPreviewDocument({ html, title: document.title })
+        setShowDocumentPreview(true)
+      } else {
+        toast({ type: 'error', title: 'المستند فارغ' })
+      }
+    } catch (error) {
+      console.error('Error loading document:', error)
+      toast({ type: 'error', title: 'حدث خطأ في تحميل المستند' })
+    }
   }
-  
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -415,7 +482,7 @@ export function AdminReferralDetailPage() {
       </div>
     )
   }
-  
+
   if (error || !referral) {
     return (
       <div className="text-center py-20">
@@ -430,13 +497,13 @@ export function AdminReferralDetailPage() {
       </div>
     )
   }
-  
+
   const statusStyle = STATUS_STYLES[referral.status] || STATUS_STYLES.pending
   // يمكن تنفيذ الإجراءات فقط بعد استلام الإحالة (لا يمكن العمل على إحالة pending)
   const canPerformActions = ['received', 'in_progress'].includes(referral.status)
   // هل الإحالة معلقة وتحتاج استلام؟
   const needsReceiving = referral.status === 'pending'
-  
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -456,7 +523,7 @@ export function AdminReferralDetailPage() {
           {referral.status_label}
         </span>
       </div>
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
@@ -475,34 +542,33 @@ export function AdminReferralDetailPage() {
               </div>
             </div>
           </div>
-          
+
           {/* Referral Details */}
           <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
             <h3 className="font-semibold text-slate-900">معلومات الإحالة</h3>
-            
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <p className="text-xs text-slate-500">نوع الإحالة</p>
-                <span className={`inline-flex items-center gap-1 mt-1 rounded px-2 py-0.5 text-sm font-medium ${
-                  referral.referral_type === 'academic_weakness' 
-                    ? 'bg-amber-100 text-amber-800' 
-                    : 'bg-red-100 text-red-800'
-                }`}>
+                <span className={`inline-flex items-center gap-1 mt-1 rounded px-2 py-0.5 text-sm font-medium ${referral.referral_type === 'academic_weakness'
+                  ? 'bg-amber-100 text-amber-800'
+                  : 'bg-red-100 text-red-800'
+                  }`}>
                   <i className={referral.referral_type === 'academic_weakness' ? 'bi-book' : 'bi-exclamation-triangle'} />
                   {referral.referral_type_label}
                 </span>
               </div>
-              
+
               <div>
                 <p className="text-xs text-slate-500">الجهة المحول إليها</p>
                 <p className="font-medium text-slate-900 mt-1">{referral.target_role_label}</p>
               </div>
-              
+
               <div>
                 <p className="text-xs text-slate-500">درجة الأهمية</p>
                 <p className="font-medium text-slate-900 mt-1">{referral.priority_label}</p>
               </div>
-              
+
               <div>
                 <p className="text-xs text-slate-500">تاريخ الإحالة</p>
                 <p className="font-medium text-slate-900 mt-1">
@@ -510,7 +576,7 @@ export function AdminReferralDetailPage() {
                 </p>
               </div>
             </div>
-            
+
             <div className="pt-4 border-t border-slate-100">
               <p className="text-xs text-slate-500 mb-2">المحيل</p>
               <p className="font-medium text-slate-900">
@@ -518,7 +584,7 @@ export function AdminReferralDetailPage() {
                 {referral.referred_by?.name || 'غير محدد'}
               </p>
             </div>
-            
+
             {referral.assigned_to && (
               <div className="pt-4 border-t border-slate-100">
                 <p className="text-xs text-slate-500 mb-2">المكلف بالمتابعة</p>
@@ -528,18 +594,18 @@ export function AdminReferralDetailPage() {
                 </p>
               </div>
             )}
-            
+
             <div className="pt-4 border-t border-slate-100">
               <p className="text-xs text-slate-500 mb-2">وصف الحالة</p>
               <p className="text-slate-700 whitespace-pre-wrap">{referral.description}</p>
             </div>
           </div>
-          
+
           {/* Linked Entities */}
           {referral.linked_entities && (
             <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
               <h3 className="font-semibold text-slate-900">الكيانات المرتبطة</h3>
-              
+
               {referral.linked_entities.behavior_violation && (
                 <div className="flex items-center justify-between p-3 rounded-lg bg-red-50 border border-red-100">
                   <div className="flex items-center gap-3">
@@ -551,7 +617,7 @@ export function AdminReferralDetailPage() {
                   </div>
                 </div>
               )}
-              
+
               {referral.linked_entities.student_case && (
                 <div className="flex items-center justify-between p-3 rounded-lg bg-purple-50 border border-purple-100">
                   <div className="flex items-center gap-3">
@@ -571,7 +637,7 @@ export function AdminReferralDetailPage() {
                   </button>
                 </div>
               )}
-              
+
               {referral.linked_entities.treatment_plan && (
                 <div className="flex items-center justify-between p-3 rounded-lg bg-green-50 border border-green-100">
                   <div className="flex items-center gap-3">
@@ -593,24 +659,23 @@ export function AdminReferralDetailPage() {
               )}
             </div>
           )}
-          
+
           {/* Workflow Timeline */}
           {referral.workflow_logs && referral.workflow_logs.length > 0 && (
             <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
               <h3 className="font-semibold text-slate-900">سجل الإجراءات</h3>
-              
+
               <div className="relative pr-6">
                 <div className="absolute right-2 top-2 bottom-2 w-0.5 bg-slate-200" />
-                
+
                 <div className="space-y-4">
                   {referral.workflow_logs.map((log, index) => (
                     <div key={log.id} className="relative flex gap-3">
-                      <div className={`absolute right-0 -mr-0.5 flex h-5 w-5 items-center justify-center rounded-full ${
-                        index === 0 ? 'bg-sky-500' : 'bg-slate-300'
-                      }`}>
+                      <div className={`absolute right-0 -mr-0.5 flex h-5 w-5 items-center justify-center rounded-full ${index === 0 ? 'bg-sky-500' : 'bg-slate-300'
+                        }`}>
                         <i className={`${ACTION_ICONS[log.action] || 'bi-record'} text-xs text-white`} />
                       </div>
-                      
+
                       <div className="flex-1 pr-4">
                         <p className="font-medium text-slate-900">{log.action_label}</p>
                         {log.notes && (
@@ -631,13 +696,13 @@ export function AdminReferralDetailPage() {
             </div>
           )}
         </div>
-        
+
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Actions */}
           <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
             <h3 className="font-semibold text-slate-900">الإجراءات</h3>
-            
+
             <div className="space-y-3">
               {needsReceiving && (
                 <>
@@ -651,7 +716,7 @@ export function AdminReferralDetailPage() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <button
                     onClick={handleReceive}
                     disabled={receiveMutation.isPending}
@@ -662,7 +727,7 @@ export function AdminReferralDetailPage() {
                   </button>
                 </>
               )}
-              
+
               {/* زر فتح المخالفة السلوكية - يظهر دائماً إذا كانت مرتبطة بمخالفة */}
               {referral.referral_type === 'behavioral_violation' && referral.behavior_violation_id && (
                 <Link
@@ -673,7 +738,7 @@ export function AdminReferralDetailPage() {
                   فتح المخالفة السلوكية
                 </Link>
               )}
-              
+
               {canPerformActions && (
                 <>
                   {/* زر تنفيذ مخالفة سلوكية - يظهر فقط إذا لم تكن مرتبطة بمخالفة */}
@@ -686,21 +751,20 @@ export function AdminReferralDetailPage() {
                       تنفيذ مخالفة سلوكية
                     </button>
                   )}
-                  
+
                   {/* صف: تعيين مسؤول + تحويل الإحالة */}
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => setShowAssignModal(true)}
-                      className={`flex items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-medium ${
-                        referral.assigned_to 
-                          ? 'border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100' 
-                          : 'bg-purple-600 text-white hover:bg-purple-700'
-                      }`}
+                      className={`flex items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-medium ${referral.assigned_to
+                        ? 'border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100'
+                        : 'bg-purple-600 text-white hover:bg-purple-700'
+                        }`}
                     >
                       <i className={`bi ${referral.assigned_to ? 'bi-person-gear' : 'bi-person-plus'}`} />
                       {referral.assigned_to ? 'تغيير المسؤول' : 'تعيين مسؤول'}
                     </button>
-                    
+
                     <button
                       onClick={() => setShowTransferModal(true)}
                       className="flex items-center justify-center gap-1 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-medium text-orange-700 hover:bg-orange-100"
@@ -709,7 +773,7 @@ export function AdminReferralDetailPage() {
                       تحويل الإحالة
                     </button>
                   </div>
-                  
+
                   {/* صف: إكمال الإحالة + إضافة ملاحظة */}
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -720,7 +784,7 @@ export function AdminReferralDetailPage() {
                       <i className="bi bi-check2-circle" />
                       إكمال الإحالة
                     </button>
-                    
+
                     <button
                       onClick={() => setShowNoteModal(true)}
                       className="flex items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
@@ -729,7 +793,7 @@ export function AdminReferralDetailPage() {
                       إضافة ملاحظة
                     </button>
                   </div>
-                  
+
                   {/* صف: إنشاء مستند + إشعار ولي الأمر */}
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -739,7 +803,7 @@ export function AdminReferralDetailPage() {
                       <i className="bi bi-file-earmark-plus" />
                       إنشاء مستند
                     </button>
-                    
+
                     {!referral.parent_notified ? (
                       <button
                         onClick={handleNotifyParent}
@@ -756,9 +820,50 @@ export function AdminReferralDetailPage() {
                       </div>
                     )}
                   </div>
+
+                  {/* صف: دراسة حالة + خطة علاجية (يظهر للإحالات من نوع ضعف دراسي المحولة للموجه الطلابي) */}
+                  {canCreateCaseOrPlan && (
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
+                      {!referral.student_case_id ? (
+                        <button
+                          onClick={() => setShowCaseModal(true)}
+                          className="flex items-center justify-center gap-1 rounded-lg bg-purple-600 px-3 py-2.5 text-xs font-medium text-white hover:bg-purple-700"
+                        >
+                          <i className="bi bi-folder-plus" />
+                          دراسة حالة
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => navigate(`/admin/student-cases/${referral.student_case_id}`)}
+                          className="flex items-center justify-center gap-1 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2.5 text-xs font-medium text-purple-700 hover:bg-purple-100"
+                        >
+                          <i className="bi bi-folder-check" />
+                          فتح الحالة
+                        </button>
+                      )}
+
+                      {!referral.treatment_plan_id ? (
+                        <button
+                          onClick={() => setShowTreatmentPlanModal(true)}
+                          className="flex items-center justify-center gap-1 rounded-lg bg-green-600 px-3 py-2.5 text-xs font-medium text-white hover:bg-green-700"
+                        >
+                          <i className="bi bi-journal-medical" />
+                          خطة علاجية
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => navigate(`/admin/treatment-plans/${referral.treatment_plan_id}`)}
+                          className="flex items-center justify-center gap-1 rounded-lg border border-green-200 bg-green-50 px-3 py-2.5 text-xs font-medium text-green-700 hover:bg-green-100"
+                        >
+                          <i className="bi bi-journal-check" />
+                          فتح الخطة
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </>
               )}
-              
+
               {/* زر حذف الإحالة */}
               <button
                 onClick={() => setShowDeleteConfirm(true)}
@@ -769,20 +874,19 @@ export function AdminReferralDetailPage() {
               </button>
             </div>
           </div>
-          
+
           {/* Parent Notification */}
           <div className="bg-white rounded-xl border border-slate-200 p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${
-                  referral.parent_notified ? 'bg-green-100' : 'bg-slate-100'
-                }`}>
+                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${referral.parent_notified ? 'bg-green-100' : 'bg-slate-100'
+                  }`}>
                   <i className={`bi ${referral.parent_notified ? 'bi-check2-circle text-green-600' : 'bi-bell text-slate-500'}`} />
                 </div>
                 <div>
                   <p className="font-medium text-slate-900">إشعار ولي الأمر</p>
                   <p className="text-xs text-slate-500">
-                    {referral.parent_notified 
+                    {referral.parent_notified
                       ? `تم ${new Date(referral.parent_notified_at!).toLocaleDateString('ar-SA')}`
                       : 'لم يتم الإشعار'}
                   </p>
@@ -790,12 +894,12 @@ export function AdminReferralDetailPage() {
               </div>
             </div>
           </div>
-          
+
           {/* Documents */}
           {referral.documents && referral.documents.length > 0 && (
             <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
               <h3 className="font-semibold text-slate-900">المستندات</h3>
-              
+
               <div className="space-y-2">
                 {referral.documents.map((doc) => (
                   <div
@@ -822,13 +926,13 @@ export function AdminReferralDetailPage() {
           )}
         </div>
       </div>
-      
+
       {/* Assign Modal */}
       {showAssignModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-md bg-white rounded-xl p-6 m-4">
             <h3 className="font-semibold text-lg text-slate-900 mb-4">تعيين مسؤول</h3>
-            
+
             <select
               value={selectedAssignee ?? ''}
               onChange={(e) => setSelectedAssignee(Number(e.target.value) || null)}
@@ -845,7 +949,7 @@ export function AdminReferralDetailPage() {
                 <option value="" disabled>لا يوجد مسؤولين متاحين</option>
               )}
             </select>
-            
+
             <div className="flex gap-3">
               <button
                 onClick={() => setShowAssignModal(false)}
@@ -864,13 +968,13 @@ export function AdminReferralDetailPage() {
           </div>
         </div>
       )}
-      
+
       {/* Transfer Modal */}
       {showTransferModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-md bg-white rounded-xl p-6 m-4">
             <h3 className="font-semibold text-lg text-slate-900 mb-4">تحويل الإحالة</h3>
-            
+
             <select
               value={transferTarget}
               onChange={(e) => setTransferTarget(e.target.value as ReferralTargetRole)}
@@ -880,7 +984,7 @@ export function AdminReferralDetailPage() {
               <option value="vice_principal">وكيل المدرسة</option>
               <option value="committee">اللجنة السلوكية</option>
             </select>
-            
+
             <textarea
               value={noteText}
               onChange={(e) => setNoteText(e.target.value)}
@@ -888,7 +992,7 @@ export function AdminReferralDetailPage() {
               rows={3}
               className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:border-sky-500 focus:outline-none mb-4"
             />
-            
+
             <div className="flex gap-3">
               <button
                 onClick={() => { setShowTransferModal(false); setNoteText(''); }}
@@ -907,13 +1011,13 @@ export function AdminReferralDetailPage() {
           </div>
         </div>
       )}
-      
+
       {/* Note Modal */}
       {showNoteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-md bg-white rounded-xl p-6 m-4">
             <h3 className="font-semibold text-lg text-slate-900 mb-4">إضافة ملاحظة</h3>
-            
+
             <textarea
               value={noteText}
               onChange={(e) => setNoteText(e.target.value)}
@@ -921,7 +1025,7 @@ export function AdminReferralDetailPage() {
               rows={4}
               className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:border-sky-500 focus:outline-none mb-4"
             />
-            
+
             <div className="flex gap-3">
               <button
                 onClick={() => { setShowNoteModal(false); setNoteText(''); }}
@@ -940,7 +1044,7 @@ export function AdminReferralDetailPage() {
           </div>
         </div>
       )}
-      
+
       {/* Violation Modal - نموذج الرصد الموحد */}
       {showViolationModal && referral && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -977,13 +1081,12 @@ export function AdminReferralDetailPage() {
                         <button
                           type="button"
                           onClick={() => setViolationRecordStep(step.id)}
-                          className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition ${
-                            isActive
-                              ? 'bg-red-600 text-white shadow-sm'
-                              : isDone
+                          className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition ${isActive
+                            ? 'bg-red-600 text-white shadow-sm'
+                            : isDone
                               ? 'bg-emerald-500/10 text-emerald-700 border border-emerald-200'
                               : 'bg-slate-100 text-slate-500'
-                          }`}
+                            }`}
                         >
                           {step.id}
                         </button>
@@ -1034,11 +1137,10 @@ export function AdminReferralDetailPage() {
                               setSelectedDegree(degree)
                               setSelectedViolationType('')
                             }}
-                            className={`rounded-2xl border px-3 py-4 transition ${
-                              selectedDegree === degree
-                                ? 'border-red-500 bg-red-50 shadow-sm'
-                                : 'border-slate-200 bg-white hover:border-red-300'
-                            }`}
+                            className={`rounded-2xl border px-3 py-4 transition ${selectedDegree === degree
+                              ? 'border-red-500 bg-red-50 shadow-sm'
+                              : 'border-slate-200 bg-white hover:border-red-300'
+                              }`}
                           >
                             <ViolationBadge degree={degree} size="md" />
                           </button>
@@ -1149,7 +1251,7 @@ export function AdminReferralDetailPage() {
                     <div className="rounded-2xl border border-sky-200 bg-sky-50/60 p-4 text-sm text-sky-700">
                       يتم تحديد الإجراء تلقائياً بناءً على سجل الطالب. يمكن تحديث حالة التنفيذ لاحقاً من صفحة تفاصيل المخالفة.
                     </div>
-                    
+
                     {targetProcedure && (
                       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                         <div className="flex items-start gap-3">
@@ -1167,7 +1269,7 @@ export function AdminReferralDetailPage() {
 
                     <div className="space-y-3 pt-4">
                       <p className="text-sm font-semibold text-slate-700">الإجراءات الإضافية</p>
-                      
+
                       <label className="flex items-center gap-3 p-4 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50">
                         <input
                           type="checkbox"
@@ -1180,7 +1282,7 @@ export function AdminReferralDetailPage() {
                           <p className="text-xs text-slate-500">سيتم إرسال رسالة واتساب لولي الأمر</p>
                         </div>
                       </label>
-                      
+
                       {sendParentMessage && (
                         <textarea
                           value={parentMessage}
@@ -1200,7 +1302,7 @@ export function AdminReferralDetailPage() {
                     <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 text-sm text-emerald-700">
                       راجع البيانات التالية قبل الحفظ النهائي. سيتم تسجيل المخالفة في سجل المخالفات وربطها بهذه الإحالة.
                     </div>
-                    
+
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
                         <h3 className="text-sm font-semibold text-slate-700">بيانات الطالب</h3>
@@ -1216,7 +1318,7 @@ export function AdminReferralDetailPage() {
                           </p>
                         </div>
                       </div>
-                      
+
                       <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
                         <h3 className="text-sm font-semibold text-slate-700">تفاصيل المخالفة</h3>
                         <div className="mt-3 space-y-2 text-sm text-muted">
@@ -1243,7 +1345,7 @@ export function AdminReferralDetailPage() {
                           </p>
                         </div>
                       </div>
-                      
+
                       {targetProcedure && (
                         <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
                           <h3 className="text-sm font-semibold text-slate-700">الإجراء المطبق</h3>
@@ -1261,16 +1363,16 @@ export function AdminReferralDetailPage() {
               {/* أزرار التنقل */}
               <div className="border-t border-slate-200 px-6 py-3 bg-white rounded-b-3xl">
                 <div className="flex items-center justify-between gap-3">
-                  <button 
-                    type="button" 
-                    onClick={handleViolationPrevStep} 
-                    className="flex items-center gap-1 px-4 py-2 text-sm border border-slate-200 rounded-lg hover:bg-slate-50" 
+                  <button
+                    type="button"
+                    onClick={handleViolationPrevStep}
+                    className="flex items-center gap-1 px-4 py-2 text-sm border border-slate-200 rounded-lg hover:bg-slate-50"
                     disabled={violationRecordStep === 1}
                   >
                     <ChevronRight className="h-4 w-4" />
                     السابق
                   </button>
-                  
+
                   {violationRecordStep < 4 ? (
                     <button
                       type="button"
@@ -1306,13 +1408,13 @@ export function AdminReferralDetailPage() {
           </div>
         </div>
       )}
-      
+
       {/* Document Modal */}
       {showDocumentModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-md bg-white rounded-xl p-6 m-4">
             <h3 className="font-semibold text-lg text-slate-900 mb-4">إنشاء مستند</h3>
-            
+
             <select
               value={selectedDocType}
               onChange={(e) => setSelectedDocType(e.target.value)}
@@ -1323,7 +1425,7 @@ export function AdminReferralDetailPage() {
                 <option key={type.value} value={type.value}>{type.label}</option>
               ))}
             </select>
-            
+
             <div className="flex gap-3">
               <button
                 onClick={() => { setShowDocumentModal(false); setSelectedDocType(''); }}
@@ -1342,7 +1444,7 @@ export function AdminReferralDetailPage() {
           </div>
         </div>
       )}
-      
+
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -1356,14 +1458,14 @@ export function AdminReferralDetailPage() {
                 <p className="text-sm text-slate-500">هل أنت متأكد من حذف هذه الإحالة؟</p>
               </div>
             </div>
-            
+
             <div className="p-4 rounded-lg bg-amber-50 border border-amber-100 mb-4">
               <p className="text-sm text-amber-800">
                 <i className="bi bi-exclamation-triangle ml-1" />
                 سيتم حذف الإحالة وجميع السجلات والمستندات المرتبطة بها. هذا الإجراء لا يمكن التراجع عنه.
               </p>
             </div>
-            
+
             <div className="flex gap-3">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
@@ -1381,6 +1483,164 @@ export function AdminReferralDetailPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Parent Message Modal */}
+      {showParentMessageModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-slate-900 mb-4">إشعار ولي الأمر</h3>
+
+            {/* Message Preview */}
+            <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <div className="text-sm text-slate-700 whitespace-pre-wrap">
+                {buildCompleteMessage()}
+              </div>
+            </div>
+
+            {/* Editable Message Section */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                محتوى الرسالة
+              </label>
+              <textarea
+                value={parentMessageText}
+                onChange={(e) => setParentMessageText(e.target.value)}
+                className="w-full min-h-[120px] rounded-lg border border-slate-300 p-3 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200 resize-none"
+                placeholder="اكتب رسالتك هنا..."
+              />
+            </div>
+
+            {/* Meeting Date Section */}
+            <div className="mb-4">
+              {!meetingDate ? (
+                <button
+                  onClick={() => setShowDatePicker(true)}
+                  className="flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-medium text-sky-700 hover:bg-sky-100"
+                >
+                  <i className="bi bi-calendar-plus" />
+                  إضافة موعد
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={meetingDate}
+                    onChange={(e) => setMeetingDate(e.target.value)}
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+                  />
+                  <button
+                    onClick={() => setMeetingDate(null)}
+                    className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100"
+                  >
+                    <i className="bi bi-x-lg" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Date Picker Modal */}
+            {showDatePicker && (
+              <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 p-4">
+                <div className="rounded-xl bg-white p-4 shadow-xl">
+                  <h4 className="text-sm font-semibold text-slate-900 mb-3">اختر تاريخ الموعد</h4>
+                  <input
+                    type="date"
+                    onChange={(e) => {
+                      setMeetingDate(e.target.value)
+                      setShowDatePicker(false)
+                    }}
+                    className="rounded-lg border border-slate-300 px-3 py-2 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+                    min={new Date().toISOString().split('T')[0]}
+                  />
+                  <button
+                    onClick={() => setShowDatePicker(false)}
+                    className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
+                  >
+                    إلغاء
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <textarea
+              value={parentMessageText}
+              onChange={(e) => setParentMessageText(e.target.value)}
+              className="w-full min-h-[150px] rounded-lg border border-slate-200 p-3 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+              placeholder="اكتب رسالة لولي أمر الطالب..."
+              style={{ display: 'none' }}
+            />
+
+            <div className="text-xs text-slate-500 mt-2">
+              سيتم إرسال الرسالة عبر WhatsApp إلى رقم ولي الأمر
+            </div>
+
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={handleSendParentNotification}
+                disabled={parentNotifyMutation.isPending || !parentMessageText.trim()}
+                className="flex-1 rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50"
+              >
+                {parentNotifyMutation.isPending ? (
+                  <i className="bi bi-arrow-repeat animate-spin" />
+                ) : (
+                  'إرسال الإشعار'
+                )}
+              </button>
+              <button
+                onClick={() => {
+                  setShowParentMessageModal(false)
+                  setParentMessageText('')
+                  setMeetingDate(null)
+                }}
+                className="flex-1 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Document Preview Modal */}
+      {previewDocument && (
+        <DocumentPreviewModal
+          isOpen={showDocumentPreview}
+          onClose={() => {
+            setShowDocumentPreview(false)
+            setPreviewDocument(null)
+          }}
+          documentHtml={previewDocument.html}
+          documentTitle={previewDocument.title}
+        />
+      )}
+
+      {/* Case Study Modal */}
+      {referral && showCaseModal && (
+        <CaseFormModal
+          referral={referral}
+          isOpen={showCaseModal}
+          onClose={() => setShowCaseModal(false)}
+          onSuccess={(caseData) => {
+            setShowCaseModal(false)
+            toast({ type: 'success', title: `تم إنشاء دراسة الحالة: ${caseData.case_number}` })
+            refetch()
+          }}
+        />
+      )}
+
+      {/* Treatment Plan Modal */}
+      {referral && showTreatmentPlanModal && (
+        <TreatmentPlanFormModal
+          referral={referral}
+          isOpen={showTreatmentPlanModal}
+          onClose={() => setShowTreatmentPlanModal(false)}
+          onSuccess={(planData) => {
+            setShowTreatmentPlanModal(false)
+            toast({ type: 'success', title: `تم إنشاء الخطة العلاجية: ${planData.plan_number}` })
+            refetch()
+          }}
+        />
       )}
     </div>
   )

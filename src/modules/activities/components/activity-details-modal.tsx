@@ -34,7 +34,7 @@ export function ActivityDetailsModal({ activityId, onClose }: Props) {
   const { data, isLoading, error } = useActivityDetails(activityId)
   const approveReport = useApproveReport()
   const rejectReport = useRejectReport()
-  
+
   const [rejectModalOpen, setRejectModalOpen] = useState<number | null>(null)
   const [rejectionReason, setRejectionReason] = useState('')
   const [expandedTeacher, setExpandedTeacher] = useState<number | null>(null)
@@ -248,43 +248,55 @@ export function ActivityDetailsModal({ activityId, onClose }: Props) {
                               <span className="text-slate-500">
                                 سلّم {teacher.submitted_grades} من {teacher.total_grades} صفوف
                               </span>
-                              {teacher.submitted_grades === teacher.total_grades && (
-                                <span className="text-emerald-600">
-                                  <i className="bi bi-check-circle-fill ml-1" />
-                                  مكتمل
-                                </span>
-                              )}
+                              {teacher.submitted_grades === teacher.total_grades && teacher.total_grades > 0 && (() => {
+                                const allApproved = teacher.grade_reports.every(
+                                  g => g.has_report && g.report_status === 'approved'
+                                )
+                                return allApproved ? (
+                                  <span className="text-emerald-600">
+                                    <i className="bi bi-check-circle-fill ml-1" />
+                                    مكتمل
+                                  </span>
+                                ) : (
+                                  <span className="text-amber-600">
+                                    <i className="bi bi-hourglass-split ml-1" />
+                                    مكتمل
+                                  </span>
+                                )
+                              })()}
                             </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
                           {/* شريط التقدم */}
-                          <div className="w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-emerald-500 rounded-full transition-all"
-                              style={{ width: `${(teacher.submitted_grades / teacher.total_grades) * 100}%` }}
-                            />
+                          <div className="w-32 h-2.5 bg-slate-200 rounded-full overflow-hidden flex">
+                            {(() => {
+                              const total = teacher.total_grades
+                              const app = teacher.grade_reports.filter(g => g.has_report && g.report_status === 'approved').length
+                              const pen = teacher.grade_reports.filter(g => g.has_report && g.report_status === 'pending').length
+                              const rej = teacher.grade_reports.filter(g => g.has_report && g.report_status === 'rejected').length
+                              return (<>{app > 0 && <div className="h-full bg-emerald-500" style={{ width: `${(app / total) * 100}%` }} title={`معتمد: ${app}`} />}{pen > 0 && <div className="h-full bg-amber-500" style={{ width: `${(pen / total) * 100}%` }} title={`بانتظار: ${pen}`} />}{rej > 0 && <div className="h-full bg-red-500" style={{ width: `${(rej / total) * 100}%` }} title={`مرفوض: ${rej}`} />}</>)
+                            })()}
                           </div>
                           <i className={`bi ${expandedTeacher === teacher.id ? 'bi-chevron-up' : 'bi-chevron-down'} text-slate-400`} />
                         </div>
                       </div>
-                      
+
                       {/* تفاصيل التقارير حسب الصفوف */}
                       {expandedTeacher === teacher.id && (
                         <div className="px-4 pb-4 pt-2 bg-slate-50/50">
                           <div className="grid gap-2 sm:grid-cols-2">
                             {teacher.grade_reports.map((gradeReport) => (
-                              <div 
+                              <div
                                 key={gradeReport.grade}
-                                className={`rounded-xl border-2 p-3 ${
-                                  gradeReport.has_report 
-                                    ? gradeReport.report_status === 'approved'
-                                      ? 'border-emerald-200 bg-emerald-50'
-                                      : gradeReport.report_status === 'rejected'
-                                        ? 'border-red-200 bg-red-50'
-                                        : 'border-amber-200 bg-amber-50'
-                                    : 'border-slate-200 bg-white'
-                                }`}
+                                className={`rounded-xl border-2 p-3 ${gradeReport.has_report
+                                  ? gradeReport.report_status === 'approved'
+                                    ? 'border-emerald-200 bg-emerald-50'
+                                    : gradeReport.report_status === 'rejected'
+                                      ? 'border-red-200 bg-red-50'
+                                      : 'border-amber-200 bg-amber-50'
+                                  : 'border-slate-200 bg-white'
+                                  }`}
                               >
                                 <div className="flex items-center justify-between mb-2">
                                   <span className="font-semibold text-slate-800">{gradeReport.grade}</span>
@@ -299,7 +311,7 @@ export function ActivityDetailsModal({ activityId, onClose }: Props) {
                                     </span>
                                   )}
                                 </div>
-                                
+
                                 {gradeReport.has_report && gradeReport.report_id && (
                                   <div className="flex items-center gap-2 mt-2">
                                     <button
@@ -370,17 +382,17 @@ export function ActivityDetailsModal({ activityId, onClose }: Props) {
           onApprove={
             selectedReport.status === 'pending'
               ? () => {
-                  handleApprove(selectedReport.id)
-                  setSelectedReport(null)
-                }
+                handleApprove(selectedReport.id)
+                setSelectedReport(null)
+              }
               : undefined
           }
           onReject={
             selectedReport.status === 'pending'
               ? () => {
-                  setRejectModalOpen(selectedReport.id)
-                  setSelectedReport(null)
-                }
+                setRejectModalOpen(selectedReport.id)
+                setSelectedReport(null)
+              }
               : undefined
           }
           isApproving={approveReport.isPending}

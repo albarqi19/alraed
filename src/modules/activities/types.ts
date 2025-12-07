@@ -135,6 +135,8 @@ export interface TeacherActivityView {
   teacher_grades: string[] // الصفوف المشتركة بين المعلم والنشاط
   creator?: ActivityCreator
   is_active: boolean
+  has_started: boolean // هل بدأ النشاط
+  is_late: boolean // هل التسليم متأخر
   grades_reports: GradeReportInfo[] // حالة التقارير لكل صف
   total_reports: number
   pending_reports: number
@@ -155,6 +157,8 @@ export interface TeacherActivityDetails {
     target_grades: string[]
     creator?: ActivityCreator
     is_active: boolean
+    has_started: boolean // هل بدأ النشاط
+    is_late: boolean // هل التسليم متأخر
   }
   teacher_grades: string[]
   grades_info: GradeDetailInfo[]
@@ -173,7 +177,7 @@ export interface ActivityCreatePayload {
   pdf_file?: File
 }
 
-export interface ActivityUpdatePayload extends Partial<ActivityCreatePayload> {}
+export interface ActivityUpdatePayload extends Partial<ActivityCreatePayload> { }
 
 export interface ReportSubmitPayload {
   grade: string // الصف المستهدف للتقرير

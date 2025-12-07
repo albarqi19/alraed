@@ -679,10 +679,10 @@ export function AdminBehaviorPage() {
                           type="button"
                           onClick={() => setRecordStep(step.id)}
                           className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition ${isActive
-                              ? 'bg-primary text-white shadow-sm'
-                              : isDone
-                                ? 'bg-emerald-500/10 text-emerald-700 border border-emerald-200'
-                                : 'bg-slate-100 text-slate-500'
+                            ? 'bg-primary text-white shadow-sm'
+                            : isDone
+                              ? 'bg-emerald-500/10 text-emerald-700 border border-emerald-200'
+                              : 'bg-slate-100 text-slate-500'
                             }`}
                         >
                           {step.id}
@@ -770,8 +770,8 @@ export function AdminBehaviorPage() {
                                 )
                               }}
                               className={`flex flex-col gap-2 rounded-2xl border px-4 py-3 text-right transition ${isSelected
-                                  ? 'border-primary bg-primary/5 shadow-sm'
-                                  : 'border-slate-200 bg-white hover:border-primary/50'
+                                ? 'border-primary bg-primary/5 shadow-sm'
+                                : 'border-slate-200 bg-white hover:border-primary/50'
                                 }`}
                             >
                               <div className="flex items-start justify-between gap-3">
@@ -811,8 +811,8 @@ export function AdminBehaviorPage() {
                               setSelectedViolationType('')
                             }}
                             className={`rounded-2xl border px-3 py-3 transition ${selectedDegree === degree
-                                ? 'border-primary bg-primary/5 shadow-sm'
-                                : 'border-slate-200 bg-white hover:border-primary/50'
+                              ? 'border-primary bg-primary/5 shadow-sm'
+                              : 'border-slate-200 bg-white hover:border-primary/50'
                               }`}
                           >
                             <ViolationBadge degree={degree} size="sm" />
@@ -881,14 +881,14 @@ export function AdminBehaviorPage() {
                       </select>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-semibold text-slate-700">المبلغ عن الحالة (المعلم)</label>
+                      <label className="text-sm font-semibold text-slate-700">المبلغ عن الحالة</label>
                       <select
                         value={selectedReporterId || ''}
                         onChange={(event) => setSelectedReporterId(event.target.value ? Number(event.target.value) : null)}
                         className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                       >
                         <option value="" disabled>
-                          اختر المعلم المبلغ
+                          اختر المبلغ
                         </option>
                         {reporters.map((reporter) => (
                           <option key={reporter.id} value={reporter.id}>

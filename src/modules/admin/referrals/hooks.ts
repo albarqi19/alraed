@@ -185,7 +185,7 @@ export function useNotifyParentMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ id, message }: { id: number; message?: string }) => {
+    mutationFn: async ({ id, message }: { id: number; message: string }) => {
       const { data } = await apiClient.post<ReferralDetailResponse>(`/admin/referrals/${id}/notify-parent`, { message })
       return data.data
     },
@@ -202,6 +202,63 @@ export function useDeleteReferralMutation() {
   return useMutation({
     mutationFn: async (id: number) => {
       await apiClient.delete(`/admin/referrals/${id}`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: REFERRAL_KEYS.all })
+    },
+  })
+}
+
+// فتح دراسة حالة من الإحالة
+export interface OpenCaseData {
+  category: string
+  severity?: 'low' | 'medium' | 'high' | 'critical'
+  summary?: string
+  tags?: string[]
+  title?: string
+}
+
+export function useOpenCaseFromReferralMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: OpenCaseData }) => {
+      const response = await apiClient.post<{
+        success: boolean
+        message: string
+        data: { referral: StudentReferral; case: { id: number; case_number: string } }
+      }>(`/admin/referrals/${id}/open-case`, data)
+      return response.data.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: REFERRAL_KEYS.all })
+    },
+  })
+}
+
+// إنشاء خطة علاجية من الإحالة
+export interface CreateTreatmentPlanData {
+  title?: string
+  problem_type: string
+  problem_description?: string
+  diagnosis?: string
+  root_causes?: string
+  priority?: 'low' | 'medium' | 'high' | 'urgent'
+  expected_duration_weeks?: number
+  goals?: Array<{ title: string; description?: string }>
+}
+
+export function useCreateTreatmentPlanFromReferralMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: CreateTreatmentPlanData }) => {
+      const response = await apiClient.post<{
+        success: boolean
+        message: string
+        data: { referral: StudentReferral; plan: { id: number; plan_number: string } }
+      }>(`/admin/referrals/${id}/create-treatment-plan`, data)
+      return response.data.data
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: REFERRAL_KEYS.all })

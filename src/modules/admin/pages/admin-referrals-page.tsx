@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { 
-  useAdminReferralsQuery, 
+import {
+  useAdminReferralsQuery,
   useAdminReferralStatsQuery,
   useReceiveReferralMutation,
 } from '../referrals/hooks'
@@ -44,17 +44,17 @@ function StatusBadge({ status, label }: { status: ReferralStatus; label: string 
   )
 }
 
-function ReferralRow({ 
-  referral, 
-  onView, 
-  onReceive 
-}: { 
+function ReferralRow({
+  referral,
+  onView,
+  onReceive
+}: {
   referral: StudentReferral
   onView: () => void
   onReceive?: () => void
 }) {
   const priorityStyle = PRIORITY_STYLES[referral.priority] || PRIORITY_STYLES.medium
-  
+
   return (
     <tr className={`hover:bg-slate-50 transition-colors ${priorityStyle.bg}`}>
       <td className="px-4 py-3">
@@ -70,11 +70,10 @@ function ReferralRow({
         </div>
       </td>
       <td className="px-4 py-3">
-        <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium ${
-          referral.referral_type === 'academic_weakness' 
-            ? 'bg-amber-100 text-amber-800' 
+        <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium ${referral.referral_type === 'academic_weakness'
+            ? 'bg-amber-100 text-amber-800'
             : 'bg-red-100 text-red-800'
-        }`}>
+          }`}>
           <i className={referral.referral_type === 'academic_weakness' ? 'bi-book' : 'bi-exclamation-triangle'} />
           {referral.referral_type_label}
         </span>
@@ -128,11 +127,11 @@ export function AdminReferralsPage() {
   const location = useLocation()
   const [activeTab, setActiveTab] = useState<ReferralTab>('teacher')
   const [filters, setFilters] = useState<ReferralFilters>({})
-  
+
   // تحديد نوع الصفحة
   const isBehavioralPage = location.pathname.includes('/referrals/behavioral')
   const isGuidancePage = location.pathname.includes('/referrals/guidance')
-  
+
   // تحديد التبويبات المتاحة حسب نوع الصفحة
   const availableTabs = useMemo(() => {
     if (isBehavioralPage) {
@@ -142,7 +141,7 @@ export function AdminReferralsPage() {
     // صفحة الضعف الدراسي أو الصفحة العامة: جميع التبويبات
     return ALL_TABS
   }, [isBehavioralPage])
-  
+
   // تحديد نوع الإحالات بناءً على المسار
   useEffect(() => {
     if (isGuidancePage) {
@@ -151,18 +150,20 @@ export function AdminReferralsPage() {
       setFilters(prev => ({ ...prev, type: 'behavioral_violation' }))
     }
   }, [isGuidancePage, isBehavioralPage])
-  
+
   // فلاتر حسب التبويب النشط
   const tabFilters = useMemo((): ReferralFilters => {
     const baseFilters = { ...filters }
-    
+
     switch (activeTab) {
       case 'teacher':
         // إحالات المعلمين - referred_by_type = teacher
         return { ...baseFilters, referred_by_type: 'teacher' as const }
       case 'admin':
-        // إحالات الإدارة - من وكيل شؤون الطلاب
-        return { ...baseFilters, referred_by_type: 'deputy_students' as const }
+        // إحالات الإدارة - من وكيل شؤون الطلاب أو الأتمتة
+        // نزيل فلتر النوع لإظهار إحالات السلوك والضعف الدراسي معاً
+        const { type, ...filtersWithoutType } = baseFilters
+        return { ...filtersWithoutType, referred_by_type: 'deputy_students' as const }
       case 'system':
         // إحالات النظام - تلقائية
         return { ...baseFilters, referred_by_type: 'system' as const }
@@ -170,7 +171,7 @@ export function AdminReferralsPage() {
         return baseFilters
     }
   }, [filters, activeTab])
-  
+
   // تحديد عنوان الصفحة
   const getPageTitle = () => {
     if (isGuidancePage) {
@@ -180,18 +181,18 @@ export function AdminReferralsPage() {
     }
     return 'الإحالات'
   }
-  
+
   // جلب الإحصائيات مع تمرير نوع الإحالة للفلترة
   const statsFilters = useMemo(() => {
     if (isGuidancePage) return { type: 'academic_weakness' }
     if (isBehavioralPage) return { type: 'behavioral_violation' }
     return {}
   }, [isGuidancePage, isBehavioralPage])
-  
+
   const { data: referrals, isLoading, error } = useAdminReferralsQuery(tabFilters)
   const { data: stats } = useAdminReferralStatsQuery(statsFilters)
   const receiveMutation = useReceiveReferralMutation()
-  
+
   // حساب عدد الإحالات لكل تبويب
   const tabCounts = useMemo(() => {
     return {
@@ -200,7 +201,7 @@ export function AdminReferralsPage() {
       system: stats?.by_referred_type?.system || 0,
     }
   }, [stats])
-  
+
   const handleReceive = async (id: number) => {
     try {
       await receiveMutation.mutateAsync(id)
@@ -216,7 +217,7 @@ export function AdminReferralsPage() {
       [key]: value || undefined,
     }))
   }
-  
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -226,7 +227,7 @@ export function AdminReferralsPage() {
           <p className="text-sm text-slate-500">متابعة ومعالجة إحالات الطلاب</p>
         </div>
       </div>
-      
+
       {/* Stats Cards */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -248,7 +249,7 @@ export function AdminReferralsPage() {
           </div>
         </div>
       )}
-      
+
       {/* Tabs */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="border-b border-slate-200">
@@ -259,8 +260,8 @@ export function AdminReferralsPage() {
                 onClick={() => setActiveTab(tab.key)}
                 className={`
                   relative flex-1 px-6 py-4 text-sm font-medium transition-all
-                  ${activeTab === tab.key 
-                    ? 'text-sky-600 bg-sky-50/50' 
+                  ${activeTab === tab.key
+                    ? 'text-sky-600 bg-sky-50/50'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                   }
                 `}
@@ -271,8 +272,8 @@ export function AdminReferralsPage() {
                   {tabCounts[tab.key] > 0 && (
                     <span className={`
                       inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-semibold
-                      ${activeTab === tab.key 
-                        ? 'bg-sky-500 text-white' 
+                      ${activeTab === tab.key
+                        ? 'bg-sky-500 text-white'
                         : 'bg-slate-200 text-slate-600'
                       }
                     `}>
@@ -287,7 +288,7 @@ export function AdminReferralsPage() {
             ))}
           </nav>
         </div>
-        
+
         {/* Tab Description */}
         <div className="px-6 py-3 bg-slate-50/50 border-b border-slate-100">
           <p className="text-sm text-slate-500">
@@ -295,7 +296,7 @@ export function AdminReferralsPage() {
             {availableTabs.find(t => t.key === activeTab)?.description}
           </p>
         </div>
-      
+
         {/* Filters */}
         <div className="p-4 border-b border-slate-100">
           <div className="flex flex-wrap gap-4">
@@ -312,7 +313,7 @@ export function AdminReferralsPage() {
               <option value="completed">مكتملة</option>
               <option value="cancelled">ملغاة</option>
             </select>
-            
+
             <select
               value={filters.type ?? ''}
               onChange={(e) => updateFilter('type', e.target.value)}
@@ -322,7 +323,7 @@ export function AdminReferralsPage() {
               <option value="academic_weakness">ضعف دراسي</option>
               <option value="behavioral_violation">مخالفة سلوكية</option>
             </select>
-            
+
             <select
               value={filters.target_role ?? ''}
               onChange={(e) => updateFilter('target_role', e.target.value)}
@@ -333,7 +334,7 @@ export function AdminReferralsPage() {
               <option value="vice_principal">وكيل المدرسة</option>
               <option value="committee">اللجنة السلوكية</option>
             </select>
-            
+
             <select
               value={filters.priority ?? ''}
               onChange={(e) => updateFilter('priority', e.target.value)}
@@ -347,7 +348,7 @@ export function AdminReferralsPage() {
             </select>
           </div>
         </div>
-      
+
         {/* Table Content */}
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
