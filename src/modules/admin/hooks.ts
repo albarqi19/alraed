@@ -2298,6 +2298,62 @@ export function useNoorSyncRecordsQuery(filters: Record<string, string> = {}) {
 }
 
 // =====================================================
+// Noor Excuse Sync Hooks (مزامنة الأعذار مع نور)
+// =====================================================
+
+export interface NoorExcuseSyncRecord {
+  id: number
+  student: {
+    id: number
+    name: string
+    national_id: string
+    class_name: string
+    grade: string
+  } | null
+  absence_date: string
+  excuse_text: string
+  status: string
+  synced_to_noor: boolean
+  synced_to_noor_at: string | null
+  sync_notes: string | null
+  synced_by_user: {
+    id: number
+    name: string
+  } | null
+  reviewer: {
+    id: number
+    name: string
+  } | null
+  reviewed_at: string | null
+}
+
+export interface NoorExcuseSyncResponse {
+  success: boolean
+  data: NoorExcuseSyncRecord[]
+  grouped_by_date: Record<string, NoorExcuseSyncRecord[]>
+  stats: {
+    total_synced: number
+    today_synced: number
+    pending_sync: number
+  }
+  filters: {
+    grades: string[]
+  }
+}
+
+export function useNoorExcuseSyncRecordsQuery(filters: Record<string, string> = {}) {
+  const params = new URLSearchParams(filters)
+  return useQuery({
+    queryKey: ['admin', 'noor-excuse-sync', 'records', filters],
+    queryFn: async () => {
+      const { data } = await apiClient.get<NoorExcuseSyncResponse>(`/admin/absence-excuses/noor-sync-records?${params}`)
+      if (!data.success) throw new Error('فشل في جلب البيانات')
+      return data
+    },
+  })
+}
+
+// =====================================================
 // Manual Absence Hooks (إضافة غياب يدوي من الإدارة)
 // =====================================================
 

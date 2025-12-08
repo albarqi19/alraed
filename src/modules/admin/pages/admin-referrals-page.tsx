@@ -6,6 +6,8 @@ import {
   useReceiveReferralMutation,
 } from '../referrals/hooks'
 import type { StudentReferral, ReferralStatus, ReferralFilters } from '../referrals/types'
+import { ReferralStatsModal } from '../referrals/components/ReferralStatsModal'
+import { ReferralSettingsModal } from '../referrals/components/ReferralSettingsModal'
 
 // نوع التبويب
 type ReferralTab = 'teacher' | 'admin' | 'system'
@@ -135,6 +137,8 @@ export function AdminReferralsPage() {
   const [activeTab, setActiveTab] = useState<ReferralTab>('teacher')
   const [filters, setFilters] = useState<ReferralFilters>({ per_page: 15 })
   const [currentPage, setCurrentPage] = useState(1)
+  const [showStatsModal, setShowStatsModal] = useState(false)
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
 
   // تحديد نوع الصفحة
   const isBehavioralPage = location.pathname.includes('/referrals/behavioral')
@@ -304,6 +308,22 @@ export function AdminReferralsPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">{getPageTitle()}</h1>
           <p className="text-sm text-slate-500">متابعة ومعالجة إحالات الطلاب</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowStatsModal(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-sky-700 bg-sky-50 hover:bg-sky-100 rounded-lg transition-colors border border-sky-200"
+          >
+            <i className="bi bi-graph-up" />
+            الإحصائيات
+          </button>
+          <button
+            onClick={() => setShowSettingsModal(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200"
+          >
+            <i className="bi bi-gear" />
+            الإعدادات
+          </button>
         </div>
       </div>
 
@@ -582,6 +602,17 @@ export function AdminReferralsPage() {
           </div>
         )}
       </div>
+
+      {/* النوافذ العائمة */}
+      <ReferralStatsModal
+        isOpen={showStatsModal}
+        onClose={() => setShowStatsModal(false)}
+        type={filters.type}
+      />
+      <ReferralSettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+      />
     </div>
   )
 }

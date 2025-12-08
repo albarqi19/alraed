@@ -11,6 +11,8 @@ import type {
   ReferralDetailResponse,
   ReferralStatsResponse,
   PaginatedReferralsResult,
+  AdvancedReferralStats,
+  AdvancedReferralStatsResponse,
 } from './types'
 
 const REFERRAL_KEYS = {
@@ -79,6 +81,22 @@ export function useAdminReferralStatsQuery(filters?: { type?: string }) {
 
       const { data } = await apiClient.get<ReferralStatsResponse>(
         `/admin/referrals/stats?${params.toString()}`
+      )
+      return data.data
+    },
+  })
+}
+
+// جلب إحصائيات متقدمة
+export function useAdvancedReferralStatsQuery(filters?: { type?: string }) {
+  return useQuery<AdvancedReferralStats>({
+    queryKey: ['admin-referrals', 'advanced-stats', filters ?? {}],
+    queryFn: async () => {
+      const params = new URLSearchParams()
+      if (filters?.type) params.append('type', filters.type)
+
+      const { data } = await apiClient.get<AdvancedReferralStatsResponse>(
+        `/admin/referrals/advanced-stats?${params.toString()}`
       )
       return data.data
     },

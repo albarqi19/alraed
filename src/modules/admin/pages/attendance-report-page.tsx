@@ -13,6 +13,9 @@ import type {
 import { useToast } from '@/shared/feedback/use-toast'
 import { AbsentStudentsPDFModal } from '../components/absent-students-pdf-modal'
 import { NoorSyncStatusModal } from '../components/noor-sync-status-modal'
+import { NoorExcuseSyncStatusModal } from '../components/noor-excuse-sync-status-modal'
+import { AttendanceStatsModal } from '../components/attendance-stats-modal'
+import { BarChart3 } from 'lucide-react'
 
 const REPORT_TYPES = [
   { value: 'class', label: 'كشف فصل كامل', description: 'حدد الصف والشعبة لعرض جميع الطلاب في الفصل.' },
@@ -316,6 +319,8 @@ export function AttendanceReportPage() {
   const [pageSize, setPageSize] = useState<number>(PAGE_SIZE_OPTIONS[1])
   const [showAbsentPDFModal, setShowAbsentPDFModal] = useState(false)
   const [showNoorSyncModal, setShowNoorSyncModal] = useState(false)
+  const [showNoorExcuseSyncModal, setShowNoorExcuseSyncModal] = useState(false)
+  const [showStatsModal, setShowStatsModal] = useState(false)
 
   const toast = useToast()
   const studentsQuery = useStudentsQuery()
@@ -573,6 +578,15 @@ export function AttendanceReportPage() {
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
             type="button"
+            onClick={() => setShowStatsModal(true)}
+            className="button-secondary flex items-center gap-1.5 whitespace-nowrap text-xs sm:gap-2 sm:text-sm"
+          >
+            <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="hidden sm:inline">الإحصائيات</span>
+            <span className="sm:hidden">إحصائيات</span>
+          </button>
+          <button
+            type="button"
             onClick={() => setShowNoorSyncModal(true)}
             className="button-secondary flex items-center gap-1.5 whitespace-nowrap text-xs sm:gap-2 sm:text-sm"
           >
@@ -581,6 +595,17 @@ export function AttendanceReportPage() {
             </svg>
             <span className="hidden sm:inline">حالة الرصد في نور</span>
             <span className="sm:hidden">نور</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowNoorExcuseSyncModal(true)}
+            className="button-secondary flex items-center gap-1.5 whitespace-nowrap text-xs sm:gap-2 sm:text-sm"
+          >
+            <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+            <span className="hidden sm:inline">حالة رصد الأعذار</span>
+            <span className="sm:hidden">أعذار</span>
           </button>
           <button
             type="button"
@@ -604,6 +629,11 @@ export function AttendanceReportPage() {
       <NoorSyncStatusModal
         isOpen={showNoorSyncModal}
         onClose={() => setShowNoorSyncModal(false)}
+      />
+
+      <NoorExcuseSyncStatusModal
+        isOpen={showNoorExcuseSyncModal}
+        onClose={() => setShowNoorExcuseSyncModal(false)}
       />
 
   <div className="grid gap-6 lg:grid-cols-[minmax(320px,360px),1fr] xl:grid-cols-[minmax(320px,380px),1fr]">
@@ -1061,6 +1091,11 @@ export function AttendanceReportPage() {
           </div>
         </div>
       </div>
+      
+      <AttendanceStatsModal
+        isOpen={showStatsModal}
+        onClose={() => setShowStatsModal(false)}
+      />
     </section>
   )
 }

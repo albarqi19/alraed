@@ -199,3 +199,84 @@ export interface DocumentType {
   value: string
   label: string
 }
+
+// الإحصائيات المتقدمة
+export interface AdvancedReferralStats {
+  summary: {
+    total: number
+    pending: number
+    in_progress: number
+    completed: number
+    today: number
+    this_week: number
+    avg_per_day: number
+  }
+  top_students: Array<{
+    student_id: number
+    name: string
+    grade: string
+    class_name: string
+    count: number
+  }>
+  top_referrers: Array<{
+    user_id: number
+    name: string
+    role: string
+    count: number
+  }>
+  by_type: Array<{
+    type: string
+    label: string
+    count: number
+  }>
+  by_target_role: Array<{
+    role: string
+    label: string
+    count: number
+  }>
+  by_assignee: Array<{
+    user_id: number
+    name: string
+    count: number
+  }>
+  by_hour: Array<{
+    hour: number
+    label: string
+    count: number
+  }>
+  by_day_of_week: Array<{
+    day: number
+    label: string
+    count: number
+  }>
+  by_grade: Array<{
+    grade: string
+    count: number
+  }>
+  by_class: Array<{
+    grade: string
+    class_name: string
+    label: string
+    count: number
+  }>
+  by_status: Array<{
+    status: string
+    label: string
+    count: number
+  }>
+  by_priority: Array<{
+    priority: string
+    label: string
+    count: number
+  }>
+  monthly_trend: Array<{
+    year: number
+    month: number
+    label: string
+    count: number
+  }>
+}
+
+export interface AdvancedReferralStatsResponse {
+  data: AdvancedReferralStats
+}
