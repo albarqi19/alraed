@@ -230,12 +230,12 @@ export function TreatmentPlansPage() {
           </div>
 
           {/* Quick Status Filters */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {STATUSES.map((status) => (
               <button
                 key={status}
                 onClick={() => setFilters({ ...filters, status: filters.status === status ? undefined : status })}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${filters.status === status ? STATUS_COLORS[status] + ' border-current' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors whitespace-nowrap ${filters.status === status ? STATUS_COLORS[status] + ' border-current' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}
               >
                 {STATUS_LABELS[status]}
               </button>

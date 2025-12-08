@@ -345,6 +345,26 @@ export function AdminSchoolBellPage() {
 
   return (
     <section className="space-y-6">
+      {/* Mobile Warning - Show only on mobile devices */}
+      <div className="block lg:hidden">
+        <div className="rounded-3xl border-2 border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 p-8 text-center shadow-xl">
+          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-amber-100">
+            <svg className="h-10 w-10 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <h2 className="mb-3 text-2xl font-bold text-slate-900">يُفضل استخدام الكمبيوتر</h2>
+          <p className="mx-auto mb-4 max-w-md text-base leading-relaxed text-slate-700">
+            صفحة الجرس المدرسي مُصممة للعمل على الشاشات الكبيرة للحصول على أفضل تجربة في إدارة الجداول والتحكم في الأحداث.
+          </p>
+          <p className="text-sm font-semibold text-amber-700">
+            يُرجى فتح هذه الصفحة من جهاز كمبيوتر للحصول على تجربة مثالية
+          </p>
+        </div>
+      </div>
+
+      {/* Main Content - Hidden on mobile */}
+      <div className="hidden lg:block space-y-6">
       <header className="space-y-2 text-right">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="space-y-1">
@@ -1050,6 +1070,7 @@ export function AdminSchoolBellPage() {
           onPreviewSound={handlePreviewSound}
         />
       ) : null}
+      </div>
     </section>
   )
 }

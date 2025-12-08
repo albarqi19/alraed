@@ -556,8 +556,8 @@ export function AdminAcademicCalendarPage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
-                    <table className="w-full text-sm">
+                  <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200">
+                    <table className="w-full min-w-[800px] text-sm">
                       <thead>
                         <tr className="border-b border-slate-200 bg-slate-50">
                           <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">اليوم</th>
