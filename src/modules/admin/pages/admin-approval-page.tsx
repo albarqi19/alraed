@@ -491,7 +491,7 @@ export function AdminApprovalPage() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[minmax(880px,1fr),420px]">
-          <div className="min-w-0 rounded-3xl border border-slate-100 bg-white/80 shadow-sm">
+          <div className="min-w-0 overflow-hidden rounded-3xl border border-slate-100 bg-white/80 shadow-sm">
             {approvalsQuery.isLoading ? (
               <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-sm text-muted">
                 <span className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />

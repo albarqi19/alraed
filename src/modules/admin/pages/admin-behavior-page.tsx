@@ -597,7 +597,7 @@ export function AdminBehaviorPage() {
           </div>
         )}
 
-        <div className="overflow-hidden rounded-3xl border border-slate-100">
+        <div className="overflow-x-auto rounded-3xl border border-slate-100">
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50/80 text-xs font-semibold uppercase text-slate-500">
               <tr>
