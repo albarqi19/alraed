@@ -10,6 +10,7 @@ import type {
   ReferralListResponse,
   ReferralDetailResponse,
   ReferralStatsResponse,
+  PaginatedReferralsResult,
 } from './types'
 
 const REFERRAL_KEYS = {
@@ -21,9 +22,9 @@ const REFERRAL_KEYS = {
   stats: () => [...REFERRAL_KEYS.all, 'stats'] as const,
 }
 
-// جلب قائمة الإحالات
+// جلب قائمة الإحالات مع Pagination
 export function useAdminReferralsQuery(filters?: ReferralFilters) {
-  return useQuery<StudentReferral[]>({
+  return useQuery<PaginatedReferralsResult>({
     queryKey: REFERRAL_KEYS.list((filters ?? {}) as Record<string, unknown>),
     queryFn: async () => {
       const params = new URLSearchParams()
@@ -32,14 +33,26 @@ export function useAdminReferralsQuery(filters?: ReferralFilters) {
       if (filters?.target_role) params.append('target_role', filters.target_role)
       if (filters?.priority) params.append('priority', filters.priority)
       if (filters?.assigned_to) params.append('assigned_to', String(filters.assigned_to))
+      if (filters?.referred_by) params.append('referred_by', String(filters.referred_by))
+      if (filters?.grade) params.append('grade', filters.grade)
       if (filters?.date_from) params.append('date_from', filters.date_from)
       if (filters?.date_to) params.append('date_to', filters.date_to)
       if (filters?.referred_by_type) params.append('referred_by_type', filters.referred_by_type)
+      if (filters?.page) params.append('page', String(filters.page))
+      if (filters?.per_page) params.append('per_page', String(filters.per_page))
 
       const { data } = await apiClient.get<ReferralListResponse>(
         `/admin/referrals?${params.toString()}`
       )
-      return data.data
+      return {
+        items: data.data,
+        meta: data.meta ?? {
+          current_page: 1,
+          last_page: 1,
+          per_page: 15,
+          total: data.data.length,
+        },
+      }
     },
   })
 }

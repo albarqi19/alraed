@@ -19,6 +19,8 @@ export interface Student {
   id: number
   name: string
   student_number?: string
+  grade?: string
+  class_name?: string
   classroom?: {
     id: number
     name: string
@@ -118,9 +120,13 @@ export interface ReferralFilters {
   target_role?: string
   priority?: string
   assigned_to?: number
+  referred_by?: number
+  grade?: string
   date_from?: string
   date_to?: string
   referred_by_type?: 'teacher' | 'deputy_students' | 'system'
+  page?: number
+  per_page?: number
 }
 
 export interface AssignReferralPayload {
@@ -164,6 +170,16 @@ export interface ViolationType {
 export interface ReferralListResponse {
   data: StudentReferral[]
   meta?: {
+    current_page: number
+    last_page: number
+    per_page: number
+    total: number
+  }
+}
+
+export interface PaginatedReferralsResult {
+  items: StudentReferral[]
+  meta: {
     current_page: number
     last_page: number
     per_page: number

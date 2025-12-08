@@ -56,18 +56,25 @@ function ReferralRow({
   const priorityStyle = PRIORITY_STYLES[referral.priority] || PRIORITY_STYLES.medium
 
   return (
-    <tr className={`hover:bg-slate-50 transition-colors ${priorityStyle.bg}`}>
+    <tr 
+      className={`hover:bg-slate-50 transition-colors cursor-pointer ${priorityStyle.bg}`}
+      onClick={onView}
+    >
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full ${priorityStyle.dot}`} />
           <span className="font-mono text-sm text-slate-600">{referral.referral_number}</span>
         </div>
       </td>
-      <td className="px-4 py-3">
-        <div>
-          <p className="font-medium text-slate-900">{referral.student?.name}</p>
-          <p className="text-xs text-slate-500">{referral.student?.classroom?.name}</p>
-        </div>
+      <td className="px-4 py-1.5">
+        <p className="font-medium text-slate-900 leading-none">{referral.student?.name}</p>
+        {(referral.student?.grade || referral.student?.class_name) && (
+          <p className="text-xs text-slate-500 leading-none mt-1">
+            {referral.student?.grade}
+            {referral.student?.grade && referral.student?.class_name && ' / '}
+            {referral.student?.class_name}
+          </p>
+        )}
       </td>
       <td className="px-4 py-3">
         <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium ${referral.referral_type === 'academic_weakness'
@@ -111,7 +118,7 @@ function ReferralRow({
             </button>
           )}
           <button
-            onClick={onView}
+            onClick={(e) => { e.stopPropagation(); onView(); }}
             className="text-xs text-sky-600 hover:text-sky-800 px-2 py-1 rounded hover:bg-sky-50"
           >
             عرض
@@ -126,7 +133,8 @@ export function AdminReferralsPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const [activeTab, setActiveTab] = useState<ReferralTab>('teacher')
-  const [filters, setFilters] = useState<ReferralFilters>({})
+  const [filters, setFilters] = useState<ReferralFilters>({ per_page: 15 })
+  const [currentPage, setCurrentPage] = useState(1)
 
   // تحديد نوع الصفحة
   const isBehavioralPage = location.pathname.includes('/referrals/behavioral')
@@ -151,9 +159,14 @@ export function AdminReferralsPage() {
     }
   }, [isGuidancePage, isBehavioralPage])
 
+  // إعادة تعيين الصفحة عند تغيير التبويب
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [activeTab])
+
   // فلاتر حسب التبويب النشط
   const tabFilters = useMemo((): ReferralFilters => {
-    const baseFilters = { ...filters }
+    const baseFilters = { ...filters, page: currentPage }
 
     switch (activeTab) {
       case 'teacher':
@@ -170,7 +183,7 @@ export function AdminReferralsPage() {
       default:
         return baseFilters
     }
-  }, [filters, activeTab])
+  }, [filters, activeTab, currentPage])
 
   // تحديد عنوان الصفحة
   const getPageTitle = () => {
@@ -190,8 +203,70 @@ export function AdminReferralsPage() {
   }, [isGuidancePage, isBehavioralPage])
 
   const { data: referrals, isLoading, error } = useAdminReferralsQuery(tabFilters)
+  
+  // جلب جميع الإحالات بدون pagination لحساب الإحصائيات
+  const allReferralsFilters = useMemo(() => {
+    const base: ReferralFilters = { per_page: 1000 }
+    if (isGuidancePage) base.type = 'academic_weakness'
+    if (isBehavioralPage) base.type = 'behavioral_violation'
+    // إضافة فلتر التبويب النشط
+    switch (activeTab) {
+      case 'teacher': base.referred_by_type = 'teacher'; break
+      case 'admin': base.referred_by_type = 'deputy_students'; break
+      case 'system': base.referred_by_type = 'system'; break
+    }
+    return base
+  }, [isGuidancePage, isBehavioralPage, activeTab])
+  
+  const { data: allReferrals } = useAdminReferralsQuery(allReferralsFilters)
   const { data: stats } = useAdminReferralStatsQuery(statsFilters)
   const receiveMutation = useReceiveReferralMutation()
+
+  // حساب إحصائيات الفلاتر (المحيل، المكلف، الصف)
+  const filterStats = useMemo(() => {
+    const items = allReferrals?.items ?? []
+    
+    // المحيلين مع عدد الإحالات
+    const referrersMap = new Map<number, { name: string; count: number }>()
+    // المكلفين مع عدد الإحالات
+    const assigneesMap = new Map<number, { name: string; count: number }>()
+    // الصفوف مع عدد الإحالات
+    const gradesMap = new Map<string, number>()
+    
+    items.forEach(ref => {
+      // المحيل
+      if (ref.referred_by?.id) {
+        const existing = referrersMap.get(ref.referred_by.id)
+        if (existing) {
+          existing.count++
+        } else {
+          referrersMap.set(ref.referred_by.id, { name: ref.referred_by.name, count: 1 })
+        }
+      }
+      
+      // المكلف
+      if (ref.assigned_to?.id) {
+        const existing = assigneesMap.get(ref.assigned_to.id)
+        if (existing) {
+          existing.count++
+        } else {
+          assigneesMap.set(ref.assigned_to.id, { name: ref.assigned_to.name, count: 1 })
+        }
+      }
+      
+      // الصف - نستخدم الصف فقط بغض النظر عن الفصل
+      const gradeOnly = ref.student?.grade || ref.student?.classroom?.name
+      if (gradeOnly) {
+        gradesMap.set(gradeOnly, (gradesMap.get(gradeOnly) ?? 0) + 1)
+      }
+    })
+    
+    return {
+      referrers: Array.from(referrersMap.entries()).map(([id, data]) => ({ id, ...data })).sort((a, b) => b.count - a.count),
+      assignees: Array.from(assigneesMap.entries()).map(([id, data]) => ({ id, ...data })).sort((a, b) => b.count - a.count),
+      grades: Array.from(gradesMap.entries()).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
+    }
+  }, [allReferrals])
 
   // حساب عدد الإحالات لكل تبويب
   const tabCounts = useMemo(() => {
@@ -212,10 +287,14 @@ export function AdminReferralsPage() {
   }
 
   const updateFilter = (key: keyof ReferralFilters, value: string) => {
-    setFilters((prev) => ({
-      ...prev,
-      [key]: value || undefined,
-    }))
+    setCurrentPage(1) // إعادة تعيين الصفحة عند تغيير الفلتر
+    setFilters((prev) => {
+      // للفلاتر الرقمية (referred_by, assigned_to)
+      if ((key === 'referred_by' || key === 'assigned_to') && value) {
+        return { ...prev, [key]: Number(value) }
+      }
+      return { ...prev, [key]: value || undefined }
+    })
   }
 
   return (
@@ -346,6 +425,48 @@ export function AdminReferralsPage() {
               <option value="high">عالية</option>
               <option value="urgent">عاجلة</option>
             </select>
+
+            {/* فلتر المحيل */}
+            <select
+              value={filters.referred_by ?? ''}
+              onChange={(e) => updateFilter('referred_by', e.target.value)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
+            >
+              <option value="">جميع المحيلين</option>
+              {filterStats.referrers.map(ref => (
+                <option key={ref.id} value={ref.id}>
+                  {ref.name} ({ref.count})
+                </option>
+              ))}
+            </select>
+
+            {/* فلتر المكلف */}
+            <select
+              value={filters.assigned_to ?? ''}
+              onChange={(e) => updateFilter('assigned_to', e.target.value)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
+            >
+              <option value="">جميع المكلفين</option>
+              {filterStats.assignees.map(assignee => (
+                <option key={assignee.id} value={assignee.id}>
+                  {assignee.name} ({assignee.count})
+                </option>
+              ))}
+            </select>
+
+            {/* فلتر الصف */}
+            <select
+              value={filters.grade ?? ''}
+              onChange={(e) => updateFilter('grade', e.target.value)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
+            >
+              <option value="">جميع الصفوف</option>
+              {filterStats.grades.map(grade => (
+                <option key={grade.name} value={grade.name}>
+                  {grade.name} ({grade.count})
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -359,34 +480,92 @@ export function AdminReferralsPage() {
             <i className="bi bi-exclamation-triangle text-5xl text-red-400" />
             <p className="mt-4 text-lg font-medium text-slate-600">حدث خطأ في تحميل البيانات</p>
           </div>
-        ) : referrals && referrals.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600">رقم الإحالة</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600">الطالب</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600">النوع</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600">الجهة</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600">المحيل</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600">المكلف</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600">الحالة</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600">التاريخ</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600">الإجراءات</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {referrals.map((referral) => (
-                  <ReferralRow
-                    key={referral.id}
-                    referral={referral}
-                    onView={() => navigate(`/admin/referrals/${referral.id}`)}
-                    onReceive={referral.status === 'pending' ? () => handleReceive(referral.id) : undefined}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
+        ) : referrals && referrals.items.length > 0 ? (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600">رقم الإحالة</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600">الطالب</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600">النوع</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600">الجهة</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600">المحيل</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600">المكلف</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600">الحالة</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600">التاريخ</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600">الإجراءات</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {referrals.items.map((referral) => (
+                    <ReferralRow
+                      key={referral.id}
+                      referral={referral}
+                      onView={() => navigate(`/admin/referrals/${referral.id}`)}
+                      onReceive={referral.status === 'pending' ? () => handleReceive(referral.id) : undefined}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {referrals.meta.last_page > 1 && (
+              <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 mt-4">
+                <div className="text-sm text-slate-600">
+                  عرض {((referrals.meta.current_page - 1) * referrals.meta.per_page) + 1} إلى{' '}
+                  {Math.min(referrals.meta.current_page * referrals.meta.per_page, referrals.meta.total)} من{' '}
+                  {referrals.meta.total} إحالة
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    السابق
+                  </button>
+                  
+                  {/* أرقام الصفحات */}
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: referrals.meta.last_page }, (_, i) => i + 1)
+                      .filter(page => {
+                        // عرض أول 3 صفحات، آخر 3 صفحات، والصفحات حول الصفحة الحالية
+                        return page <= 3 || 
+                               page > referrals.meta.last_page - 3 || 
+                               Math.abs(page - currentPage) <= 1
+                      })
+                      .map((page, index, arr) => (
+                        <span key={page} className="flex items-center">
+                          {index > 0 && arr[index - 1] !== page - 1 && (
+                            <span className="px-1 text-slate-400">...</span>
+                          )}
+                          <button
+                            onClick={() => setCurrentPage(page)}
+                            className={`min-w-[32px] h-8 text-sm rounded-lg ${
+                              currentPage === page
+                                ? 'bg-sky-600 text-white'
+                                : 'border border-slate-300 hover:bg-slate-50'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        </span>
+                      ))}
+                  </div>
+                  
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(referrals.meta.last_page, p + 1))}
+                    disabled={currentPage === referrals.meta.last_page}
+                    className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    التالي
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <div className="text-center py-20">
             <i className={`${availableTabs.find(t => t.key === activeTab)?.icon} text-5xl text-slate-300`} />
