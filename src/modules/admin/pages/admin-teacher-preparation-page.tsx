@@ -855,7 +855,7 @@ export function AdminTeacherPreparationPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-7">
+      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-7">
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <div className="text-xs text-slate-500">عدد المعلمين</div>
           <div className="text-2xl font-bold text-slate-700">{stats.total_teachers}</div>
@@ -880,7 +880,7 @@ export function AdminTeacherPreparationPage() {
           <div className="text-xs text-amber-600">غير محضّر</div>
           <div className="text-2xl font-bold text-amber-700">{stats.total_unprepared}</div>
         </div>
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm">
+        <div className="col-span-2 rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm lg:col-span-1">
           <div className="text-xs text-blue-600">مربوط / غير مربوط</div>
           <div className="text-2xl font-bold text-blue-700">
             <span className="text-emerald-600">{stats.linked_count}</span>

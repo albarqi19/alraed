@@ -998,7 +998,7 @@ export function AdminTeacherAttendancePage() {
       </header>
 
       <section className="glass-card space-y-6">
-        <div className="grid gap-4 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
           <article className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-4 text-right shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">إجمالي السجلات</p>
             <p className="mt-2 text-2xl font-bold text-slate-900">{stats ? stats.total.toLocaleString('ar-SA') : '—'}</p>
@@ -1015,7 +1015,7 @@ export function AdminTeacherAttendancePage() {
             <p className="text-xs font-semibold uppercase tracking-widest text-sky-600">حالات الحضور</p>
             <p className="mt-2 text-2xl font-bold text-sky-700">{stats ? stats.present.toLocaleString('ar-SA') : '—'}</p>
           </article>
-          <article className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-4 text-right shadow-sm">
+          <article className="col-span-2 rounded-2xl border border-slate-200 bg-white/80 px-4 py-4 text-right shadow-sm lg:col-span-1">
             <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">آخر تحديث</p>
             <p className="mt-2 text-sm font-semibold text-slate-700">{refreshedAtLabel ?? '—'}</p>
           </article>

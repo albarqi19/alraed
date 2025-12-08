@@ -813,7 +813,7 @@ export function AdminTeachersPage() {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start overflow-hidden">
         <div className="space-y-6 min-w-0">
-          <div className="grid gap-4 md:grid-cols-3 min-w-0">
+          <div className="grid grid-cols-3 gap-4 min-w-0">
             {stats.map((stat) => (
               <div key={stat.label} className="glass-card flex flex-col items-center gap-2 text-center min-w-0">
                 <span className="text-3xl font-bold text-slate-900">{stat.value}</span>

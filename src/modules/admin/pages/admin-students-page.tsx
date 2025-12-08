@@ -554,7 +554,7 @@ export function AdminStudentsPage() {
         <p className="text-sm text-muted">تابع بيانات الطلاب، حدّث معلومات الاتصال، وحرّكهم بين الصفوف بسهولة.</p>
       </header>
 
-      <div className="glass-card grid gap-4 md:grid-cols-3">
+      <div className="glass-card grid grid-cols-3 gap-4">
         {stats.map((stat) => (
           <div key={stat.label} className="rounded-3xl border border-slate-100 bg-white/80 p-5 text-center shadow-sm">
             <p className="text-3xl font-semibold text-slate-900">{stat.value}</p>
