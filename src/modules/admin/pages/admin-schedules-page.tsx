@@ -2278,7 +2278,7 @@ export function AdminSchedulesPage() {
                       </p>
                     ) : null}
                   </div>
-                  <div className="flex flex-col gap-2 sm:flex-row">
+                  <div className="hidden md:flex flex-col gap-2 sm:flex-row">
                     <button
                       type="button"
                       onClick={() => handleEdit(selectedSchedule)}
@@ -2332,7 +2332,8 @@ export function AdminSchedulesPage() {
                   </div>
                 </div>
 
-                <div className="overflow-x-auto rounded-3xl border border-slate-200">
+                {/* جدول الفترات - للشاشات الكبيرة */}
+                <div className="hidden md:block overflow-x-auto rounded-3xl border border-slate-200">
                   <table className="w-full min-w-[640px] table-fixed text-right text-sm">
                     <thead className="bg-slate-50/80 text-xs uppercase tracking-wide text-slate-500">
                       <tr>
@@ -2379,6 +2380,53 @@ export function AdminSchedulesPage() {
                       ) : null}
                     </tbody>
                   </table>
+                </div>
+
+                {/* بطاقات الفترات - للجوال */}
+                <div className="md:hidden space-y-3">
+                  {(selectedSchedule.periods ?? []).map((period) => {
+                    const start = formatTime(period.start_time)
+                    const end = formatTime(period.end_time)
+                    const duration = period.break_duration ?? ''
+                    return (
+                      <div key={`${period.period_number}-${period.start_time}`} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <span className="font-semibold text-teal-600">الفترة {period.period_number}</span>
+                            {period.period_name && <p className="text-xs text-slate-600 mt-1">{period.period_name}</p>}
+                          </div>
+                          {period.is_break ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs text-amber-700">
+                              فسحة
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs text-emerald-700">
+                              حصة دراسية
+                            </span>
+                          )}
+                        </div>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-600">البداية:</span>
+                            <span className="font-semibold text-slate-900">{start || '—'}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-600">النهاية:</span>
+                            <span className="font-semibold text-slate-900">{end || '—'}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-600">المدة:</span>
+                            <span className="font-semibold text-slate-900">{duration ? `${duration} دقيقة` : period.is_break ? '—' : 'حسب الفترة'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {(selectedSchedule.periods ?? []).length === 0 && (
+                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-muted">
+                      لا توجد فترات مسجلة لهذا الجدول حاليًا.
+                    </div>
+                  )}
                 </div>
 
                 <p className="text-xs text-muted">
