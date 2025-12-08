@@ -11,6 +11,7 @@ import {
   useAdminSettingsQuery,
 } from '../hooks'
 import { TeacherAttendanceStatsModal } from '../components/teacher-attendance-stats-modal'
+import { TeacherAttendanceFloatingWidget } from '../components/teacher-attendance-floating-widget'
 import type {
   TeacherHudoriAttendanceFilters,
   TeacherHudoriAttendanceLoginMethod,
@@ -956,13 +957,6 @@ export function AdminTeacherAttendancePage() {
             </button>
             <button
               type="button"
-              onClick={() => setIsStatsModalOpen(true)}
-              className="button-secondary"
-            >
-              <i className="bi bi-graph-up" /> الإحصائيات
-            </button>
-            <button
-              type="button"
               className="button-primary"
               disabled
             >
@@ -1107,7 +1101,7 @@ export function AdminTeacherAttendancePage() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
-          <div className="rounded-3xl border border-slate-100 bg-white/85 shadow-sm">
+          <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white/85 shadow-sm">
             {attendanceQuery.isLoading ? (
               <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-sm text-muted">
                 <span className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
@@ -1120,22 +1114,22 @@ export function AdminTeacherAttendancePage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-[880px] table-fixed text-right text-sm">
+                <table className="min-w-full table-auto text-right text-sm">
                   <thead className="bg-slate-50/80 text-[11px] uppercase tracking-wide text-slate-500">
                     <tr>
-                      <th className="px-4 py-2.5 font-semibold">المعلم</th>
-                      <th className="px-4 py-2.5 font-semibold">حالة السجل</th>
-                      <th className="px-4 py-2.5 font-semibold">وقت العملية</th>
-                      <th className="px-4 py-2.5 font-semibold">الدخول / الانصراف</th>
-                      <th className="px-4 py-2.5 font-semibold">التأخير</th>
-                      <th className="px-4 py-2.5 font-semibold">البوابة والمصدر</th>
-                      <th className="px-4 py-2.5 font-semibold">المطابقة</th>
+                      <th className="px-3 py-2.5 font-semibold lg:px-4">المعلم</th>
+                      <th className="px-3 py-2.5 font-semibold lg:px-4">حالة السجل</th>
+                      <th className="px-3 py-2.5 font-semibold lg:px-4">وقت العملية</th>
+                      <th className="px-3 py-2.5 font-semibold lg:px-4">الدخول / الانصراف</th>
+                      <th className="px-3 py-2.5 font-semibold lg:px-4">التأخير</th>
+                      <th className="px-3 py-2.5 font-semibold lg:px-4">البوابة والمصدر</th>
+                      <th className="px-3 py-2.5 font-semibold lg:px-4">المطابقة</th>
                     </tr>
                   </thead>
                   <tbody>
                     {records.map((record) => (
                       <tr key={record.id} className="border-t border-slate-100 text-[13px] transition hover:bg-slate-50/70">
-                        <td className="px-4 py-3 align-top">
+                        <td className="px-3 py-3 align-top lg:px-4">
                           <div className="space-y-1">
                             <p className="font-semibold text-slate-900">{record.employee_name}</p>
                             <p className="text-[11px] text-muted">الهوية: {record.national_id}</p>
@@ -1144,7 +1138,7 @@ export function AdminTeacherAttendancePage() {
                             ) : null}
                           </div>
                         </td>
-                        <td className="px-4 py-3 align-top">
+                        <td className="px-3 py-3 align-top lg:px-4">
                           <div className="space-y-2">
                             <StatusBadge record={record} />
                             <LoginMethodBadge record={record} />
@@ -1157,19 +1151,18 @@ export function AdminTeacherAttendancePage() {
                             ) : null}
                           </div>
                         </td>
-                        <td className="px-4 py-3 align-top">
+                        <td className="px-3 py-3 align-top lg:px-4">
                           <div className="space-y-1 text-[12px] text-slate-600">
                             <p>
-                              <span className="font-semibold text-slate-700">وقت العملية:</span>{' '}
-                              {formatTime(record.transaction_time)}
+                              <span className="font-semibold text-slate-700">وقت العملية:</span> {formatTime(record.transaction_time)}
                             </p>
-                            <p className="text-[11px] text-muted">التاريخ: {formatDate(record.attendance_date)}</p>
+                            <p className="text-[11px] text-muted">{formatDate(record.attendance_date)}</p>
                             {record.page_number ? (
                               <p className="text-[11px] text-muted">رقم الصفحة: {record.page_number}</p>
                             ) : null}
                           </div>
                         </td>
-                        <td className="px-4 py-3 align-top">
+                        <td className="px-3 py-3 align-top lg:px-4">
                           <div className="space-y-1 text-[12px] text-slate-600">
                             <p>
                               <span className="font-semibold text-slate-700">حضور:</span> {formatTime(record.check_in_time)}
@@ -1179,7 +1172,7 @@ export function AdminTeacherAttendancePage() {
                             </p>
                           </div>
                         </td>
-                        <td className="px-4 py-3 align-top">
+                        <td className="px-3 py-3 align-top lg:px-4">
                           {record.delay_status ? (
                             <div className="space-y-2">
                               <DelayStatusBadge status={record.delay_status} label={record.delay_status_label} />
@@ -1201,7 +1194,7 @@ export function AdminTeacherAttendancePage() {
                             <span className="text-[11px] text-muted">لا توجد بيانات تأخير</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 align-top">
+                        <td className="px-3 py-3 align-top lg:px-4">
                           <div className="space-y-1 text-[12px] text-slate-600">
                             <p>
                               <span className="font-semibold text-slate-700">البوابة:</span> {record.gate_name ?? '—'}
@@ -1214,7 +1207,7 @@ export function AdminTeacherAttendancePage() {
                             </p>
                           </div>
                         </td>
-                        <td className="px-4 py-3 align-top">
+                        <td className="px-3 py-3 align-top lg:px-4">
                           <div className="space-y-2">
                             <MatchBadge record={record} />
                           </div>
@@ -2182,6 +2175,13 @@ export function AdminTeacherAttendancePage() {
       <TeacherAttendanceStatsModal
         isOpen={isStatsModalOpen}
         onClose={() => setIsStatsModalOpen(false)}
+      />
+
+      {/* الويدجت العائم */}
+      <TeacherAttendanceFloatingWidget
+        onStatsClick={() => setIsStatsModalOpen(true)}
+        onRefresh={() => attendanceQuery.refetch()}
+        isRefreshing={attendanceQuery.isFetching}
       />
     </section>
   )
