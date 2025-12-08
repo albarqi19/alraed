@@ -354,6 +354,20 @@ export function useUpdateTeacherAttendanceDelayStatusMutation() {
   })
 }
 
+export function useTeacherAttendanceAdvancedStatsQuery(options: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: [...adminQueryKeys.teacherAttendance.root(), 'advanced-stats'],
+    queryFn: async () => {
+      const { data } = await apiClient.get<{ success: boolean; data: import('./types').TeacherAttendanceAdvancedStats }>(
+        '/admin/teacher-attendance/advanced-stats'
+      )
+      return data.data
+    },
+    enabled: options.enabled ?? true,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
 export function useAdminDashboardStatsQuery() {
   return useQuery({
     queryKey: adminQueryKeys.dashboard(),
@@ -1548,7 +1562,7 @@ export function useWhatsappHistoryQuery(
   options: { enabled?: boolean } = {}
 ) {
   const enabled = options.enabled ?? true
-  
+
   return useQuery({
     queryKey: adminQueryKeys.whatsapp.history(filters ?? {}),
     queryFn: () => fetchWhatsappHistory(filters),

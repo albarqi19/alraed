@@ -10,6 +10,7 @@ import {
   useUpdateTeacherAttendanceDelayStatusMutation,
   useAdminSettingsQuery,
 } from '../hooks'
+import { TeacherAttendanceStatsModal } from '../components/teacher-attendance-stats-modal'
 import type {
   TeacherHudoriAttendanceFilters,
   TeacherHudoriAttendanceLoginMethod,
@@ -165,105 +166,105 @@ type AbsenceDialogState = {
   error: string | null
 }
 
-  // تحويل الأرقام العربية إلى إنجليزية
-  function convertArabicNumeralsToEnglish(text: string): string {
-    const arabicToEnglish: Record<string, string> = {
-      '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4',
-      '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9'
-    }
-    return text.replace(/[٠-٩]/g, (digit) => arabicToEnglish[digit] || digit)
+// تحويل الأرقام العربية إلى إنجليزية
+function convertArabicNumeralsToEnglish(text: string): string {
+  const arabicToEnglish: Record<string, string> = {
+    '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4',
+    '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9'
   }
+  return text.replace(/[٠-٩]/g, (digit) => arabicToEnglish[digit] || digit)
+}
 
-  function formatHijriDateForTemplate(value?: string | Date | null) {
-    if (!value) return '—'
-    const date = value instanceof Date ? value : new Date(value)
-    if (Number.isNaN(date.getTime())) return '—'
-    const locales = ['ar-SA-u-ca-islamic-umalqura', 'ar-SA-u-ca-islamic', 'ar-SA']
-    for (const locale of locales) {
-      try {
-        const formatted = new Intl.DateTimeFormat(locale, { dateStyle: 'long' }).format(date)
-        return convertArabicNumeralsToEnglish(formatted)
-      } catch {
-        continue
-      }
+function formatHijriDateForTemplate(value?: string | Date | null) {
+  if (!value) return '—'
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  const locales = ['ar-SA-u-ca-islamic-umalqura', 'ar-SA-u-ca-islamic', 'ar-SA']
+  for (const locale of locales) {
+    try {
+      const formatted = new Intl.DateTimeFormat(locale, { dateStyle: 'long' }).format(date)
+      return convertArabicNumeralsToEnglish(formatted)
+    } catch {
+      continue
     }
+  }
+  const fallback = date.toLocaleDateString('ar-SA')
+  return convertArabicNumeralsToEnglish(fallback)
+}
+
+function formatGregorianDateForTemplate(value?: string | Date | null) {
+  if (!value) return '—'
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  try {
+    const formatted = new Intl.DateTimeFormat('ar-SA', { dateStyle: 'long' }).format(date)
+    return convertArabicNumeralsToEnglish(formatted)
+  } catch {
     const fallback = date.toLocaleDateString('ar-SA')
     return convertArabicNumeralsToEnglish(fallback)
   }
+}
 
-  function formatGregorianDateForTemplate(value?: string | Date | null) {
-    if (!value) return '—'
-    const date = value instanceof Date ? value : new Date(value)
-    if (Number.isNaN(date.getTime())) return '—'
+function normalizeTimeForTemplate(value?: string | null) {
+  if (!value) return '—'
+  const normalized = extractTimeInputValue(value)
+  if (normalized) return normalized
+  return value
+}
+
+function formatDayNameForTemplate(value?: string | Date | null) {
+  if (!value) return '—'
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  try {
+    return new Intl.DateTimeFormat('ar-SA', { weekday: 'long' }).format(date)
+  } catch {
     try {
-      const formatted = new Intl.DateTimeFormat('ar-SA', { dateStyle: 'long' }).format(date)
-      return convertArabicNumeralsToEnglish(formatted)
+      const options: Intl.DateTimeFormatOptions = { weekday: 'long' }
+      return date.toLocaleDateString('ar-SA', options)
     } catch {
-      const fallback = date.toLocaleDateString('ar-SA')
-      return convertArabicNumeralsToEnglish(fallback)
+      return '—'
     }
   }
+}
 
-  function normalizeTimeForTemplate(value?: string | null) {
-    if (!value) return '—'
-    const normalized = extractTimeInputValue(value)
-    if (normalized) return normalized
-    return value
+function createInquiryTemplateData(
+  record: TeacherAttendanceDelayRecord,
+  options: { schoolName: string; workStartTime?: string | null; issueDate?: Date; absenceDurationText?: string | null },
+): InquiryTemplateData {
+  const issueDate = options.issueDate ?? new Date()
+  const teacherName = record.teacher_name?.trim() || record.user?.name?.trim() || '—'
+  const nationalId = record.national_id?.trim() || '—'
+  const attendanceDate = record.attendance_date ?? null
+
+  const delayMinutesText =
+    typeof record.delay_minutes === 'number'
+      ? `${Math.max(record.delay_minutes, 0)} دقيقة`
+      : '—'
+
+  const absenceReasonLabel = record.absence_reason_label?.trim()
+    || (record.absence_reason && absenceReasonLabels[record.absence_reason as TeacherAbsenceReason])
+    || null
+  const absenceNotes = record.absence_notes?.trim() || null
+  const absenceDurationText = options.absenceDurationText ?? (record.delay_status === 'absent' ? 'يوم واحد' : null)
+
+  return {
+    schoolName: options.schoolName || '—',
+    teacherName,
+    nationalId,
+    attendanceDayName: formatDayNameForTemplate(attendanceDate),
+    attendanceDateHijri: formatHijriDateForTemplate(attendanceDate),
+    attendanceDateGregorian: formatGregorianDateForTemplate(attendanceDate),
+    checkInTime: normalizeTimeForTemplate(record.check_in_time),
+    workStartTime: normalizeTimeForTemplate(options.workStartTime ?? null),
+    delayMinutesText,
+    issueDateHijri: formatHijriDateForTemplate(issueDate),
+    issueDateGregorian: formatGregorianDateForTemplate(issueDate),
+    absenceReasonLabel,
+    absenceNotes,
+    absenceDurationText,
   }
-
-  function formatDayNameForTemplate(value?: string | Date | null) {
-    if (!value) return '—'
-    const date = value instanceof Date ? value : new Date(value)
-    if (Number.isNaN(date.getTime())) return '—'
-    try {
-      return new Intl.DateTimeFormat('ar-SA', { weekday: 'long' }).format(date)
-    } catch {
-      try {
-        const options: Intl.DateTimeFormatOptions = { weekday: 'long' }
-        return date.toLocaleDateString('ar-SA', options)
-      } catch {
-        return '—'
-      }
-    }
-  }
-
-  function createInquiryTemplateData(
-    record: TeacherAttendanceDelayRecord,
-    options: { schoolName: string; workStartTime?: string | null; issueDate?: Date; absenceDurationText?: string | null },
-  ): InquiryTemplateData {
-    const issueDate = options.issueDate ?? new Date()
-    const teacherName = record.teacher_name?.trim() || record.user?.name?.trim() || '—'
-    const nationalId = record.national_id?.trim() || '—'
-    const attendanceDate = record.attendance_date ?? null
-
-    const delayMinutesText =
-      typeof record.delay_minutes === 'number'
-        ? `${Math.max(record.delay_minutes, 0)} دقيقة`
-        : '—'
-
-    const absenceReasonLabel = record.absence_reason_label?.trim()
-      || (record.absence_reason && absenceReasonLabels[record.absence_reason as TeacherAbsenceReason])
-      || null
-    const absenceNotes = record.absence_notes?.trim() || null
-    const absenceDurationText = options.absenceDurationText ?? (record.delay_status === 'absent' ? 'يوم واحد' : null)
-
-    return {
-      schoolName: options.schoolName || '—',
-      teacherName,
-      nationalId,
-      attendanceDayName: formatDayNameForTemplate(attendanceDate),
-      attendanceDateHijri: formatHijriDateForTemplate(attendanceDate),
-      attendanceDateGregorian: formatGregorianDateForTemplate(attendanceDate),
-      checkInTime: normalizeTimeForTemplate(record.check_in_time),
-      workStartTime: normalizeTimeForTemplate(options.workStartTime ?? null),
-      delayMinutesText,
-      issueDateHijri: formatHijriDateForTemplate(issueDate),
-      issueDateGregorian: formatGregorianDateForTemplate(issueDate),
-      absenceReasonLabel,
-      absenceNotes,
-      absenceDurationText,
-    }
-  }
+}
 
 function formatDate(value?: string | null, options: Intl.DateTimeFormatOptions = { dateStyle: 'medium' }) {
   if (!value) return '—'
@@ -400,6 +401,7 @@ export function AdminTeacherAttendancePage() {
     search: '',
   })
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
+  const [isStatsModalOpen, setIsStatsModalOpen] = useState(false)
   const [settingsForm, setSettingsForm] = useState<AttendanceSettingsState>({
     start_time: '',
     end_time: '',
@@ -427,20 +429,20 @@ export function AdminTeacherAttendancePage() {
   const [activeStatusUpdateId, setActiveStatusUpdateId] = useState<number | null>(null)
   const [excuseDialog, setExcuseDialog] = useState<
     | {
-        record: TeacherAttendanceDelayRecord
-        reason: 'technical_issue' | 'other'
-        notes: string
-        error: string | null
-      }
+      record: TeacherAttendanceDelayRecord
+      reason: 'technical_issue' | 'other'
+      notes: string
+      error: string | null
+    }
     | null
   >(null)
   const [absenceDialog, setAbsenceDialog] = useState<AbsenceDialogState | null>(null)
   const [recalculateDialog, setRecalculateDialog] = useState<
     | {
-        record: TeacherAttendanceDelayRecord
-        timeValue: string
-        error: string | null
-      }
+      record: TeacherAttendanceDelayRecord
+      timeValue: string
+      error: string | null
+    }
     | null
   >(null)
   const [inquiryDialog, setInquiryDialog] = useState<InquiryDialogState | null>(null)
@@ -468,8 +470,8 @@ export function AdminTeacherAttendancePage() {
       order: delayFilters.order,
     }
 
-  if (delayFilters.status !== 'all') payload.status = delayFilters.status
-  if (delayFilters.absence_reason !== 'all') payload.absence_reason = delayFilters.absence_reason
+    if (delayFilters.status !== 'all') payload.status = delayFilters.status
+    if (delayFilters.absence_reason !== 'all') payload.absence_reason = delayFilters.absence_reason
     if (delayFilters.start_date) payload.start_date = delayFilters.start_date
     if (delayFilters.end_date) payload.end_date = delayFilters.end_date
     if (delayFilters.search.trim()) payload.search = delayFilters.search.trim()
@@ -508,7 +510,7 @@ export function AdminTeacherAttendancePage() {
 
   const delays = delayQuery.data?.data ?? []
   const delayMeta = delayQuery.data?.meta
-  
+
   const sortedDelays = useMemo(() => {
     // ترتيب السجلات: الغائبين أولاً ثم المتأخرين ثم المعذورين ثم الباقي
     const statusOrder: Record<TeacherDelayStatus, number> = {
@@ -518,14 +520,14 @@ export function AdminTeacherAttendancePage() {
       on_time: 4,
       unknown: 5,
     }
-    
+
     return [...delays].sort((a, b) => {
       const orderA = statusOrder[a.delay_status] ?? 999
       const orderB = statusOrder[b.delay_status] ?? 999
       return orderA - orderB
     })
   }, [delays])
-  
+
   const delayAnalytics = useMemo(() => {
     if (!delays.length) {
       return {
@@ -613,7 +615,7 @@ export function AdminTeacherAttendancePage() {
 
   const handleSaveSettings = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-  const payload: TeacherAttendanceSettingsPayload = {
+    const payload: TeacherAttendanceSettingsPayload = {
       start_time: settingsForm.start_time.trim() ? settingsForm.start_time : null,
       end_time: settingsForm.end_time.trim() ? settingsForm.end_time : null,
       grace_minutes: Math.max(0, Math.trunc(settingsForm.grace_minutes)),
@@ -954,6 +956,13 @@ export function AdminTeacherAttendancePage() {
             </button>
             <button
               type="button"
+              onClick={() => setIsStatsModalOpen(true)}
+              className="button-secondary"
+            >
+              <i className="bi bi-graph-up" /> الإحصائيات
+            </button>
+            <button
+              type="button"
               className="button-primary"
               disabled
             >
@@ -1097,7 +1106,7 @@ export function AdminTeacherAttendancePage() {
           </div>
         </div>
 
-  <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
           <div className="rounded-3xl border border-slate-100 bg-white/85 shadow-sm">
             {attendanceQuery.isLoading ? (
               <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-sm text-muted">
@@ -1259,7 +1268,7 @@ export function AdminTeacherAttendancePage() {
       </section>
 
       <section className="glass-card space-y-6">
-  <header id="teacher-delay-header" className="space-y-3 scroll-mt-16">
+        <header id="teacher-delay-header" className="space-y-3 scroll-mt-16">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="space-y-2 text-right">
               <h2 className="text-2xl font-bold text-slate-900">إدارة حالات التأخر والغياب</h2>
@@ -1504,11 +1513,10 @@ export function AdminTeacherAttendancePage() {
                                     <button
                                       type="button"
                                       onClick={() => openAbsenceDialog(delay)}
-                                      className={`flex-1 rounded-2xl px-3 py-1 text-[12px] font-semibold transition ${
-                                        hasCustomAbsenceReason
-                                          ? 'bg-indigo-600 text-white shadow'
-                                          : 'text-slate-600 hover:bg-slate-100'
-                                      }`}
+                                      className={`flex-1 rounded-2xl px-3 py-1 text-[12px] font-semibold transition ${hasCustomAbsenceReason
+                                        ? 'bg-indigo-600 text-white shadow'
+                                        : 'text-slate-600 hover:bg-slate-100'
+                                        }`}
                                       disabled={isUpdatingStatus}
                                     >
                                       {absenceActionLabel}
@@ -1519,11 +1527,10 @@ export function AdminTeacherAttendancePage() {
                                     <button
                                       type="button"
                                       onClick={() => handleDelayStatusChange(delay, 'delayed')}
-                                      className={`flex-1 rounded-2xl px-3 py-1 text-[12px] font-semibold transition ${
-                                        actionStatus === 'delayed'
-                                          ? 'bg-rose-600 text-white shadow'
-                                          : 'text-slate-600 hover:bg-slate-100'
-                                      }`}
+                                      className={`flex-1 rounded-2xl px-3 py-1 text-[12px] font-semibold transition ${actionStatus === 'delayed'
+                                        ? 'bg-rose-600 text-white shadow'
+                                        : 'text-slate-600 hover:bg-slate-100'
+                                        }`}
                                       disabled={isUpdatingStatus}
                                     >
                                       متأخر
@@ -1531,11 +1538,10 @@ export function AdminTeacherAttendancePage() {
                                     <button
                                       type="button"
                                       onClick={() => handleDelayStatusChange(delay, 'excused')}
-                                      className={`flex-1 rounded-2xl px-3 py-1 text-[12px] font-semibold transition ${
-                                        actionStatus === 'excused'
-                                          ? 'bg-amber-500 text-white shadow'
-                                          : 'text-slate-600 hover:bg-slate-100'
-                                      }`}
+                                      className={`flex-1 rounded-2xl px-3 py-1 text-[12px] font-semibold transition ${actionStatus === 'excused'
+                                        ? 'bg-amber-500 text-white shadow'
+                                        : 'text-slate-600 hover:bg-slate-100'
+                                        }`}
                                       disabled={isUpdatingStatus}
                                     >
                                       بعذر
@@ -2171,6 +2177,12 @@ export function AdminTeacherAttendancePage() {
           </div>
         </div>
       ) : null}
+
+      {/* نافذة الإحصائيات */}
+      <TeacherAttendanceStatsModal
+        isOpen={isStatsModalOpen}
+        onClose={() => setIsStatsModalOpen(false)}
+      />
     </section>
   )
 }

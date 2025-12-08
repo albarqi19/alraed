@@ -111,6 +111,7 @@ export interface AbsenceExcuseListResponse {
     total: number
   }
   stats: AbsenceExcuseStats
+  available_grades?: string[]
 }
 
 export interface AbsenceExcuseFilters {
@@ -119,6 +120,7 @@ export interface AbsenceExcuseFilters {
   start_date?: string
   end_date?: string
   search?: string
+  grades?: string[]
   page?: number
   per_page?: number
 }

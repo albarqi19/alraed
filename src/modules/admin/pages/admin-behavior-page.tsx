@@ -1,5 +1,5 @@
-﻿import { type ReactNode, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+﻿import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   AlertCircle,
   CheckCircle,
@@ -18,6 +18,7 @@ import { useToast } from '@/shared/feedback/use-toast'
 import { ViolationBadge } from '@/modules/admin/behavior/components/violation-badge'
 import {
   BEHAVIOR_DEGREE_OPTIONS,
+  BEHAVIOR_GRADES,
   BEHAVIOR_LOCATIONS,
   BEHAVIOR_REPORTERS,
   BEHAVIOR_STATUSES,
@@ -75,6 +76,7 @@ const initialDetails = () => ({
 
 export function AdminBehaviorPage() {
   const toast = useToast()
+  const navigate = useNavigate()
 
   const students = useBehaviorStore((state) => state.students)
   const violations = useBehaviorStore((state) => state.violations)
@@ -141,7 +143,33 @@ export function AdminBehaviorPage() {
   const [logSearch, setLogSearch] = useState('')
   const [logDegree, setLogDegree] = useState<'all' | BehaviorDegree>('all')
   const [logStatus, setLogStatus] = useState<'all' | BehaviorStatus>('all')
+  const [logGrades, setLogGrades] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('behavior_selected_grades')
+      return saved ? JSON.parse(saved) : []
+    } catch { return [] }
+  })
+  const [isGradeDropdownOpen, setIsGradeDropdownOpen] = useState(false)
+  const gradeDropdownRef = useRef<HTMLDivElement>(null)
   const [logPage, setLogPage] = useState(1)
+
+  // حفظ الصفوف المحددة في localStorage
+  useEffect(() => {
+    localStorage.setItem('behavior_selected_grades', JSON.stringify(logGrades))
+  }, [logGrades])
+
+  // إغلاق القائمة عند الضغط خارجها
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (gradeDropdownRef.current && !gradeDropdownRef.current.contains(event.target as Node)) {
+        setIsGradeDropdownOpen(false)
+      }
+    }
+    if (isGradeDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isGradeDropdownOpen])
 
   // الحصول على البيانات من الـ Store (ديناميكي من قاعدة البيانات)
   const availableProcedures = selectedDegree ? getProceduresForDegree(selectedDegree) : []
@@ -250,14 +278,15 @@ export function AdminBehaviorPage() {
 
       const matchesDegree = logDegree === 'all' ? true : violation.degree === logDegree
       const matchesStatus = logStatus === 'all' ? true : violation.status === logStatus
+      const matchesGrade = logGrades.length === 0 ? true : logGrades.includes(violation.grade)
 
-      return matchesSearch && matchesDegree && matchesStatus
+      return matchesSearch && matchesDegree && matchesStatus && matchesGrade
     })
-  }, [violations, logSearch, logDegree, logStatus])
+  }, [violations, logSearch, logDegree, logStatus, logGrades])
 
   useEffect(() => {
     setLogPage(1)
-  }, [logSearch, logDegree, logStatus])
+  }, [logSearch, logDegree, logStatus, logGrades])
 
   const totalPages = Math.max(1, Math.ceil(filteredViolations.length / ITEMS_PER_PAGE))
   const pageSafe = Math.min(logPage, totalPages)
@@ -265,6 +294,12 @@ export function AdminBehaviorPage() {
     (pageSafe - 1) * ITEMS_PER_PAGE,
     pageSafe * ITEMS_PER_PAGE,
   )
+
+  // استخراج الصفوف الفعلية من المخالفات
+  const availableGrades = useMemo(() => {
+    const grades = new Set(violations.map((v) => v.grade).filter(Boolean))
+    return Array.from(grades).sort()
+  }, [violations])
 
   const dashboardStats = useMemo(() => {
     const byStatus: Record<BehaviorStatus, number> = {
@@ -445,7 +480,7 @@ export function AdminBehaviorPage() {
           </button>
         </header>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           <div className="md:col-span-2">
             <div className="relative">
               <input
@@ -490,7 +525,77 @@ export function AdminBehaviorPage() {
               ))}
             </select>
           </div>
+          <div className="relative" ref={gradeDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsGradeDropdownOpen(!isGradeDropdownOpen)}
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 text-right flex items-center justify-between"
+            >
+              <span className="truncate">
+                {logGrades.length === 0
+                  ? 'جميع الصفوف'
+                  : `${logGrades.length} صف محدد`}
+              </span>
+              <i className={`bi bi-chevron-${isGradeDropdownOpen ? 'up' : 'down'} text-slate-400`} />
+            </button>
+            {isGradeDropdownOpen && (
+              <div
+                className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-64 overflow-y-auto"
+              >
+                <div className="p-2 border-b border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setLogGrades([])}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    إلغاء التحديد
+                  </button>
+                </div>
+                {(availableGrades.length > 0 ? availableGrades : BEHAVIOR_GRADES).map((grade) => (
+                  <label
+                    key={grade}
+                    className="flex items-center gap-2 px-3 py-2 hover:bg-slate-50 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={logGrades.includes(grade)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setLogGrades((prev) => [...prev, grade])
+                        } else {
+                          setLogGrades((prev) => prev.filter((g) => g !== grade))
+                        }
+                      }}
+                      className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/20"
+                    />
+                    <span className="text-sm text-slate-700">{grade}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* شارات الصفوف المحددة */}
+        {logGrades.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {logGrades.map((grade) => (
+              <span
+                key={grade}
+                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
+              >
+                {grade}
+                <button
+                  type="button"
+                  onClick={() => setLogGrades((prev) => prev.filter((g) => g !== grade))}
+                  className="hover:text-primary/70"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
 
         <div className="overflow-hidden rounded-3xl border border-slate-100">
           <table className="min-w-full divide-y divide-slate-200 text-sm">
@@ -514,14 +619,18 @@ export function AdminBehaviorPage() {
                 </tr>
               ) : (
                 paginatedViolations.map((violation) => (
-                  <tr key={violation.id} className="transition hover:bg-primary/5">
+                  <tr
+                    key={violation.id}
+                    className="transition hover:bg-primary/5 cursor-pointer"
+                    onClick={() => navigate(`/admin/behavior/${violation.id}`)}
+                  >
                     <td className="px-6 py-4 font-mono text-xs text-muted" title={violation.id}>
                       {violation.id.split('-')[0]}
                     </td>
                     <td className="px-6 py-4">
                       <div className="space-y-1">
                         <p className="font-semibold text-slate-900">{violation.studentName}</p>
-                        <p className="text-xs text-muted">{violation.studentNumber}</p>
+                        <p className="text-xs text-muted">{violation.grade} • {violation.class}</p>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -539,7 +648,7 @@ export function AdminBehaviorPage() {
                         {violation.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-2">
                         <Link
                           to={`/admin/behavior/${violation.id}`}

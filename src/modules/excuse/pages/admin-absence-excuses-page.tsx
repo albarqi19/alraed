@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Check,
@@ -47,6 +47,14 @@ export function AdminAbsenceExcusesPage() {
   const [activeTab, setActiveTab] = useState<TabValue>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchInput, setSearchInput] = useState('')
+  const [selectedGrades, setSelectedGrades] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('excuses_selected_grades')
+      return saved ? JSON.parse(saved) : []
+    } catch { return [] }
+  })
+  const [isGradeDropdownOpen, setIsGradeDropdownOpen] = useState(false)
+  const gradeDropdownRef = useRef<HTMLDivElement>(null)
 
   // View dialog
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
@@ -71,13 +79,14 @@ export function AdminAbsenceExcusesPage() {
 
   // Query
   const excusesQuery = useQuery({
-    queryKey: ['admin', 'absence-excuses', page, activeTab, searchQuery],
+    queryKey: ['admin', 'absence-excuses', page, activeTab, searchQuery, selectedGrades],
     queryFn: () =>
       getAbsenceExcuses({
         page,
         per_page: 15,
         status: activeTab === 'all' ? undefined : activeTab,
         search: searchQuery || undefined,
+        grades: selectedGrades.length > 0 ? selectedGrades : undefined,
       }),
   })
 
@@ -206,8 +215,34 @@ export function AdminAbsenceExcusesPage() {
     return <FileText className="h-5 w-5 text-slate-600" />
   }
 
+  // حفظ الصفوف المحددة في localStorage
+  useEffect(() => {
+    localStorage.setItem('excuses_selected_grades', JSON.stringify(selectedGrades))
+  }, [selectedGrades])
+
+  // إغلاق قائمة الصفوف عند الضغط خارجها
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (gradeDropdownRef.current && !gradeDropdownRef.current.contains(event.target as Node)) {
+        setIsGradeDropdownOpen(false)
+      }
+    }
+    if (isGradeDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isGradeDropdownOpen])
+
   const excuses = excusesQuery.data?.data ?? []
   const totalPages = excusesQuery.data?.meta?.last_page ?? 1
+
+  // الصفوف المتاحة للفلترة - من الـ API
+  const availableGrades = useMemo(() => {
+    const apiGrades = excusesQuery.data?.available_grades ?? []
+    // إضافة الصفوف المحددة التي قد لا تكون في النتائج
+    const allGrades = new Set([...apiGrades, ...selectedGrades])
+    return Array.from(allGrades).sort()
+  }, [excusesQuery.data?.available_grades, selectedGrades])
 
   return (
     <div className="space-y-6">
@@ -232,6 +267,7 @@ export function AdminAbsenceExcusesPage() {
                 className="w-full rounded-xl border border-slate-200 bg-white py-2 pr-10 pl-4 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               />
             </div>
+
             <button
               onClick={handleSearch}
               className="button-primary flex items-center gap-2"
@@ -246,8 +282,79 @@ export function AdminAbsenceExcusesPage() {
               <RefreshCw className="h-4 w-4" />
               تحديث
             </button>
+
+            {/* فلتر الصف - متعدد الاختيار */}
+            <div className="relative" ref={gradeDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setIsGradeDropdownOpen(!isGradeDropdownOpen)}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 min-w-[140px] text-right flex items-center justify-between gap-2"
+              >
+                <span className="truncate">
+                  {selectedGrades.length === 0
+                    ? 'جميع الصفوف'
+                    : `${selectedGrades.length} صف محدد`}
+                </span>
+                <i className={`bi bi-chevron-${isGradeDropdownOpen ? 'up' : 'down'} text-slate-400`} />
+              </button>
+              {isGradeDropdownOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-64 overflow-y-auto min-w-[200px]">
+                  <div className="p-2 border-b border-slate-100 flex justify-between items-center">
+                    <span className="text-xs text-slate-500">{availableGrades.length} صف</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedGrades([])}
+                      className="text-xs text-indigo-600 hover:underline"
+                    >
+                      إلغاء التحديد
+                    </button>
+                  </div>
+                  {availableGrades.map((grade) => (
+                    <label
+                      key={grade}
+                      className="flex items-center gap-2 px-3 py-2 hover:bg-slate-50 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedGrades.includes(grade)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedGrades((prev) => [...prev, grade])
+                          } else {
+                            setSelectedGrades((prev) => prev.filter((g) => g !== grade))
+                          }
+                        }}
+                        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/20"
+                      />
+                      <span className="text-sm text-slate-700">{grade}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* شارات الصفوف المحددة */}
+        {selectedGrades.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {selectedGrades.map((grade) => (
+              <span
+                key={grade}
+                className="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700"
+              >
+                {grade}
+                <button
+                  type="button"
+                  onClick={() => setSelectedGrades((prev) => prev.filter((g) => g !== grade))}
+                  className="hover:text-indigo-900"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Tabs */}
@@ -257,11 +364,10 @@ export function AdminAbsenceExcusesPage() {
             <button
               key={tab.value}
               onClick={() => handleTabChange(tab.value)}
-              className={`flex-1 px-4 py-3 text-sm font-semibold transition-colors ${
-                activeTab === tab.value
-                  ? 'border-b-2 border-indigo-600 text-indigo-600 bg-indigo-50/50'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
+              className={`flex-1 px-4 py-3 text-sm font-semibold transition-colors ${activeTab === tab.value
+                ? 'border-b-2 border-indigo-600 text-indigo-600 bg-indigo-50/50'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                }`}
             >
               {tab.label}
               {tab.value === 'pending' && excusesQuery.data?.stats?.pending ? (
@@ -313,7 +419,11 @@ export function AdminAbsenceExcusesPage() {
                     <td className="px-4 py-3">
                       <div>
                         <p className="font-semibold text-slate-900">{excuse.student?.name || '-'}</p>
-                        <p className="text-xs text-slate-500">{excuse.student?.national_id || ''}</p>
+                        <p className="text-xs text-slate-500">
+                          {excuse.student?.grade && excuse.student?.class_name
+                            ? `${excuse.student.grade} • ${excuse.student.class_name}`
+                            : excuse.student?.grade || excuse.student?.class_name || ''}
+                        </p>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-slate-600">
@@ -651,11 +761,10 @@ export function AdminAbsenceExcusesPage() {
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
                   placeholder="يرجى كتابة سبب الرفض..."
-                  className={`mt-1 w-full rounded-xl border bg-white px-4 py-2.5 text-sm shadow-sm focus:outline-none focus:ring-2 ${
-                    !rejectReason.trim()
-                      ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500/20'
-                      : 'border-slate-200 focus:border-indigo-500 focus:ring-indigo-500/20'
-                  }`}
+                  className={`mt-1 w-full rounded-xl border bg-white px-4 py-2.5 text-sm shadow-sm focus:outline-none focus:ring-2 ${!rejectReason.trim()
+                    ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500/20'
+                    : 'border-slate-200 focus:border-indigo-500 focus:ring-indigo-500/20'
+                    }`}
                   rows={3}
                 />
                 {!rejectReason.trim() && (

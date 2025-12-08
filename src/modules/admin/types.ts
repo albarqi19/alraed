@@ -15,7 +15,7 @@ export interface AdminDashboardStats {
 
 export type TeacherStatus = 'active' | 'inactive'
 
-export type StaffRole = 
+export type StaffRole =
   | 'teacher'
   | 'school_principal'
   | 'deputy_teachers'
@@ -666,6 +666,90 @@ export interface TeacherAttendanceDelayStatusUpdatePayload {
 
 export interface TeacherAttendanceDelayRecalculatePayload {
   check_in_time?: string
+}
+
+// إحصائيات حضور المعلمين المتقدمة
+export interface TeacherAttendanceAdvancedStats {
+  period: {
+    start_date: string
+    end_date: string
+    semester_name: string
+    semester_code: string | null
+  }
+  summary: {
+    total_teachers: number
+    present_today: number
+    absent_today: number
+    delayed_today: number
+    excused_today: number
+    on_time_today: number
+    avg_delay_today: number
+    semester_attendance_rate: number
+    semester_total_delay_hours: number
+    semester_delayed_count: number
+    semester_absent_count: number
+  }
+  monthly_trend: Array<{
+    year: number
+    month: number
+    label: string
+    total: number
+    present: number
+    absent: number
+    delayed: number
+    attendance_rate: number
+  }>
+  by_absence_reason: Array<{
+    reason: string
+    label: string
+    count: number
+  }>
+  by_day_of_week: Array<{
+    day: number
+    label: string
+    total: number
+    delayed: number
+    absent: number
+  }>
+  by_hour: Array<{
+    hour: number
+    label: string
+    count: number
+  }>
+  delay_distribution: Array<{
+    bracket: string
+    label: string
+    count: number
+  }>
+  top_delayed_teachers: Array<{
+    name: string
+    national_id: string
+    delay_count: number
+    total_delay_hours: number
+    avg_delay_minutes: number
+  }>
+  top_absent_teachers: Array<{
+    name: string
+    national_id: string
+    absence_count: number
+  }>
+  teachers_delay_hours: Array<{
+    name: string
+    national_id: string
+    total_delay_hours: number
+    total_delay_minutes: number
+    delay_count: number
+  }>
+  by_login_method: Array<{
+    method: string
+    label: string
+    count: number
+  }>
+}
+
+export interface TeacherAttendanceAdvancedStatsResponse {
+  success: boolean
+  data: TeacherAttendanceAdvancedStats
 }
 
 export interface LateArrivalRecord {

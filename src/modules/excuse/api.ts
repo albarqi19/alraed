@@ -33,11 +33,11 @@ export async function getExcuseByToken(token: string): Promise<ExcuseApiResponse
 export async function submitExcuse(token: string, payload: SubmitExcusePayload): Promise<SubmitExcuseResponse> {
   const formData = new FormData()
   formData.append('excuse_text', payload.excuse_text)
-  
+
   if (payload.file) {
     formData.append('file', payload.file)
   }
-  
+
   if (payload.parent_name) {
     formData.append('parent_name', payload.parent_name)
   }
@@ -72,7 +72,7 @@ export async function checkExcuseStatus(token: string): Promise<ExcuseApiRespons
  */
 export async function getAbsenceExcuses(filters?: AbsenceExcuseFilters): Promise<AbsenceExcuseListResponse> {
   const params = new URLSearchParams()
-  
+
   if (filters?.status && filters.status !== 'all') {
     params.append('status', filters.status)
   }
@@ -88,6 +88,9 @@ export async function getAbsenceExcuses(filters?: AbsenceExcuseFilters): Promise
   if (filters?.search) {
     params.append('search', filters.search)
   }
+  if (filters?.grades && filters.grades.length > 0) {
+    params.append('grades', filters.grades.join(','))
+  }
   if (filters?.page) {
     params.append('page', filters.page.toString())
   }
@@ -97,7 +100,7 @@ export async function getAbsenceExcuses(filters?: AbsenceExcuseFilters): Promise
 
   const query = params.toString()
   const url = query ? `/admin/absence-excuses?${query}` : '/admin/absence-excuses'
-  
+
   const response = await apiClient.get<AbsenceExcuseListResponse>(url)
   return response.data
 }

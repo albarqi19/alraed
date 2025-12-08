@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   useAdminReferralsQuery,
@@ -58,7 +58,7 @@ function ReferralRow({
   const priorityStyle = PRIORITY_STYLES[referral.priority] || PRIORITY_STYLES.medium
 
   return (
-    <tr 
+    <tr
       className={`hover:bg-slate-50 transition-colors cursor-pointer ${priorityStyle.bg}`}
       onClick={onView}
     >
@@ -80,8 +80,8 @@ function ReferralRow({
       </td>
       <td className="px-4 py-3">
         <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium ${referral.referral_type === 'academic_weakness'
-            ? 'bg-amber-100 text-amber-800'
-            : 'bg-red-100 text-red-800'
+          ? 'bg-amber-100 text-amber-800'
+          : 'bg-red-100 text-red-800'
           }`}>
           <i className={referral.referral_type === 'academic_weakness' ? 'bi-book' : 'bi-exclamation-triangle'} />
           {referral.referral_type_label}
@@ -139,10 +139,23 @@ export function AdminReferralsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [showStatsModal, setShowStatsModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [selectedGrades, setSelectedGrades] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('referrals_selected_grades')
+      return saved ? JSON.parse(saved) : []
+    } catch { return [] }
+  })
+  const [isGradeDropdownOpen, setIsGradeDropdownOpen] = useState(false)
+  const gradeDropdownRef = useRef<HTMLDivElement>(null)
 
   // تحديد نوع الصفحة
   const isBehavioralPage = location.pathname.includes('/referrals/behavioral')
   const isGuidancePage = location.pathname.includes('/referrals/guidance')
+
+  // حفظ الصفوف المحددة في localStorage
+  useEffect(() => {
+    localStorage.setItem('referrals_selected_grades', JSON.stringify(selectedGrades))
+  }, [selectedGrades])
 
   // تحديد التبويبات المتاحة حسب نوع الصفحة
   const availableTabs = useMemo(() => {
@@ -167,6 +180,19 @@ export function AdminReferralsPage() {
   useEffect(() => {
     setCurrentPage(1)
   }, [activeTab])
+
+  // إغلاق قائمة الصفوف عند الضغط خارجها
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (gradeDropdownRef.current && !gradeDropdownRef.current.contains(event.target as Node)) {
+        setIsGradeDropdownOpen(false)
+      }
+    }
+    if (isGradeDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isGradeDropdownOpen])
 
   // فلاتر حسب التبويب النشط
   const tabFilters = useMemo((): ReferralFilters => {
@@ -206,8 +232,29 @@ export function AdminReferralsPage() {
     return {}
   }, [isGuidancePage, isBehavioralPage])
 
-  const { data: referrals, isLoading, error } = useAdminReferralsQuery(tabFilters)
-  
+  const { data: referralsData, isLoading, error } = useAdminReferralsQuery(tabFilters)
+
+  // فلترة الإحالات محلياً بناءً على الصفوف المحددة
+  const referrals = useMemo(() => {
+    if (!referralsData) return referralsData
+    if (selectedGrades.length === 0) return referralsData
+
+    const filteredItems = referralsData.items.filter((ref) => {
+      const gradeOnly = ref.student?.grade || ref.student?.classroom?.name
+      return gradeOnly && selectedGrades.includes(gradeOnly)
+    })
+
+    return {
+      ...referralsData,
+      items: filteredItems,
+      meta: {
+        ...referralsData.meta,
+        total: filteredItems.length,
+        last_page: Math.max(1, Math.ceil(filteredItems.length / (referralsData.meta.per_page || 15))),
+      }
+    }
+  }, [referralsData, selectedGrades])
+
   // جلب جميع الإحالات بدون pagination لحساب الإحصائيات
   const allReferralsFilters = useMemo(() => {
     const base: ReferralFilters = { per_page: 1000 }
@@ -221,7 +268,7 @@ export function AdminReferralsPage() {
     }
     return base
   }, [isGuidancePage, isBehavioralPage, activeTab])
-  
+
   const { data: allReferrals } = useAdminReferralsQuery(allReferralsFilters)
   const { data: stats } = useAdminReferralStatsQuery(statsFilters)
   const receiveMutation = useReceiveReferralMutation()
@@ -229,14 +276,14 @@ export function AdminReferralsPage() {
   // حساب إحصائيات الفلاتر (المحيل، المكلف، الصف)
   const filterStats = useMemo(() => {
     const items = allReferrals?.items ?? []
-    
+
     // المحيلين مع عدد الإحالات
     const referrersMap = new Map<number, { name: string; count: number }>()
     // المكلفين مع عدد الإحالات
     const assigneesMap = new Map<number, { name: string; count: number }>()
     // الصفوف مع عدد الإحالات
     const gradesMap = new Map<string, number>()
-    
+
     items.forEach(ref => {
       // المحيل
       if (ref.referred_by?.id) {
@@ -247,7 +294,7 @@ export function AdminReferralsPage() {
           referrersMap.set(ref.referred_by.id, { name: ref.referred_by.name, count: 1 })
         }
       }
-      
+
       // المكلف
       if (ref.assigned_to?.id) {
         const existing = assigneesMap.get(ref.assigned_to.id)
@@ -257,14 +304,14 @@ export function AdminReferralsPage() {
           assigneesMap.set(ref.assigned_to.id, { name: ref.assigned_to.name, count: 1 })
         }
       }
-      
+
       // الصف - نستخدم الصف فقط بغض النظر عن الفصل
       const gradeOnly = ref.student?.grade || ref.student?.classroom?.name
       if (gradeOnly) {
         gradesMap.set(gradeOnly, (gradesMap.get(gradeOnly) ?? 0) + 1)
       }
     })
-    
+
     return {
       referrers: Array.from(referrersMap.entries()).map(([id, data]) => ({ id, ...data })).sort((a, b) => b.count - a.count),
       assignees: Array.from(assigneesMap.entries()).map(([id, data]) => ({ id, ...data })).sort((a, b) => b.count - a.count),
@@ -474,20 +521,80 @@ export function AdminReferralsPage() {
               ))}
             </select>
 
-            {/* فلتر الصف */}
-            <select
-              value={filters.grade ?? ''}
-              onChange={(e) => updateFilter('grade', e.target.value)}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
-            >
-              <option value="">جميع الصفوف</option>
-              {filterStats.grades.map(grade => (
-                <option key={grade.name} value={grade.name}>
-                  {grade.name} ({grade.count})
-                </option>
-              ))}
-            </select>
+            {/* فلتر الصف - متعدد الاختيار */}
+            <div className="relative" ref={gradeDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setIsGradeDropdownOpen(!isGradeDropdownOpen)}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none min-w-[140px] text-right flex items-center justify-between gap-2"
+              >
+                <span className="truncate">
+                  {selectedGrades.length === 0
+                    ? 'جميع الصفوف'
+                    : `${selectedGrades.length} صف محدد`}
+                </span>
+                <i className={`bi bi-chevron-${isGradeDropdownOpen ? 'up' : 'down'} text-slate-400`} />
+              </button>
+              {isGradeDropdownOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-64 overflow-y-auto min-w-[200px]">
+                  <div className="p-2 border-b border-slate-100 flex justify-between items-center">
+                    <span className="text-xs text-slate-500">{filterStats.grades.length} صف</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedGrades([])}
+                      className="text-xs text-sky-600 hover:underline"
+                    >
+                      إلغاء التحديد
+                    </button>
+                  </div>
+                  {filterStats.grades.map((grade) => (
+                    <label
+                      key={grade.name}
+                      className="flex items-center justify-between gap-2 px-3 py-2 hover:bg-slate-50 cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedGrades.includes(grade.name)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedGrades((prev) => [...prev, grade.name])
+                            } else {
+                              setSelectedGrades((prev) => prev.filter((g) => g !== grade.name))
+                            }
+                          }}
+                          className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500/20"
+                        />
+                        <span className="text-sm text-slate-700">{grade.name}</span>
+                      </div>
+                      <span className="text-xs text-slate-400">{grade.count}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* شارات الصفوف المحددة */}
+          {selectedGrades.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {selectedGrades.map((grade) => (
+                <span
+                  key={grade}
+                  className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-3 py-1 text-xs font-medium text-sky-700"
+                >
+                  {grade}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedGrades((prev) => prev.filter((g) => g !== grade))}
+                    className="hover:text-sky-900"
+                  >
+                    <i className="bi bi-x text-sm" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Table Content */}
@@ -546,15 +653,15 @@ export function AdminReferralsPage() {
                   >
                     السابق
                   </button>
-                  
+
                   {/* أرقام الصفحات */}
                   <div className="flex items-center gap-1">
                     {Array.from({ length: referrals.meta.last_page }, (_, i) => i + 1)
                       .filter(page => {
                         // عرض أول 3 صفحات، آخر 3 صفحات، والصفحات حول الصفحة الحالية
-                        return page <= 3 || 
-                               page > referrals.meta.last_page - 3 || 
-                               Math.abs(page - currentPage) <= 1
+                        return page <= 3 ||
+                          page > referrals.meta.last_page - 3 ||
+                          Math.abs(page - currentPage) <= 1
                       })
                       .map((page, index, arr) => (
                         <span key={page} className="flex items-center">
@@ -563,18 +670,17 @@ export function AdminReferralsPage() {
                           )}
                           <button
                             onClick={() => setCurrentPage(page)}
-                            className={`min-w-[32px] h-8 text-sm rounded-lg ${
-                              currentPage === page
-                                ? 'bg-sky-600 text-white'
-                                : 'border border-slate-300 hover:bg-slate-50'
-                            }`}
+                            className={`min-w-[32px] h-8 text-sm rounded-lg ${currentPage === page
+                              ? 'bg-sky-600 text-white'
+                              : 'border border-slate-300 hover:bg-slate-50'
+                              }`}
                           >
                             {page}
                           </button>
                         </span>
                       ))}
                   </div>
-                  
+
                   <button
                     onClick={() => setCurrentPage(p => Math.min(referrals.meta.last_page, p + 1))}
                     disabled={currentPage === referrals.meta.last_page}
