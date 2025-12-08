@@ -116,6 +116,8 @@ export function AdminTeacherSchedulesPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
   const [selectedTeacherId, setSelectedTeacherId] = useState<number | null>(null)
+  const [selectedDay, setSelectedDay] = useState<{ day: string; sessions: Record<number, TeacherScheduleSlot> } | null>(null)
+  const [showDaysPanel, setShowDaysPanel] = useState(false)
   const movePreviewMutation = useTeacherScheduleMovePreviewMutation()
   const moveMutation = useTeacherScheduleMoveMutation()
   const [dragSource, setDragSource] = useState<DraggedSlotMeta | null>(null)
@@ -132,6 +134,34 @@ export function AdminTeacherSchedulesPage() {
   const dayLimitsError = dayLimitsQuery.error instanceof Error ? dayLimitsQuery.error.message : null
   const hoverPreviewRequestIdRef = useRef(0)
   const tooltipRef = useRef<HTMLDivElement | null>(null)
+
+  // الاستماع لفتح قائمة الأيام
+  useEffect(() => {
+    const handleOpenDays = () => setShowDaysPanel(true)
+    window.addEventListener('openDaysPanel', handleOpenDays)
+    return () => window.removeEventListener('openDaysPanel', handleOpenDays)
+  }, [])
+
+  // الاستماع لفتح جدول اليوم
+  useEffect(() => {
+    const handleOpenDay = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      setSelectedDay(detail)
+      setShowDaysPanel(false)
+    }
+    window.addEventListener('openDaySchedule', handleOpenDay)
+    return () => window.removeEventListener('openDaySchedule', handleOpenDay)
+  }, [])
+
+  // منع تمرير الخلفية
+  useEffect(() => {
+    if (selectedDay || showDaysPanel) {
+      document.body.style.overflow = 'hidden'
+      return () => {
+        document.body.style.overflow = ''
+      }
+    }
+  }, [selectedDay, showDaysPanel])
 
   const hoverSuggestion = useMemo<TeacherScheduleMoveSuggestion | null>(() => {
     if (!hoverPreviewState || hoverPreviewState.status !== 'success' || !hoverPreviewState.result) return null
@@ -529,7 +559,16 @@ export function AdminTeacherSchedulesPage() {
                   <button
                     key={teacher.id}
                     type="button"
-                    onClick={() => setSelectedTeacherId(teacher.id)}
+                    onClick={() => {
+                      setSelectedTeacherId(teacher.id)
+                      // على الجوال: فتح نافذة الأيام مباشرة
+                      if (window.innerWidth < 768) {
+                        setTimeout(() => {
+                          const event = new CustomEvent('openDaysPanel')
+                          window.dispatchEvent(event)
+                        }, 100)
+                      }
+                    }}
                     className={`w-full rounded-2xl border px-3 py-2.5 text-right text-sm transition focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${
                       isSelected
                         ? 'border-teal-500 bg-teal-50 text-teal-900 shadow-sm'
@@ -635,7 +674,8 @@ export function AdminTeacherSchedulesPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+                  {/* عرض الجدول للشاشات الكبيرة */}
+                  <div className="hidden md:block overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
                     <table className="w-full min-w-[720px] border-collapse text-right text-xs md:text-sm">
                       <thead className="bg-slate-100 text-slate-600">
                         <tr>
@@ -837,6 +877,129 @@ export function AdminTeacherSchedulesPage() {
         onClose={handleDialogClose}
         onConfirm={handleConfirmMove}
       />
+
+      {/* نافذة قائمة الأيام للجوال */}
+      {showDaysPanel && scheduleQuery.data?.schedule && (
+        <div 
+          className="fixed inset-0 z-50 md:hidden"
+          onClick={() => setShowDaysPanel(false)}
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div 
+            className="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto rounded-t-3xl bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 z-10 flex justify-center bg-white pt-3 pb-2 border-b border-slate-100">
+              <div className="h-1.5 w-12 rounded-full bg-slate-300" />
+            </div>
+            
+            <div className="p-4 space-y-4">
+              <header className="flex items-center justify-between border-b border-slate-200 pb-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">أيام الأسبوع</h2>
+                  <p className="text-xs text-muted">اختر يوم لعرض حصصه</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowDaysPanel(false)}
+                  className="rounded-full p-2 hover:bg-slate-100 text-slate-500"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </header>
+
+              <div className="space-y-3">
+                {daysOfWeek.map((day) => {
+                  const daySessions = scheduleQuery.data.schedule?.[day] ?? {}
+                  const sessionsCount = Object.values(daySessions).filter(s => s !== null).length
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => {
+                        const event = new CustomEvent('openDaySchedule', { detail: { day, sessions: daySessions } })
+                        window.dispatchEvent(event)
+                      }}
+                      className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-right shadow-sm hover:border-teal-300 hover:bg-teal-50/50 transition"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold text-slate-900">{day}</p>
+                          <p className="text-xs text-muted mt-1">{sessionsCount} حصة</p>
+                        </div>
+                        <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* نافذة عرض حصص اليوم للجوال */}
+      {selectedDay && (
+        <div 
+          className="fixed inset-0 z-50 md:hidden"
+          onClick={() => setSelectedDay(null)}
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div 
+            className="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto rounded-t-3xl bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 z-10 flex justify-center bg-white pt-3 pb-2 border-b border-slate-100">
+              <div className="h-1.5 w-12 rounded-full bg-slate-300" />
+            </div>
+            
+            <div className="p-4 space-y-4">
+              <header className="flex items-center justify-between border-b border-slate-200 pb-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">{selectedDay.day}</h2>
+                  <p className="text-xs text-muted">{Object.values(selectedDay.sessions).filter(s => s !== null).length} حصة</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDay(null)}
+                  className="rounded-full p-2 hover:bg-slate-100 text-slate-500"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </header>
+
+              <div className="space-y-3">
+                {Object.values(selectedDay.sessions).filter(slot => slot !== null).map((slot) => (
+                  <div key={slot.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div className="flex items-start justify-between mb-2">
+                      <span className="font-semibold text-teal-600">الحصة {slot.period_number}</span>
+                      <span className="text-xs text-slate-500">
+                        {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+                      </span>
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-600">الصف:</span>
+                        <span className="font-semibold text-slate-900">{slot.grade} / {slot.class_name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-600">المادة:</span>
+                        <span className="font-semibold text-slate-900">{slot.subject_name}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
