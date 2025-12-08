@@ -1,11 +1,12 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { CalendarClock, Clock3, Volume2 } from 'lucide-react'
+import { CalendarClock, Clock3, Volume2, X, Bell } from 'lucide-react'
 import { useBellManager } from '../context/bell-manager-context'
 import { formatClock, formatRelative, formatTime } from '../utils'
 import { useToast } from '@/shared/feedback/use-toast'
 
 const ADMIN_BELL_PATH = '/admin/school-tools/bell'
+const WIDGET_VISIBILITY_KEY = 'bell-widget-visible'
 
 export function GlobalBellWidget() {
   const {
@@ -21,6 +22,17 @@ export function GlobalBellWidget() {
   } = useBellManager()
   const location = useLocation()
   const pushToast = useToast()
+  
+  // حالة إظهار/إخفاء الويدجت - مغلق بشكل افتراضي
+  const [isWidgetVisible, setIsWidgetVisible] = useState(() => {
+    const saved = localStorage.getItem(WIDGET_VISIBILITY_KEY)
+    return saved === 'true' // افتراضياً false (مغلق)
+  })
+  
+  // حفظ حالة الرؤية في localStorage
+  useEffect(() => {
+    localStorage.setItem(WIDGET_VISIBILITY_KEY, String(isWidgetVisible))
+  }, [isWidgetVisible])
 
   const countdownLabel = useMemo(() => {
     if (!upcomingEvent) return null
@@ -59,9 +71,41 @@ export function GlobalBellWidget() {
     ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
     : 'bg-white/10 text-white/80 hover:bg-white/20'
 
+  // زر صغير لإظهار الويدجت عندما يكون مغلقاً
+  if (!isWidgetVisible) {
+    return (
+      <div className="pointer-events-none fixed bottom-6 left-6 z-[9999]">
+        <button
+          type="button"
+          onClick={() => setIsWidgetVisible(true)}
+          className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-900/95 text-white shadow-2xl ring-1 ring-white/10 backdrop-blur-md transition hover:bg-slate-800 hover:scale-105"
+          title="إظهار ويدجت الجرس"
+        >
+          <Bell className="h-6 w-6 text-emerald-300" />
+          {schedulerEnabled && (
+            <span className="absolute -top-1 -right-1 flex h-4 w-4">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex h-4 w-4 rounded-full bg-emerald-500"></span>
+            </span>
+          )}
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="pointer-events-none fixed bottom-6 left-6 z-[9999] max-w-xs">
       <div className="pointer-events-auto flex flex-col gap-3 rounded-3xl bg-slate-900/95 p-4 text-white shadow-2xl ring-1 ring-white/10 backdrop-blur-md">
+        {/* زر الإغلاق */}
+        <button
+          type="button"
+          onClick={() => setIsWidgetVisible(false)}
+          className="absolute top-3 left-3 flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-white/60 transition hover:bg-white/20 hover:text-white"
+          title="إخفاء الويدجت"
+        >
+          <X className="h-4 w-4" />
+        </button>
+        
         <div className="flex items-center justify-between gap-2">
           <span className="text-[11px] font-semibold uppercase tracking-[0.35em] text-emerald-300">
             الوقت الآن
