@@ -461,7 +461,7 @@ export function AdminBehaviorPage() {
         </div>
       </header>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4">
         <StatCard title="إجمالي المخالفات" value={dashboardStats.total} icon={<ClipboardList className="h-5 w-5" />} accent="bg-emerald-500/10 text-emerald-700 border border-emerald-200" />
         <StatCard title="قيد المعالجة" value={dashboardStats.byStatus['قيد المعالجة']} icon={<AlertCircle className="h-5 w-5" />} accent="bg-amber-500/10 text-amber-700 border border-amber-200" />
         <StatCard title="مكتملة" value={dashboardStats.byStatus['مكتملة']} icon={<CheckCircle className="h-5 w-5" />} accent="bg-sky-500/10 text-sky-700 border border-sky-200" />

@@ -440,14 +440,14 @@ export function AdminApprovalPage() {
       </header>
 
       <section className="glass-card space-y-6">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3">
           <SummaryBadge label="جلسات معلّقة" value={totals.totalSessions} tone="bg-amber-50 text-amber-700 border border-amber-200" />
           <SummaryBadge label="إجمالي الطلاب" value={totals.totalStudents} tone="bg-slate-100 text-slate-700 border border-slate-200" />
           <SummaryBadge label="محضرين" value={totals.totalPresent} tone="bg-emerald-50 text-emerald-700 border border-emerald-200" />
           <SummaryBadge label="غياب" value={totals.totalAbsent} tone="bg-rose-50 text-rose-700 border border-rose-200" />
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-4">
+        <div className="hidden grid-cols-4 gap-4 lg:grid">
           <div className="space-y-2 text-right">
             <label className="text-xs font-semibold text-slate-600">الصف الدراسي</label>
             <input
