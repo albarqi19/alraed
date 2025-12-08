@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import {
   useCreateTeacherMutation,
@@ -317,8 +317,157 @@ function TeacherCredentialsPanel({
   onCopy: (entry: CredentialsEntry) => void
   onClear: () => void
 }) {
+  const [startY, setStartY] = React.useState<number>(0)
+  const [currentY, setCurrentY] = React.useState<number>(0)
+  const [isDragging, setIsDragging] = React.useState(false)
+
+  // منع التمرير على الصفحة الخلفية عندما يكون المكون مفتوح
+  React.useEffect(() => {
+    if (selectedTeacher) {
+      document.body.style.overflow = 'hidden'
+      return () => {
+        document.body.style.overflow = ''
+      }
+    }
+  }, [selectedTeacher])
+
+  const handleClose = () => {
+    const event = new CustomEvent('closeTeacherPanel')
+    window.dispatchEvent(event)
+  }
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setStartY(e.touches[0].clientY)
+    setIsDragging(true)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging) return
+    const diff = e.touches[0].clientY - startY
+    if (diff > 0) {
+      setCurrentY(diff)
+    }
+  }
+
+  const handleTouchEnd = () => {
+    setIsDragging(false)
+    // إذا تم السحب لأكثر من 100 بكسل، أغلق المكون
+    if (currentY > 100) {
+      handleClose()
+    }
+    setCurrentY(0)
+  }
+
   return (
-    <aside className="sticky top-4 glass-card flex flex-col gap-4 max-h-[calc(100vh-2rem)] overflow-y-auto">
+    <>
+      {/* للجوال: مكون منبثق من الأسفل */}
+      {selectedTeacher && (
+        <div 
+          className="fixed inset-0 z-50 lg:hidden"
+          onClick={handleClose}
+        >
+          {/* خلفية شفافة */}
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          
+          {/* المحتوى المنبثق */}
+          <div 
+            className="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto rounded-t-3xl bg-white shadow-2xl"
+            style={{
+              transform: `translateY(${currentY}px)`,
+              transition: isDragging ? 'none' : 'transform 0.3s ease-out'
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            {/* مقبض السحب */}
+            <div className="sticky top-0 z-10 flex justify-center bg-white pt-3 pb-2 border-b border-slate-100 cursor-grab active:cursor-grabbing">
+              <div className="h-1.5 w-12 rounded-full bg-slate-300" />
+            </div>
+            
+            <div className="p-4 space-y-4">
+              {/* معلومات المعلم */}
+              <div className="space-y-3">
+                <header className="flex items-center justify-between border-b border-slate-200 pb-3">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900">تفاصيل المعلم</h2>
+                    <p className="text-xs text-muted">معلومات المعلم المحدد والفصول التي يدرسها</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    className="rounded-full p-2 hover:bg-slate-100 text-slate-500"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </header>
+
+                <div className="space-y-3">
+                  {/* بطاقة معلومات المعلم */}
+                  <div className="rounded-2xl border border-slate-100 bg-white/80 p-4 shadow-sm">
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-600">الاسم</p>
+                        <p className="text-base font-bold text-slate-900">{selectedTeacher.name}</p>
+                      </div>
+                      <div className="grid gap-2 text-xs">
+                        <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+                          <span className="text-slate-600">رقم الهوية</span>
+                          <span className="font-mono font-semibold text-slate-900">{selectedTeacher.national_id}</span>
+                        </div>
+                        <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+                          <span className="text-slate-600">الدور الوظيفي</span>
+                          <span className="font-semibold text-slate-900">{getRoleLabel(selectedTeacher.role)}</span>
+                        </div>
+                        {selectedTeacher.secondary_role && (
+                          <div className="flex items-center justify-between rounded-xl bg-teal-50 px-3 py-2 border border-teal-200">
+                            <span className="text-teal-700">الدور الثانوي</span>
+                            <span className="font-semibold text-teal-900">{getRoleLabel(selectedTeacher.secondary_role)}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+                          <span className="text-slate-600">رقم الجوال</span>
+                          <span className="font-semibold text-slate-900">{selectedTeacher.phone ?? '—'}</span>
+                        </div>
+                        <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+                          <span className="text-slate-600">الحالة</span>
+                          <TeacherStatusBadge status={selectedTeacher.status} />
+                        </div>
+                        {selectedTeacher.generated_password && (
+                          <div className="flex items-center justify-between rounded-xl bg-amber-50 px-3 py-2 border border-amber-200">
+                            <span className="text-amber-700">كلمة المرور الأساسية</span>
+                            <span className="font-mono font-semibold text-amber-900">{selectedTeacher.generated_password}</span>
+                          </div>
+                        )}
+                        {selectedTeacher.secondary_generated_password && (
+                          <div className="flex items-center justify-between rounded-xl bg-teal-50 px-3 py-2 border border-teal-200">
+                            <span className="text-teal-700">كلمة المرور الثانوية</span>
+                            <span className="font-mono font-semibold text-teal-900">{selectedTeacher.secondary_generated_password}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* قسم الفصول */}
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4">
+                    <p className="text-xs font-semibold text-slate-600">الفصول والمواد</p>
+                    <p className="mt-1 text-xs text-muted">
+                      سيتم عرض الفصول والمواد التي يدرسها المعلم هنا قريباً.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* للشاشات الكبيرة: الشريط الجانبي الثابت */}
+      <aside className="hidden lg:flex sticky top-4 glass-card flex-col gap-4 max-h-[calc(100vh-2rem)] overflow-y-auto">
       {/* Teacher Details Section */}
       {selectedTeacher && (
         <div className="space-y-3">
@@ -441,6 +590,7 @@ function TeacherCredentialsPanel({
         </ul>
       )}
     </aside>
+    </>
   )
 }
 
@@ -464,6 +614,13 @@ export function AdminTeachersPage() {
   const [editingTeacher, setEditingTeacher] = useState<TeacherRecord | null>(null)
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherRecord | null>(null)
   const [credentialsLog, setCredentialsLog] = useState<CredentialsEntry[]>([])
+
+  // للاستماع لحدث إغلاق اللوحة من الجوال
+  useEffect(() => {
+    const handleClose = () => setSelectedTeacher(null)
+    window.addEventListener('closeTeacherPanel', handleClose)
+    return () => window.removeEventListener('closeTeacherPanel', handleClose)
+  }, [])
 
   const { data, isLoading, isError, refetch, isFetching } = useTeachersQuery()
   const teachers = useMemo(() => data ?? [], [data])
@@ -654,18 +811,18 @@ export function AdminTeachersPage() {
         </p>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
-        <div className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start overflow-hidden">
+        <div className="space-y-6 min-w-0">
+          <div className="grid gap-4 md:grid-cols-3 min-w-0">
             {stats.map((stat) => (
-              <div key={stat.label} className="glass-card flex flex-col items-center gap-2 text-center">
+              <div key={stat.label} className="glass-card flex flex-col items-center gap-2 text-center min-w-0">
                 <span className="text-3xl font-bold text-slate-900">{stat.value}</span>
                 <span className="text-sm text-muted">{stat.label}</span>
               </div>
             ))}
           </div>
 
-          <div className="glass-card space-y-4">
+          <div className="glass-card space-y-4 min-w-0 overflow-hidden">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-1 flex-col gap-3 sm:flex-row">
                 <div className="relative flex-1">
@@ -708,7 +865,8 @@ export function AdminTeachersPage() {
               <EmptyState onAdd={handleAdd} />
             ) : (
               <div className="overflow-hidden rounded-3xl border border-slate-100">
-                <table className="min-w-full divide-y divide-slate-200 text-sm">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-slate-200 text-sm">
                   <thead className="bg-slate-50/80 text-xs font-semibold uppercase text-slate-500">
                     <tr>
                       <th scope="col" className="px-4 py-2 text-right tracking-wider">المعلم</th>
@@ -732,8 +890,18 @@ export function AdminTeachersPage() {
                       return (
                         <tr 
                           key={teacher.id} 
-                          onClick={() => setSelectedTeacher(teacher)}
-                          className="cursor-pointer transition hover:bg-teal-50/50"
+                          onClick={(e) => {
+                            // على الشاشات الكبيرة فقط
+                            if (window.innerWidth >= 1024) {
+                              setSelectedTeacher(teacher)
+                            } else {
+                              // على الجوال: فتح مكون منبثق من الأسفل
+                              if (!(e.target as HTMLElement).closest('button')) {
+                                setSelectedTeacher(teacher)
+                              }
+                            }
+                          }}
+                          className="transition hover:bg-teal-50/50 lg:cursor-pointer"
                         >
                           <td className="px-4 py-2.5">
                             <div className="flex flex-col gap-0.5">
@@ -796,6 +964,7 @@ export function AdminTeachersPage() {
                     })}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </div>
