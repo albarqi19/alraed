@@ -153,7 +153,11 @@ export function AdminActivitiesPage() {
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
                 {activities.map((activity) => (
-                  <tr key={activity.id} className="hover:bg-slate-50/70">
+                  <tr 
+                    key={activity.id} 
+                    onClick={() => setSelectedActivityId(activity.id)}
+                    className="hover:bg-slate-50/70 cursor-pointer transition-colors"
+                  >
                     <td className="px-4 py-3">
                       <div className="space-y-1">
                         <p className="font-semibold text-slate-900">{activity.title}</p>
@@ -207,15 +211,8 @@ export function AdminActivitiesPage() {
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <div className="flex flex-wrap items-center gap-2 text-xs">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedActivityId(activity.id)}
-                          className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
-                        >
-                          <i className="bi bi-eye" /> عرض
-                        </button>
                         <button
                           type="button"
                           onClick={() => handleDelete(activity.id)}

@@ -432,8 +432,8 @@ export function TreatmentPlansPage() {
 
           {/* Table View */}
           {viewMode === 'table' && (
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-              <table className="w-full">
+            <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
+              <table className="w-full min-w-[900px]">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="px-6 py-4 text-right text-sm font-semibold text-gray-900">الطالب</th>
@@ -518,15 +518,15 @@ export function TreatmentPlansPage() {
                   <div
                     key={plan.id}
                     onClick={() => navigate(`/admin/treatment-plans/${plan.id}`)}
-                    className="flex items-center justify-between p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                    className="flex flex-col md:flex-row md:items-center md:justify-between p-4 hover:bg-gray-50 cursor-pointer transition-colors gap-3"
                   >
-                    <div className="flex items-center gap-4 flex-1">
-                      <div className={`w-1 h-12 rounded-full ${plan.status === 'active' ? 'bg-emerald-500' : plan.status === 'completed' ? 'bg-sky-500' : plan.status === 'suspended' ? 'bg-amber-500' : 'bg-gray-300'}`}></div>
+                    <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
+                      <div className={`hidden md:block w-1 h-12 rounded-full ${plan.status === 'active' ? 'bg-emerald-500' : plan.status === 'completed' ? 'bg-sky-500' : plan.status === 'suspended' ? 'bg-amber-500' : 'bg-gray-300'}`}></div>
                       <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center shrink-0">
                         <span className="text-indigo-600 font-bold text-sm">{(plan.student?.name || 'ط')[0]}</span>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <h3 className="font-medium text-gray-900 truncate">{plan.student?.name || `طالب #${plan.student_id}`}</h3>
                           <span className={`px-2 py-0.5 rounded text-xs font-medium ${PROBLEM_TYPE_COLORS[plan.problem_type as ProblemType]}`}>
                             {plan.problem_type}
@@ -535,19 +535,19 @@ export function TreatmentPlansPage() {
                         <p className="text-sm text-gray-500 truncate">{plan.problem_description}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-6 shrink-0">
+                    <div className="flex items-center gap-3 md:gap-6 shrink-0 mr-auto md:mr-0">
                       <div className="text-center">
-                        <p className="text-lg font-bold text-gray-900">{progress}%</p>
+                        <p className="text-base md:text-lg font-bold text-gray-900">{progress}%</p>
                         <p className="text-xs text-gray-500">التقدم</p>
                       </div>
                       <div className="text-center">
-                        <p className="text-lg font-bold text-gray-900">{plan.goals?.length || 0}</p>
+                        <p className="text-base md:text-lg font-bold text-gray-900">{plan.goals?.length || 0}</p>
                         <p className="text-xs text-gray-500">أهداف</p>
                       </div>
-                      <span className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${STATUS_COLORS[plan.status as TreatmentPlanStatus]}`}>
+                      <span className={`px-2.5 md:px-3 py-1 md:py-1.5 rounded-lg text-xs font-medium border ${STATUS_COLORS[plan.status as TreatmentPlanStatus]}`}>
                         {STATUS_LABELS[plan.status as TreatmentPlanStatus]}
                       </span>
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="hidden md:block w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </div>

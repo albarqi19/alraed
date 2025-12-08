@@ -307,8 +307,8 @@ export function StudentCasesPage() {
         <>
           {/* Table View */}
           {viewMode === 'table' && (
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-              <table className="w-full">
+            <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
+              <table className="w-full min-w-[1000px]">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="px-6 py-4 text-right text-sm font-semibold text-gray-900">رقم الحالة</th>
