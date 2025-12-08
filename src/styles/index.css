@@ -922,6 +922,20 @@
     color: #1A1A2E !important;
   }
 
+  /* تحسين القائمة الجانبية - تكبير حجم الخط */
+  [data-theme='enterprise-compact'] .admin-sidebar {
+    font-size: 0.875rem;
+  }
+
+  [data-theme='enterprise-compact'] .admin-sidebar button,
+  [data-theme='enterprise-compact'] .admin-sidebar a {
+    font-size: 0.875rem !important;
+  }
+
+  [data-theme='enterprise-compact'] .admin-sidebar span {
+    font-size: 0.875rem !important;
+  }
+
   /* تحسين القائمة الجانبية - جعل النص أسود عند التحديد */
   [data-theme='enterprise-compact'] .admin-sidebar a[style*="background-color: var(--color-primary)"],
   [data-theme='enterprise-compact'] .admin-sidebar a[style*="background-color: var(--color-primary)"] span,
