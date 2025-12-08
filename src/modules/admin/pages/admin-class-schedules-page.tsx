@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   useAddQuickClassSessionMutation,
   useApplyScheduleToClassMutation,
@@ -684,6 +684,36 @@ export function AdminClassSchedulesPage() {
   const [isApplyScheduleOpen, setIsApplyScheduleOpen] = useState(false)
   const [sessionToDelete, setSessionToDelete] = useState<{ slot: ClassScheduleSlot; day: string } | null>(null)
   const [slotToQuickEdit, setSlotToQuickEdit] = useState<{ slot: ClassScheduleSlot; day: string } | null>(null)
+  const [selectedDay, setSelectedDay] = useState<{ day: string; sessions: Record<number, ClassScheduleSlot> } | null>(null)
+  const [showDaysPanel, setShowDaysPanel] = useState(false)
+
+  // الاستماع لفتح قائمة الأيام
+  React.useEffect(() => {
+    const handleOpenDays = () => setShowDaysPanel(true)
+    window.addEventListener('openDaysPanel', handleOpenDays)
+    return () => window.removeEventListener('openDaysPanel', handleOpenDays)
+  }, [])
+
+  // الاستماع لفتح جدول اليوم من قائمة الأيام
+  React.useEffect(() => {
+    const handleOpenDay = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      setSelectedDay(detail)
+      setShowDaysPanel(false)
+    }
+    window.addEventListener('openDaySchedule', handleOpenDay)
+    return () => window.removeEventListener('openDaySchedule', handleOpenDay)
+  }, [])
+
+  // منع تمرير الخلفية عند فتح النوافذ
+  React.useEffect(() => {
+    if (selectedDay || showDaysPanel) {
+      document.body.style.overflow = 'hidden'
+      return () => {
+        document.body.style.overflow = ''
+      }
+    }
+  }, [selectedDay, showDaysPanel])
 
   const classSummariesQuery = useClassScheduleSummaryQuery()
   const sessionDataQuery = useScheduleSessionDataQuery()
@@ -943,7 +973,17 @@ export function AdminClassSchedulesPage() {
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => setSelectedClassId(item.id)}
+                    onClick={() => {
+                      setSelectedClassId(item.id)
+                      // على الجوال: فتح نافذة الأيام مباشرة
+                      if (window.innerWidth < 768) {
+                        // انتظر تحديث الحالة ثم فتح النافذة
+                        setTimeout(() => {
+                          const event = new CustomEvent('openDaysPanel')
+                          window.dispatchEvent(event)
+                        }, 100)
+                      }
+                    }}
                     className={`w-full rounded-2xl border px-3 py-2.5 text-right text-sm transition focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${
                       isSelected
                         ? 'border-teal-500 bg-teal-50 text-teal-900 shadow-sm'
@@ -1056,7 +1096,8 @@ export function AdminClassSchedulesPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+                  {/* عرض الجدول للشاشات الكبيرة */}
+                  <div className="hidden md:block overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
                     <table className="w-full min-w-[720px] border-collapse text-right text-xs md:text-sm">
                       <thead className="bg-slate-100 text-slate-600">
                         <tr>
@@ -1127,6 +1168,7 @@ export function AdminClassSchedulesPage() {
                       </tbody>
                     </table>
                   </div>
+
                   <p className="text-xs text-muted">
                     اضغط على الحصة لتعديل المعلم والمادة أو حذفها. استخدم الخلايا الفارغة لإضافة حصص جديدة مع الحفاظ على سجلات الحضور التاريخية.
                   </p>
@@ -1155,6 +1197,129 @@ export function AdminClassSchedulesPage() {
         isSubmitting={addQuickSessionMutation.isPending}
         onSubmit={handleQuickSessionSubmit}
       />
+
+      {/* نافذة قائمة الأيام للجوال */}
+      {showDaysPanel && scheduleQuery.data?.schedule && (
+        <div 
+          className="fixed inset-0 z-50 md:hidden"
+          onClick={() => setShowDaysPanel(false)}
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div 
+            className="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto rounded-t-3xl bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 z-10 flex justify-center bg-white pt-3 pb-2 border-b border-slate-100">
+              <div className="h-1.5 w-12 rounded-full bg-slate-300" />
+            </div>
+            
+            <div className="p-4 space-y-4">
+              <header className="flex items-center justify-between border-b border-slate-200 pb-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">أيام الأسبوع</h2>
+                  <p className="text-xs text-muted">اختر يوم لعرض حصصه</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowDaysPanel(false)}
+                  className="rounded-full p-2 hover:bg-slate-100 text-slate-500"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </header>
+
+              <div className="space-y-3">
+                {daysOfWeek.map((day) => {
+                  const daySessions = scheduleQuery.data.schedule?.[day] ?? {}
+                  const sessionsCount = Object.values(daySessions).filter(s => s !== null).length
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => {
+                        const event = new CustomEvent('openDaySchedule', { detail: { day, sessions: daySessions } })
+                        window.dispatchEvent(event)
+                      }}
+                      className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-right shadow-sm hover:border-teal-300 hover:bg-teal-50/50 transition"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold text-slate-900">{day}</p>
+                          <p className="text-xs text-muted mt-1">{sessionsCount} حصة</p>
+                        </div>
+                        <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* نافذة عرض حصص اليوم للجوال */}
+      {selectedDay && (
+        <div 
+          className="fixed inset-0 z-50 md:hidden"
+          onClick={() => setSelectedDay(null)}
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div 
+            className="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto rounded-t-3xl bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 z-10 flex justify-center bg-white pt-3 pb-2 border-b border-slate-100">
+              <div className="h-1.5 w-12 rounded-full bg-slate-300" />
+            </div>
+            
+            <div className="p-4 space-y-4">
+              <header className="flex items-center justify-between border-b border-slate-200 pb-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">{selectedDay.day}</h2>
+                  <p className="text-xs text-muted">{Object.keys(selectedDay.sessions).length} حصة</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDay(null)}
+                  className="rounded-full p-2 hover:bg-slate-100 text-slate-500"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </header>
+
+              <div className="space-y-3">
+                {Object.values(selectedDay.sessions).filter(slot => slot !== null).map((slot) => (
+                  <div key={slot.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div className="flex items-start justify-between mb-2">
+                      <span className="font-semibold text-teal-600">الحصة {slot.period_number}</span>
+                      <span className="text-xs text-slate-500">
+                        {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+                      </span>
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-600">المادة:</span>
+                        <span className="font-semibold text-slate-900">{slot.subject_name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-600">المعلم:</span>
+                        <span className="font-semibold text-slate-900">{slot.teacher_name}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ApplyScheduleDialog
         open={Boolean(selectedClass && isApplyScheduleOpen)}
