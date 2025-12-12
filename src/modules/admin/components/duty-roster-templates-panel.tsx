@@ -158,6 +158,47 @@ export function DutyRosterTemplatesPanel() {
     return Object.values(form.weekdayAssignments).reduce((total, list) => total + list.length, 0)
   }, [form.weekdayAssignments])
 
+  // ألوان تظليل المعلمين المكررين
+  const HIGHLIGHT_COLORS = [
+    { bg: 'bg-blue-100', border: 'border-blue-300', text: 'text-blue-800' },
+    { bg: 'bg-emerald-100', border: 'border-emerald-300', text: 'text-emerald-800' },
+    { bg: 'bg-purple-100', border: 'border-purple-300', text: 'text-purple-800' },
+    { bg: 'bg-amber-100', border: 'border-amber-300', text: 'text-amber-800' },
+    { bg: 'bg-rose-100', border: 'border-rose-300', text: 'text-rose-800' },
+    { bg: 'bg-cyan-100', border: 'border-cyan-300', text: 'text-cyan-800' },
+    { bg: 'bg-orange-100', border: 'border-orange-300', text: 'text-orange-800' },
+    { bg: 'bg-teal-100', border: 'border-teal-300', text: 'text-teal-800' },
+  ]
+
+  // حساب المعلمين المكررين عبر الأيام وتعيين ألوان لهم
+  const repeatedTeacherColors = useMemo(() => {
+    const teacherDayCount = new Map<number, number>()
+
+    // حساب عدد الأيام لكل معلم
+    for (const weekday of DUTY_ROSTER_WEEKDAYS) {
+      const seenInDay = new Set<number>()
+      for (const assignment of form.weekdayAssignments[weekday]) {
+        if (!seenInDay.has(assignment.user_id)) {
+          seenInDay.add(assignment.user_id)
+          teacherDayCount.set(assignment.user_id, (teacherDayCount.get(assignment.user_id) ?? 0) + 1)
+        }
+      }
+    }
+
+    // تصفية المعلمين المكررين فقط (يظهرون في أكثر من يوم)
+    const repeatedTeachers = Array.from(teacherDayCount.entries())
+      .filter(([, count]) => count > 1)
+      .sort((a, b) => b[1] - a[1]) // ترتيب بالأكثر تكراراً
+
+    // تعيين لون لكل معلم مكرر
+    const colorMap = new Map<number, typeof HIGHLIGHT_COLORS[0]>()
+    repeatedTeachers.forEach(([userId], index) => {
+      colorMap.set(userId, HIGHLIGHT_COLORS[index % HIGHLIGHT_COLORS.length])
+    })
+
+    return colorMap
+  }, [form.weekdayAssignments])
+
   const handleFieldChange = <K extends keyof TemplateFormState>(field: K, value: TemplateFormState[K]) => {
     setForm((previous) => ({ ...previous, [field]: value }))
     setIsDirty(true)
@@ -485,8 +526,8 @@ export function DutyRosterTemplatesPanel() {
                     <div
                       onClick={() => handleSelectTemplate(template.id)}
                       className={`cursor-pointer rounded-2xl border px-4 py-3 text-right transition ${isSelected
-                          ? 'border-indigo-400 bg-indigo-50 text-indigo-900 shadow-sm'
-                          : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-indigo-50'
+                        ? 'border-indigo-400 bg-indigo-50 text-indigo-900 shadow-sm'
+                        : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-indigo-50'
                         }`}
                     >
                       <div className="flex items-start justify-between gap-2">
@@ -590,25 +631,39 @@ export function DutyRosterTemplatesPanel() {
                         </div>
                       ) : (
                         <ul className="space-y-2 text-sm">
-                          {assignments.map((assignment, index) => (
-                            <li key={assignment.user_id} className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
-                              <div className="text-right">
-                                <p className="font-semibold text-slate-800">{assignment.name}</p>
-                                {assignment.phone && <p className="text-[11px] text-muted">{assignment.phone}</p>}
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <button type="button" onClick={() => handleMoveTeacher(weekday, index, -1)} className="rounded-full border border-slate-200 p-1 text-muted hover:text-indigo-600 disabled:opacity-40" disabled={index === 0 || isSubmitting}>
-                                  <ArrowUp className="h-4 w-4" />
-                                </button>
-                                <button type="button" onClick={() => handleMoveTeacher(weekday, index, 1)} className="rounded-full border border-slate-200 p-1 text-muted hover:text-indigo-600 disabled:opacity-40" disabled={index === assignments.length - 1 || isSubmitting}>
-                                  <ArrowDown className="h-4 w-4" />
-                                </button>
-                                <button type="button" onClick={() => handleRemoveTeacher(weekday, index)} className="rounded-full border border-rose-200 p-1 text-rose-600 hover:bg-rose-50 disabled:opacity-40" disabled={isSubmitting}>
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              </div>
-                            </li>
-                          ))}
+                          {assignments.map((assignment, index) => {
+                            const highlightColor = repeatedTeacherColors.get(assignment.user_id)
+                            const isRepeated = !!highlightColor
+
+                            return (
+                              <li
+                                key={assignment.user_id}
+                                className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 shadow-sm ${isRepeated
+                                    ? `${highlightColor.bg} ${highlightColor.border}`
+                                    : 'border-slate-200 bg-white'
+                                  }`}
+                              >
+                                <div className="text-right">
+                                  <p className={`font-semibold ${isRepeated ? highlightColor.text : 'text-slate-800'}`}>
+                                    {assignment.name}
+                                    {isRepeated && <span className="mr-1 text-xs opacity-60">●</span>}
+                                  </p>
+                                  {assignment.phone && <p className="text-[11px] text-muted">{assignment.phone}</p>}
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <button type="button" onClick={() => handleMoveTeacher(weekday, index, -1)} className="rounded-full border border-slate-200 p-1 text-muted hover:text-indigo-600 disabled:opacity-40" disabled={index === 0 || isSubmitting}>
+                                    <ArrowUp className="h-4 w-4" />
+                                  </button>
+                                  <button type="button" onClick={() => handleMoveTeacher(weekday, index, 1)} className="rounded-full border border-slate-200 p-1 text-muted hover:text-indigo-600 disabled:opacity-40" disabled={index === assignments.length - 1 || isSubmitting}>
+                                    <ArrowDown className="h-4 w-4" />
+                                  </button>
+                                  <button type="button" onClick={() => handleRemoveTeacher(weekday, index)} className="rounded-full border border-rose-200 p-1 text-rose-600 hover:bg-rose-50 disabled:opacity-40" disabled={isSubmitting}>
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </li>
+                            )
+                          })}
                         </ul>
                       )}
                     </section>
@@ -721,8 +776,8 @@ export function DutyRosterTemplatesPanel() {
                   type="button"
                   onClick={handleToggleActive}
                   className={`w-full rounded-2xl border px-4 py-2 text-sm font-semibold transition ${form.isActive
-                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                      : 'border-slate-200 bg-slate-50 text-slate-600'
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                    : 'border-slate-200 bg-slate-50 text-slate-600'
                     }`}
                   disabled={isSubmitting}
                 >
