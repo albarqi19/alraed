@@ -492,29 +492,29 @@ function normalizeAttendanceReportMatrix(
 
   const metadata: AttendanceReportMatrix['metadata'] | undefined = Object.keys(metadataRecord).length
     ? {
-        grade: typeof metadataRecord.grade === 'string' ? metadataRecord.grade : summary.grade ?? filters.grade ?? null,
-        class_name:
-          typeof metadataRecord.class_name === 'string'
-            ? metadataRecord.class_name
-            : summary.class_name ?? filters.class ?? null,
-        student:
-          isRecord(metadataRecord.student) && typeof metadataRecord.student.name === 'string'
+      grade: typeof metadataRecord.grade === 'string' ? metadataRecord.grade : summary.grade ?? filters.grade ?? null,
+      class_name:
+        typeof metadataRecord.class_name === 'string'
+          ? metadataRecord.class_name
+          : summary.class_name ?? filters.class ?? null,
+      student:
+        isRecord(metadataRecord.student) && typeof metadataRecord.student.name === 'string'
+          ? {
+            id:
+              typeof metadataRecord.student.id === 'number'
+                ? metadataRecord.student.id
+                : typeof metadataRecord.student.student_id === 'number'
+                  ? metadataRecord.student.student_id
+                  : filters.student_id ?? 0,
+            name: metadataRecord.student.name,
+          }
+          : filters.student_id
             ? {
-                id:
-                  typeof metadataRecord.student.id === 'number'
-                    ? metadataRecord.student.id
-                    : typeof metadataRecord.student.student_id === 'number'
-                      ? metadataRecord.student.student_id
-                      : filters.student_id ?? 0,
-                name: metadataRecord.student.name,
-              }
-            : filters.student_id
-              ? {
-                  id: filters.student_id,
-                  name: summary.student_name ?? '',
-                }
-              : undefined,
-      }
+              id: filters.student_id,
+              name: summary.student_name ?? '',
+            }
+            : undefined,
+    }
     : undefined
 
   return {
@@ -815,19 +815,19 @@ function normalizeTeacherHudoriAttendanceRecord(raw: unknown): TeacherHudoriAtte
 
   const userRecord = isRecord(raw.user)
     ? {
-        id: coerceNumber(raw.user.id ?? raw.user.user_id, 0),
-        name: typeof raw.user.name === 'string' ? raw.user.name : null,
-        school_id: coerceNumber(raw.user.school_id, Number.NaN),
-        phone: typeof raw.user.phone === 'string' ? raw.user.phone : null,
-      }
+      id: coerceNumber(raw.user.id ?? raw.user.user_id, 0),
+      name: typeof raw.user.name === 'string' ? raw.user.name : null,
+      school_id: coerceNumber(raw.user.school_id, Number.NaN),
+      phone: typeof raw.user.phone === 'string' ? raw.user.phone : null,
+    }
     : null
 
   const user = userRecord && userRecord.name
     ? {
-        id: Math.max(0, Math.trunc(userRecord.id ?? 0)),
-        name: userRecord.name,
-        school_id: Number.isFinite(userRecord.school_id ?? NaN) ? Math.trunc(userRecord.school_id ?? 0) : null,
-      }
+      id: Math.max(0, Math.trunc(userRecord.id ?? 0)),
+      name: userRecord.name,
+      school_id: Number.isFinite(userRecord.school_id ?? NaN) ? Math.trunc(userRecord.school_id ?? 0) : null,
+    }
     : null
 
   const delayStatusValue = typeof raw.delay_status === 'string' ? (raw.delay_status as TeacherDelayStatus) : null
@@ -932,16 +932,16 @@ function normalizeTeacherHudoriAttendanceResponse(payload: unknown): TeacherHudo
 
   const metadata = metadataRecord
     ? {
-        refreshed_at: typeof metadataRecord.refreshed_at === 'string' ? metadataRecord.refreshed_at : undefined,
-        filters: filtersRecord
-          ? {
-              status: typeof filtersRecord.status === 'string' ? filtersRecord.status : undefined,
-              matched: typeof filtersRecord.matched === 'string' ? filtersRecord.matched : undefined,
-              search: typeof filtersRecord.search === 'string' ? filtersRecord.search : undefined,
-              delay_status: typeof filtersRecord.delay_status === 'string' ? filtersRecord.delay_status : undefined,
-            }
-          : undefined,
-      }
+      refreshed_at: typeof metadataRecord.refreshed_at === 'string' ? metadataRecord.refreshed_at : undefined,
+      filters: filtersRecord
+        ? {
+          status: typeof filtersRecord.status === 'string' ? filtersRecord.status : undefined,
+          matched: typeof filtersRecord.matched === 'string' ? filtersRecord.matched : undefined,
+          search: typeof filtersRecord.search === 'string' ? filtersRecord.search : undefined,
+          delay_status: typeof filtersRecord.delay_status === 'string' ? filtersRecord.delay_status : undefined,
+        }
+        : undefined,
+    }
     : undefined
 
   return {
@@ -1200,7 +1200,7 @@ function parseWhatsappTemplateStatus(value: unknown): 'active' | 'inactive' {
       return 'active'
     }
 
-  if (['inactive', 'disabled', 'false', '0', 'off', 'paused'].includes(normalized)) {
+    if (['inactive', 'disabled', 'false', '0', 'off', 'paused'].includes(normalized)) {
       return 'inactive'
     }
 
@@ -2247,6 +2247,95 @@ export async function assignDutyRosterReplacement(
   return unwrapResponse(data, 'تعذر تعيين البديل المؤقت')
 }
 
+/**
+ * جلب إشراف اليوم مباشرة من القوالب (بدون إنشاء سجلات)
+ */
+export interface TodaySupervisionTeacher {
+  user_id: number
+  name: string
+  phone: string | null
+  assignment_role: string
+}
+
+export interface TodaySupervisionAbsenceRecord {
+  shift_id: number
+  assignment_id: number
+  user_id: number
+  user_name: string | null
+  status: string
+  marked_absent_at: string | null
+  replacement_user_id: number | null
+  replacement_user_name: string | null
+  reason: string | null
+}
+
+export interface TodaySupervisionItem {
+  template_id: number
+  name: string
+  shift_type: string
+  window_start: string | null
+  window_end: string | null
+  trigger_offset_minutes: number | null
+  date: string
+  weekday: string
+  weekday_ar: string
+  teachers: TodaySupervisionTeacher[]
+  absence_records: TodaySupervisionAbsenceRecord[]
+}
+
+export interface TodaySupervisionResponse {
+  data: TodaySupervisionItem[]
+  meta: {
+    date: string
+    weekday: string
+    total_supervisions: number
+    total_teachers: number
+  }
+}
+
+export async function fetchTodaySupervisions(date?: string): Promise<TodaySupervisionResponse> {
+  const params: Filters = {}
+  if (date) params.date = date
+
+  const { data } = await apiClient.get<ApiResponse<TodaySupervisionItem[]>>('/admin/duty-rosters/today', { params })
+
+  const items = Array.isArray(data.data) ? data.data : []
+  const meta = (data as unknown as Record<string, unknown>).meta as TodaySupervisionResponse['meta'] ?? {
+    date: date ?? new Date().toISOString().slice(0, 10),
+    weekday: '',
+    total_supervisions: items.length,
+    total_teachers: 0,
+  }
+
+  return { data: items, meta }
+}
+
+/**
+ * تسجيل غياب معلم عن الإشراف (ينشئ سجل فقط عند الحاجة)
+ */
+export interface RecordSupervisionAbsencePayload {
+  template_id: number
+  user_id: number
+  date: string
+  reason?: string | null
+}
+
+export interface RecordSupervisionAbsenceResult {
+  shift_id: number
+  assignment_id: number
+  status: string
+}
+
+export async function recordSupervisionAbsence(
+  payload: RecordSupervisionAbsencePayload
+): Promise<RecordSupervisionAbsenceResult> {
+  const { data } = await apiClient.post<ApiResponse<RecordSupervisionAbsenceResult>>(
+    '/admin/duty-rosters/record-absence',
+    payload,
+  )
+  return unwrapResponse(data, 'تعذر تسجيل غياب المعلم')
+}
+
 export async function createLateArrival(payload: {
   student_ids: number[]
   late_date: string
@@ -2336,7 +2425,7 @@ export async function fetchWhatsappStatistics(): Promise<WhatsappStatistics> {
 
 export async function fetchWhatsappStudents(): Promise<WhatsappTargetStudent[]> {
   const { data } = await apiClient.get<ApiResponse<unknown>>('/admin/students/all')
-  
+
   const records = unwrapCollectionResponse<Record<string, unknown>>(
     data,
     'تعذر تحميل قائمة الطلاب المخصصة للواتساب',
@@ -2401,7 +2490,7 @@ export async function fetchWhatsappHistory(filters?: {
   per_page?: number
 }): Promise<WhatsappHistoryItem[]> {
   const params: Record<string, string | number> = {}
-  
+
   if (filters?.student_id) params.student_id = filters.student_id
   if (filters?.date_from) params.date_from = filters.date_from
   if (filters?.date_to) params.date_to = filters.date_to
@@ -2675,7 +2764,7 @@ export async function fetchPointCards(filters: PointCardFilters = {}): Promise<P
   })
 
   const items = unwrapCollectionResponse<PointCardRecord>(data, 'تعذر تحميل بطاقات الطلاب', ['data', 'items', 'cards'])
-  
+
   // Extract pagination metadata
   const metaPayload = isRecord(data) && 'meta' in data ? (data.meta as Record<string, unknown>) : {}
 
@@ -2685,7 +2774,7 @@ export async function fetchPointCards(filters: PointCardFilters = {}): Promise<P
     per_page: coerceNumber(metaPayload.per_page, filters.per_page ?? 20),
     total: coerceNumber(metaPayload.total, items.length),
   }
-  
+
   return { items, meta }
 }
 
@@ -2944,4 +3033,296 @@ export async function createManualAbsence(payload: ManualAbsencePayload): Promis
     payload,
   )
   return unwrapResponse(data, 'تعذر تسجيل الغياب اليدوي')
+}
+
+// ============================================
+// نظام المناوبة الفصلية (Duty Schedules)
+// ============================================
+
+export interface DutyScheduleSemester {
+  id: number
+  name: string
+  code: string
+  academic_year: string | null
+  start_date: string
+  end_date: string
+  is_current: boolean
+  total_days: number
+}
+
+export interface DutyScheduleRecord {
+  id: number
+  semester_id: number
+  semester_name: string | null
+  is_morning_enabled: boolean
+  is_afternoon_enabled: boolean
+  morning_offset_before: number
+  afternoon_offset_after: number
+  generated_at: string | null
+  notes: string | null
+}
+
+export interface DutyScheduleAssignment {
+  id: number
+  user_id: number
+  user_name: string | null
+  user_phone: string | null
+  duty_date: string
+  duty_type: 'morning' | 'afternoon'
+  duty_type_name: string
+  start_time: string | null
+  end_time: string | null
+  status: 'scheduled' | 'notified' | 'completed' | 'absent' | 'excused'
+  status_name: string
+  notified_at: string | null
+  notes: string | null
+}
+
+export interface DutyScheduleStaffCount {
+  user_id: number
+  name: string
+  phone: string | null
+  total: number
+  morning: number
+  afternoon: number
+  completed: number
+  absent: number
+}
+
+export interface DutyScheduleStats {
+  total_assignments: number
+  morning_assignments: number
+  afternoon_assignments: number
+  unique_staff: number
+  by_status: {
+    scheduled: number
+    notified: number
+    completed: number
+    absent: number
+  }
+}
+
+export interface DutyScheduleResponse {
+  schedule: DutyScheduleRecord | null
+  assignments: DutyScheduleAssignment[]
+  staff_counts: DutyScheduleStaffCount[]
+  stats: DutyScheduleStats
+}
+
+export interface DutyScheduleAvailableStaff {
+  id: number
+  name: string
+  phone: string | null
+  role: string
+}
+
+export interface DutyScheduleGeneratePayload {
+  semester_id: number
+  duty_type: 'morning' | 'afternoon'
+  staff_ids: number[]
+}
+
+export interface DutyScheduleGenerateResult {
+  schedule: DutyScheduleRecord
+  assignments_count: number
+  staff_count: number
+  days_count: number
+}
+
+export interface DutyScheduleTodayItem {
+  id: number
+  user_id: number
+  user_name: string | null
+  user_phone: string | null
+  duty_type: 'morning' | 'afternoon'
+  duty_type_name: string
+  start_time: string | null
+  end_time: string | null
+  status: string
+  status_name: string
+}
+
+export interface DutyScheduleTodayResponse {
+  data: DutyScheduleTodayItem[]
+  meta: {
+    date: string
+    total: number
+    morning: number
+    afternoon: number
+  }
+}
+
+/**
+ * جلب الفصول الدراسية المتاحة
+ */
+export async function fetchDutyScheduleSemesters(): Promise<DutyScheduleSemester[]> {
+  const { data } = await apiClient.get<ApiResponse<DutyScheduleSemester[]>>('/admin/duty-schedules/semesters')
+  return unwrapResponse(data, 'تعذر تحميل الفصول الدراسية')
+}
+
+/**
+ * جلب جدول المناوبة لفصل معين
+ */
+export async function fetchDutySchedule(
+  semesterId: number,
+  dutyType?: 'morning' | 'afternoon'
+): Promise<DutyScheduleResponse | null> {
+  const params: Record<string, unknown> = { semester_id: semesterId }
+  if (dutyType) params.duty_type = dutyType
+
+  const { data } = await apiClient.get<ApiResponse<DutyScheduleResponse | null>>('/admin/duty-schedules', { params })
+  
+  if (!data.success) {
+    throw new Error(data.message ?? 'تعذر تحميل جدول المناوبة')
+  }
+  
+  return data.data
+}
+
+/**
+ * جلب المعلمين المتاحين للمناوبة
+ */
+export async function fetchDutyScheduleAvailableStaff(): Promise<DutyScheduleAvailableStaff[]> {
+  const { data } = await apiClient.get<ApiResponse<DutyScheduleAvailableStaff[]>>('/admin/duty-schedules/available-staff')
+  return unwrapResponse(data, 'تعذر تحميل قائمة المعلمين')
+}
+
+/**
+ * توليد جدول المناوبة
+ */
+export async function generateDutySchedule(
+  payload: DutyScheduleGeneratePayload
+): Promise<DutyScheduleGenerateResult> {
+  const { data } = await apiClient.post<ApiResponse<DutyScheduleGenerateResult>>(
+    '/admin/duty-schedules/generate',
+    payload
+  )
+  return unwrapResponse(data, 'تعذر توليد جدول المناوبة')
+}
+
+/**
+ * تحديث إعدادات جدول المناوبة
+ */
+export async function updateDutyScheduleSettings(
+  scheduleId: number,
+  settings: Partial<{
+    is_morning_enabled: boolean
+    is_afternoon_enabled: boolean
+    morning_offset_before: number
+    afternoon_offset_after: number
+    notes: string | null
+  }>
+): Promise<DutyScheduleRecord> {
+  const { data } = await apiClient.put<ApiResponse<DutyScheduleRecord>>(
+    `/admin/duty-schedules/${scheduleId}/settings`,
+    settings
+  )
+  return unwrapResponse(data, 'تعذر تحديث إعدادات المناوبة')
+}
+
+/**
+ * تحديث تكليف مناوبة
+ */
+export async function updateDutyScheduleAssignment(
+  assignmentId: number,
+  payload: Partial<{
+    user_id: number
+    status: 'scheduled' | 'notified' | 'completed' | 'absent' | 'excused'
+    notes: string | null
+  }>
+): Promise<DutyScheduleAssignment> {
+  const { data } = await apiClient.put<ApiResponse<DutyScheduleAssignment>>(
+    `/admin/duty-schedules/assignments/${assignmentId}`,
+    payload
+  )
+  return unwrapResponse(data, 'تعذر تحديث تكليف المناوبة')
+}
+
+/**
+ * حذف مناوبات جدول معين
+ */
+export async function deleteDutyScheduleAssignments(
+  scheduleId: number,
+  dutyType?: 'morning' | 'afternoon'
+): Promise<{ message: string; deleted_count: number }> {
+  const params: Record<string, unknown> = {}
+  if (dutyType) params.duty_type = dutyType
+
+  const { data } = await apiClient.delete<ApiResponse<{ message: string; deleted_count: number }>>(
+    `/admin/duty-schedules/${scheduleId}/assignments`,
+    { params }
+  )
+  return unwrapResponse(data, 'تعذر حذف المناوبات')
+}
+
+/**
+ * جلب مناوبات اليوم أو تاريخ محدد
+ */
+export async function fetchTodayDutySchedules(
+  date?: string,
+  dutyType?: 'morning' | 'afternoon'
+): Promise<DutyScheduleTodayResponse> {
+  const params: Record<string, unknown> = {}
+  if (date) params.date = date
+  if (dutyType) params.duty_type = dutyType
+
+  const { data } = await apiClient.get<ApiResponse<DutyScheduleTodayItem[]>>('/admin/duty-schedules/today', { params })
+  
+  const items = unwrapResponse(data, 'تعذر تحميل مناوبات اليوم')
+  const meta = (data as unknown as Record<string, unknown>).meta as DutyScheduleTodayResponse['meta'] ?? {
+    date: new Date().toISOString().slice(0, 10),
+    total: items.length,
+    morning: items.filter(i => i.duty_type === 'morning').length,
+    afternoon: items.filter(i => i.duty_type === 'afternoon').length,
+  }
+
+  return { data: items, meta }
+}
+
+/**
+ * جلب إحصائيات المناوبة لكل معلم
+ */
+export async function fetchDutyScheduleStaffCounts(scheduleId: number): Promise<DutyScheduleStaffCount[]> {
+  const { data } = await apiClient.get<ApiResponse<DutyScheduleStaffCount[]>>(
+    `/admin/duty-schedules/${scheduleId}/staff-counts`
+  )
+  return unwrapResponse(data, 'تعذر تحميل إحصائيات المناوبة')
+}
+
+/**
+ * إحصائيات معلم شاملة (إشراف + مناوبة)
+ */
+export interface TeacherFullStats {
+  user: {
+    id: number
+    name: string
+    phone: string | null
+    role: string
+  }
+  duties: {
+    total: number
+    completed: number
+    absent: number
+    upcoming: number
+    past: number
+    attendance_rate: number
+  }
+  supervisions: {
+    weekly_count: number
+    expected_total: number
+    absences: number
+    attendance_rate: number
+  }
+  semester: {
+    name: string
+    working_days_passed: number
+    working_days_total: number
+  }
+}
+
+export async function fetchTeacherFullStats(userId: number): Promise<TeacherFullStats> {
+  const { data } = await apiClient.get<ApiResponse<TeacherFullStats>>(
+    `/admin/duty-schedules/teacher/${userId}/stats`
+  )
+  return unwrapResponse(data, 'تعذر تحميل إحصائيات المعلم')
 }

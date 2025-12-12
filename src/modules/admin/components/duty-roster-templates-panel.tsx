@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { ArrowDown, ArrowUp, CalendarCog, CheckCircle2, Loader2, Plus, RefreshCcw, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, CalendarCog, CheckCircle2, Loader2, Plus, RefreshCcw, Settings, Trash2, X } from 'lucide-react'
 
 import {
   useCreateDutyRosterTemplateMutation,
@@ -111,22 +111,35 @@ export function DutyRosterTemplatesPanel() {
   const teachers = teachersQuery.data ?? []
   const teacherMap = useMemo(() => new Map(teachers.map((teacher) => [teacher.id, teacher])), [teachers])
 
-  const [selectedId, setSelectedId] = useState<number | 'new'>('new')
+  const [selectedId, setSelectedId] = useState<number | null>(null)
   const [form, setForm] = useState<TemplateFormState>(() => buildEmptyForm())
   const [isDirty, setIsDirty] = useState(false)
-  const previousSelectedRef = useRef<number | 'new'>('new')
+  const previousSelectedRef = useRef<number | null>(null)
+  const [isNewTemplateModalOpen, setIsNewTemplateModalOpen] = useState(false)
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
+  const [newTemplateForm, setNewTemplateForm] = useState<TemplateFormState>(() => buildEmptyForm())
 
   const isSubmitting = createTemplateMutation.isPending || updateTemplateMutation.isPending || deleteTemplateMutation.isPending
   const isLoading = templatesQuery.isLoading || teachersQuery.isLoading
   const isFetching = templatesQuery.isFetching
 
+  // تحديد أول قالب تلقائياً (مرة واحدة فقط)
   useEffect(() => {
-    if (selectedId === 'new') {
-      if (previousSelectedRef.current !== 'new') {
-        setForm(buildEmptyForm())
-        setIsDirty(false)
-      }
-      previousSelectedRef.current = 'new'
+    if (templates.length > 0 && selectedId === null && previousSelectedRef.current === null) {
+      setSelectedId(templates[0].id)
+    }
+  }, [templates.length, selectedId])
+
+  // تحميل بيانات القالب المختار
+  useEffect(() => {
+    if (selectedId === previousSelectedRef.current) {
+      return
+    }
+
+    if (selectedId === null) {
+      setForm(buildEmptyForm())
+      setIsDirty(false)
+      previousSelectedRef.current = null
       return
     }
 
@@ -136,29 +149,14 @@ export function DutyRosterTemplatesPanel() {
       setForm(mapTemplateToForm(match, teacherMap))
       setIsDirty(false)
       previousSelectedRef.current = selectedId
-      return
-    }
-
-    if (templates.length > 0) {
-      const fallback = templates[0]
-      setSelectedId(fallback.id)
-    } else {
-      previousSelectedRef.current = 'new'
-      setSelectedId('new')
     }
   }, [selectedId, templates, teacherMap])
 
-  const selectedTemplate = selectedId === 'new' ? null : templates.find((template) => template.id === selectedId) ?? null
-  const totalAssignments = useMemo(() => {
-    if (!selectedTemplate) {
-      return Object.values(form.weekdayAssignments).reduce((total, list) => total + list.length, 0)
-    }
+  const selectedTemplate = selectedId ? templates.find((template) => template.id === selectedId) ?? null : null
 
-    return DUTY_ROSTER_WEEKDAYS.reduce(
-      (total, weekday) => total + (selectedTemplate.weekday_assignments[weekday]?.length ?? 0),
-      0,
-    )
-  }, [form.weekdayAssignments, selectedTemplate])
+  const totalAssignments = useMemo(() => {
+    return Object.values(form.weekdayAssignments).reduce((total, list) => total + list.length, 0)
+  }, [form.weekdayAssignments])
 
   const handleFieldChange = <K extends keyof TemplateFormState>(field: K, value: TemplateFormState[K]) => {
     setForm((previous) => ({ ...previous, [field]: value }))
@@ -171,9 +169,7 @@ export function DutyRosterTemplatesPanel() {
   }
 
   const handleAddTeacher = (weekday: DutyRosterWeekday, teacherId: number) => {
-    if (!Number.isFinite(teacherId) || teacherId <= 0) {
-      return
-    }
+    if (!Number.isFinite(teacherId) || teacherId <= 0) return
 
     const teacher = teacherMap.get(teacherId)
     if (!teacher) {
@@ -191,11 +187,7 @@ export function DutyRosterTemplatesPanel() {
         ...previous.weekdayAssignments,
         [weekday]: [
           ...existing,
-          {
-            user_id: teacher.id,
-            name: teacher.name,
-            phone: teacher.phone ?? null,
-          },
+          { user_id: teacher.id, name: teacher.name, phone: teacher.phone ?? null },
         ],
       }
 
@@ -207,19 +199,13 @@ export function DutyRosterTemplatesPanel() {
   const handleRemoveTeacher = (weekday: DutyRosterWeekday, index: number) => {
     setForm((previous) => {
       const current = previous.weekdayAssignments[weekday]
-      if (!current[index]) {
-        return previous
-      }
+      if (!current[index]) return previous
 
       const updatedDay = current.filter((_, position) => position !== index)
-
       setIsDirty(true)
       return {
         ...previous,
-        weekdayAssignments: {
-          ...previous.weekdayAssignments,
-          [weekday]: updatedDay,
-        },
+        weekdayAssignments: { ...previous.weekdayAssignments, [weekday]: updatedDay },
       }
     })
   }
@@ -229,9 +215,7 @@ export function DutyRosterTemplatesPanel() {
       const current = previous.weekdayAssignments[weekday]
       const targetIndex = index + offset
 
-      if (!current[index] || targetIndex < 0 || targetIndex >= current.length) {
-        return previous
-      }
+      if (!current[index] || targetIndex < 0 || targetIndex >= current.length) return previous
 
       const reordered = [...current]
       const [moved] = reordered.splice(index, 1)
@@ -240,74 +224,135 @@ export function DutyRosterTemplatesPanel() {
       setIsDirty(true)
       return {
         ...previous,
-        weekdayAssignments: {
-          ...previous.weekdayAssignments,
-          [weekday]: reordered,
-        },
+        weekdayAssignments: { ...previous.weekdayAssignments, [weekday]: reordered },
       }
     })
   }
 
-  const handleSelectTemplate = (templateId: number | 'new') => {
-    if (isSubmitting) {
-      return
-    }
+  const handleSelectTemplate = (templateId: number) => {
+    if (isSubmitting) return
     setSelectedId(templateId)
   }
 
+  const handleOpenSettings = (templateId: number, event: React.MouseEvent) => {
+    event.stopPropagation()
+    setSelectedId(templateId)
+    setIsSettingsModalOpen(true)
+  }
+
   const handleDeleteTemplate = async () => {
-    if (!selectedTemplate) {
-      return
-    }
+    if (!selectedTemplate) return
 
     const confirmed = window.confirm(
       `هل أنت متأكد من حذف القالب "${selectedTemplate.name}"؟\n\nسيتم حذف جميع توزيعات المعلمين المرتبطة بهذا القالب.`
     )
 
-    if (!confirmed) {
-      return
-    }
+    if (!confirmed) return
 
     await deleteTemplateMutation.mutateAsync(selectedTemplate.id)
-    setSelectedId('new')
+    setSelectedId(null)
+    setIsSettingsModalOpen(false)
   }
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-
-    if (!form.name.trim()) {
+  const validateAndBuildPayload = (formData: TemplateFormState) => {
+    if (!formData.name.trim()) {
       toast({ type: 'error', title: 'أدخل اسم القالب الأسبوعي' })
-      return
+      return null
     }
 
-    if (!form.shiftType.trim()) {
-      toast({ type: 'error', title: 'حدد نوع المناوبة' })
-      return
+    if (!formData.shiftType.trim()) {
+      toast({ type: 'error', title: 'حدد نوع الإشراف' })
+      return null
     }
 
-    if (!form.windowStart || !form.windowEnd) {
+    if (!formData.windowStart || !formData.windowEnd) {
       toast({ type: 'error', title: 'حدد وقت البداية والنهاية' })
-      return
+      return null
     }
 
-    if (form.windowStart >= form.windowEnd) {
+    if (formData.windowStart >= formData.windowEnd) {
       toast({ type: 'error', title: 'وقت النهاية يجب أن يكون بعد وقت البداية' })
-      return
+      return null
     }
 
     const sanitizedAssignments = DUTY_ROSTER_WEEKDAYS.reduce(
       (accumulator, weekday) => {
         const uniqueIds = Array.from(
-          new Set(form.weekdayAssignments[weekday].map((assignment) => assignment.user_id)),
+          new Set(formData.weekdayAssignments[weekday].map((assignment) => assignment.user_id)),
         ).filter((value) => Number.isInteger(value) && value > 0)
-
         accumulator[weekday] = uniqueIds
         return accumulator
       },
       {} as Partial<Record<DutyRosterWeekday, number[]>>,
     )
 
-    const totalSelected = Object.values(sanitizedAssignments).reduce(
+    let triggerOffset: number | null = null
+    const trimmedOffset = formData.triggerOffset.trim()
+
+    if (trimmedOffset) {
+      const parsed = Number.parseInt(trimmedOffset, 10)
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        toast({ type: 'error', title: 'قيمة التذكير يجب أن تكون رقماً أكبر أو يساوي صفر' })
+        return null
+      }
+      triggerOffset = parsed
+    }
+
+    return {
+      name: formData.name.trim(),
+      shift_type: formData.shiftType.trim(),
+      window_start: formData.windowStart,
+      window_end: formData.windowEnd,
+      trigger_offset_minutes: triggerOffset,
+      is_active: formData.isActive,
+      weekday_assignments: sanitizedAssignments,
+    }
+  }
+
+  const handleSubmitSettings = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    const payload = validateAndBuildPayload(form)
+    if (!payload) return
+
+    try {
+      if (form.id) {
+        const updated = await updateTemplateMutation.mutateAsync({ id: form.id, payload })
+        setForm(mapTemplateToForm(updated, teacherMap))
+        setSelectedId(updated.id)
+      }
+      setIsDirty(false)
+      setIsSettingsModalOpen(false)
+      toast({ type: 'success', title: 'تم تحديث إعدادات القالب' })
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  const handleSaveAssignments = async () => {
+    const payload = validateAndBuildPayload(form)
+    if (!payload) return
+
+    try {
+      if (form.id) {
+        const updated = await updateTemplateMutation.mutateAsync({ id: form.id, payload })
+        setForm(mapTemplateToForm(updated, teacherMap))
+        setSelectedId(updated.id)
+      }
+      setIsDirty(false)
+      toast({ type: 'success', title: 'تم حفظ توزيع المعلمين' })
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  const handleCreateNewTemplate = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    const payload = validateAndBuildPayload(newTemplateForm)
+    if (!payload) return
+
+    const totalSelected = Object.values(payload.weekday_assignments).reduce(
       (total, list) => total + (list?.length ?? 0),
       0,
     )
@@ -317,51 +362,61 @@ export function DutyRosterTemplatesPanel() {
       return
     }
 
-    let triggerOffset: number | null = null
-    const trimmedOffset = form.triggerOffset.trim()
-
-    if (trimmedOffset) {
-      const parsed = Number.parseInt(trimmedOffset, 10)
-      if (!Number.isFinite(parsed) || parsed < 0) {
-        toast({ type: 'error', title: 'قيمة التذكير يجب أن تكون رقماً أكبر أو يساوي صفر' })
-        return
-      }
-      triggerOffset = parsed
-    }
-
-    const payload = {
-      name: form.name.trim(),
-      shift_type: form.shiftType.trim(),
-      window_start: form.windowStart,
-      window_end: form.windowEnd,
-      trigger_offset_minutes: triggerOffset,
-      is_active: form.isActive,
-      weekday_assignments: sanitizedAssignments,
-    }
-
     try {
-      if (form.id) {
-        const updated = await updateTemplateMutation.mutateAsync({ id: form.id, payload })
-        setForm(mapTemplateToForm(updated, teacherMap))
-        setSelectedId(updated.id)
-      } else {
-        const created = await createTemplateMutation.mutateAsync(payload)
-        setSelectedId(created.id)
-      }
-      setIsDirty(false)
+      const created = await createTemplateMutation.mutateAsync(payload)
+      setSelectedId(created.id)
+      setIsNewTemplateModalOpen(false)
+      setNewTemplateForm(buildEmptyForm())
     } catch (error) {
-      // تم التعامل مع رسائل الخطأ من خلال هوكس React Query الخاصة بالإنشاء/التحديث.
       console.error(error)
     }
+  }
+
+  const handleNewTemplateFieldChange = <K extends keyof TemplateFormState>(field: K, value: TemplateFormState[K]) => {
+    setNewTemplateForm((previous) => ({ ...previous, [field]: value }))
+  }
+
+  const handleNewTemplateAddTeacher = (weekday: DutyRosterWeekday, teacherId: number) => {
+    if (!Number.isFinite(teacherId) || teacherId <= 0) return
+
+    const teacher = teacherMap.get(teacherId)
+    if (!teacher) return
+
+    setNewTemplateForm((previous) => {
+      const existing = previous.weekdayAssignments[weekday]
+      if (existing.some((a) => a.user_id === teacherId)) return previous
+
+      return {
+        ...previous,
+        weekdayAssignments: {
+          ...previous.weekdayAssignments,
+          [weekday]: [...existing, { user_id: teacher.id, name: teacher.name, phone: teacher.phone ?? null }],
+        },
+      }
+    })
+  }
+
+  const handleNewTemplateRemoveTeacher = (weekday: DutyRosterWeekday, index: number) => {
+    setNewTemplateForm((previous) => {
+      const current = previous.weekdayAssignments[weekday]
+      if (!current[index]) return previous
+      return {
+        ...previous,
+        weekdayAssignments: {
+          ...previous.weekdayAssignments,
+          [weekday]: current.filter((_, i) => i !== index),
+        },
+      }
+    })
   }
 
   return (
     <section className="space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div className="text-right">
-          <h2 className="text-2xl font-bold text-slate-900">قوالب المناوبة الأسبوعية</h2>
+          <h2 className="text-2xl font-bold text-slate-900">قوالب الإشراف الأسبوعية</h2>
           <p className="text-sm text-muted">
-            جهز جدولا أسبوعياً ثابتاً، وحدد المعلمين لكل يوم ليتم توليد المناوبات اليومية تلقائياً.
+            جهز جدولاً أسبوعياً ثابتاً، وحدد المعلمين لكل يوم.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -372,25 +427,29 @@ export function DutyRosterTemplatesPanel() {
             disabled={isFetching}
           >
             {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
-            تحديث قائمة القوالب
+            تحديث
           </button>
           <button
             type="button"
-            onClick={() => handleSelectTemplate('new')}
+            onClick={() => {
+              setNewTemplateForm(buildEmptyForm())
+              setIsNewTemplateModalOpen(true)
+            }}
             className="button-primary flex items-center gap-2"
             disabled={isSubmitting}
           >
             <Plus className="h-5 w-5" />
-            قالب أسبوعي جديد
+            إضافة قالب
           </button>
         </div>
       </header>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,260px),minmax(0,1fr)]">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,280px),minmax(0,1fr)]">
+        {/* قائمة القوالب */}
         <aside className="space-y-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
           <header className="space-y-1 text-right">
             <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">القوالب المحفوظة</p>
-            <h3 className="text-base font-bold text-slate-900">اختر قالباً لعرض تفاصيله</h3>
+            <h3 className="text-base font-bold text-slate-900">اختر قالباً لتوزيع المعلمين</h3>
           </header>
 
           {templatesQuery.isError ? (
@@ -402,8 +461,15 @@ export function DutyRosterTemplatesPanel() {
               <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
             </div>
           ) : templates.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-4 text-sm text-muted">
-              لم يتم إنشاء أي قوالب بعد.
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-4 text-center text-sm text-muted">
+              <p>لم يتم إنشاء أي قوالب بعد.</p>
+              <button
+                type="button"
+                onClick={() => setIsNewTemplateModalOpen(true)}
+                className="mt-2 text-indigo-600 hover:underline"
+              >
+                أنشئ قالبك الأول
+              </button>
             </div>
           ) : (
             <ul className="space-y-2">
@@ -416,33 +482,45 @@ export function DutyRosterTemplatesPanel() {
 
                 return (
                   <li key={template.id}>
-                    <button
-                      type="button"
+                    <div
                       onClick={() => handleSelectTemplate(template.id)}
-                      className={`w-full rounded-2xl border px-4 py-3 text-right transition ${
-                        isSelected
+                      className={`cursor-pointer rounded-2xl border px-4 py-3 text-right transition ${isSelected
                           ? 'border-indigo-400 bg-indigo-50 text-indigo-900 shadow-sm'
                           : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-indigo-50'
-                      }`}
+                        }`}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <div>
-                          <p className="text-sm font-semibold">{template.name}</p>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold">{template.name}</p>
+                            <button
+                              type="button"
+                              onClick={(e) => handleOpenSettings(template.id, e)}
+                              className="rounded-full p-1 text-slate-400 transition hover:bg-slate-200 hover:text-slate-600"
+                              title="إعدادات القالب"
+                            >
+                              <Settings className="h-4 w-4" />
+                            </button>
+                          </div>
                           <p className="text-xs text-muted">{template.shift_type}</p>
+                          {template.window_start && template.window_end && (
+                            <p className="mt-1 text-[10px] text-slate-500">
+                              {template.window_start} - {template.window_end}
+                            </p>
+                          )}
                         </div>
-                        <div className="flex items-center gap-2 text-xs">
+                        <div className="flex flex-col items-end gap-1">
                           <span
-                            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                              template.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-600'
-                            }`}
+                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${template.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-600'
+                              }`}
                           >
-                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            <CheckCircle2 className="h-3 w-3" />
                             {template.is_active ? 'مفعل' : 'متوقف'}
                           </span>
-                          <span className="text-muted">{count.toLocaleString('ar-SA')} معلم</span>
+                          <span className="text-[10px] text-muted">{count} معلم</span>
                         </div>
                       </div>
-                    </button>
+                    </div>
                   </li>
                 )
               })}
@@ -450,250 +528,371 @@ export function DutyRosterTemplatesPanel() {
           )}
         </aside>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <header className="flex flex-wrap items-start justify-between gap-3">
-              <div className="text-right">
-                <h3 className="flex items-center justify-end gap-2 text-lg font-bold text-slate-900">
-                  <CalendarCog className="h-5 w-5 text-indigo-500" />
-                  {selectedTemplate ? `تحرير: ${selectedTemplate.name}` : 'قالب أسبوعي جديد'}
-                </h3>
-                <p className="text-xs text-muted">
-                  خصص الاسم ونوع المناوبة وساعات التذكير قبل توزيع المعلمين على أيام الأسبوع.
-                </p>
+        {/* توزيع المعلمين */}
+        {selectedTemplate ? (
+          <div className="space-y-5">
+            <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <header className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div className="text-right">
+                  <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+                    <CalendarCog className="h-5 w-5 text-indigo-500" />
+                    توزيع المعلمين: {selectedTemplate.name}
+                  </h3>
+                  <p className="text-xs text-muted">
+                    {selectedTemplate.shift_type} • {selectedTemplate.window_start} - {selectedTemplate.window_end}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {isDirty && (
+                    <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                      تغييرات غير محفوظة
+                    </span>
+                  )}
+                  <span className="text-xs text-muted">إجمالي: {totalAssignments} معلم</span>
+                </div>
+              </header>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                {DUTY_ROSTER_WEEKDAYS.map((weekday) => {
+                  const assignments = form.weekdayAssignments[weekday]
+                  const assignedIds = new Set(assignments.map((a) => a.user_id))
+                  const availableTeachers = teachers.filter((t) => !assignedIds.has(t.id))
+
+                  return (
+                    <section key={weekday} className="space-y-3 rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm">
+                      <header className="flex items-center justify-between gap-2">
+                        <div className="text-right">
+                          <h4 className="text-base font-semibold text-slate-900">{WEEKDAY_LABELS[weekday]}</h4>
+                          <p className="text-xs text-muted">
+                            {assignments.length > 0 ? `${assignments.length} معلم` : 'لم يتم تعيين أي معلم'}
+                          </p>
+                        </div>
+                        <select
+                          className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs shadow-sm focus:border-indigo-500 focus:outline-none"
+                          onChange={(e) => {
+                            const value = Number.parseInt(e.target.value, 10)
+                            if (Number.isFinite(value)) handleAddTeacher(weekday, value)
+                            e.target.value = ''
+                          }}
+                          defaultValue=""
+                          disabled={isSubmitting || availableTeachers.length === 0}
+                        >
+                          <option value="">+ إضافة معلم</option>
+                          {availableTeachers.map((teacher) => (
+                            <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
+                          ))}
+                        </select>
+                      </header>
+
+                      {assignments.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 p-3 text-center text-xs text-muted">
+                          لم يتم اختيار معلمين لهذا اليوم.
+                        </div>
+                      ) : (
+                        <ul className="space-y-2 text-sm">
+                          {assignments.map((assignment, index) => (
+                            <li key={assignment.user_id} className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+                              <div className="text-right">
+                                <p className="font-semibold text-slate-800">{assignment.name}</p>
+                                {assignment.phone && <p className="text-[11px] text-muted">{assignment.phone}</p>}
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <button type="button" onClick={() => handleMoveTeacher(weekday, index, -1)} className="rounded-full border border-slate-200 p-1 text-muted hover:text-indigo-600 disabled:opacity-40" disabled={index === 0 || isSubmitting}>
+                                  <ArrowUp className="h-4 w-4" />
+                                </button>
+                                <button type="button" onClick={() => handleMoveTeacher(weekday, index, 1)} className="rounded-full border border-slate-200 p-1 text-muted hover:text-indigo-600 disabled:opacity-40" disabled={index === assignments.length - 1 || isSubmitting}>
+                                  <ArrowDown className="h-4 w-4" />
+                                </button>
+                                <button type="button" onClick={() => handleRemoveTeacher(weekday, index)} className="rounded-full border border-rose-200 p-1 text-rose-600 hover:bg-rose-50 disabled:opacity-40" disabled={isSubmitting}>
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </section>
+                  )
+                })}
               </div>
-              {isDirty && (
-                <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                  توجد تغييرات غير محفوظة
+            </article>
+
+            {isDirty && (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleSaveAssignments}
+                  className="button-primary min-w-[160px] disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={isSubmitting}
+                >
+                  {updateTemplateMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ التوزيع'}
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-slate-200 bg-white/70 p-6 text-center text-sm text-muted">
+            <CalendarCog className="h-12 w-12 text-slate-300" />
+            <p className="font-semibold">اختر قالباً من القائمة لتوزيع المعلمين</p>
+            <p className="text-xs">أو أنشئ قالباً جديداً</p>
+            <button
+              type="button"
+              onClick={() => setIsNewTemplateModalOpen(true)}
+              className="mt-2 button-primary"
+            >
+              <Plus className="inline h-4 w-4 ml-1" />
+              إضافة قالب جديد
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Modal إعدادات القالب */}
+      {isSettingsModalOpen && selectedTemplate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+          <div className="absolute inset-0" onClick={() => setIsSettingsModalOpen(false)} />
+          <div className="relative w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <header className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                  <Settings className="h-5 w-5" />
                 </span>
-              )}
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">إعدادات القالب</h2>
+                  <p className="text-xs text-muted">{selectedTemplate.name}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSettingsModalOpen(false)}
+                className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
             </header>
 
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
-              <div className="space-y-2 text-right">
-                <label className="text-xs font-semibold text-slate-600" htmlFor="template-name">
-                  اسم القالب
-                </label>
-                <input
-                  id="template-name"
-                  type="text"
-                  value={form.name}
-                  onChange={(event) => handleFieldChange('name', event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  placeholder="مثال: مناوبات بداية الدوام"
-                  disabled={isSubmitting}
-                />
+            <form onSubmit={handleSubmitSettings} className="space-y-4 p-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2 text-right">
+                  <label className="text-xs font-semibold text-slate-600">اسم القالب</label>
+                  <input
+                    type="text"
+                    value={form.name}
+                    onChange={(event) => handleFieldChange('name', event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="space-y-2 text-right">
+                  <label className="text-xs font-semibold text-slate-600">نوع الإشراف</label>
+                  <input
+                    type="text"
+                    value={form.shiftType}
+                    onChange={(event) => handleFieldChange('shiftType', event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="space-y-2 text-right">
+                  <label className="text-xs font-semibold text-slate-600">يبدأ من</label>
+                  <input
+                    type="time"
+                    value={form.windowStart}
+                    onChange={(event) => handleFieldChange('windowStart', event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="space-y-2 text-right">
+                  <label className="text-xs font-semibold text-slate-600">ينتهي عند</label>
+                  <input
+                    type="time"
+                    value={form.windowEnd}
+                    onChange={(event) => handleFieldChange('windowEnd', event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
+                    disabled={isSubmitting}
+                  />
+                </div>
               </div>
-              <div className="space-y-2 text-right">
-                <label className="text-xs font-semibold text-slate-600" htmlFor="template-shift-type">
-                  نوع المناوبة
-                </label>
-                <input
-                  id="template-shift-type"
-                  type="text"
-                  value={form.shiftType}
-                  onChange={(event) => handleFieldChange('shiftType', event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  placeholder="مثال: متابعة البوابة الشرقية"
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div className="space-y-2 text-right">
-                <label className="text-xs font-semibold text-slate-600" htmlFor="template-window-start">
-                  يبدأ من
-                </label>
-                <input
-                  id="template-window-start"
-                  type="time"
-                  value={form.windowStart}
-                  onChange={(event) => handleFieldChange('windowStart', event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div className="space-y-2 text-right">
-                <label className="text-xs font-semibold text-slate-600" htmlFor="template-window-end">
-                  ينتهي عند
-                </label>
-                <input
-                  id="template-window-end"
-                  type="time"
-                  value={form.windowEnd}
-                  onChange={(event) => handleFieldChange('windowEnd', event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div className="space-y-2 text-right">
-                <label className="text-xs font-semibold text-slate-600" htmlFor="template-trigger-offset">
-                  تذكير قبل المناوبة (بالدقائق)
-                </label>
-                <input
-                  id="template-trigger-offset"
-                  type="number"
-                  min={0}
-                  value={form.triggerOffset}
-                  onChange={(event) => handleFieldChange('triggerOffset', event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  placeholder="مثال: 90"
-                  disabled={isSubmitting}
-                />
-              </div>
+
               <div className="space-y-2 text-right">
                 <label className="text-xs font-semibold text-slate-600">حالة القالب</label>
                 <button
                   type="button"
                   onClick={handleToggleActive}
-                  className={`w-full rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
-                    form.isActive
-                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300'
-                      : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300'
-                  }`}
+                  className={`w-full rounded-2xl border px-4 py-2 text-sm font-semibold transition ${form.isActive
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                      : 'border-slate-200 bg-slate-50 text-slate-600'
+                    }`}
                   disabled={isSubmitting}
                 >
-                  {form.isActive ? 'القالب مفعل' : 'القالب متوقف حالياً'}
+                  {form.isActive ? 'القالب مفعل' : 'القالب متوقف'}
                 </button>
               </div>
-            </div>
-          </article>
 
-          <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <header className="flex flex-wrap items-center justify-between gap-3">
-              <div className="text-right">
-                <h3 className="text-lg font-bold text-slate-900">توزيع المعلمين على أيام الأسبوع</h3>
-                <p className="text-xs text-muted">
-                  اسحب المعلمين لكل يوم بترتيب المناوبة. يمكن إعادة الترتيب أو الحذف بسهولة.
-                </p>
-              </div>
-              <span className="text-xs text-muted">
-                إجمالي المعلّمين المعينين: {totalAssignments.toLocaleString('ar-SA')}
-              </span>
-            </header>
-
-            <div className="mt-4 grid gap-4 lg:grid-cols-2">
-              {DUTY_ROSTER_WEEKDAYS.map((weekday) => {
-                const assignments = form.weekdayAssignments[weekday]
-                const assignedIds = new Set(assignments.map((assignment) => assignment.user_id))
-                const availableTeachers = teachers.filter((teacher) => !assignedIds.has(teacher.id))
-
-                return (
-                  <section key={weekday} className="space-y-3 rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm">
-                    <header className="flex items-center justify-between gap-2">
-                      <div className="text-right">
-                        <h4 className="text-base font-semibold text-slate-900">{WEEKDAY_LABELS[weekday]}</h4>
-                        <p className="text-xs text-muted">
-                          {assignments.length > 0
-                            ? `${assignments.length.toLocaleString('ar-SA')} معلم`
-                            : 'لم يتم تعيين أي معلم بعد'}
-                        </p>
-                      </div>
-                      <select
-                        className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                        onChange={(event) => {
-                          const value = Number.parseInt(event.target.value, 10)
-                          if (Number.isFinite(value)) {
-                            handleAddTeacher(weekday, value)
-                          }
-                          event.target.value = ''
-                        }}
-                        defaultValue=""
-                        disabled={isSubmitting || availableTeachers.length === 0}
-                      >
-                        <option value="">إضافة معلم</option>
-                        {availableTeachers.map((teacher) => (
-                          <option key={`${weekday}-${teacher.id}`} value={teacher.id}>
-                            {teacher.name}
-                          </option>
-                        ))}
-                      </select>
-                    </header>
-
-                    {assignments.length === 0 ? (
-                      <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 p-3 text-center text-xs text-muted">
-                        لم يتم اختيار معلمين لهذا اليوم بعد.
-                      </div>
-                    ) : (
-                      <ul className="space-y-2 text-sm">
-                        {assignments.map((assignment, index) => (
-                          <li
-                            key={`${weekday}-${assignment.user_id}`}
-                            className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm"
-                          >
-                            <div className="text-right">
-                              <p className="font-semibold text-slate-800">{assignment.name}</p>
-                              {assignment.phone && (
-                                <p className="text-[11px] text-muted">{assignment.phone}</p>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => handleMoveTeacher(weekday, index, -1)}
-                                className="rounded-full border border-slate-200 p-1 text-muted hover:border-indigo-200 hover:text-indigo-600 disabled:opacity-40"
-                                disabled={index === 0 || isSubmitting}
-                              >
-                                <ArrowUp className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleMoveTeacher(weekday, index, 1)}
-                                className="rounded-full border border-slate-200 p-1 text-muted hover:border-indigo-200 hover:text-indigo-600 disabled:opacity-40"
-                                disabled={index === assignments.length - 1 || isSubmitting}
-                              >
-                                <ArrowDown className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveTeacher(weekday, index)}
-                                className="rounded-full border border-rose-200 p-1 text-rose-600 hover:bg-rose-50 disabled:opacity-40"
-                                disabled={isSubmitting}
-                                title="إزالة المعلم من هذا اليوم"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </section>
-                )}
-              )}
-            </div>
-          </article>
-
-          <div className="flex flex-wrap justify-end gap-2">
-            {selectedTemplate && (
-              <>
+              <footer className="flex justify-between gap-3 pt-4 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={handleDeleteTemplate}
-                  className="rounded-2xl border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-600 shadow-sm hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-2xl border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-600 shadow-sm hover:bg-rose-50 disabled:opacity-60"
                   disabled={isSubmitting}
-                  title="حذف القالب نهائياً"
                 >
                   {deleteTemplateMutation.isPending ? 'جارٍ الحذف...' : 'حذف القالب'}
                 </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsSettingsModalOpen(false)}
+                    className="button-secondary"
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    type="submit"
+                    className="button-primary min-w-[100px] disabled:opacity-60"
+                    disabled={isSubmitting}
+                  >
+                    {updateTemplateMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ'}
+                  </button>
+                </div>
+              </footer>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal لإضافة قالب جديد */}
+      {isNewTemplateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+          <div className="absolute inset-0" onClick={() => setIsNewTemplateModalOpen(false)} />
+          <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
+            <header className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                  <Plus className="h-5 w-5" />
+                </span>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">إضافة قالب جديد</h2>
+                  <p className="text-xs text-muted">أنشئ قالب إشراف أسبوعي جديد</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsNewTemplateModalOpen(false)}
+                className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </header>
+
+            <form onSubmit={handleCreateNewTemplate} className="space-y-5 p-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2 text-right">
+                  <label className="text-xs font-semibold text-slate-600">اسم القالب *</label>
+                  <input
+                    type="text"
+                    value={newTemplateForm.name}
+                    onChange={(e) => handleNewTemplateFieldChange('name', e.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
+                    placeholder="مثال: إشراف بداية الدوام"
+                  />
+                </div>
+                <div className="space-y-2 text-right">
+                  <label className="text-xs font-semibold text-slate-600">نوع الإشراف *</label>
+                  <input
+                    type="text"
+                    value={newTemplateForm.shiftType}
+                    onChange={(e) => handleNewTemplateFieldChange('shiftType', e.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
+                    placeholder="مثال: متابعة البوابة"
+                  />
+                </div>
+                <div className="space-y-2 text-right">
+                  <label className="text-xs font-semibold text-slate-600">يبدأ من *</label>
+                  <input
+                    type="time"
+                    value={newTemplateForm.windowStart}
+                    onChange={(e) => handleNewTemplateFieldChange('windowStart', e.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-2 text-right">
+                  <label className="text-xs font-semibold text-slate-600">ينتهي عند *</label>
+                  <input
+                    type="time"
+                    value={newTemplateForm.windowEnd}
+                    onChange={(e) => handleNewTemplateFieldChange('windowEnd', e.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* توزيع المعلمين في Modal */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-slate-800">توزيع المعلمين على أيام الأسبوع</h4>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {DUTY_ROSTER_WEEKDAYS.map((weekday) => {
+                    const assignments = newTemplateForm.weekdayAssignments[weekday]
+                    const assignedIds = new Set(assignments.map((a) => a.user_id))
+                    const availableTeachers = teachers.filter((t) => !assignedIds.has(t.id))
+
+                    return (
+                      <div key={weekday} className="rounded-2xl border border-slate-200 p-3">
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <span className="text-sm font-semibold text-slate-700">{WEEKDAY_LABELS[weekday]}</span>
+                          <select
+                            className="rounded-xl border border-slate-200 px-2 py-1 text-xs"
+                            onChange={(e) => {
+                              const value = Number.parseInt(e.target.value, 10)
+                              if (Number.isFinite(value)) handleNewTemplateAddTeacher(weekday, value)
+                              e.target.value = ''
+                            }}
+                            defaultValue=""
+                          >
+                            <option value="">+ إضافة</option>
+                            {availableTeachers.map((t) => (
+                              <option key={t.id} value={t.id}>{t.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        {assignments.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {assignments.map((a, i) => (
+                              <span key={a.user_id} className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-1 text-xs text-indigo-700">
+                                {a.name}
+                                <button type="button" onClick={() => handleNewTemplateRemoveTeacher(weekday, i)} className="text-indigo-400 hover:text-rose-600">
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <footer className="flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => handleSelectTemplate('new')}
+                  onClick={() => setIsNewTemplateModalOpen(false)}
                   className="button-secondary"
-                  disabled={isSubmitting}
                 >
-                  إنشاء قالب جديد
+                  إلغاء
                 </button>
-              </>
-            )}
-            <button
-              type="submit"
-              className="button-primary min-w-[160px] disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'جارٍ الحفظ...' : selectedTemplate ? 'تحديث القالب' : 'حفظ القالب'}
-            </button>
+                <button
+                  type="submit"
+                  className="button-primary min-w-[120px] disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={createTemplateMutation.isPending}
+                >
+                  {createTemplateMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ القالب'}
+                </button>
+              </footer>
+            </form>
           </div>
-        </form>
-      </div>
+        </div>
+      )}
     </section>
   )
 }

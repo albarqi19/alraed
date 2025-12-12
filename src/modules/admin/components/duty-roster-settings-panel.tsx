@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { AlarmClock, BellRing, Loader2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { BellRing, Loader2, Settings, X } from 'lucide-react'
 
 import {
   useDutyRosterSettingsQuery,
@@ -14,33 +14,29 @@ const REMINDER_CHANNEL_OPTIONS: Array<{ value: string; label: string }> = [
 ]
 
 type SettingsFormState = {
-  autoGenerateEnabled: boolean
-  autoGenerateTime: string
   reminderNotificationsEnabled: boolean
   reminderLeadMinutes: string
   reminderChannels: string[]
   reminderRepeatIntervalMinutes: string
   reminderRepeatCount: string
+  sendTime: string
 }
 
 const DEFAULT_FORM: SettingsFormState = {
-  autoGenerateEnabled: true,
-  autoGenerateTime: '',
   reminderNotificationsEnabled: true,
   reminderLeadMinutes: '45',
   reminderChannels: ['whatsapp'],
   reminderRepeatIntervalMinutes: '',
   reminderRepeatCount: '0',
+  sendTime: '06:00',
 }
 
 function mapRecordToForm(record: DutyRosterSettingsRecord | undefined): SettingsFormState {
   if (!record) return DEFAULT_FORM
 
   return {
-    autoGenerateEnabled: Boolean(record.auto_generate_enabled),
-    autoGenerateTime: record.auto_generate_time ? record.auto_generate_time.slice(0, 5) : '',
     reminderNotificationsEnabled: Boolean(record.reminder_notifications_enabled),
-    reminderLeadMinutes: String(record.reminder_lead_minutes ?? ''),
+    reminderLeadMinutes: String(record.reminder_lead_minutes ?? '45'),
     reminderChannels: Array.isArray(record.reminder_channels) && record.reminder_channels.length > 0
       ? record.reminder_channels.map((channel) => String(channel))
       : ['whatsapp'],
@@ -48,10 +44,16 @@ function mapRecordToForm(record: DutyRosterSettingsRecord | undefined): Settings
       ? String(record.reminder_repeat_interval_minutes)
       : '',
     reminderRepeatCount: record.reminder_repeat_count ? String(record.reminder_repeat_count) : '0',
+    sendTime: record.auto_generate_time ? record.auto_generate_time.slice(0, 5) : '06:00',
   }
 }
 
-export function DutyRosterSettingsPanel() {
+type DutyRosterSettingsModalProps = {
+  open: boolean
+  onClose: () => void
+}
+
+export function DutyRosterSettingsModal({ open, onClose }: DutyRosterSettingsModalProps) {
   const settingsQuery = useDutyRosterSettingsQuery()
   const updateSettingsMutation = useUpdateDutyRosterSettingsMutation()
   const [form, setForm] = useState<SettingsFormState>(DEFAULT_FORM)
@@ -62,10 +64,24 @@ export function DutyRosterSettingsPanel() {
     }
   }, [settingsQuery.data])
 
+  useEffect(() => {
+    if (!open) return
+
+    const handleKeydown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeydown)
+    return () => window.removeEventListener('keydown', handleKeydown)
+  }, [open, onClose])
+
+  if (!open) return null
+
   const isLoading = settingsQuery.isLoading
   const isSaving = updateSettingsMutation.isPending
-
-  const isReminderControlsDisabled = useMemo(() => !form.reminderNotificationsEnabled, [form])
+  const isReminderControlsDisabled = !form.reminderNotificationsEnabled
 
   const handleInputChange = (field: keyof SettingsFormState, value: string) => {
     setForm((current) => ({
@@ -101,10 +117,10 @@ export function DutyRosterSettingsPanel() {
     event.preventDefault()
 
     const payload: DutyRosterSettingsUpdatePayload = {
-      auto_generate_enabled: form.autoGenerateEnabled,
-      auto_generate_time: form.autoGenerateTime ? form.autoGenerateTime : null,
+      auto_generate_enabled: false, // لم نعد نستخدم الإنشاء التلقائي
+      auto_generate_time: form.sendTime || '06:00',
       reminder_notifications_enabled: form.reminderNotificationsEnabled,
-      reminder_lead_minutes: form.reminderLeadMinutes ? Number(form.reminderLeadMinutes) : 0,
+      reminder_lead_minutes: form.reminderLeadMinutes ? Number(form.reminderLeadMinutes) : 45,
       reminder_channels: form.reminderChannels,
       reminder_repeat_interval_minutes: form.reminderRepeatIntervalMinutes
         ? Number(form.reminderRepeatIntervalMinutes)
@@ -112,177 +128,189 @@ export function DutyRosterSettingsPanel() {
       reminder_repeat_count: form.reminderRepeatCount ? Number(form.reminderRepeatCount) : 0,
     }
 
-    updateSettingsMutation.mutate(payload)
+    updateSettingsMutation.mutate(payload, {
+      onSuccess: () => {
+        onClose()
+      },
+    })
   }
 
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-      <header className="mb-6 flex flex-wrap items-center gap-3">
-        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
-          <BellRing className="h-6 w-6" />
-        </span>
-        <div className="space-y-1">
-          <h2 className="text-lg font-semibold text-slate-800">إعدادات التذكير بمناوبات المعلمين</h2>
-          <p className="text-sm text-slate-500">
-            تحكم في إنشاء المناوبات التلقائي وجدولة رسائل التذكير قبل بداية المناوبة.
-          </p>
-        </div>
-      </header>
-
-      {isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          جارٍ تحميل الإعدادات...
-        </div>
-      ) : (
-        <form className="space-y-6" onSubmit={handleSubmit}>
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="rounded-2xl border border-slate-100 p-4">
-              <div className="flex items-start gap-3">
-                <input
-                  id="auto-generate-enabled"
-                  type="checkbox"
-                  className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                  checked={form.autoGenerateEnabled}
-                  onChange={(event) => handleCheckboxChange('autoGenerateEnabled', event.target.checked)}
-                  disabled={isSaving}
-                />
-                <label htmlFor="auto-generate-enabled" className="space-y-1">
-                  <span className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                    <AlarmClock className="h-4 w-4 text-indigo-500" />
-                    إنشاء المناوبات اليومية تلقائياً
-                  </span>
-                  <span className="block text-xs text-slate-500">
-                    عند التفعيل، يتم إنشاء المناوبات اليومية من القوالب الفعالة بمجرد دخول اليوم الجديد.
-                  </span>
-                </label>
-              </div>
-
-              <div className="mt-4 flex items-center gap-3">
-                <label htmlFor="auto-generate-time" className="text-sm text-slate-600">
-                  توقيت الإنشاء
-                </label>
-                <input
-                  id="auto-generate-time"
-                  type="time"
-                  value={form.autoGenerateTime}
-                  onChange={(event) => handleInputChange('autoGenerateTime', event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
-                  disabled={isSaving || !form.autoGenerateEnabled}
-                />
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-slate-100 p-4">
-              <div className="flex items-start gap-3">
-                <input
-                  id="reminder-notifications-enabled"
-                  type="checkbox"
-                  className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                  checked={form.reminderNotificationsEnabled}
-                  onChange={(event) => handleCheckboxChange('reminderNotificationsEnabled', event.target.checked)}
-                  disabled={isSaving}
-                />
-                <label htmlFor="reminder-notifications-enabled" className="space-y-1">
-                  <span className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                    <BellRing className="h-4 w-4 text-indigo-500" />
-                    تفعيل رسائل التذكير للمناوبات
-                  </span>
-                  <span className="block text-xs text-slate-500">
-                    أرسل رسالة تذكير للمعلم قبل بداية المناوبة بالمدة التي تحددها هنا.
-                  </span>
-                </label>
-              </div>
-
-              <div className="mt-4 grid gap-4">
-                <div className="flex items-center justify-between gap-3">
-                  <label htmlFor="reminder-lead-minutes" className="text-sm text-slate-600">
-                    وقت التذكير قبل المناوبة (بالدقائق)
-                  </label>
-                  <input
-                    id="reminder-lead-minutes"
-                    type="number"
-                    min={0}
-                    max={720}
-                    step={5}
-                    value={form.reminderLeadMinutes}
-                    onChange={(event) => handleInputChange('reminderLeadMinutes', event.target.value)}
-                    className="w-28 rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
-                    disabled={isSaving || isReminderControlsDisabled}
-                  />
-                </div>
-
-                <fieldset className="space-y-2">
-                  <legend className="text-sm font-semibold text-slate-700">قنوات التذكير</legend>
-                  <div className="flex flex-wrap gap-3">
-                    {REMINDER_CHANNEL_OPTIONS.map((option) => {
-                      const checked = form.reminderChannels.includes(option.value)
-                      return (
-                        <label
-                          key={option.value}
-                          className="flex items-center gap-2 rounded-2xl border border-slate-200 px-3 py-2 text-sm shadow-sm"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={(event) => handleChannelToggle(option.value, event.target.checked)}
-                            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                            disabled={isSaving || isReminderControlsDisabled}
-                          />
-                          <span>{option.label}</span>
-                        </label>
-                      )
-                    })}
-                  </div>
-                </fieldset>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="space-y-1 text-sm text-slate-600">
-                    <span>فاصل إعادة الإرسال (بالدقائق)</span>
-                    <input
-                      type="number"
-                      min={5}
-                      max={720}
-                      step={5}
-                      value={form.reminderRepeatIntervalMinutes}
-                      onChange={(event) => handleInputChange('reminderRepeatIntervalMinutes', event.target.value)}
-                      className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
-                      placeholder="مثال: 30"
-                      disabled={
-                        isSaving ||
-                        isReminderControlsDisabled ||
-                        Number(form.reminderRepeatCount || '0') === 0
-                      }
-                    />
-                  </label>
-                  <label className="space-y-1 text-sm text-slate-600">
-                    <span>عدد مرات إعادة الإرسال</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={5}
-                      value={form.reminderRepeatCount}
-                      onChange={(event) => handleInputChange('reminderRepeatCount', event.target.value)}
-                      className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
-                      disabled={isSaving || isReminderControlsDisabled}
-                    />
-                  </label>
-                </div>
-              </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+      <div className="absolute inset-0" aria-hidden="true" onClick={onClose} />
+      <div className="relative w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <header className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+              <Settings className="h-5 w-5" />
+            </span>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">إعدادات التذكير</h2>
+              <p className="text-xs text-muted">تحكم في إرسال رسائل التذكير للمعلمين</p>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </header>
 
-          <footer className="flex flex-wrap justify-end gap-3">
-            <button
-              type="submit"
-              className="button-primary min-w-[140px] disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isSaving}
-            >
-              {isSaving ? 'جارٍ الحفظ...' : 'حفظ الإعدادات'}
-            </button>
-          </footer>
-        </form>
-      )}
-    </section>
+        {isLoading ? (
+          <div className="flex items-center justify-center gap-2 p-8 text-sm text-slate-500">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            جارٍ تحميل الإعدادات...
+          </div>
+        ) : (
+          <form className="space-y-5 p-6" onSubmit={handleSubmit}>
+            {/* تفعيل التذكيرات */}
+            <div className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+              <input
+                id="reminder-notifications-enabled"
+                type="checkbox"
+                className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                checked={form.reminderNotificationsEnabled}
+                onChange={(event) => handleCheckboxChange('reminderNotificationsEnabled', event.target.checked)}
+                disabled={isSaving}
+              />
+              <label htmlFor="reminder-notifications-enabled" className="space-y-1">
+                <span className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                  <BellRing className="h-4 w-4 text-indigo-500" />
+                  تفعيل رسائل التذكير
+                </span>
+                <span className="block text-xs text-slate-500">
+                  أرسل رسالة تذكير للمعلم قبل بداية المناوبة بالمدة التي تحددها.
+                </span>
+              </label>
+            </div>
+
+            {/* وقت الإرسال */}
+            <div className="space-y-2">
+              <label htmlFor="send-time" className="text-sm font-semibold text-slate-700">
+                وقت إرسال التذكيرات اليومية
+              </label>
+              <input
+                id="send-time"
+                type="time"
+                value={form.sendTime}
+                onChange={(event) => handleInputChange('sendTime', event.target.value)}
+                className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm focus:border-indigo-400 focus:outline-none"
+                disabled={isSaving || isReminderControlsDisabled}
+              />
+              <p className="text-xs text-muted">يتم إرسال التذكيرات تلقائياً في هذا الوقت كل يوم</p>
+            </div>
+
+            {/* قنوات التذكير */}
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-semibold text-slate-700">قنوات التذكير</legend>
+              <div className="flex flex-wrap gap-3">
+                {REMINDER_CHANNEL_OPTIONS.map((option) => {
+                  const checked = form.reminderChannels.includes(option.value)
+                  return (
+                    <label
+                      key={option.value}
+                      className="flex items-center gap-2 rounded-2xl border border-slate-200 px-3 py-2 text-sm shadow-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(event) => handleChannelToggle(option.value, event.target.checked)}
+                        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        disabled={isSaving || isReminderControlsDisabled}
+                      />
+                      <span>{option.label}</span>
+                    </label>
+                  )
+                })}
+              </div>
+            </fieldset>
+
+            {/* إعادة الإرسال */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <label htmlFor="reminder-repeat-interval" className="text-sm text-slate-600">
+                  فاصل إعادة الإرسال (بالدقائق)
+                </label>
+                <input
+                  id="reminder-repeat-interval"
+                  type="number"
+                  min={5}
+                  max={720}
+                  step={5}
+                  value={form.reminderRepeatIntervalMinutes}
+                  onChange={(event) => handleInputChange('reminderRepeatIntervalMinutes', event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
+                  placeholder="مثال: 30"
+                  disabled={
+                    isSaving ||
+                    isReminderControlsDisabled ||
+                    Number(form.reminderRepeatCount || '0') === 0
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="reminder-repeat-count" className="text-sm text-slate-600">
+                  عدد مرات إعادة الإرسال
+                </label>
+                <input
+                  id="reminder-repeat-count"
+                  type="number"
+                  min={0}
+                  max={5}
+                  value={form.reminderRepeatCount}
+                  onChange={(event) => handleInputChange('reminderRepeatCount', event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
+                  disabled={isSaving || isReminderControlsDisabled}
+                />
+              </div>
+            </div>
+
+            {/* أزرار */}
+            <footer className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="button-secondary min-w-[100px]"
+                disabled={isSaving}
+              >
+                إلغاء
+              </button>
+              <button
+                type="submit"
+                className="button-primary min-w-[120px] disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isSaving}
+              >
+                {isSaving ? 'جارٍ الحفظ...' : 'حفظ الإعدادات'}
+              </button>
+            </footer>
+          </form>
+        )}
+      </div>
+    </div>
   )
+}
+
+// زر فتح الإعدادات (للاستخدام في صفحة الإشراف)
+type DutyRosterSettingsButtonProps = {
+  onClick: () => void
+}
+
+export function DutyRosterSettingsButton({ onClick }: DutyRosterSettingsButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="button-secondary flex items-center gap-2"
+    >
+      <Settings className="h-4 w-4" />
+      الإعدادات
+    </button>
+  )
+}
+
+// للتوافق مع الكود القديم - لم نعد نستخدمه
+export function DutyRosterSettingsPanel() {
+  return null
 }

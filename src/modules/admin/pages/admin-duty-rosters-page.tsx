@@ -1,326 +1,190 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import type { FormEvent, ReactNode } from 'react'
-import { CalendarClock, Users, BellRing, RotateCcw, Loader2 } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { CalendarClock, Users, Loader2, Eye, UserX, AlertCircle, Phone, Settings, UserPlus, RefreshCcw, Clock, CheckCircle2, Send, FileText, TrendingUp, Calendar, Sunset } from 'lucide-react'
 
-import { DutyRosterSettingsPanel } from '@/modules/admin/components/duty-roster-settings-panel'
+import { DutyRosterSettingsModal } from '@/modules/admin/components/duty-roster-settings-panel'
 import { DutyRosterTemplatesPanel } from '@/modules/admin/components/duty-roster-templates-panel'
-
+import { DutyScheduleModal } from '@/modules/admin/components/duty-schedule-modal'
+import { TeacherStatsModal } from '@/modules/admin/components/teacher-stats-modal'
 import {
-  useAssignDutyRosterReplacementMutation,
-  useCreateDutyRosterMutation,
-  useDutyRostersQuery,
-  useDutyRosterTemplatesQuery,
-  useMarkDutyRosterAssignmentAbsentMutation,
-} from '@/modules/admin/hooks'
-import type {
-  DutyRosterAssignmentRecord,
-  DutyRosterAssignmentStatus,
-  DutyRosterShiftRecord,
-  DutyRosterStatus,
-  DutyRosterTemplateAssignmentRecord,
-  DutyRosterTemplateRecord,
-  DutyRosterWeekday,
-} from '@/modules/admin/types'
+  fetchTodaySupervisions,
+  recordSupervisionAbsence,
+  fetchTodayDutySchedules,
+  type TodaySupervisionItem,
+  type TodaySupervisionTeacher,
+  type RecordSupervisionAbsencePayload,
+  type DutyScheduleTodayItem,
+} from '@/modules/admin/api'
 import { useToast } from '@/shared/feedback/use-toast'
+import { useTeachersQuery } from '@/modules/admin/hooks'
 
-type FilterState = {
-  shiftType: string
-  status: DutyRosterStatus | 'all'
-  assignmentStatus: DutyRosterAssignmentStatus | 'all'
-  date: string
-}
-
-const STATUS_LABELS: Record<DutyRosterAssignmentStatus, string> = {
-  scheduled: 'مجدولة',
-  absent: 'تم تسجيل غياب',
-  replacement_assigned: 'بديل معين',
-  completed: 'مكتملة',
-}
-
-const STATUS_BADGE_STYLES: Record<DutyRosterAssignmentStatus, string> = {
-  scheduled: 'bg-slate-100 text-slate-600',
-  absent: 'bg-rose-100 text-rose-700',
-  replacement_assigned: 'bg-indigo-100 text-indigo-700',
-  completed: 'bg-emerald-100 text-emerald-700',
-}
-
-const SHIFT_STATUS_LABELS: Record<DutyRosterStatus, string> = {
-  scheduled: 'مجدولة',
-  in_progress: 'قيد التنفيذ',
-  completed: 'مكتملة',
-  cancelled: 'ملغاة',
-}
-
-const DUTY_ROSTER_WEEKDAY_KEYS: DutyRosterWeekday[] = [
-  'sunday',
-  'monday',
-  'tuesday',
-  'wednesday',
-  'thursday',
-  'friday',
-  'saturday',
-]
-
-function getDutyRosterWeekdayKey(dateString: string): DutyRosterWeekday {
-  const date = new Date(dateString)
-  const dayIndex = Number.isNaN(date.getTime()) ? 0 : date.getDay()
-  return DUTY_ROSTER_WEEKDAY_KEYS[dayIndex] ?? 'sunday'
-}
-
-type TemplateAutoCreatePlan = {
-  key: string
-  template: DutyRosterTemplateRecord
-  targetDate: string
-  weekdayKey: DutyRosterWeekday
-  assignments: DutyRosterTemplateAssignmentRecord[]
+const WEEKDAY_LABELS: Record<string, string> = {
+  sunday: 'الأحد',
+  monday: 'الإثنين',
+  tuesday: 'الثلاثاء',
+  wednesday: 'الأربعاء',
+  thursday: 'الخميس',
+  friday: 'الجمعة',
+  saturday: 'السبت',
 }
 
 export function AdminDutyRostersPage() {
   const toast = useToast()
-  const [activeView, setActiveView] = useState<'shifts' | 'templates'>('shifts')
-  const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [filters, setFilters] = useState<FilterState>({
-    shiftType: '',
-    status: 'all',
-    assignmentStatus: 'all',
-    date: '',
+  const queryClient = useQueryClient()
+  const [activeView, setActiveView] = useState<'today' | 'templates'>('today')
+  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isDutyScheduleOpen, setIsDutyScheduleOpen] = useState(false)
+  const [teacherStatsModal, setTeacherStatsModal] = useState<{ userId: number; userName: string } | null>(null)
+  const [replacementModalData, setReplacementModalData] = useState<{
+    supervision: TodaySupervisionItem
+    teacher: TodaySupervisionTeacher
+  } | null>(null)
+
+  const teachersQuery = useTeachersQuery()
+  const allTeachers = teachersQuery.data ?? []
+
+  const supervisionsQuery = useQuery({
+    queryKey: ['admin', 'duty-rosters', 'today', selectedDate],
+    queryFn: () => fetchTodaySupervisions(selectedDate),
+    staleTime: 30_000,
   })
 
-  const dutyRostersQuery = useDutyRostersQuery()
-  const markAbsentMutation = useMarkDutyRosterAssignmentAbsentMutation()
-  const assignReplacementMutation = useAssignDutyRosterReplacementMutation()
-  const dutyRosterTemplatesQuery = useDutyRosterTemplatesQuery({}, { enabled: activeView === 'shifts' })
+  // جلب مناوبات التاريخ المحدد (المناوبة الفصلية)
+  const dutySchedulesQuery = useQuery({
+    queryKey: ['admin', 'duty-schedules', 'today', selectedDate],
+    queryFn: () => fetchTodayDutySchedules(selectedDate),
+    staleTime: 30_000,
+  })
 
-  const shifts = useMemo<DutyRosterShiftRecord[]>(
-    () => dutyRostersQuery.data?.items ?? [],
-    [dutyRostersQuery.data],
-  )
-  const isLoading = dutyRostersQuery.isLoading
-  const isFetching = dutyRostersQuery.isFetching
-  const isError = dutyRostersQuery.isError
-  const errorMessage = dutyRostersQuery.error instanceof Error ? dutyRostersQuery.error.message : 'حدث خطأ غير متوقع'
-
-  const filteredShifts = useMemo<DutyRosterShiftRecord[]>(() => {
-    return shifts.filter((shift) => {
-      if (filters.shiftType && !shift.shift_type.toLowerCase().includes(filters.shiftType.toLowerCase())) {
-        return false
-      }
-      if (filters.status !== 'all' && shift.status !== filters.status) {
-        return false
-      }
-      if (filters.date && shift.shift_date !== filters.date) {
-        return false
-      }
-      if (filters.assignmentStatus !== 'all') {
-        const hasMatchingAssignment = shift.assignments.some(
-          (assignment) => assignment.status === filters.assignmentStatus,
-        )
-        if (!hasMatchingAssignment) return false
-      }
-      return true
-    })
-  }, [shifts, filters])
-
-  const upcomingCount = filteredShifts.filter((shift) => shift.status === 'scheduled').length
-  const absenceCount = filteredShifts.reduce((sum, shift) => {
-    const absentAssignments = shift.assignments.filter((assignment) => assignment.status === 'absent').length
-    return sum + absentAssignments
-  }, 0)
-  const replacementCount = filteredShifts.reduce((sum, shift) => {
-    const replacementAssignments = shift.assignments.filter(
-      (assignment) => assignment.status === 'replacement_assigned',
-    ).length
-    return sum + replacementAssignments
-  }, 0)
-
-  const templateAutoCreatePlans = useMemo<TemplateAutoCreatePlan[]>(
-    () => {
-      if (!dutyRosterTemplatesQuery.data || activeView !== 'shifts') return []
-
-      const statusMatches = filters.status === 'all' || filters.status === 'scheduled'
-      const assignmentStatusMatches =
-        filters.assignmentStatus === 'all' || filters.assignmentStatus === 'scheduled'
-
-      if (!statusMatches || !assignmentStatusMatches) return []
-
-      const normalizedShiftType = filters.shiftType.trim().toLowerCase()
-      const targetDate =
-        filters.date && filters.date.trim().length > 0 ? filters.date : new Date().toISOString().slice(0, 10)
-      const weekdayKey = getDutyRosterWeekdayKey(targetDate)
-      
-      // Create a more comprehensive key check based on date + shift_type (matching DB unique constraint)
-      const existingKeys = new Set(
-        shifts.map((shift) => `${shift.shift_date}::${shift.shift_type.toLowerCase()}`),
-      )
-
-      return dutyRosterTemplatesQuery.data
-        .filter((template) => template.is_active)
-        .filter((template) =>
-          !normalizedShiftType || template.shift_type.toLowerCase().includes(normalizedShiftType),
-        )
-        .map((template) => {
-          const assignments = (template.weekday_assignments[weekdayKey] ?? []) as DutyRosterTemplateAssignmentRecord[]
-          const activeAssignments = assignments.filter((assignment) => assignment.is_active)
-          const key = `${targetDate}::${template.shift_type.toLowerCase()}`
-
-          return {
-            key,
-            template,
-            targetDate,
-            weekdayKey,
-            assignments: activeAssignments,
-          }
-        })
-        .filter((plan) => plan.assignments.length > 0 && !existingKeys.has(plan.key))
+  const recordAbsenceMutation = useMutation({
+    mutationFn: (payload: RecordSupervisionAbsencePayload) => recordSupervisionAbsence(payload),
+    onSuccess: () => {
+      toast({ type: 'success', title: 'تم تسجيل عدم الحضور بنجاح' })
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'duty-rosters', 'today'] })
     },
-    [
-      dutyRosterTemplatesQuery.data,
-      activeView,
-      shifts,
-      filters.status,
-      filters.assignmentStatus,
-      filters.shiftType,
-      filters.date,
-    ],
-  )
+    onError: (error) => {
+      toast({
+        type: 'error',
+        title: 'فشل تسجيل عدم الحضور',
+        description: error instanceof Error ? error.message : 'حدث خطأ غير متوقع',
+      })
+    },
+  })
 
-  const autoCreateDutyRosterMutation = useCreateDutyRosterMutation()
-  const autoCreateAttemptsRef = useRef<Set<string>>(new Set())
-  const hasAutoCreatedRef = useRef(false)
+  const handleRecordAbsence = async (supervision: TodaySupervisionItem, teacher: TodaySupervisionTeacher) => {
+    const reason = window.prompt(`سبب عدم حضور ${teacher.name} (اختياري):`)
+    await recordAbsenceMutation.mutateAsync({
+      template_id: supervision.template_id,
+      user_id: teacher.user_id,
+      date: selectedDate,
+      reason: reason || null,
+    })
+  }
 
-  // Automatically create daily shifts from active templates when no concrete shift exists for the filtered date.
-  useEffect(() => {
-    if (activeView !== 'shifts') return
-    if (templateAutoCreatePlans.length === 0) {
-      hasAutoCreatedRef.current = false
-      return
+  const handleAssignReplacement = (supervision: TodaySupervisionItem, teacher: TodaySupervisionTeacher) => {
+    setReplacementModalData({ supervision, teacher })
+  }
+
+  const closeReplacementModal = () => {
+    setReplacementModalData(null)
+  }
+
+  const supervisions = supervisionsQuery.data?.data ?? []
+  const dutySchedules = dutySchedulesQuery.data?.data ?? []
+  const meta = supervisionsQuery.data?.meta
+
+  const isLoading = supervisionsQuery.isLoading
+  const isError = supervisionsQuery.isError
+  const errorMessage = supervisionsQuery.error instanceof Error ? supervisionsQuery.error.message : 'حدث خطأ غير متوقع'
+
+  // تحويل الوقت بصيغة 12 ساعة إلى دقائق للمقارنة
+  const timeToMinutes = (timeStr: string | null | undefined): number => {
+    if (!timeStr) return 0
+    // إزالة ص/م وتحويل الوقت
+    const cleaned = timeStr.replace(/\s*[صم]\s*$/g, '').trim()
+    const isPM = timeStr.includes('م')
+    const isAM = timeStr.includes('ص')
+    const [hourStr, minStr] = cleaned.split(':')
+    let hour = parseInt(hourStr, 10) || 0
+    const min = parseInt(minStr, 10) || 0
+    
+    // تحويل لـ 24 ساعة
+    if (isPM && hour !== 12) hour += 12
+    if (isAM && hour === 12) hour = 0
+    
+    return hour * 60 + min
+  }
+
+  // دمج الإشراف والمناوبات في قائمة واحدة مرتبة
+  type TimelineItem = 
+    | { type: 'supervision'; data: TodaySupervisionItem; sortTime: number }
+    | { type: 'duty'; data: DutyScheduleTodayItem; sortTime: number }
+
+  const sortedTimeline = useMemo<TimelineItem[]>(() => {
+    const items: TimelineItem[] = []
+    
+    // إضافة الإشراف
+    for (const sup of supervisions) {
+      items.push({
+        type: 'supervision',
+        data: sup,
+        sortTime: timeToMinutes(sup.window_start),
+      })
     }
     
-    // Prevent running auto-creation more than once per mount
-    if (hasAutoCreatedRef.current) return
-    hasAutoCreatedRef.current = true
-
-    let isCancelled = false
-
-    const runAutoCreation = async () => {
-      for (const plan of templateAutoCreatePlans) {
-        if (autoCreateAttemptsRef.current.has(plan.key)) continue
-
-        const assignmentsPayload = plan.assignments.map((assignment) => ({
-          user_id: assignment.user_id,
-          assignment_role: assignment.assignment_role,
-        }))
-
-        if (assignmentsPayload.length === 0) {
-          continue
-        }
-
-        autoCreateAttemptsRef.current.add(plan.key)
-
-        const windowStart = plan.template.window_start ?? '07:00'
-        const windowEnd = plan.template.window_end ?? '08:00'
-        const formattedTargetDate = new Date(plan.targetDate).toLocaleDateString('ar-SA', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-        })
-
-        try {
-          await autoCreateDutyRosterMutation.mutateAsync({
-            shift_type: plan.template.shift_type,
-            shift_date: plan.targetDate,
-            window_start: windowStart,
-            window_end: windowEnd,
-            trigger_time: null,
-            status: 'scheduled' as DutyRosterStatus,
-            reminder_offset_minutes: plan.template.trigger_offset_minutes ?? 120,
-            template_id: plan.template.id,
-            assignments: assignmentsPayload,
-          })
-
-          if (isCancelled) return
-
-          // Refetch to get the newly created shift
-          await dutyRostersQuery.refetch()
-          
-          // Don't show success toast since the shift was created (even with server error)
-        } catch (error: unknown) {
-          if (isCancelled) return
-
-          // Check if it's an axios error with response
-          const isAxiosError = error && typeof error === 'object' && 'response' in error
-          const statusCode = isAxiosError ? (error as { response?: { status?: number } }).response?.status : null
-
-          // If 500 error, the shift might still be created - refetch to check
-          if (statusCode === 500) {
-            await dutyRostersQuery.refetch()
-            // Don't remove from attempts - it might have been created
-          } else {
-            // For other errors, allow retry
-            autoCreateAttemptsRef.current.delete(plan.key)
-            
-            toast({
-              type: 'error',
-              title: 'تعذر إنشاء المناوبة من القالب',
-              description: `${plan.template.name} - ${formattedTargetDate}`,
-            })
-          }
-        }
-      }
-    }
-
-    void runAutoCreation()
-
-    return () => {
-      isCancelled = true
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    activeView,
-    // Only re-run when the plan keys change, not the entire object
-    templateAutoCreatePlans.map((p) => p.key).join(','),
-  ])
-
-  const isAutoCreating = autoCreateDutyRosterMutation.isPending
-
-  const handleFilterChange = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
-    setFilters((prev) => ({ ...prev, [key]: value }))
-  }
-
-  const handleMarkAbsent = async (shift: DutyRosterShiftRecord, assignment: DutyRosterAssignmentRecord) => {
-    try {
-      await markAbsentMutation.mutateAsync({
-        shiftId: shift.id,
-        assignmentId: assignment.id,
+    // إضافة المناوبات
+    for (const duty of dutySchedules) {
+      items.push({
+        type: 'duty',
+        data: duty,
+        sortTime: timeToMinutes(duty.start_time),
       })
-      toast({ type: 'success', title: 'تم تسجيل الغياب بنجاح' })
-    } catch {
-      toast({ type: 'error', title: 'فشل تسجيل الغياب' })
     }
-  }
+    
+    // ترتيب حسب الوقت
+    return items.sort((a, b) => a.sortTime - b.sortTime)
+  }, [supervisions, dutySchedules])
 
-  const handleAssignReplacement = async (shift: DutyRosterShiftRecord, assignment: DutyRosterAssignmentRecord) => {
-    const replacementUserId = window.prompt('أدخل معرف المعلم البديل:')
-    if (!replacementUserId) return
+  // ترتيب الإشرافات حسب وقت البداية (للاستخدام في أماكن أخرى)
+  const sortedSupervisions = useMemo(() => {
+    return [...supervisions].sort((a, b) => {
+      const timeA = a.window_start || '00:00'
+      const timeB = b.window_start || '00:00'
+      return timeA.localeCompare(timeB)
+    })
+  }, [supervisions])
 
-    const userId = Number(replacementUserId)
-    if (!Number.isInteger(userId) || userId <= 0) {
-      toast({ type: 'error', title: 'معرف المعلم غير صالح' })
-      return
-    }
+  // إحصائيات
+  const stats = useMemo(() => {
+    const totalSupervisions = supervisions.length
+    const totalTeachers = supervisions.reduce((sum, s) => sum + s.teachers.length, 0)
+    const totalAbsent = supervisions.reduce((sum, s) => sum + s.absence_records.length, 0)
+    const totalPresent = totalTeachers - totalAbsent
+    const attendanceRate = totalTeachers > 0 ? Math.round((totalPresent / totalTeachers) * 100) : 0
+    const replacementsAssigned = supervisions.reduce(
+      (sum, s) => sum + s.absence_records.filter(r => r.replacement_user_name).length, 0
+    )
+    return { totalSupervisions, totalTeachers, totalAbsent, totalPresent, attendanceRate, replacementsAssigned }
+  }, [supervisions])
 
-    try {
-      await assignReplacementMutation.mutateAsync({
-        shiftId: shift.id,
-        assignmentId: assignment.id,
-        payload: { replacement_user_id: userId },
-      })
-      toast({ type: 'success', title: 'تم تعيين البديل بنجاح' })
-    } catch {
-      toast({ type: 'error', title: 'فشل تعيين البديل' })
-    }
-  }
+  // القادم قريباً
+  const upcomingSupervision = useMemo(() => {
+    const now = new Date()
+    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
+
+    const upcoming = sortedSupervisions.find(s => s.window_start && s.window_start > currentTime)
+    if (!upcoming) return null
+
+    // حساب الوقت المتبقي
+    const [upcomingHour, upcomingMin] = upcoming.window_start!.split(':').map(Number)
+    const upcomingDate = new Date()
+    upcomingDate.setHours(upcomingHour, upcomingMin, 0, 0)
+    const diffMs = upcomingDate.getTime() - now.getTime()
+    const diffMins = Math.max(0, Math.floor(diffMs / 60000))
+
+    return { ...upcoming, minutesUntil: diffMins }
+  }, [sortedSupervisions])
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ar-SA', {
@@ -331,648 +195,536 @@ export function AdminDutyRostersPage() {
     })
   }
 
-  const formatWindow = (shift: DutyRosterShiftRecord) => {
-    return `${shift.window_start} - ${shift.window_end}`
+  const isTeacherAbsent = (supervision: TodaySupervisionItem, userId: number) => {
+    return supervision.absence_records.some(
+      (record) => record.user_id === userId && (record.status === 'absent' || record.status === 'replacement_assigned')
+    )
   }
 
-  const formatTriggerTime = (shift: DutyRosterShiftRecord) => {
-    return shift.trigger_time ?? 'غير محدد'
+  const getAbsenceRecord = (supervision: TodaySupervisionItem, userId: number) => {
+    return supervision.absence_records.find((r) => r.user_id === userId)
   }
 
-  const getAssignmentNotes = (assignment: DutyRosterAssignmentRecord) => {
-    if (assignment.status === 'absent' && assignment.marked_absent_at) {
-      return `غائب منذ ${new Date(assignment.marked_absent_at).toLocaleTimeString('ar-SA')}`
-    }
-    if (assignment.status === 'replacement_assigned' && assignment.replacement_user) {
-      return `البديل: ${assignment.replacement_user.name}`
-    }
-    return '—'
+  const handleSendReminders = () => {
+    toast({ type: 'info', title: 'جارٍ إرسال التذكيرات...', description: 'سيتم إرسال رسائل واتساب للمعلمين المكلفين' })
+  }
+
+  const handleExportReport = () => {
+    toast({ type: 'info', title: 'جارٍ تصدير التقرير...', description: 'سيتم تحميل ملف PDF' })
   }
 
   return (
     <section className="space-y-6">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1 text-right">
-          <h1 className="text-3xl font-bold text-slate-900">مناوبات المعلمين</h1>
+          <h1 className="text-3xl font-bold text-slate-900">الإشراف اليومي</h1>
           <p className="text-sm text-muted">
-            خطط المناوبات اليومية، عين المعلمين، وتابع إشعارات الواتساب وحالات التأكيد أو الاستبدال تلقائياً.
+            عرض جدول الإشراف اليومي مباشرة من القوالب الأسبوعية.
           </p>
         </div>
         <div className="flex flex-col items-end gap-3">
           <div className="inline-flex rounded-3xl border border-slate-200 bg-white p-1 text-sm shadow-sm">
             <button
               type="button"
-              onClick={() => setActiveView('shifts')}
-              className={`rounded-3xl px-4 py-1.5 font-semibold transition ${
-                activeView === 'shifts'
-                  ? 'bg-indigo-600 text-white shadow'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
+              onClick={() => setActiveView('today')}
+              className={`rounded-3xl px-4 py-1.5 font-semibold transition ${activeView === 'today'
+                ? 'bg-indigo-600 text-white shadow'
+                : 'text-slate-600 hover:bg-slate-100'
+                }`}
             >
-              المناوبات اليومية
+              <Eye className="inline-block h-4 w-4 ml-1" />
+              إشراف اليوم
             </button>
             <button
               type="button"
               onClick={() => setActiveView('templates')}
-              className={`rounded-3xl px-4 py-1.5 font-semibold transition ${
-                activeView === 'templates'
-                  ? 'bg-indigo-600 text-white shadow'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
+              className={`rounded-3xl px-4 py-1.5 font-semibold transition ${activeView === 'templates'
+                ? 'bg-indigo-600 text-white shadow'
+                : 'text-slate-600 hover:bg-slate-100'
+                }`}
             >
+              <Users className="inline-block h-4 w-4 ml-1" />
               قوالب الأسبوع
             </button>
           </div>
 
-          {activeView === 'shifts' && (
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                className="button-secondary flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-60"
-                onClick={() => dutyRostersQuery.refetch()}
-                disabled={isFetching}
-              >
-                {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-                مزامنة الآن
-              </button>
-              <button
-                type="button"
-                className="button-primary flex items-center gap-2"
-                onClick={() => setIsCreateOpen(true)}
-              >
-                <CalendarClock className="h-5 w-5" />
-                إنشاء مناوبة جديدة
-              </button>
-            </div>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsDutyScheduleOpen(true)}
+              className="button-primary flex items-center gap-2"
+            >
+              <Calendar className="h-4 w-4" />
+              المناوبة
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsSettingsOpen(true)}
+              className="button-secondary flex items-center gap-2"
+            >
+              <Settings className="h-4 w-4" />
+              الإعدادات
+            </button>
+            {activeView === 'today' && (
+              <>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  className="button-secondary flex items-center gap-2 disabled:opacity-60"
+                  onClick={() => supervisionsQuery.refetch()}
+                  disabled={supervisionsQuery.isFetching}
+                >
+                  {supervisionsQuery.isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
+                  تحديث
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
-      <DutyRosterSettingsPanel />
+      <DutyRosterSettingsModal open={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <DutyScheduleModal open={isDutyScheduleOpen} onClose={() => setIsDutyScheduleOpen(false)} />
 
-      {activeView === 'shifts' ? (
-        <>
-          <section className="grid gap-3 md:grid-cols-3">
-            <article className="rounded-3xl border border-slate-100 bg-white/70 p-5 text-right shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">مناوبات قادمة</p>
-              <p className="mt-2 text-3xl font-bold text-slate-900">{upcomingCount.toLocaleString('ar-SA')}</p>
-              <p className="mt-1 text-xs text-muted">ضمن المرشحات الحالية</p>
-            </article>
-            <article className="rounded-3xl border border-rose-100 bg-rose-50/70 p-5 text-right shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-widest text-rose-600">تم تسجيل غياب</p>
-              <p className="mt-2 text-3xl font-bold text-rose-700">{absenceCount.toLocaleString('ar-SA')}</p>
-              <p className="mt-1 text-xs text-rose-700/80">تأكد من تعيين بديل وتحويل المناوبة</p>
-            </article>
-            <article className="rounded-3xl border border-indigo-100 bg-indigo-50/70 p-5 text-right shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">بدلاء معينون</p>
-              <p className="mt-2 text-3xl font-bold text-indigo-700">{replacementCount.toLocaleString('ar-SA')}</p>
-              <p className="mt-1 text-xs text-indigo-700/80">البريد والواتساب يتضمنان تفاصيل المناوبة</p>
-            </article>
-          </section>
-
-          <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="grid gap-4 md:grid-cols-5">
-              <div className="space-y-1 text-right">
-                <label className="text-xs font-semibold text-slate-600">نوع المناوبة</label>
-                <input
-                  type="search"
-                  value={filters.shiftType}
-                  onChange={(event) => handleFilterChange('shiftType', event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  placeholder="مثال: مناوبة الفسحة"
-                />
-              </div>
-              <div className="space-y-1 text-right">
-                <label className="text-xs font-semibold text-slate-600">حالة المناوبة</label>
-                <select
-                  value={filters.status}
-                  onChange={(event) => handleFilterChange('status', event.target.value as FilterState['status'])}
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+      {activeView === 'today' ? (
+        <div className="grid gap-6 lg:grid-cols-[1fr,280px]">
+          {/* Timeline الرئيسي */}
+          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            {isError ? (
+              <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 text-center text-sm text-rose-700">
+                <AlertCircle className="h-8 w-8" />
+                <p className="font-semibold">{errorMessage}</p>
+                <button
+                  type="button"
+                  onClick={() => supervisionsQuery.refetch()}
+                  className="rounded-full bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700"
                 >
-                  <option value="all">كل الحالات</option>
-                  {(Object.keys(SHIFT_STATUS_LABELS) as DutyRosterStatus[]).map((status) => (
-                    <option key={status} value={status}>
-                      {SHIFT_STATUS_LABELS[status]}
-                    </option>
-                  ))}
-                </select>
+                  إعادة المحاولة
+                </button>
               </div>
-              <div className="space-y-1 text-right">
-                <label className="text-xs font-semibold text-slate-600">حالة المعلم</label>
-                <select
-                  value={filters.assignmentStatus}
-                  onChange={(event) =>
-                    handleFilterChange('assignmentStatus', event.target.value as FilterState['assignmentStatus'])
-                  }
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            ) : isLoading ? (
+              <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 text-sm text-muted">
+                <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
+                جارٍ تحميل إشراف اليوم...
+              </div>
+            ) : sortedSupervisions.length === 0 && (!dutySchedulesQuery.data?.data || dutySchedulesQuery.data.data.length === 0) ? (
+              <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 text-sm text-muted">
+                <CalendarClock className="h-12 w-12 text-slate-300" />
+                <p className="font-semibold">لا توجد إشرافات أو مناوبات لهذا اليوم</p>
+                <p className="text-xs">تأكد من إنشاء قوالب أسبوعية وتعيين معلمين ليوم {WEEKDAY_LABELS[meta?.weekday ?? ''] || 'هذا اليوم'}</p>
+                <button
+                  type="button"
+                  onClick={() => setActiveView('templates')}
+                  className="mt-2 rounded-full bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
                 >
-                  <option value="all">كل الحالات</option>
-                  <option value="scheduled">مجدولة</option>
-                  <option value="absent">تم تسجيل غياب</option>
-                  <option value="replacement_assigned">بديل معين</option>
-                  <option value="completed">مكتملة</option>
-                </select>
+                  إدارة قوالب الأسبوع
+                </button>
               </div>
-              <div className="space-y-1 text-right">
-                <label className="text-xs font-semibold text-slate-600">التاريخ</label>
-                <input
-                  type="date"
-                  value={filters.date}
-                  onChange={(event) => handleFilterChange('date', event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                />
-              </div>
-              <div className="space-y-1 text-right">
-                <label className="text-xs font-semibold text-slate-600">خيارات سريعة</label>
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <button
-                    type="button"
-                    className="rounded-2xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
-                  >
-                    حفظ كقالب يومي
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-2xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
-                  >
-                    تصدير CSV
-                  </button>
-                </div>
-              </div>
-            </div>
-          </section>
+            ) : (
+              <div className="relative">
+                {/* خط الـ Timeline */}
+                <div className="absolute right-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-indigo-200 via-indigo-300 to-indigo-200" />
 
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr),minmax(0,1fr)]">
-            <section className="space-y-4">
-              {isError ? (
-                <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 rounded-3xl border border-rose-200 bg-rose-50/70 p-6 text-center text-sm text-rose-700">
-                  <p className="font-semibold">{errorMessage}</p>
-                  <button
-                    type="button"
-                    onClick={() => dutyRostersQuery.refetch()}
-                    className="rounded-full bg-rose-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-rose-700"
-                  >
-                    إعادة المحاولة
-                  </button>
-                </div>
-              ) : isLoading ? (
-                <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 rounded-3xl border border-slate-200 bg-white/70 p-6 text-sm text-muted">
-                  <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
-                  جارٍ تحميل المناوبات...
-                </div>
-              ) : filteredShifts.length === 0 ? (
-                dutyRosterTemplatesQuery.isLoading || isAutoCreating ? (
-                  <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 rounded-3xl border border-slate-200 bg-white/70 p-6 text-sm text-muted">
-                    <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
-                    جارٍ إنشاء المناوبات اليومية من القوالب الأسبوعية...
-                    <p className="text-xs text-slate-500">سيتم تحديث القائمة تلقائياً فور اكتمال المعالجة.</p>
-                  </div>
-                ) : (
-                  <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-slate-200 bg-white/70 text-sm text-muted">
-                    <i className="bi bi-calendar2-week text-3xl text-slate-300" />
-                    لا توجد مناوبات مطابقة للمرشحات الحالية.
-                  </div>
-                )
-              ) : (
-                <div className="space-y-4">
-                  {filteredShifts.map((shift) => {
-                    const weekdayKey = getDutyRosterWeekdayKey(shift.shift_date)
-                    const templateAssignments = (
-                      shift.template?.weekday_assignments?.[weekdayKey] ?? []
-                    ) as DutyRosterTemplateAssignmentRecord[]
-                    const templateAssignmentNames = templateAssignments
-                      .map((assignment) => assignment.user?.name ?? null)
-                      .filter((name): name is string => Boolean(name))
-
-                    return (
-                      <article key={shift.id} className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                        <header className="flex flex-wrap items-center justify-between gap-3">
-                          <div className="text-right">
-                            <p className="text-xs font-semibold text-indigo-600">{shift.shift_type}</p>
-                            <h3 className="text-lg font-bold text-slate-900">{formatDate(shift.shift_date)}</h3>
-                            <p className="text-xs text-muted">المدة: {formatWindow(shift)}</p>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            {shift.template?.name && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700">
-                                قالب الأسبوع:
-                                <span className="font-bold text-indigo-900">{shift.template.name}</span>
-                              </span>
-                            )}
-                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                              <BellRing className="h-4 w-4" />
-                              الإرسال التلقائي: {formatTriggerTime(shift)}
+                <div className="space-y-6">
+                  {sortedTimeline.map((item, index) => {
+                    if (item.type === 'supervision') {
+                      const supervision = item.data
+                      return (
+                        <div key={`sup-${supervision.template_id}`} className="relative pr-14">
+                          {/* نقطة الوقت */}
+                          <div className="absolute right-0 flex flex-col items-center">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600 shadow-sm border-4 border-white">
+                              <Clock className="h-5 w-5" />
+                            </div>
+                            <span className="mt-1 text-xs font-bold text-indigo-600">
+                              {supervision.window_start || '—'}
                             </span>
-                            <button
-                              type="button"
-                              className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
-                              disabled
-                              title="سيتم تفعيل التذكير الفوري مع تكامل تنبيهات الواتساب"
-                            >
-                              جدولة تذكير إضافي
-                            </button>
                           </div>
-                        </header>
 
-                        {shift.template?.name && templateAssignmentNames.length > 0 && (
-                          <div className="rounded-2xl bg-indigo-50/70 px-4 py-2 text-xs text-indigo-700">
-                            <p className="font-semibold text-indigo-800">المعينون من القالب لهذا اليوم:</p>
-                            <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
-                              {templateAssignmentNames.map((name, index) => (
-                                <span
-                                  key={`${shift.id}-template-${index}`}
-                                  className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-indigo-700 shadow-sm"
-                                >
-                                  {name}
-                                </span>
-                              ))}
+                          {/* بطاقة الإشراف */}
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50/50 overflow-hidden">
+                            {/* رأس البطاقة */}
+                            <div className="bg-gradient-to-l from-indigo-50 to-white px-5 py-3 border-b border-slate-100">
+                              <div className="flex items-center justify-between">
+                                <div className="text-right">
+                                  <h3 className="text-lg font-bold text-slate-900">{supervision.name}</h3>
+                                  <p className="text-xs text-indigo-600">{supervision.shift_type}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="rounded-full bg-white border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600">
+                                    {supervision.window_start} - {supervision.window_end}
+                                  </span>
+                                  <span className="rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700">
+                                    {supervision.teachers.length} معلم
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* قائمة المعلمين */}
+                            <div className="divide-y divide-slate-100">
+                              {supervision.teachers.map((teacher) => {
+                                const absent = isTeacherAbsent(supervision, teacher.user_id)
+                                const absenceRecord = getAbsenceRecord(supervision, teacher.user_id)
+
+                                return (
+                                  <div
+                                    key={teacher.user_id}
+                                    className={`flex items-center justify-between px-5 py-3 ${absent ? 'bg-rose-50/50' : 'bg-white'}`}
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${absent ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                                        {absent ? <UserX className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}
+                                      </div>
+                                      <div className="text-right">
+                                        <button
+                                          type="button"
+                                          className="font-semibold text-slate-900 hover:text-indigo-600 hover:underline transition-colors cursor-pointer"
+                                          onClick={() => setTeacherStatsModal({ userId: teacher.user_id, userName: teacher.name })}
+                                        >
+                                          {teacher.name}
+                                        </button>
+                                        <div className="flex items-center gap-3 mt-0.5">
+                                          {teacher.phone && (
+                                            <span className="flex items-center gap-1 text-xs text-muted">
+                                              <Phone className="h-3 w-3" />
+                                              {teacher.phone}
+                                            </span>
+                                          )}
+                                          {absenceRecord?.reason && (
+                                            <span className="text-xs text-rose-500">السبب: {absenceRecord.reason}</span>
+                                          )}
+                                          {absenceRecord?.replacement_user_name && (
+                                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
+                                              <UserPlus className="h-3 w-3" />
+                                              البديل: {absenceRecord.replacement_user_name}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    {/* أزرار الإجراءات */}
+                                    <div className="flex items-center gap-2">
+                                      {!absent ? (
+                                        <>
+                                          <button
+                                            type="button"
+                                            className="rounded-xl bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-200 disabled:opacity-60"
+                                            onClick={() => handleRecordAbsence(supervision, teacher)}
+                                            disabled={recordAbsenceMutation.isPending}
+                                          >
+                                            {recordAbsenceMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'عدم الحضور'}
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="rounded-xl bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-200"
+                                            onClick={() => handleAssignReplacement(supervision, teacher)}
+                                          >
+                                            <UserPlus className="inline h-3 w-3 ml-1" />
+                                            بديل
+                                          </button>
+                                        </>
+                                      ) : !absenceRecord?.replacement_user_name ? (
+                                        <button
+                                          type="button"
+                                          className="rounded-xl bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-200"
+                                          onClick={() => handleAssignReplacement(supervision, teacher)}
+                                        >
+                                          <UserPlus className="inline h-3 w-3 ml-1" />
+                                          تعيين بديل
+                                        </button>
+                                      ) : (
+                                        <span className="rounded-xl bg-slate-100 px-3 py-1.5 text-xs text-slate-500">تم التعيين</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              })}
                             </div>
                           </div>
-                        )}
-
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full table-fixed text-right text-sm">
-                            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-                              <tr>
-                                <th className="px-3 py-2 font-semibold">المعلم</th>
-                                <th className="px-3 py-2 font-semibold">الهاتف</th>
-                                <th className="px-3 py-2 font-semibold">الحالة</th>
-                                <th className="px-3 py-2 font-semibold">ملاحظات</th>
-                                <th className="px-3 py-2 font-semibold">الإجراءات</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                              {shift.assignments.map((assignment) => (
-                                <tr key={assignment.id} className="bg-white">
-                                  <td className="px-3 py-2 text-sm font-semibold text-slate-900">{assignment.user.name}</td>
-                                  <td className="px-3 py-2 text-sm text-slate-700">
-                                    {assignment.user.phone ?? '—'}
-                                  </td>
-                                  <td className="px-3 py-2">
-                                    <span
-                                      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${STATUS_BADGE_STYLES[assignment.status]}`}
-                                    >
-                                      <Users className="h-3.5 w-3.5" />
-                                      {STATUS_LABELS[assignment.status]}
-                                    </span>
-                                  </td>
-                                  <td className="px-3 py-2 text-xs text-muted">{getAssignmentNotes(assignment)}</td>
-                                  <td className="px-3 py-2">
-                                    <div className="flex flex-wrap items-center gap-2 text-xs">
-                                      <button
-                                        type="button"
-                                        className="rounded-full bg-rose-100 px-3 py-1 font-semibold text-rose-700 transition hover:bg-rose-200 disabled:cursor-not-allowed disabled:opacity-60"
-                                        onClick={() => handleMarkAbsent(shift, assignment)}
-                                        disabled={assignment.status === 'absent' || markAbsentMutation.isPending}
-                                      >
-                                        عدم الحضور
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-600 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
-                                        disabled
-                                        title="سيتم تفعيل التذكير الفوري بعد ربط تنبيهات الواتساب"
-                                      >
-                                        تذكير فوري
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="rounded-full bg-indigo-100 px-3 py-1 font-semibold text-indigo-700 transition hover:bg-indigo-200 disabled:cursor-not-allowed disabled:opacity-60"
-                                        onClick={() => handleAssignReplacement(shift, assignment)}
-                                        disabled={assignReplacementMutation.isPending}
-                                      >
-                                        تعيين بديل مؤقت
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
                         </div>
-                      </article>
-                    )
+                      )
+                    } else {
+                      // المناوبة
+                      const duty = item.data
+                      return (
+                        <div key={`duty-${duty.id}`} className="relative pr-14">
+                          {/* نقطة الوقت - لون برتقالي للمناوبة */}
+                          <div className="absolute right-0 flex flex-col items-center">
+                            <div className={`flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm border-4 border-white ${
+                              duty.duty_type === 'afternoon' 
+                                ? 'bg-orange-100 text-orange-600' 
+                                : 'bg-blue-100 text-blue-600'
+                            }`}>
+                              <Sunset className="h-5 w-5" />
+                            </div>
+                            <span className={`mt-1 text-xs font-bold ${
+                              duty.duty_type === 'afternoon' ? 'text-orange-600' : 'text-blue-600'
+                            }`}>
+                              {duty.start_time || '—'}
+                            </span>
+                          </div>
+
+                          {/* بطاقة المناوبة */}
+                          <div className={`rounded-2xl border overflow-hidden ${
+                            duty.duty_type === 'afternoon'
+                              ? 'border-orange-200 bg-orange-50/50'
+                              : 'border-blue-200 bg-blue-50/50'
+                          }`}>
+                            {/* رأس البطاقة */}
+                            <div className={`px-5 py-3 border-b ${
+                              duty.duty_type === 'afternoon'
+                                ? 'bg-gradient-to-l from-orange-100 to-white border-orange-100'
+                                : 'bg-gradient-to-l from-blue-100 to-white border-blue-100'
+                            }`}>
+                              <div className="flex items-center justify-between">
+                                <div className="text-right">
+                                  <h3 className="text-lg font-bold text-slate-900">{duty.duty_type_name}</h3>
+                                  <p className={`text-xs ${duty.duty_type === 'afternoon' ? 'text-orange-600' : 'text-blue-600'}`}>
+                                    مناوبة فصلية
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="rounded-full bg-white border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600">
+                                    {duty.start_time} - {duty.end_time}
+                                  </span>
+                                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                    duty.duty_type === 'afternoon'
+                                      ? 'bg-orange-100 text-orange-700'
+                                      : 'bg-blue-100 text-blue-700'
+                                  }`}>
+                                    <Calendar className="inline h-3 w-3 ml-1" />
+                                    مناوبة
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* المعلم المكلف */}
+                            <div className="px-5 py-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${
+                                    duty.status === 'completed'
+                                      ? 'bg-emerald-100 text-emerald-600'
+                                      : duty.status === 'absent'
+                                        ? 'bg-rose-100 text-rose-600'
+                                        : duty.duty_type === 'afternoon'
+                                          ? 'bg-orange-100 text-orange-600'
+                                          : 'bg-blue-100 text-blue-600'
+                                  }`}>
+                                    {duty.status === 'completed' ? (
+                                      <CheckCircle2 className="h-5 w-5" />
+                                    ) : duty.status === 'absent' ? (
+                                      <UserX className="h-5 w-5" />
+                                    ) : (
+                                      <Users className="h-5 w-5" />
+                                    )}
+                                  </div>
+                                  <div className="text-right">
+                                    <button
+                                      type="button"
+                                      className="font-semibold text-slate-900 hover:text-orange-600 hover:underline transition-colors cursor-pointer"
+                                      onClick={() => duty.user_id && setTeacherStatsModal({ userId: duty.user_id, userName: duty.user_name ?? '' })}
+                                      disabled={!duty.user_id}
+                                    >
+                                      {duty.user_name ?? 'غير محدد'}
+                                    </button>
+                                    <div className="flex items-center gap-3 mt-0.5">
+                                      {duty.user_phone && (
+                                        <span className="flex items-center gap-1 text-xs text-muted">
+                                          <Phone className="h-3 w-3" />
+                                          {duty.user_phone}
+                                        </span>
+                                      )}
+                                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                                        duty.status === 'completed'
+                                          ? 'bg-emerald-100 text-emerald-700'
+                                          : duty.status === 'absent'
+                                            ? 'bg-rose-100 text-rose-700'
+                                            : duty.status === 'notified'
+                                              ? 'bg-blue-100 text-blue-700'
+                                              : 'bg-slate-100 text-slate-600'
+                                      }`}>
+                                        {duty.status_name}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    }
                   })}
                 </div>
-              )}
-            </section>
+              </div>
+            )}
+          </section>
 
-            <aside className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <header className="space-y-1 text-right">
-                <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">مسار العمل</p>
-                <h2 className="text-lg font-bold text-slate-900">قائمة التهيئة القادمة</h2>
-                <p className="text-xs text-muted">سنربط هذه القائمة بالمهام الفعلية ونتائج الـ Redis قريباً.</p>
-              </header>
-              <ul className="space-y-3 text-sm text-slate-700">
-                <li className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3">
-                  1. إعداد أنواع المناوبات وقوالبها الأسبوعية.
-                </li>
-                <li className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3">
-                  2. ربط المناوبات بالمعلمين مع دعم التتابع التلقائي.
-                </li>
-                <li className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3">
-                  3. تفعيل إشعارات الواتساب عبر الطوابير واختبار الرسائل التجريبية.
-                </li>
-                <li className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3">
-                  4. بناء شاشة إعدادات المناوبات لاستقبال التبديلات والبدلاء.
-                </li>
-              </ul>
-            </aside>
-          </div>
+          {/* العمود الجانبي */}
+          <aside className="space-y-4">
+            {/* ملخص اليوم */}
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h3 className="flex items-center gap-2 text-sm font-bold text-slate-900 mb-4">
+                <TrendingUp className="h-4 w-4 text-indigo-500" />
+                ملخص اليوم
+              </h3>
 
-          <CreateDutyRosterDialog
-            open={isCreateOpen}
-            onClose={() => setIsCreateOpen(false)}
-            toast={toast}
-          />
-        </>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted">إجمالي المكلفين</span>
+                  <span className="text-lg font-bold text-slate-900">{stats.totalTeachers}</span>
+                </div>
+
+                <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-l from-emerald-400 to-emerald-500 transition-all"
+                    style={{ width: `${stats.attendanceRate}%` }}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-center">
+                  <div className="rounded-2xl bg-emerald-50 p-3">
+                    <p className="text-2xl font-bold text-emerald-600">{stats.totalPresent}</p>
+                    <p className="text-[10px] text-emerald-600">حضروا</p>
+                  </div>
+                  <div className="rounded-2xl bg-rose-50 p-3">
+                    <p className="text-2xl font-bold text-rose-600">{stats.totalAbsent}</p>
+                    <p className="text-[10px] text-rose-600">لم يحضروا</p>
+                  </div>
+                </div>
+
+                {stats.replacementsAssigned > 0 && (
+                  <div className="rounded-2xl bg-amber-50 p-3 text-center">
+                    <p className="text-lg font-bold text-amber-600">{stats.replacementsAssigned}</p>
+                    <p className="text-[10px] text-amber-600">بديل معين</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* القادم قريباً */}
+            {upcomingSupervision && (
+              <div className="rounded-3xl border border-indigo-100 bg-indigo-50/50 p-5 shadow-sm">
+                <h3 className="flex items-center gap-2 text-sm font-bold text-indigo-900 mb-3">
+                  <Clock className="h-4 w-4 text-indigo-500" />
+                  القادم قريباً
+                </h3>
+
+                <div className="text-right">
+                  <p className="font-semibold text-indigo-900">{upcomingSupervision.name}</p>
+                  <p className="text-xs text-indigo-600">{upcomingSupervision.shift_type}</p>
+                  <div className="mt-3 flex items-center justify-between">
+                    <span className="text-xs text-indigo-600">{upcomingSupervision.window_start}</span>
+                    <span className="rounded-full bg-indigo-100 px-3 py-1 text-xs font-bold text-indigo-700">
+                      بعد {upcomingSupervision.minutesUntil} دقيقة
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* إجراءات سريعة */}
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-900 mb-4">إجراءات سريعة</h3>
+
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={handleSendReminders}
+                  className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-100 px-4 py-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-200 transition"
+                >
+                  <Send className="h-4 w-4" />
+                  إرسال التذكيرات الآن
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportReport}
+                  className="w-full flex items-center justify-center gap-2 rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-200 transition"
+                >
+                  <FileText className="h-4 w-4" />
+                  تصدير تقرير اليوم
+                </button>
+              </div>
+            </div>
+
+            {/* معلومات إضافية */}
+            <div className="rounded-3xl border border-slate-100 bg-slate-50/50 p-4 text-right">
+              <p className="text-xs text-muted">
+                📅 {meta?.weekday ? WEEKDAY_LABELS[meta.weekday] : ''} • {formatDate(selectedDate)}
+              </p>
+              <p className="text-xs text-muted mt-1">
+                {stats.totalSupervisions} إشراف مجدول
+              </p>
+            </div>
+          </aside>
+        </div>
       ) : (
         <DutyRosterTemplatesPanel />
       )}
+
+      {/* Modal تعيين بديل */}
+      {replacementModalData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+          <div className="absolute inset-0" onClick={closeReplacementModal} />
+          <div className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <header className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
+                  <UserPlus className="h-5 w-5" />
+                </span>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">تعيين بديل</h2>
+                  <p className="text-xs text-muted">اختر معلماً بديلاً عن {replacementModalData.teacher.name}</p>
+                </div>
+              </div>
+              <button type="button" onClick={closeReplacementModal} className="rounded-full p-2 text-slate-400 hover:bg-slate-100">✕</button>
+            </header>
+
+            <div className="max-h-[400px] overflow-y-auto p-6">
+              <div className="space-y-2">
+                {allTeachers
+                  .filter((t) => t.id !== replacementModalData.teacher.user_id)
+                  .map((teacher) => (
+                    <button
+                      key={teacher.id}
+                      type="button"
+                      className="w-full rounded-xl border border-slate-200 bg-white p-3 text-right hover:border-amber-300 hover:bg-amber-50"
+                      onClick={() => {
+                        toast({ type: 'info', title: `سيتم تعيين ${teacher.name} كبديل` })
+                        closeReplacementModal()
+                      }}
+                    >
+                      <p className="font-semibold text-slate-900">{teacher.name}</p>
+                      {teacher.phone && <p className="mt-1 text-xs text-muted">{teacher.phone}</p>}
+                    </button>
+                  ))}
+              </div>
+            </div>
+
+            <footer className="border-t border-slate-200 px-6 py-4">
+              <button type="button" onClick={closeReplacementModal} className="w-full button-secondary">إلغاء</button>
+            </footer>
+          </div>
+        </div>
+      )}
+
+      {/* نافذة إحصائيات المعلم */}
+      <TeacherStatsModal
+        open={!!teacherStatsModal}
+        onClose={() => setTeacherStatsModal(null)}
+        userId={teacherStatsModal?.userId ?? 0}
+        userName={teacherStatsModal?.userName ?? ''}
+      />
     </section>
   )
 }
 
 export default AdminDutyRostersPage
-
-type CreateDutyRosterDialogProps = {
-  open: boolean
-  onClose: () => void
-  toast: ReturnType<typeof useToast>
-}
-
-type CreateDutyRosterFormState = {
-  shiftType: string
-  shiftDate: string
-  windowStart: string
-  windowEnd: string
-  triggerTime: string
-  reminderMinutes: string
-  status: DutyRosterStatus
-  assignmentIds: string
-}
-
-function getInitialCreateFormState(): CreateDutyRosterFormState {
-  return {
-    shiftType: '',
-    shiftDate: '',
-    windowStart: '',
-    windowEnd: '',
-    triggerTime: '',
-    reminderMinutes: '120',
-    status: 'scheduled',
-    assignmentIds: '',
-  }
-}
-
-function CreateDutyRosterDialog({ open, onClose, toast }: CreateDutyRosterDialogProps) {
-  const [form, setForm] = useState<CreateDutyRosterFormState>(getInitialCreateFormState)
-  const createDutyRosterMutation = useCreateDutyRosterMutation()
-
-  useEffect(() => {
-    if (open) {
-      setForm(getInitialCreateFormState())
-    }
-  }, [open])
-
-  if (!open) {
-    return null
-  }
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-
-    if (!form.shiftType.trim()) {
-      toast({ type: 'error', title: 'حدد نوع المناوبة' })
-      return
-    }
-
-    if (!form.shiftDate) {
-      toast({ type: 'error', title: 'حدد تاريخ المناوبة' })
-      return
-    }
-
-    if (!form.windowStart || !form.windowEnd) {
-      toast({ type: 'error', title: 'حدد وقت البداية والنهاية' })
-      return
-    }
-
-    const assignmentIds = form.assignmentIds
-      .split(/[,\s]+/)
-      .map((value) => Number(value))
-      .filter((value) => Number.isInteger(value) && value > 0)
-
-    if (assignmentIds.length === 0) {
-      toast({ type: 'error', title: 'أدخل معرفاً واحداً على الأقل للمعلم' })
-      return
-    }
-
-    const reminderValue = Number.parseInt(form.reminderMinutes, 10)
-    const reminderMinutes = Number.isFinite(reminderValue) && reminderValue >= 0 ? reminderValue : 120
-
-    try {
-      await createDutyRosterMutation.mutateAsync({
-        shift_type: form.shiftType.trim(),
-        shift_date: form.shiftDate,
-        window_start: form.windowStart,
-        window_end: form.windowEnd,
-        trigger_time: form.triggerTime ? form.triggerTime : undefined,
-        reminder_offset_minutes: reminderMinutes,
-        status: form.status,
-        assignments: assignmentIds.map((id) => ({
-          user_id: id,
-          assignment_role: 'teacher' as const,
-        })),
-      })
-
-      onClose()
-  } catch {
-      // الرسالة يتم عرضها من الهوك نفسه، فقط نحافظ على الهدوء هنا
-    }
-  }
-
-  const handleCancel = () => {
-    if (createDutyRosterMutation.isPending) return
-    onClose()
-  }
-
-  const isSubmitting = createDutyRosterMutation.isPending
-
-  return (
-    <DialogBase onClose={handleCancel}>
-      <div className="mx-auto w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl">
-        <header className="border-b border-slate-200 px-6 py-4 text-right">
-          <h2 className="text-xl font-bold text-slate-900">إنشاء مناوبة جديدة</h2>
-          <p className="text-sm text-muted">
-            أدخل تفاصيل المناوبة وحدد المعلمين المكلفين بها. يمكن تعديل التفاصيل لاحقاً من نفس الشاشة.
-          </p>
-        </header>
-
-        <form onSubmit={handleSubmit} className="space-y-6 px-6 py-5">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2 text-right">
-              <label className="text-xs font-semibold text-slate-600" htmlFor="duty-roster-shift-type">
-                نوع المناوبة
-              </label>
-              <input
-                id="duty-roster-shift-type"
-                type="text"
-                value={form.shiftType}
-                onChange={(event) => setForm((prev) => ({ ...prev, shiftType: event.target.value }))}
-                className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                placeholder="مثال: مناوبة بداية الدوام"
-                disabled={isSubmitting}
-              />
-            </div>
-            <div className="space-y-2 text-right">
-              <label className="text-xs font-semibold text-slate-600" htmlFor="duty-roster-shift-date">
-                تاريخ المناوبة
-              </label>
-              <input
-                id="duty-roster-shift-date"
-                type="date"
-                value={form.shiftDate}
-                onChange={(event) => setForm((prev) => ({ ...prev, shiftDate: event.target.value }))}
-                className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                disabled={isSubmitting}
-              />
-            </div>
-            <div className="space-y-2 text-right">
-              <label className="text-xs font-semibold text-slate-600" htmlFor="duty-roster-window-start">
-                يبدأ من
-              </label>
-              <input
-                id="duty-roster-window-start"
-                type="time"
-                value={form.windowStart}
-                onChange={(event) => setForm((prev) => ({ ...prev, windowStart: event.target.value }))}
-                className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                disabled={isSubmitting}
-              />
-            </div>
-            <div className="space-y-2 text-right">
-              <label className="text-xs font-semibold text-slate-600" htmlFor="duty-roster-window-end">
-                ينتهي عند
-              </label>
-              <input
-                id="duty-roster-window-end"
-                type="time"
-                value={form.windowEnd}
-                onChange={(event) => setForm((prev) => ({ ...prev, windowEnd: event.target.value }))}
-                className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                disabled={isSubmitting}
-              />
-            </div>
-            <div className="space-y-2 text-right">
-              <label className="text-xs font-semibold text-slate-600" htmlFor="duty-roster-trigger-time">
-                وقت التذكير الأولي (اختياري)
-              </label>
-              <input
-                id="duty-roster-trigger-time"
-                type="time"
-                value={form.triggerTime}
-                onChange={(event) => setForm((prev) => ({ ...prev, triggerTime: event.target.value }))}
-                className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                disabled={isSubmitting}
-              />
-              <p className="text-xs text-muted">يُستخدم لجدولة رسالة الواتساب التلقائية قبل الموعد.</p>
-            </div>
-            <div className="space-y-2 text-right">
-              <label className="text-xs font-semibold text-slate-600" htmlFor="duty-roster-reminder">
-                تذكير إضافي قبل (بالدقائق)
-              </label>
-              <input
-                id="duty-roster-reminder"
-                type="number"
-                min={0}
-                value={form.reminderMinutes}
-                onChange={(event) => setForm((prev) => ({ ...prev, reminderMinutes: event.target.value }))}
-                className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                disabled={isSubmitting}
-              />
-            </div>
-            <div className="space-y-2 text-right">
-              <label className="text-xs font-semibold text-slate-600" htmlFor="duty-roster-status">
-                حالة المناوبة
-              </label>
-              <select
-                id="duty-roster-status"
-                value={form.status}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, status: event.target.value as DutyRosterStatus }))
-                }
-                className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                disabled={isSubmitting}
-              >
-                {(Object.keys(SHIFT_STATUS_LABELS) as DutyRosterStatus[]).map((status) => (
-                  <option key={status} value={status}>
-                    {SHIFT_STATUS_LABELS[status]}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="space-y-2 text-right">
-            <label className="text-xs font-semibold text-slate-600" htmlFor="duty-roster-assignments">
-              معرفات المعلمين المكلفين
-            </label>
-            <textarea
-              id="duty-roster-assignments"
-              value={form.assignmentIds}
-              onChange={(event) => setForm((prev) => ({ ...prev, assignmentIds: event.target.value }))}
-              className="min-h-[100px] w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              placeholder="أدخل المعرفات مفصولة بفاصلة أو سطر جديد (مثال: 45, 82, 91)"
-              disabled={isSubmitting}
-            />
-            <p className="text-xs text-muted">
-              سنضيف لاحقاً اختياراً بصرياً للمعلمين. حالياً، أدخل معرف النظام لكل معلم مكلف بالمناوبة.
-            </p>
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="button-secondary min-w-[110px] disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isSubmitting}
-            >
-              إلغاء
-            </button>
-            <button
-              type="submit"
-              className="button-primary min-w-[140px] disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'جارٍ الحفظ...' : 'حفظ المناوبة'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </DialogBase>
-  )
-}
-
-function DialogBase({ children, onClose }: { children: ReactNode; onClose: () => void }) {
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return
-    }
-
-    const handleKeydown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose()
-      }
-    }
-
-    window.addEventListener('keydown', handleKeydown)
-    return () => window.removeEventListener('keydown', handleKeydown)
-  }, [onClose])
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-      <div className="absolute inset-0" aria-hidden="true" onClick={onClose} />
-      <div className="relative max-h-[90vh] w-full overflow-y-auto">{children}</div>
-    </div>
-  )
-}

@@ -42,6 +42,7 @@ import {
   ArrowRightLeft,
   BookOpenCheck,
   UserX,
+  Eye, // أيقونة الإشراف اليومي
 } from 'lucide-react'
 
 export interface AdminNavItem {
@@ -67,6 +68,7 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
       { to: '/admin/dashboard', label: 'نظرة عامة', icon: LayoutDashboard, exact: true, permission: 'admin.dashboard' },
       { to: '/admin/teachers', label: 'إدارة المعلمين', icon: Users, permission: 'admin.teachers' },
       { to: '/admin/teacher-attendance', label: 'حضور المعلمين', icon: Fingerprint, permission: 'admin.teacher-attendance' },
+      { to: '/admin/duty-rosters', label: 'الإشراف اليومي', icon: Eye, permission: 'admin.duty-rosters' },
       { to: '/admin/teacher-preparation', label: 'تحضير مدرستي', icon: ClipboardPen, permission: 'admin.teacher-preparation' },
       { to: '/admin/students', label: 'إدارة الطلاب', icon: GraduationCap, permission: 'admin.students' },
       { to: '/admin/forms', label: 'النماذج الإلكترونية', icon: FileText, permission: 'admin.forms' },
