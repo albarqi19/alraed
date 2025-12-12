@@ -1381,8 +1381,6 @@ export const DUTY_ROSTER_WEEKDAYS: DutyRosterWeekday[] = [
   'tuesday',
   'wednesday',
   'thursday',
-  'friday',
-  'saturday',
 ]
 
 export type DutyRosterStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled'

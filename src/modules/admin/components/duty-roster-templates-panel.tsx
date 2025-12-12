@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { ArrowDown, ArrowUp, CalendarCog, CheckCircle2, Loader2, Plus, RefreshCcw, Settings, Trash2, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, CalendarCog, CheckCircle2, Loader2, Plus, Printer, RefreshCcw, Settings, Trash2, X } from 'lucide-react'
 
 import {
   useCreateDutyRosterTemplateMutation,
@@ -281,6 +281,96 @@ export function DutyRosterTemplatesPanel() {
     setIsSettingsModalOpen(true)
   }
 
+  const handlePrintTemplate = async (template: DutyRosterTemplate) => {
+    const { default: jsPDF } = await import('jspdf')
+    const { default: html2canvas } = await import('html2canvas')
+
+    const WEEKDAY_LABELS_AR: Record<string, string> = {
+      sunday: 'الأحد', monday: 'الإثنين', tuesday: 'الثلاثاء',
+      wednesday: 'الأربعاء', thursday: 'الخميس',
+    }
+
+    // بناء صفوف الجدول
+    let tableRows = ''
+    for (const weekday of DUTY_ROSTER_WEEKDAYS) {
+      const assignments = template.weekday_assignments[weekday] ?? []
+      const dayLabel = WEEKDAY_LABELS_AR[weekday] ?? weekday
+      const teacherNames = assignments.length > 0
+        ? assignments.map((a, i: number) => `${i + 1}. ${a.user?.name ?? 'غير محدد'}`).join('<br/>')
+        : '—'
+      tableRows += `<tr style="background: ${DUTY_ROSTER_WEEKDAYS.indexOf(weekday) % 2 === 0 ? '#fff' : '#f8fafc'}">
+        <td style="padding: 8px 12px; border: 1px solid #e2e8f0; font-size: 13px; font-weight: 600; vertical-align: top;">${dayLabel}</td>
+        <td style="padding: 8px 12px; border: 1px solid #e2e8f0; font-size: 13px; line-height: 1.8;">${teacherNames}</td>
+      </tr>`
+    }
+
+    // إنشاء iframe مخفي
+    const iframe = document.createElement('iframe')
+    iframe.style.cssText = 'position: fixed; left: -9999px; top: 0; width: 794px; height: 1123px; border: none;'
+    document.body.appendChild(iframe)
+
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document
+    if (!iframeDoc) {
+      document.body.removeChild(iframe)
+      return
+    }
+
+    iframeDoc.open()
+    iframeDoc.write(`<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
+    body { background: #fff; direction: rtl; text-align: right; color: #0f172a; }
+  </style>
+</head>
+<body>
+  <div id="content" style="padding: 22mm 18mm; width: 210mm;">
+    <div style="text-align: center; margin-bottom: 32px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0;">
+      <h1 style="font-size: 24px; font-weight: 700; margin: 0 0 8px 0; color: #111827;">${template.name}</h1>
+      <p style="font-size: 15px; color: #1e293b;">${template.shift_type} • ${template.window_start || ''} - ${template.window_end || ''}</p>
+    </div>
+    <table style="width: 100%; border-collapse: collapse;">
+      <thead>
+        <tr>
+          <th style="background: #1e293b; color: #fff; padding: 12px; text-align: right; font-size: 14px; font-weight: 600; width: 18%;">اليوم</th>
+          <th style="background: #1e293b; color: #fff; padding: 12px; text-align: right; font-size: 14px; font-weight: 600;">المعلمون</th>
+        </tr>
+      </thead>
+      <tbody>${tableRows}</tbody>
+    </table>
+    <div style="margin-top: 40px; text-align: center; font-size: 12px; color: #64748b;">
+      تم توليد هذا التقرير عبر نظام الرائد للإدارة المدرسية
+    </div>
+  </div>
+</body>
+</html>`)
+    iframeDoc.close()
+
+    await new Promise(r => setTimeout(r, 400))
+
+    try {
+      const element = iframeDoc.getElementById('content')
+      if (!element) throw new Error('Element not found')
+
+      const canvas = await html2canvas(element, {
+        scale: 1.5, useCORS: true, allowTaint: true,
+        backgroundColor: '#ffffff', logging: false, foreignObjectRendering: true,
+      })
+
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const pdfWidth = pdf.internal.pageSize.getWidth()
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.8), 'JPEG', 0, 0, pdfWidth, imgHeight)
+      pdf.save(`قالب_${template.name}.pdf`)
+    } catch (error) {
+      console.error('خطأ في توليد PDF:', error)
+    } finally {
+      document.body.removeChild(iframe)
+    }
+  }
+
   const handleDeleteTemplate = async () => {
     if (!selectedTemplate) return
 
@@ -542,6 +632,17 @@ export function DutyRosterTemplatesPanel() {
                             >
                               <Settings className="h-4 w-4" />
                             </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handlePrintTemplate(template)
+                              }}
+                              className="rounded-full p-1 text-slate-400 transition hover:bg-emerald-100 hover:text-emerald-600"
+                              title="طباعة القالب"
+                            >
+                              <Printer className="h-4 w-4" />
+                            </button>
                           </div>
                           <p className="text-xs text-muted">{template.shift_type}</p>
                           {template.window_start && template.window_end && (
@@ -639,8 +740,8 @@ export function DutyRosterTemplatesPanel() {
                               <li
                                 key={assignment.user_id}
                                 className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 shadow-sm ${isRepeated
-                                    ? `${highlightColor.bg} ${highlightColor.border}`
-                                    : 'border-slate-200 bg-white'
+                                  ? `${highlightColor.bg} ${highlightColor.border}`
+                                  : 'border-slate-200 bg-white'
                                   }`}
                               >
                                 <div className="text-right">

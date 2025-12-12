@@ -40,13 +40,13 @@ export async function openDailySupervisionReport({ date, supervisions, dutySched
       </tr>
     `).join('')
         sections.push(`
-      <div style="margin-bottom: 16px;">
-        <h2 style="font-size: 14px; background: #f1f5f9; padding: 8px 12px; border-right: 4px solid #3b82f6; margin: 0 0 4px 0; text-align: right; display: flex; justify-content: space-between;">
+      <div style="margin-bottom: 20px;">
+        <h2 style="font-size: 16px; font-weight: 700; background: #f1f5f9; padding: 10px 14px; border-right: 4px solid #3b82f6; margin: 0 0 6px 0; text-align: right; display: flex; justify-content: space-between; color: #0f172a;">
           <span>مناوبة بداية الدوام</span>
-          <span style="color: #64748b; font-weight: normal; direction: ltr;">${time}</span>
+          <span style="color: #64748b; font-weight: 500; direction: ltr;">${time}</span>
         </h2>
         <table style="width: 100%; border-collapse: collapse; border: 1px solid #e2e8f0;">
-          <thead><tr><th style="background: #1e293b; color: #fff; padding: 6px 10px; text-align: right; font-size: 12px;">اسم المعلم</th></tr></thead>
+          <thead><tr><th style="background: #1e293b; color: #fff; padding: 8px 12px; text-align: right; font-size: 13px; font-weight: 600;">اسم المعلم</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -59,19 +59,19 @@ export async function openDailySupervisionReport({ date, supervisions, dutySched
         const rows = supervision.teachers.length > 0
             ? supervision.teachers.map((t, i) => `
         <tr style="background: ${i % 2 === 0 ? '#fff' : '#f8fafc'}">
-          <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 13px; text-align: right;">${t.name}</td>
+          <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-size: 14px; text-align: right;">${t.name}</td>
         </tr>
       `).join('')
-            : '<tr><td style="text-align: center; padding: 12px; color: #64748b;">لا يوجد معلمون</td></tr>'
+            : '<tr><td style="text-align: center; padding: 14px; color: #64748b;">لا يوجد معلمون</td></tr>'
 
         sections.push(`
-      <div style="margin-bottom: 16px;">
-        <h2 style="font-size: 14px; background: #f1f5f9; padding: 8px 12px; border-right: 4px solid #3b82f6; margin: 0 0 4px 0; text-align: right; display: flex; justify-content: space-between;">
+      <div style="margin-bottom: 20px;">
+        <h2 style="font-size: 16px; font-weight: 700; background: #f1f5f9; padding: 10px 14px; border-right: 4px solid #3b82f6; margin: 0 0 6px 0; text-align: right; display: flex; justify-content: space-between; color: #0f172a;">
           <span>${supervision.name}</span>
-          <span style="color: #64748b; font-weight: normal; direction: ltr;">${time}</span>
+          <span style="color: #64748b; font-weight: 500; direction: ltr;">${time}</span>
         </h2>
         <table style="width: 100%; border-collapse: collapse; border: 1px solid #e2e8f0;">
-          <thead><tr><th style="background: #1e293b; color: #fff; padding: 6px 10px; text-align: right; font-size: 12px;">اسم المعلم</th></tr></thead>
+          <thead><tr><th style="background: #1e293b; color: #fff; padding: 8px 12px; text-align: right; font-size: 13px; font-weight: 600;">اسم المعلم</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -83,17 +83,17 @@ export async function openDailySupervisionReport({ date, supervisions, dutySched
         const time = afternoonDuties[0]?.end_time ?? ''
         const rows = afternoonDuties.map((d, i) => `
       <tr style="background: ${i % 2 === 0 ? '#fff' : '#f8fafc'}">
-        <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 13px; text-align: right;">${d.user_name ?? 'غير محدد'}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-size: 14px; text-align: right;">${d.user_name ?? 'غير محدد'}</td>
       </tr>
     `).join('')
         sections.push(`
-      <div style="margin-bottom: 16px;">
-        <h2 style="font-size: 14px; background: #f1f5f9; padding: 8px 12px; border-right: 4px solid #3b82f6; margin: 0 0 4px 0; text-align: right; display: flex; justify-content: space-between;">
+      <div style="margin-bottom: 20px;">
+        <h2 style="font-size: 16px; font-weight: 700; background: #f1f5f9; padding: 10px 14px; border-right: 4px solid #3b82f6; margin: 0 0 6px 0; text-align: right; display: flex; justify-content: space-between; color: #0f172a;">
           <span>مناوبة نهاية الدوام</span>
-          <span style="color: #64748b; font-weight: normal; direction: ltr;">${time}</span>
+          <span style="color: #64748b; font-weight: 500; direction: ltr;">${time}</span>
         </h2>
         <table style="width: 100%; border-collapse: collapse; border: 1px solid #e2e8f0;">
-          <thead><tr><th style="background: #1e293b; color: #fff; padding: 6px 10px; text-align: right; font-size: 12px;">اسم المعلم</th></tr></thead>
+          <thead><tr><th style="background: #1e293b; color: #fff; padding: 8px 12px; text-align: right; font-size: 13px; font-weight: 600;">اسم المعلم</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -128,29 +128,28 @@ export async function openDailySupervisionReport({ date, supervisions, dutySched
     <head>
       <meta charset="UTF-8">
       <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;600;700&display=swap');
         * { 
           box-sizing: border-box; 
           margin: 0; 
           padding: 0; 
-          font-family: 'Noto Sans Arabic', 'Segoe UI', Tahoma, sans-serif;
+          font-family: 'Segoe UI', Tahoma, sans-serif;
         }
         body { 
           background: #fff; 
           direction: rtl; 
           text-align: right;
-          -webkit-font-smoothing: antialiased;
+          color: #0f172a;
         }
       </style>
     </head>
     <body>
-      <div id="report-content" style="padding: 40px; width: 794px; background: #fff;">
-        <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0;">
-          <h1 style="font-size: 22px; margin: 0 0 8px 0; color: #1e293b;">تقرير الإشراف والمناوبة</h1>
-          <p style="font-size: 14px; color: #64748b; margin: 0;">${dayName} - ${formattedDate}</p>
+      <div id="report-content" style="padding: 22mm 18mm; width: 210mm; background: #fff;">
+        <div style="text-align: center; margin-bottom: 32px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0;">
+          <h1 style="font-size: 24px; font-weight: 700; margin: 0 0 8px 0; color: #111827;">تقرير الإشراف والمناوبة</h1>
+          <p style="font-size: 16px; color: #1e293b; margin: 0;">${dayName} - ${formattedDate}</p>
         </div>
         ${sections.join('')}
-        <div style="margin-top: 30px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+        <div style="margin-top: 40px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 20px;">
           تم توليد هذا التقرير إلكترونياً عبر نظام الرائد للإدارة المدرسية
         </div>
       </div>
