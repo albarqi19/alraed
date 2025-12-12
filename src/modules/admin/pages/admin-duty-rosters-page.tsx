@@ -108,22 +108,22 @@ export function AdminDutyRostersPage() {
     const [hourStr, minStr] = cleaned.split(':')
     let hour = parseInt(hourStr, 10) || 0
     const min = parseInt(minStr, 10) || 0
-    
+
     // تحويل لـ 24 ساعة
     if (isPM && hour !== 12) hour += 12
     if (isAM && hour === 12) hour = 0
-    
+
     return hour * 60 + min
   }
 
   // دمج الإشراف والمناوبات في قائمة واحدة مرتبة
-  type TimelineItem = 
+  type TimelineItem =
     | { type: 'supervision'; data: TodaySupervisionItem; sortTime: number }
     | { type: 'duty'; data: DutyScheduleTodayItem; sortTime: number }
 
   const sortedTimeline = useMemo<TimelineItem[]>(() => {
     const items: TimelineItem[] = []
-    
+
     // إضافة الإشراف
     for (const sup of supervisions) {
       items.push({
@@ -132,7 +132,7 @@ export function AdminDutyRostersPage() {
         sortTime: timeToMinutes(sup.window_start),
       })
     }
-    
+
     // إضافة المناوبات
     for (const duty of dutySchedules) {
       items.push({
@@ -141,7 +141,7 @@ export function AdminDutyRostersPage() {
         sortTime: timeToMinutes(duty.start_time),
       })
     }
-    
+
     // ترتيب حسب الوقت
     return items.sort((a, b) => a.sortTime - b.sortTime)
   }, [supervisions, dutySchedules])
@@ -331,7 +331,7 @@ export function AdminDutyRostersPage() {
                 <div className="absolute right-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-indigo-200 via-indigo-300 to-indigo-200" />
 
                 <div className="space-y-6">
-                  {sortedTimeline.map((item, index) => {
+                  {sortedTimeline.map((item) => {
                     if (item.type === 'supervision') {
                       const supervision = item.data
                       return (
@@ -456,32 +456,28 @@ export function AdminDutyRostersPage() {
                         <div key={`duty-${duty.id}`} className="relative pr-14">
                           {/* نقطة الوقت - لون برتقالي للمناوبة */}
                           <div className="absolute right-0 flex flex-col items-center">
-                            <div className={`flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm border-4 border-white ${
-                              duty.duty_type === 'afternoon' 
-                                ? 'bg-orange-100 text-orange-600' 
+                            <div className={`flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm border-4 border-white ${duty.duty_type === 'afternoon'
+                                ? 'bg-orange-100 text-orange-600'
                                 : 'bg-blue-100 text-blue-600'
-                            }`}>
+                              }`}>
                               <Sunset className="h-5 w-5" />
                             </div>
-                            <span className={`mt-1 text-xs font-bold ${
-                              duty.duty_type === 'afternoon' ? 'text-orange-600' : 'text-blue-600'
-                            }`}>
+                            <span className={`mt-1 text-xs font-bold ${duty.duty_type === 'afternoon' ? 'text-orange-600' : 'text-blue-600'
+                              }`}>
                               {duty.start_time || '—'}
                             </span>
                           </div>
 
                           {/* بطاقة المناوبة */}
-                          <div className={`rounded-2xl border overflow-hidden ${
-                            duty.duty_type === 'afternoon'
+                          <div className={`rounded-2xl border overflow-hidden ${duty.duty_type === 'afternoon'
                               ? 'border-orange-200 bg-orange-50/50'
                               : 'border-blue-200 bg-blue-50/50'
-                          }`}>
+                            }`}>
                             {/* رأس البطاقة */}
-                            <div className={`px-5 py-3 border-b ${
-                              duty.duty_type === 'afternoon'
+                            <div className={`px-5 py-3 border-b ${duty.duty_type === 'afternoon'
                                 ? 'bg-gradient-to-l from-orange-100 to-white border-orange-100'
                                 : 'bg-gradient-to-l from-blue-100 to-white border-blue-100'
-                            }`}>
+                              }`}>
                               <div className="flex items-center justify-between">
                                 <div className="text-right">
                                   <h3 className="text-lg font-bold text-slate-900">{duty.duty_type_name}</h3>
@@ -493,11 +489,10 @@ export function AdminDutyRostersPage() {
                                   <span className="rounded-full bg-white border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600">
                                     {duty.start_time} - {duty.end_time}
                                   </span>
-                                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                                    duty.duty_type === 'afternoon'
+                                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${duty.duty_type === 'afternoon'
                                       ? 'bg-orange-100 text-orange-700'
                                       : 'bg-blue-100 text-blue-700'
-                                  }`}>
+                                    }`}>
                                     <Calendar className="inline h-3 w-3 ml-1" />
                                     مناوبة
                                   </span>
@@ -509,15 +504,14 @@ export function AdminDutyRostersPage() {
                             <div className="px-5 py-3">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-                                    duty.status === 'completed'
+                                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${duty.status === 'completed'
                                       ? 'bg-emerald-100 text-emerald-600'
                                       : duty.status === 'absent'
                                         ? 'bg-rose-100 text-rose-600'
                                         : duty.duty_type === 'afternoon'
                                           ? 'bg-orange-100 text-orange-600'
                                           : 'bg-blue-100 text-blue-600'
-                                  }`}>
+                                    }`}>
                                     {duty.status === 'completed' ? (
                                       <CheckCircle2 className="h-5 w-5" />
                                     ) : duty.status === 'absent' ? (
@@ -542,15 +536,14 @@ export function AdminDutyRostersPage() {
                                           {duty.user_phone}
                                         </span>
                                       )}
-                                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                                        duty.status === 'completed'
+                                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${duty.status === 'completed'
                                           ? 'bg-emerald-100 text-emerald-700'
                                           : duty.status === 'absent'
                                             ? 'bg-rose-100 text-rose-700'
                                             : duty.status === 'notified'
                                               ? 'bg-blue-100 text-blue-700'
                                               : 'bg-slate-100 text-slate-600'
-                                      }`}>
+                                        }`}>
                                         {duty.status_name}
                                       </span>
                                     </div>

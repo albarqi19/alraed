@@ -15,7 +15,6 @@ import {
   ChevronUp,
   Edit2,
   Save,
-  UserCheck,
   Trash2,
 } from 'lucide-react'
 import {
@@ -194,7 +193,7 @@ export function DutyScheduleModal({ open, onClose }: DutyScheduleModalProps) {
 
   // حذف المناوبات
   const handleDelete = () => {
-    if (!scheduleQuery.data?.schedule_id) {
+    if (!scheduleQuery.data?.schedule?.id) {
       toast({ type: 'error', title: 'لا يوجد جدول مناوبة للحذف' })
       return
     }
@@ -202,10 +201,10 @@ export function DutyScheduleModal({ open, onClose }: DutyScheduleModalProps) {
   }
 
   const confirmDelete = () => {
-    if (!scheduleQuery.data?.schedule_id) return
-    
+    if (!scheduleQuery.data?.schedule?.id) return
+
     deleteMutation.mutate({
-      scheduleId: scheduleQuery.data.schedule_id,
+      scheduleId: scheduleQuery.data.schedule.id,
       dutyType: selectedDutyType,
     })
     setShowDeleteConfirm(false)
@@ -214,7 +213,7 @@ export function DutyScheduleModal({ open, onClose }: DutyScheduleModalProps) {
   // تجميع التكليفات حسب التاريخ
   const groupedAssignments = useMemo(() => {
     if (!scheduleQuery.data?.assignments) return new Map<string, DutyScheduleAssignment[]>()
-    
+
     const grouped = new Map<string, DutyScheduleAssignment[]>()
     for (const assignment of scheduleQuery.data.assignments) {
       const key = assignment.duty_date
@@ -315,11 +314,10 @@ export function DutyScheduleModal({ open, onClose }: DutyScheduleModalProps) {
                     setSelectedDutyType('morning')
                     setViewMode('settings')
                   }}
-                  className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition ${
-                    selectedDutyType === 'morning'
+                  className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition ${selectedDutyType === 'morning'
                       ? 'bg-blue-600 text-white shadow'
                       : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                  }`}
+                    }`}
                 >
                   <Sun className="h-4 w-4" />
                   بداية الدوام
@@ -330,11 +328,10 @@ export function DutyScheduleModal({ open, onClose }: DutyScheduleModalProps) {
                     setSelectedDutyType('afternoon')
                     setViewMode('settings')
                   }}
-                  className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition ${
-                    selectedDutyType === 'afternoon'
+                  className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition ${selectedDutyType === 'afternoon'
                       ? 'bg-orange-600 text-white shadow'
                       : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                  }`}
+                    }`}
                 >
                   <Sunset className="h-4 w-4" />
                   نهاية الدوام
@@ -423,18 +420,16 @@ export function DutyScheduleModal({ open, onClose }: DutyScheduleModalProps) {
                           key={staff.id}
                           type="button"
                           onClick={() => toggleStaff(staff.id)}
-                          className={`flex items-center gap-2 rounded-xl px-3 py-2 text-right text-sm transition ${
-                            selectedStaffIds.includes(staff.id)
+                          className={`flex items-center gap-2 rounded-xl px-3 py-2 text-right text-sm transition ${selectedStaffIds.includes(staff.id)
                               ? 'bg-orange-100 text-orange-800'
                               : 'bg-white text-slate-600 hover:bg-slate-50'
-                          }`}
+                            }`}
                         >
                           <span
-                            className={`flex h-5 w-5 items-center justify-center rounded-md border ${
-                              selectedStaffIds.includes(staff.id)
+                            className={`flex h-5 w-5 items-center justify-center rounded-md border ${selectedStaffIds.includes(staff.id)
                                 ? 'border-orange-500 bg-orange-500 text-white'
                                 : 'border-slate-300 bg-white'
-                            }`}
+                              }`}
                           >
                             {selectedStaffIds.includes(staff.id) && <Check className="h-3 w-3" />}
                           </span>
@@ -608,9 +603,8 @@ export function DutyScheduleModal({ open, onClose }: DutyScheduleModalProps) {
                       >
                         <div className="flex items-center gap-3">
                           <span
-                            className={`flex h-8 w-8 items-center justify-center rounded-lg ${
-                              isToday ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-600'
-                            }`}
+                            className={`flex h-8 w-8 items-center justify-center rounded-lg ${isToday ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-600'
+                              }`}
                           >
                             <Clock className="h-4 w-4" />
                           </span>
@@ -698,15 +692,14 @@ export function DutyScheduleModal({ open, onClose }: DutyScheduleModalProps) {
                                         {assignment.user_name ?? 'غير محدد'}
                                       </span>
                                       <span
-                                        className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                                          assignment.status === 'completed'
+                                        className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${assignment.status === 'completed'
                                             ? 'bg-emerald-100 text-emerald-700'
                                             : assignment.status === 'absent'
                                               ? 'bg-rose-100 text-rose-700'
                                               : assignment.status === 'notified'
                                                 ? 'bg-blue-100 text-blue-700'
                                                 : 'bg-slate-100 text-slate-600'
-                                        }`}
+                                          }`}
                                       >
                                         {assignment.status_name}
                                       </span>
@@ -739,7 +732,7 @@ export function DutyScheduleModal({ open, onClose }: DutyScheduleModalProps) {
                   <p className="text-sm font-semibold text-orange-800">
                     ⚠️ إعادة التوليد ستحذف جميع التكليفات الحالية
                   </p>
-                  
+
                   <div>
                     <label className="mb-2 block text-sm font-medium text-orange-700">
                       اختر المعلمين للتوليد الجديد
@@ -751,18 +744,16 @@ export function DutyScheduleModal({ open, onClose }: DutyScheduleModalProps) {
                             key={staff.id}
                             type="button"
                             onClick={() => toggleStaff(staff.id)}
-                            className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-right text-xs transition ${
-                              selectedStaffIds.includes(staff.id)
+                            className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-right text-xs transition ${selectedStaffIds.includes(staff.id)
                                 ? 'bg-orange-100 text-orange-800'
                                 : 'bg-white text-slate-600 hover:bg-slate-50'
-                            }`}
+                              }`}
                           >
                             <span
-                              className={`flex h-4 w-4 items-center justify-center rounded border ${
-                                selectedStaffIds.includes(staff.id)
+                              className={`flex h-4 w-4 items-center justify-center rounded border ${selectedStaffIds.includes(staff.id)
                                   ? 'border-orange-500 bg-orange-500 text-white'
                                   : 'border-slate-300'
-                              }`}
+                                }`}
                             >
                               {selectedStaffIds.includes(staff.id) && <Check className="h-2.5 w-2.5" />}
                             </span>
@@ -816,7 +807,7 @@ export function DutyScheduleModal({ open, onClose }: DutyScheduleModalProps) {
                 <p className="text-sm text-slate-500">هذا الإجراء لا يمكن التراجع عنه</p>
               </div>
             </div>
-            
+
             <p className="mb-6 text-slate-700">
               هل أنت متأكد من حذف جميع المناوبات{' '}
               <strong className="text-rose-600">
