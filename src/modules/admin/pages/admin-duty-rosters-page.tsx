@@ -17,6 +17,7 @@ import {
 } from '@/modules/admin/api'
 import { useToast } from '@/shared/feedback/use-toast'
 import { useTeachersQuery } from '@/modules/admin/hooks'
+import { openDailySupervisionReport } from '@/modules/admin/utils/open-daily-supervision-report'
 
 const WEEKDAY_LABELS: Record<string, string> = {
   sunday: 'الأحد',
@@ -210,7 +211,11 @@ export function AdminDutyRostersPage() {
   }
 
   const handleExportReport = () => {
-    toast({ type: 'info', title: 'جارٍ تصدير التقرير...', description: 'سيتم تحميل ملف PDF' })
+    openDailySupervisionReport({
+      date: selectedDate,
+      supervisions,
+      dutySchedules,
+    })
   }
 
   return (
@@ -457,8 +462,8 @@ export function AdminDutyRostersPage() {
                           {/* نقطة الوقت - لون برتقالي للمناوبة */}
                           <div className="absolute right-0 flex flex-col items-center">
                             <div className={`flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm border-4 border-white ${duty.duty_type === 'afternoon'
-                                ? 'bg-orange-100 text-orange-600'
-                                : 'bg-blue-100 text-blue-600'
+                              ? 'bg-orange-100 text-orange-600'
+                              : 'bg-blue-100 text-blue-600'
                               }`}>
                               <Sunset className="h-5 w-5" />
                             </div>
@@ -470,13 +475,13 @@ export function AdminDutyRostersPage() {
 
                           {/* بطاقة المناوبة */}
                           <div className={`rounded-2xl border overflow-hidden ${duty.duty_type === 'afternoon'
-                              ? 'border-orange-200 bg-orange-50/50'
-                              : 'border-blue-200 bg-blue-50/50'
+                            ? 'border-orange-200 bg-orange-50/50'
+                            : 'border-blue-200 bg-blue-50/50'
                             }`}>
                             {/* رأس البطاقة */}
                             <div className={`px-5 py-3 border-b ${duty.duty_type === 'afternoon'
-                                ? 'bg-gradient-to-l from-orange-100 to-white border-orange-100'
-                                : 'bg-gradient-to-l from-blue-100 to-white border-blue-100'
+                              ? 'bg-gradient-to-l from-orange-100 to-white border-orange-100'
+                              : 'bg-gradient-to-l from-blue-100 to-white border-blue-100'
                               }`}>
                               <div className="flex items-center justify-between">
                                 <div className="text-right">
@@ -490,8 +495,8 @@ export function AdminDutyRostersPage() {
                                     {duty.start_time} - {duty.end_time}
                                   </span>
                                   <span className={`rounded-full px-3 py-1 text-xs font-semibold ${duty.duty_type === 'afternoon'
-                                      ? 'bg-orange-100 text-orange-700'
-                                      : 'bg-blue-100 text-blue-700'
+                                    ? 'bg-orange-100 text-orange-700'
+                                    : 'bg-blue-100 text-blue-700'
                                     }`}>
                                     <Calendar className="inline h-3 w-3 ml-1" />
                                     مناوبة
@@ -505,12 +510,12 @@ export function AdminDutyRostersPage() {
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                   <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${duty.status === 'completed'
-                                      ? 'bg-emerald-100 text-emerald-600'
-                                      : duty.status === 'absent'
-                                        ? 'bg-rose-100 text-rose-600'
-                                        : duty.duty_type === 'afternoon'
-                                          ? 'bg-orange-100 text-orange-600'
-                                          : 'bg-blue-100 text-blue-600'
+                                    ? 'bg-emerald-100 text-emerald-600'
+                                    : duty.status === 'absent'
+                                      ? 'bg-rose-100 text-rose-600'
+                                      : duty.duty_type === 'afternoon'
+                                        ? 'bg-orange-100 text-orange-600'
+                                        : 'bg-blue-100 text-blue-600'
                                     }`}>
                                     {duty.status === 'completed' ? (
                                       <CheckCircle2 className="h-5 w-5" />
@@ -537,12 +542,12 @@ export function AdminDutyRostersPage() {
                                         </span>
                                       )}
                                       <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${duty.status === 'completed'
-                                          ? 'bg-emerald-100 text-emerald-700'
-                                          : duty.status === 'absent'
-                                            ? 'bg-rose-100 text-rose-700'
-                                            : duty.status === 'notified'
-                                              ? 'bg-blue-100 text-blue-700'
-                                              : 'bg-slate-100 text-slate-600'
+                                        ? 'bg-emerald-100 text-emerald-700'
+                                        : duty.status === 'absent'
+                                          ? 'bg-rose-100 text-rose-700'
+                                          : duty.status === 'notified'
+                                            ? 'bg-blue-100 text-blue-700'
+                                            : 'bg-slate-100 text-slate-600'
                                         }`}>
                                         {duty.status_name}
                                       </span>
