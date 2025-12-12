@@ -16,9 +16,10 @@ interface DailyReportData {
     date: string
     supervisions: TodaySupervisionItem[]
     dutySchedules: DutyScheduleTodayItem[]
+    format?: 'pdf' | 'image'
 }
 
-export async function openDailySupervisionReport({ date, supervisions, dutySchedules }: DailyReportData) {
+export async function openDailySupervisionReport({ date, supervisions, dutySchedules, format = 'pdf' }: DailyReportData) {
     const dateObj = new Date(date)
     const dayName = WEEKDAY_LABELS[dateObj.getDay()] ?? ''
     const formattedDate = new Intl.DateTimeFormat('ar-SA', { dateStyle: 'long' }).format(dateObj)
@@ -167,7 +168,7 @@ export async function openDailySupervisionReport({ date, supervisions, dutySched
 
         // تحويل HTML إلى صورة
         const canvas = await html2canvas(element, {
-            scale: 1.5,  // تقليل الحجم
+            scale: 1.5,
             useCORS: true,
             allowTaint: true,
             backgroundColor: '#ffffff',
@@ -175,38 +176,41 @@ export async function openDailySupervisionReport({ date, supervisions, dutySched
             foreignObjectRendering: true,
         })
 
-        // إنشاء PDF
-        const pdf = new jsPDF('p', 'mm', 'a4')
-        const pdfWidth = pdf.internal.pageSize.getWidth()
-        const pdfHeight = pdf.internal.pageSize.getHeight()
-
-        const imgWidth = pdfWidth
-        const imgHeight = (canvas.height * pdfWidth) / canvas.width
-
-        // استخدام JPEG مع ضغط 80% بدلاً من PNG
-        const imgData = canvas.toDataURL('image/jpeg', 0.8)
-
-        // إذا كانت الصورة أطول من الصفحة
-        if (imgHeight <= pdfHeight) {
-            pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight)
+        if (format === 'image') {
+            // تصدير كصورة PNG
+            const link = document.createElement('a')
+            link.download = `تقرير_الإشراف_${date}.png`
+            link.href = canvas.toDataURL('image/png')
+            link.click()
         } else {
-            // تقسيم على صفحات متعددة
-            let heightLeft = imgHeight
-            let position = 0
-            let page = 1
+            // تصدير كـ PDF
+            const pdf = new jsPDF('p', 'mm', 'a4')
+            const pdfWidth = pdf.internal.pageSize.getWidth()
+            const pdfHeight = pdf.internal.pageSize.getHeight()
 
-            while (heightLeft > 0) {
-                if (page > 1) pdf.addPage()
-                pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
-                heightLeft -= pdfHeight
-                position -= pdfHeight
-                page++
+            const imgWidth = pdfWidth
+            const imgHeight = (canvas.height * pdfWidth) / canvas.width
+
+            const imgData = canvas.toDataURL('image/jpeg', 0.8)
+
+            if (imgHeight <= pdfHeight) {
+                pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight)
+            } else {
+                let heightLeft = imgHeight
+                let position = 0
+                let page = 1
+
+                while (heightLeft > 0) {
+                    if (page > 1) pdf.addPage()
+                    pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
+                    heightLeft -= pdfHeight
+                    position -= pdfHeight
+                    page++
+                }
             }
+
+            pdf.save(`تقرير_الإشراف_${date}.pdf`)
         }
-
-
-        // تنزيل الملف مباشرة
-        pdf.save(`تقرير_الإشراف_${date}.pdf`)
     } catch (error) {
         console.error('خطأ في توليد PDF:', error)
         alert('حدث خطأ أثناء تجهيز التقرير. يرجى المحاولة مرة أخرى.')
