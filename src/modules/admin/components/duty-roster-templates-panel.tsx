@@ -11,6 +11,7 @@ import {
 } from '@/modules/admin/hooks'
 import {
   DUTY_ROSTER_WEEKDAYS,
+  type DutyRosterTemplateAssignmentRecord,
   type DutyRosterTemplateRecord,
   type DutyRosterWeekday,
   type TeacherRecord,
@@ -281,7 +282,7 @@ export function DutyRosterTemplatesPanel() {
     setIsSettingsModalOpen(true)
   }
 
-  const handlePrintTemplate = async (template: DutyRosterTemplate) => {
+  const handlePrintTemplate = async (template: DutyRosterTemplateRecord) => {
     const { default: jsPDF } = await import('jspdf')
     const { default: html2canvas } = await import('html2canvas')
 
@@ -296,7 +297,7 @@ export function DutyRosterTemplatesPanel() {
       const assignments = template.weekday_assignments[weekday] ?? []
       const dayLabel = WEEKDAY_LABELS_AR[weekday] ?? weekday
       const teacherNames = assignments.length > 0
-        ? assignments.map((a, i: number) => `${i + 1}. ${a.user?.name ?? 'غير محدد'}`).join('<br/>')
+        ? assignments.map((a: DutyRosterTemplateAssignmentRecord, i: number) => `${i + 1}. ${a.user?.name ?? 'غير محدد'}`).join('<br/>')
         : '—'
       tableRows += `<tr style="background: ${DUTY_ROSTER_WEEKDAYS.indexOf(weekday) % 2 === 0 ? '#fff' : '#f8fafc'}">
         <td style="padding: 8px 12px; border: 1px solid #e2e8f0; font-size: 13px; font-weight: 600; vertical-align: top;">${dayLabel}</td>
