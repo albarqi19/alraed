@@ -2427,3 +2427,17 @@ export function useCreateManualAbsenceMutation() {
   })
 }
 
+// إحصائيات جدول الانتظار المتقدمة
+export function useStandbyAdvancedStatsQuery(options: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: ['admin', 'teacher-standby', 'advanced-stats'],
+    queryFn: async () => {
+      const { data } = await apiClient.get<import('./types').StandbyAdvancedStatsResponse>(
+        '/admin/teacher-standby/advanced-stats'
+      )
+      return data.data
+    },
+    enabled: options.enabled ?? true,
+    staleTime: 2 * 60 * 1000, // دقيقتين
+  })
+}

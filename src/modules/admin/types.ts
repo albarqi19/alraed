@@ -1671,3 +1671,72 @@ export interface RegisterDevicePayload {
   app_version?: string
 }
 
+// إحصائيات جدول الانتظار المتقدمة
+export interface StandbyAdvancedStatsTeacher {
+  id: number | null
+  name: string
+  count: number
+  percentage?: number
+}
+
+export interface StandbyAdvancedStatsRecommendation {
+  type: 'success' | 'warning' | 'danger' | 'info'
+  icon: string
+  title: string
+  message: string
+  teachers?: StandbyAdvancedStatsTeacher[]
+}
+
+export interface StandbyAdvancedStats {
+  period: {
+    start_date: string
+    end_date: string
+    semester_name: string
+  }
+  summary: {
+    total_assignments: number
+    today: number
+    this_week: number
+    avg_per_day: number
+    total_standby_teachers: number
+    total_absent_teachers: number
+    total_days: number
+  }
+  monthly_trend: Array<{
+    year: number
+    month: number
+    label: string
+    count: number
+  }>
+  by_day_of_week: Array<{
+    day: number
+    label: string
+    count: number
+  }>
+  by_period_number: Array<{
+    period: number
+    label: string
+    count: number
+  }>
+  top_standby_teachers: StandbyAdvancedStatsTeacher[]
+  top_absent_teachers: StandbyAdvancedStatsTeacher[]
+  by_priority: Array<{
+    priority: number
+    label: string
+    count: number
+  }>
+  fairness_analysis: {
+    coefficient_of_variation: number
+    avg_assignments_per_teacher: number
+    std_deviation: number
+    overloaded_teachers: StandbyAdvancedStatsTeacher[]
+    underutilized_teachers: StandbyAdvancedStatsTeacher[]
+  }
+  recommendations: StandbyAdvancedStatsRecommendation[]
+}
+
+export interface StandbyAdvancedStatsResponse {
+  success: boolean
+  data: StandbyAdvancedStats | null
+  message?: string
+}

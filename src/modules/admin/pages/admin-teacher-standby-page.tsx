@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/services/api/client'
 import { useToast } from '@/shared/feedback/use-toast'
+import { StandbyStatsModal } from '../components/standby-stats-modal'
 
 // ========== Types ==========
 interface TeacherQuota {
@@ -72,6 +73,7 @@ export function AdminTeacherStandbyPage() {
     const [activeTab, setActiveTab] = useState<'quotas' | 'weekly' | 'simulation' | 'preferences'>('quotas')
     const [showBetaWarning, setShowBetaWarning] = useState(true)
     const [showSettingsModal, setShowSettingsModal] = useState(false)
+    const [showStatsModal, setShowStatsModal] = useState(false)
 
     // Queries
     const { data, isLoading } = useQuery({
@@ -192,6 +194,13 @@ export function AdminTeacherStandbyPage() {
 
                     <div className="flex items-center gap-3">
                         <button
+                            onClick={() => setShowStatsModal(true)}
+                            className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100"
+                            title="الإحصائيات"
+                        >
+                            📊 الإحصائيات
+                        </button>
+                        <button
                             onClick={() => setShowSettingsModal(true)}
                             className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                             title="إعدادات الانتظار"
@@ -293,6 +302,12 @@ export function AdminTeacherStandbyPage() {
                     }}
                 />
             )}
+
+            {/* Statistics Modal */}
+            <StandbyStatsModal
+                isOpen={showStatsModal}
+                onClose={() => setShowStatsModal(false)}
+            />
         </>
     )
 }
