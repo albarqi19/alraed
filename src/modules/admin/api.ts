@@ -3326,3 +3326,39 @@ export async function fetchTeacherFullStats(userId: number): Promise<TeacherFull
   )
   return unwrapResponse(data, 'تعذر تحميل إحصائيات المعلم')
 }
+
+// =====================================================
+// محاكاة غياب المعلمين
+// =====================================================
+
+export interface SimulateAbsenceSession {
+  period: number
+  class: string
+  subject: string
+  standby1: string | null
+  standby2: string | null
+  standby3: string | null
+  standby1_id: number | null
+  standby2_id: number | null
+  standby3_id: number | null
+}
+
+export interface SimulateAbsenceResult {
+  teacher: {
+    id: number
+    name: string
+  }
+  day: string
+  sessions: SimulateAbsenceSession[]
+}
+
+/**
+ * محاكاة غياب معلم - جلب حصصه الفعلية في يوم معين مع البدلاء المتاحين
+ */
+export async function fetchSimulateAbsence(teacherId: number, day: string): Promise<SimulateAbsenceResult> {
+  const { data } = await apiClient.get<ApiResponse<SimulateAbsenceResult>>(
+    '/admin/teacher-standby/simulate-absence',
+    { params: { teacher_id: teacherId, day } }
+  )
+  return unwrapResponse(data, 'تعذر تحميل بيانات المحاكاة')
+}
