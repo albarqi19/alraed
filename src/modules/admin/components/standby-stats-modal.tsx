@@ -247,7 +247,10 @@ export function StandbyStatsModal({ isOpen, onClose }: Props) {
                                                     cx="50%"
                                                     cy="50%"
                                                     outerRadius={80}
-                                                    label={({ label, percent }) => `${label} (${(percent * 100).toFixed(0)}%)`}
+                                                    label={(props: any) => {
+                                                        const { name, percent } = props
+                                                        return `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`
+                                                    }}
                                                 >
                                                     {stats.by_priority.map((_, index) => (
                                                         <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
