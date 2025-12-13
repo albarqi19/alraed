@@ -12,6 +12,7 @@ import {
 } from '../hooks'
 import { TeacherAttendanceStatsModal } from '../components/teacher-attendance-stats-modal'
 import { TeacherAttendanceFloatingWidget } from '../components/teacher-attendance-floating-widget'
+import { StandbyDistributionModal } from '../components/standby-distribution-modal'
 import type {
   TeacherHudoriAttendanceFilters,
   TeacherHudoriAttendanceLoginMethod,
@@ -448,6 +449,7 @@ export function AdminTeacherAttendancePage() {
   >(null)
   const [inquiryDialog, setInquiryDialog] = useState<InquiryDialogState | null>(null)
   const [bulkInquiryDialog, setBulkInquiryDialog] = useState<BulkInquiryDialogState | null>(null)
+  const [isStandbyModalOpen, setIsStandbyModalOpen] = useState(false)
 
   const queryFilters = useMemo<TeacherHudoriAttendanceFilters>(() => {
     const payload: TeacherHudoriAttendanceFilters = {}
@@ -1270,6 +1272,13 @@ export function AdminTeacherAttendancePage() {
               </p>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsStandbyModalOpen(true)}
+                className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
+              >
+                <i className="bi bi-people-fill ml-1" /> توزيع الانتظار
+              </button>
               <button
                 type="button"
                 onClick={() => delayQuery.refetch()}
@@ -2182,6 +2191,13 @@ export function AdminTeacherAttendancePage() {
         onStatsClick={() => setIsStatsModalOpen(true)}
         onRefresh={() => attendanceQuery.refetch()}
         isRefreshing={attendanceQuery.isFetching}
+      />
+
+      {/* نافذة توزيع الانتظار */}
+      <StandbyDistributionModal
+        isOpen={isStandbyModalOpen}
+        onClose={() => setIsStandbyModalOpen(false)}
+        date={delayFilters.start_date || today}
       />
     </section>
   )

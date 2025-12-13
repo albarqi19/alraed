@@ -3171,11 +3171,11 @@ export async function fetchDutySchedule(
   if (dutyType) params.duty_type = dutyType
 
   const { data } = await apiClient.get<ApiResponse<DutyScheduleResponse | null>>('/admin/duty-schedules', { params })
-  
+
   if (!data.success) {
     throw new Error(data.message ?? 'تعذر تحميل جدول المناوبة')
   }
-  
+
   return data.data
 }
 
@@ -3267,7 +3267,7 @@ export async function fetchTodayDutySchedules(
   if (dutyType) params.duty_type = dutyType
 
   const { data } = await apiClient.get<ApiResponse<DutyScheduleTodayItem[]>>('/admin/duty-schedules/today', { params })
-  
+
   const items = unwrapResponse(data, 'تعذر تحميل مناوبات اليوم')
   const meta = (data as unknown as Record<string, unknown>).meta as DutyScheduleTodayResponse['meta'] ?? {
     date: new Date().toISOString().slice(0, 10),

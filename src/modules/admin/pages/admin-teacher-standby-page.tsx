@@ -71,6 +71,7 @@ export function AdminTeacherStandbyPage() {
     const queryClient = useQueryClient()
     const [activeTab, setActiveTab] = useState<'quotas' | 'weekly' | 'simulation' | 'preferences'>('quotas')
     const [showBetaWarning, setShowBetaWarning] = useState(true)
+    const [showSettingsModal, setShowSettingsModal] = useState(false)
 
     // Queries
     const { data, isLoading } = useQuery({
@@ -147,6 +148,13 @@ export function AdminTeacherStandbyPage() {
 
                     <div className="flex items-center gap-3">
                         <button
+                            onClick={() => setShowSettingsModal(true)}
+                            className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                            title="إعدادات الانتظار"
+                        >
+                            ⚙️
+                        </button>
+                        <button
                             onClick={() => calculateMutation.mutate()}
                             disabled={calculateMutation.isPending}
                             className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
@@ -216,6 +224,17 @@ export function AdminTeacherStandbyPage() {
                     <PreferencesTab quotas={quotas} />
                 )}
             </section>
+
+            {/* Settings Modal */}
+            {showSettingsModal && (
+                <StandbySettingsModal
+                    onClose={() => setShowSettingsModal(false)}
+                    onSave={() => {
+                        queryClient.invalidateQueries({ queryKey: ['teacher-standby-weekly'] })
+                        setShowSettingsModal(false)
+                    }}
+                />
+            )}
         </>
     )
 }
@@ -419,6 +438,7 @@ function WeeklyTab({ schedule, periodsPerDay }: { schedule: Record<string, Weekl
 }
 
 function SimulationTab({
+    schedule,
     quotas
 }: {
     schedule: Record<string, WeeklySlot[]>
@@ -426,156 +446,257 @@ function SimulationTab({
     quotas: TeacherQuota[]
 }) {
     const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday']
-    const [selectedTeacherId, setSelectedTeacherId] = useState<number | null>(null)
+    const [selectedTeacherIds, setSelectedTeacherIds] = useState<number[]>([])
     const [selectedDay, setSelectedDay] = useState('sunday')
 
-    // استعلام المحاكاة
-    const { data: simulationData, isLoading: isSimulating } = useQuery({
-        queryKey: ['simulate-absence', selectedTeacherId, selectedDay],
-        queryFn: async () => {
-            if (!selectedTeacherId) return null
-            const { data } = await apiClient.get('/admin/teacher-standby/simulate-absence', {
-                params: { teacher_id: selectedTeacherId, day: selectedDay }
-            })
-            return data.success ? data.data : null
-        },
-        enabled: !!selectedTeacherId,
+    // دالة للتبديل بين اختيار وإلغاء اختيار المعلم
+    const toggleTeacher = (teacherId: number) => {
+        setSelectedTeacherIds(prev =>
+            prev.includes(teacherId)
+                ? prev.filter(id => id !== teacherId)
+                : [...prev, teacherId]
+        )
+    }
+
+    // الحصول على الجدول لليوم المحدد
+    const daySchedule = schedule[selectedDay] ?? []
+
+    // بناء خريطة الغياب - أي حصص لكل معلم غائب
+    const absentTeacherSessions: Map<number, { period: number; teacherName: string }[]> = new Map()
+
+    quotas.forEach(q => {
+        if (selectedTeacherIds.includes(q.teacher_id)) {
+            // سنجد المعلم في schedule إذا كان له حصص (كـ standby)
+            // لكن الأهم هو حصصه الأساسية - يجب جلبها من API أو من البيانات
+            // حالياً سنعرض البدلاء المتاحين لكل حصة
+            absentTeacherSessions.set(q.teacher_id, [])
+        }
     })
 
+    // تتبع من هو مشغول في كل حصة (البديل الذي تم استخدامه)
+    const busySubstitutes: Map<number, Set<number>> = new Map() // period -> set of busy teacher IDs
+
+    // حساب التعارضات والبدلاء الفعليين
+    type AssignmentResult = {
+        period: number
+        absentTeacherId: number
+        absentTeacherName: string
+        assignedSubstitute: string | null
+        assignedSubstituteId: number | null
+        priority: number // 1, 2, or 3
+        conflict: boolean
+        allBusy: boolean
+    }
+
+    const assignments: AssignmentResult[] = []
+
+    // للتبسيط، سنعرض لكل حصة البدلاء المتاحين مع التعارضات
+    // نمر على كل حصة ونحدد من سيحل محل كل غائب
+    daySchedule.forEach(slot => {
+        const period = slot.period_number
+
+        selectedTeacherIds.forEach(absentId => {
+            const absentTeacher = quotas.find(q => q.teacher_id === absentId)
+            if (!absentTeacher) return
+
+            // التحقق من البدلاء بالترتيب
+            const standbys = [
+                { id: slot.standby1?.id, name: slot.standby1?.name, priority: 1 },
+                { id: slot.standby2?.id, name: slot.standby2?.name, priority: 2 },
+                { id: slot.standby3?.id, name: slot.standby3?.name, priority: 3 },
+            ]
+
+            // من مشغول في هذه الحصة
+            if (!busySubstitutes.has(period)) {
+                busySubstitutes.set(period, new Set())
+            }
+            const busy = busySubstitutes.get(period)!
+
+            // البحث عن بديل متاح (ليس غائب وليس مشغول)
+            let assigned: { id: number; name: string; priority: number } | null = null
+
+            for (const s of standbys) {
+                if (!s.id || !s.name) continue
+                // البديل لا يمكن أن يكون هو نفسه الغائب
+                if (selectedTeacherIds.includes(s.id)) continue
+                // البديل لا يمكن أن يكون مشغول بالفعل
+                if (busy.has(s.id)) continue
+
+                assigned = { id: s.id, name: s.name, priority: s.priority }
+                busy.add(s.id) // حجزه
+                break
+            }
+
+            assignments.push({
+                period,
+                absentTeacherId: absentId,
+                absentTeacherName: absentTeacher.teacher?.name ?? 'غير معروف',
+                assignedSubstitute: assigned?.name ?? null,
+                assignedSubstituteId: assigned?.id ?? null,
+                priority: assigned?.priority ?? 0,
+                conflict: assigned?.priority !== 1,
+                allBusy: !assigned,
+            })
+        })
+    })
+
+    // تجميع النتائج حسب الحصة
+    const periodGroups: Map<number, AssignmentResult[]> = new Map()
+    assignments.forEach(a => {
+        if (!periodGroups.has(a.period)) {
+            periodGroups.set(a.period, [])
+        }
+        periodGroups.get(a.period)!.push(a)
+    })
+
+    const sortedPeriods = Array.from(periodGroups.keys()).sort((a, b) => a - b)
+
     return (
-        <div className="grid gap-6 lg:grid-cols-[280px,1fr]">
+        <div className="grid gap-6 lg:grid-cols-[320px,1fr]">
             {/* قسم الاختيار */}
             <aside className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 className="text-lg font-bold text-slate-900 mb-4">
-                    محاكاة غياب معلم
+                <h3 className="text-lg font-bold text-slate-900 mb-2">
+                    محاكاة غياب المعلمين
                 </h3>
-                <p className="text-sm text-muted mb-6">
-                    اختر المعلم الغائب واليوم لرؤية حصصه الأساسية ومن سيحل محله
+                <p className="text-sm text-muted mb-4">
+                    اختر المعلمين الغائبين واليوم لرؤية توزيع البدلاء والتعارضات
                 </p>
 
-                <div className="space-y-4">
-                    {/* اختيار المعلم */}
-                    <div>
-                        <label className="block text-sm font-medium text-muted mb-2">
-                            المعلم الغائب
-                        </label>
-                        <select
-                            value={selectedTeacherId ?? ''}
-                            onChange={(e) => setSelectedTeacherId(e.target.value ? Number(e.target.value) : null)}
-                            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900"
-                        >
-                            <option value="">-- اختر معلم --</option>
-                            {quotas.map(q => (
-                                <option key={q.teacher_id} value={q.teacher_id}>
-                                    {q.teacher?.name} ({q.current_load} حصة)
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+                {/* اختيار اليوم */}
+                <div className="mb-4">
+                    <label className="block text-sm font-medium text-muted mb-2">اليوم</label>
+                    <select
+                        value={selectedDay}
+                        onChange={(e) => setSelectedDay(e.target.value)}
+                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900"
+                    >
+                        {days.map(day => (
+                            <option key={day} value={day}>{DAY_LABELS[day]}</option>
+                        ))}
+                    </select>
+                </div>
 
-                    {/* اختيار اليوم */}
-                    <div>
-                        <label className="block text-sm font-medium text-muted mb-2">
-                            اليوم
-                        </label>
-                        <select
-                            value={selectedDay}
-                            onChange={(e) => setSelectedDay(e.target.value)}
-                            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900"
-                        >
-                            {days.map(day => (
-                                <option key={day} value={day}>{DAY_LABELS[day]}</option>
-                            ))}
-                        </select>
+                {/* اختيار المعلمين */}
+                <div>
+                    <label className="block text-sm font-medium text-muted mb-2">
+                        المعلمين الغائبين ({selectedTeacherIds.length})
+                    </label>
+                    <div className="max-h-[300px] overflow-y-auto space-y-1 rounded-2xl border border-slate-200 p-2">
+                        {quotas.map(q => (
+                            <label
+                                key={q.teacher_id}
+                                className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition ${selectedTeacherIds.includes(q.teacher_id)
+                                    ? 'bg-red-100 border border-red-300'
+                                    : 'hover:bg-slate-50'
+                                    }`}
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={selectedTeacherIds.includes(q.teacher_id)}
+                                    onChange={() => toggleTeacher(q.teacher_id)}
+                                    className="h-4 w-4 text-red-600 rounded"
+                                />
+                                <span className="text-sm">{q.teacher?.name}</span>
+                                <span className="text-xs text-muted">({q.current_load} حصة)</span>
+                            </label>
+                        ))}
                     </div>
                 </div>
+
+                {selectedTeacherIds.length > 0 && (
+                    <button
+                        onClick={() => setSelectedTeacherIds([])}
+                        className="mt-3 w-full rounded-xl border border-slate-200 py-2 text-sm text-slate-600 hover:bg-slate-50"
+                    >
+                        إلغاء الكل
+                    </button>
+                )}
             </aside>
 
             {/* نتيجة المحاكاة */}
             <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="text-lg font-bold text-slate-900 mb-4">
-                    حصص {simulationData?.teacher?.name ?? 'المعلم'} يوم {DAY_LABELS[selectedDay]}
+                    توزيع البدلاء - يوم {DAY_LABELS[selectedDay]}
+                    {selectedTeacherIds.length > 0 && (
+                        <span className="text-sm font-normal text-muted mr-2">
+                            ({selectedTeacherIds.length} غائب)
+                        </span>
+                    )}
                 </h3>
 
-                {isSimulating ? (
-                    <div className="flex items-center justify-center py-8">
-                        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500/30 border-t-indigo-500" />
+                {selectedTeacherIds.length === 0 ? (
+                    <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 text-sm text-muted">
+                        <div className="text-5xl">👥</div>
+                        <p>اختر معلم أو أكثر من القائمة لمحاكاة غيابهم</p>
                     </div>
-                ) : !selectedTeacherId ? (
-                    <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 text-sm text-muted">
-                        <div className="text-5xl">�</div>
-                        <p>اختر معلم لرؤية حصصه ومن سيحل محله</p>
-                    </div>
-                ) : simulationData?.sessions?.length > 0 ? (
-                    <div className="space-y-4">
-                        {simulationData.sessions.map((session: {
-                            period: number
-                            class: string
-                            subject: string
-                            standby1: string | null
-                            standby2: string | null
-                            standby3: string | null
-                        }) => (
-                            <div
-                                key={session.period}
-                                className="rounded-xl border p-4"
-                                style={{ borderColor: 'var(--color-border)' }}
-                            >
-                                <div className="flex items-center gap-4 mb-3">
-                                    <span className="inline-flex items-center justify-center rounded-full bg-slate-800 text-white h-10 w-10 font-bold text-lg">
-                                        {session.period}
-                                    </span>
-                                    <div>
-                                        <span className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-                                            الحصة {session.period}
-                                        </span>
-                                        <div className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                                            {session.class} - {session.subject}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="grid gap-2 md:grid-cols-3">
-                                    {/* م1 */}
-                                    <div className="flex items-center gap-2 rounded-lg bg-emerald-50 p-3 border border-emerald-200">
-                                        <span className="text-xl">1</span>
-                                        <div>
-                                            <div className="text-xs text-emerald-600 font-medium">البديل الأول</div>
-                                            <div className="text-sm font-bold text-emerald-800">
-                                                {session.standby1 ?? 'لا يوجد'}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* م2 */}
-                                    <div className="flex items-center gap-2 rounded-lg bg-blue-50 p-3 border border-blue-200">
-                                        <span className="text-xl">2</span>
-                                        <div>
-                                            <div className="text-xs text-blue-600 font-medium">البديل الثاني</div>
-                                            <div className="text-sm font-bold text-blue-800">
-                                                {session.standby2 ?? 'لا يوجد'}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* م3 */}
-                                    <div className="flex items-center gap-2 rounded-lg bg-slate-100 p-3 border border-slate-300">
-                                        <span className="text-xl">3</span>
-                                        <div>
-                                            <div className="text-xs text-slate-600 font-medium">البديل الثالث</div>
-                                            <div className="text-sm font-bold text-slate-700">
-                                                {session.standby3 ?? 'لا يوجد'}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                ) : sortedPeriods.length === 0 ? (
+                    <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 text-sm text-muted">
+                        <div className="text-5xl">📅</div>
+                        <p>لا توجد حصص في هذا اليوم</p>
                     </div>
                 ) : (
-                    <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 text-sm text-muted">
-                        <div className="text-5xl">📅</div>
-                        <p>هذا المعلم ليس له حصص في يوم {DAY_LABELS[selectedDay]}</p>
+                    <div className="space-y-4">
+                        {sortedPeriods.map(period => {
+                            const periodAssignments = periodGroups.get(period)!
+                            const hasConflict = periodAssignments.some(a => a.conflict || a.allBusy)
+
+                            return (
+                                <div
+                                    key={period}
+                                    className={`rounded-xl border p-4 ${hasConflict ? 'border-amber-300 bg-amber-50' : 'border-slate-200'
+                                        }`}
+                                >
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <span className="inline-flex items-center justify-center rounded-full bg-slate-800 text-white h-10 w-10 font-bold text-lg">
+                                            {period}
+                                        </span>
+                                        <span className="text-lg font-semibold text-slate-900">
+                                            الحصة {period}
+                                        </span>
+                                        {hasConflict && (
+                                            <span className="text-xs bg-amber-200 text-amber-800 px-2 py-1 rounded-full">
+                                                تعارض
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        {periodAssignments.map((a, idx) => (
+                                            <div
+                                                key={idx}
+                                                className={`flex items-center justify-between p-3 rounded-lg ${a.allBusy
+                                                    ? 'bg-red-100 border border-red-300'
+                                                    : a.conflict
+                                                        ? 'bg-amber-100 border border-amber-300'
+                                                        : 'bg-emerald-50 border border-emerald-200'
+                                                    }`}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-red-600 font-medium">❌ {a.absentTeacherName}</span>
+                                                    <span className="text-slate-400">→</span>
+                                                    {a.allBusy ? (
+                                                        <span className="text-red-700 font-medium">⚠️ لا يوجد بديل متاح!</span>
+                                                    ) : (
+                                                        <span className={`font-medium ${a.priority === 1 ? 'text-emerald-700' :
+                                                            a.priority === 2 ? 'text-blue-700' : 'text-slate-700'
+                                                            }`}>
+                                                            ✅ {a.assignedSubstitute}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {!a.allBusy && (
+                                                    <span className={`text-xs px-2 py-1 rounded-full ${a.priority === 1 ? 'bg-emerald-200 text-emerald-800' :
+                                                        a.priority === 2 ? 'bg-blue-200 text-blue-800' : 'bg-slate-200 text-slate-700'
+                                                        }`}>
+                                                        م{a.priority}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )
+                        })}
                     </div>
                 )}
             </section>
@@ -813,6 +934,170 @@ function PreferencesTab({ quotas }: { quotas: TeacherQuota[] }) {
                             </p>
                         </div>
                     )}
+                </div>
+            </div>
+        </div>
+    )
+}
+
+// ========== Settings Modal ==========
+interface StaffMember {
+    id: number
+    name: string
+    role: string
+    role_label: string
+    secondary_role: string | null
+    standby_enabled: boolean
+    is_teacher: boolean
+}
+
+function StandbySettingsModal({ onClose, onSave }: { onClose: () => void; onSave: () => void }) {
+    const toast = useToast()
+    const [searchTerm, setSearchTerm] = useState('')
+
+    // جلب قائمة الموظفين
+    const { data: staffData, isLoading, refetch } = useQuery({
+        queryKey: ['eligible-staff'],
+        queryFn: async () => {
+            const { data } = await apiClient.get('/admin/teacher-standby/eligible-staff')
+            return data.success ? data.data : []
+        },
+    })
+
+    // تبديل حالة الانتظار
+    const toggleMutation = useMutation({
+        mutationFn: async (userId: number) => {
+            const { data } = await apiClient.post(`/admin/teacher-standby/toggle-standby/${userId}`)
+            if (!data.success) throw new Error(data.message)
+            return data
+        },
+        onSuccess: (data) => {
+            toast({ type: 'success', title: data.message })
+            refetch()
+        },
+        onError: (error: Error) => {
+            toast({ type: 'error', title: error.message })
+        },
+    })
+
+    const staff: StaffMember[] = staffData ?? []
+
+    // فلترة غير المعلمين فقط (المعلمين موجودين بالفعل في الجدول)
+    const nonTeacherStaff = staff.filter(s => !s.is_teacher)
+
+    // فلترة حسب البحث
+    const filteredStaff = nonTeacherStaff.filter(s =>
+        s.name.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+
+    // الموظفين المفعل لهم (غير المعلمين الذين أضفناهم يدوياً)
+    const enabledStaff = staff.filter(s => s.standby_enabled && !s.is_teacher)
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl">
+                {/* Header */}
+                <div className="border-b border-slate-200 p-6">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-xl font-bold text-slate-900">⚙️ إعدادات الانتظار</h2>
+                        <button
+                            onClick={onClose}
+                            className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                    <p className="text-sm text-muted mt-1">
+                        إضافة موظفين لجدول الانتظار
+                    </p>
+                </div>
+
+                {/* Content */}
+                <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+                    {/* Enabled Staff */}
+                    {enabledStaff.length > 0 && (
+                        <div className="mb-4">
+                            <h3 className="text-sm font-semibold text-slate-700 mb-2">✅ المفعل لهم الانتظار</h3>
+                            <div className="flex flex-wrap gap-2">
+                                {enabledStaff.map(s => (
+                                    <span
+                                        key={s.id}
+                                        className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-full text-sm"
+                                    >
+                                        {s.name}
+                                        <button
+                                            onClick={() => toggleMutation.mutate(s.id)}
+                                            className="hover:text-red-600"
+                                            title="إزالة"
+                                        >
+                                            ✕
+                                        </button>
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Search */}
+                    <input
+                        type="text"
+                        placeholder="🔍 ابحث عن موظف..."
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+
+                    {/* Staff List */}
+                    {isLoading ? (
+                        <div className="py-8 text-center text-muted">جاري التحميل...</div>
+                    ) : filteredStaff.length === 0 ? (
+                        <div className="py-8 text-center text-muted">
+                            {searchTerm ? 'لا توجد نتائج' : 'لا يوجد موظفين'}
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            {filteredStaff.map(s => (
+                                <div
+                                    key={s.id}
+                                    className={`flex items-center justify-between p-3 rounded-xl border transition ${s.standby_enabled
+                                        ? 'bg-emerald-50 border-emerald-200'
+                                        : 'bg-white border-slate-200 hover:bg-slate-50'
+                                        }`}
+                                >
+                                    <div>
+                                        <span className="font-medium text-slate-900">{s.name}</span>
+                                        <span className="text-xs text-muted mr-2">({s.role_label || s.role})</span>
+                                    </div>
+                                    <button
+                                        onClick={() => toggleMutation.mutate(s.id)}
+                                        disabled={toggleMutation.isPending}
+                                        className={`rounded-lg px-4 py-1.5 text-sm font-medium transition ${s.standby_enabled
+                                            ? 'bg-red-100 text-red-600 hover:bg-red-200'
+                                            : 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200'
+                                            }`}
+                                    >
+                                        {s.standby_enabled ? 'إزالة' : 'إضافة'}
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer */}
+                <div className="border-t border-slate-200 p-4 flex justify-end gap-3">
+                    <button
+                        onClick={onClose}
+                        className="rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                    >
+                        إغلاق
+                    </button>
+                    <button
+                        onClick={onSave}
+                        className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                    >
+                        حفظ وإعادة حساب
+                    </button>
                 </div>
             </div>
         </div>

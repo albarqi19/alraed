@@ -300,7 +300,8 @@ export function useTeacherAttendanceDelaysQuery(
     queryFn: () => fetchTeacherAttendanceDelays(filters),
     enabled,
     refetchInterval,
-    staleTime: 45_000,
+    staleTime: 0, // دائماً جلب بيانات جديدة عند تغيير الفلتر
+    gcTime: 0, // عدم تخزين في cache
   })
 }
 
