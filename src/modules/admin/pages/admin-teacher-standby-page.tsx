@@ -334,8 +334,96 @@ function QuotasTab({ quotas }: { quotas: TeacherQuota[] }) {
 }
 
 function WeeklyTab({ schedule, periodsPerDay }: { schedule: Record<string, WeeklySlot[]>; periodsPerDay: number }) {
+    const toast = useToast()
+    const queryClient = useQueryClient()
     const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday']
     const [hoveredTeacherId, setHoveredTeacherId] = useState<number | null>(null)
+
+    // حالة التعديل اليدوي
+    const [editingSlot, setEditingSlot] = useState<{ slotId: number; position: 1 | 2 | 3; day: string; period: number } | null>(null)
+    const [pendingChanges, setPendingChanges] = useState<Map<string, { slotId: number; position: 1 | 2 | 3; teacherId: number; teacherName: string }>>(new Map())
+    const [staffForSlot, setStaffForSlot] = useState<Array<{ id: number; name: string; status: string; status_label: string }>>([])
+    const [loadingStaff, setLoadingStaff] = useState(false)
+
+    // جلب قائمة المعلمين المتاحين لخانة معينة
+    const fetchStaffForSlot = async (day: string, period: number) => {
+        setLoadingStaff(true)
+        try {
+            const { data } = await apiClient.get('/admin/teacher-standby/staff-for-slot', {
+                params: { day, period_number: period }
+            })
+            if (data.success) {
+                setStaffForSlot(data.data)
+            }
+        } catch (error) {
+            console.error('Error fetching staff:', error)
+        } finally {
+            setLoadingStaff(false)
+        }
+    }
+
+    // حفظ التغييرات
+    const saveMutation = useMutation({
+        mutationFn: async () => {
+            const promises = Array.from(pendingChanges.values()).map(change =>
+                apiClient.post('/admin/teacher-standby/update-slot', {
+                    slot_id: change.slotId,
+                    position: change.position,
+                    teacher_id: change.teacherId
+                })
+            )
+            return Promise.all(promises)
+        },
+        onSuccess: () => {
+            toast({ type: 'success', title: `تم حفظ ${pendingChanges.size} تعديل بنجاح` })
+            setPendingChanges(new Map())
+            queryClient.invalidateQueries({ queryKey: ['teacher-standby-weekly'] })
+        },
+        onError: (error: Error) => {
+            toast({ type: 'error', title: error.message })
+        }
+    })
+
+    // عند النقر على خانة لتعديلها
+    const handleSlotClick = (slotId: number, position: 1 | 2 | 3, day: string, period: number) => {
+        setEditingSlot({ slotId, position, day, period })
+        fetchStaffForSlot(day, period)
+    }
+
+    // عند اختيار معلم جديد
+    const handleSelectTeacher = (teacherId: number, teacherName: string) => {
+        if (!editingSlot) return
+
+        const key = `${editingSlot.slotId}-${editingSlot.position}`
+        setPendingChanges(prev => {
+            const newMap = new Map(prev)
+            newMap.set(key, {
+                slotId: editingSlot.slotId,
+                position: editingSlot.position,
+                teacherId,
+                teacherName
+            })
+            return newMap
+        })
+        setEditingSlot(null)
+    }
+
+    // الحصول على الاسم المعدل إذا وجد
+    const getDisplayName = (slot: WeeklySlot, position: 1 | 2 | 3): string | null => {
+        const key = `${slot.id}-${position}`
+        const pending = pendingChanges.get(key)
+        if (pending) return pending.teacherName
+
+        if (position === 1) return slot.standby1?.name ?? null
+        if (position === 2) return slot.standby2?.name ?? null
+        if (position === 3) return slot.standby3?.name ?? null
+        return null
+    }
+
+    // التحقق إذا الخانة معدلة
+    const isModified = (slotId: number, position: 1 | 2 | 3) => {
+        return pendingChanges.has(`${slotId}-${position}`)
+    }
 
     if (Object.keys(schedule).length === 0) {
         return (
@@ -347,16 +435,87 @@ function WeeklyTab({ schedule, periodsPerDay }: { schedule: Record<string, Weekl
         )
     }
 
-    // دالة للتحقق إذا المعلم مظلل
     const isHighlighted = (teacherId: number | null | undefined) => {
         return hoveredTeacherId !== null && teacherId === hoveredTeacherId
     }
 
+    // مكون عرض خانة المعلم
+    const TeacherSlot = ({ slot, position, colorClass }: { slot: WeeklySlot; position: 1 | 2 | 3; colorClass: string }) => {
+        const name = getDisplayName(slot, position)
+        const modified = isModified(slot.id, position)
+        const teacherId = position === 1 ? slot.standby1?.id : position === 2 ? slot.standby2?.id : slot.standby3?.id
+
+        if (!name && !modified) return null
+
+        const isEditing = editingSlot?.slotId === slot.id && editingSlot?.position === position
+
+        if (isEditing) {
+            return (
+                <div className="relative">
+                    <select
+                        autoFocus
+                        className="w-full rounded border border-indigo-400 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        onChange={(e) => {
+                            const selected = staffForSlot.find(s => s.id === Number(e.target.value))
+                            if (selected) handleSelectTeacher(selected.id, selected.name)
+                        }}
+                        onBlur={() => setEditingSlot(null)}
+                    >
+                        <option value="">-- اختر معلم --</option>
+                        {loadingStaff ? (
+                            <option disabled>جاري التحميل...</option>
+                        ) : (
+                            <>
+                                {staffForSlot.filter(s => s.status === 'available').map(s => (
+                                    <option key={s.id} value={s.id}>✅ {s.name}</option>
+                                ))}
+                                {staffForSlot.filter(s => s.status === 'warning').map(s => (
+                                    <option key={s.id} value={s.id}>⚠️ {s.name} ({s.status_label})</option>
+                                ))}
+                                {staffForSlot.filter(s => s.status === 'busy').map(s => (
+                                    <option key={s.id} value={s.id} disabled>🚫 {s.name} ({s.status_label})</option>
+                                ))}
+                            </>
+                        )}
+                    </select>
+                </div>
+            )
+        }
+
+        return (
+            <span
+                onClick={() => handleSlotClick(slot.id, position, slot.day, slot.period_number)}
+                className={`rounded px-2 py-1 cursor-pointer transition-all ${modified
+                        ? 'bg-orange-200 text-orange-800 ring-2 ring-orange-400'
+                        : isHighlighted(teacherId)
+                            ? 'bg-yellow-300 text-yellow-900 ring-2 ring-yellow-500'
+                            : colorClass
+                    }`}
+                onMouseEnter={() => setHoveredTeacherId(teacherId ?? null)}
+                onMouseLeave={() => setHoveredTeacherId(null)}
+                title="اضغط لتغيير المعلم"
+            >
+                {position} {name}
+            </span>
+        )
+    }
+
     return (
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-sm text-muted mb-4">
-                جدول الانتظار الأسبوعي - 3 منتظرين لكل حصة (م1 أولوية قصوى)
-            </p>
+            <div className="flex items-center justify-between mb-4">
+                <p className="text-sm text-muted">
+                    جدول الانتظار الأسبوعي - 3 منتظرين لكل حصة (اضغط على الاسم للتعديل)
+                </p>
+                {pendingChanges.size > 0 && (
+                    <button
+                        onClick={() => saveMutation.mutate()}
+                        disabled={saveMutation.isPending}
+                        className="flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:opacity-50"
+                    >
+                        {saveMutation.isPending ? '...' : `💾 حفظ (${pendingChanges.size})`}
+                    </button>
+                )}
+            </div>
 
             <div className="overflow-x-auto rounded-2xl border border-slate-200">
                 <table className="w-full text-sm">
@@ -382,48 +541,15 @@ function WeeklyTab({ schedule, periodsPerDay }: { schedule: Record<string, Weekl
                                 </td>
                                 {days.map(day => {
                                     const slot = schedule[day]?.find(s => s.period_number === period)
+                                    if (!slot) {
+                                        return <td key={day} className="px-2 py-2 text-center text-slate-400">-</td>
+                                    }
                                     return (
                                         <td key={day} className="px-2 py-2">
                                             <div className="flex flex-col gap-1 text-xs">
-                                                {slot?.standby1 && (
-                                                    <span
-                                                        className={`rounded px-2 py-1 font-medium cursor-pointer transition-all ${isHighlighted(slot.standby1?.id)
-                                                            ? 'bg-yellow-300 text-yellow-900 ring-2 ring-yellow-500'
-                                                            : 'bg-emerald-100 text-emerald-700'
-                                                            }`}
-                                                        onMouseEnter={() => setHoveredTeacherId(slot.standby1?.id ?? null)}
-                                                        onMouseLeave={() => setHoveredTeacherId(null)}
-                                                    >
-                                                        1 {slot.standby1.name}
-                                                    </span>
-                                                )}
-                                                {slot?.standby2 && (
-                                                    <span
-                                                        className={`rounded px-2 py-1 cursor-pointer transition-all ${isHighlighted(slot.standby2?.id)
-                                                            ? 'bg-yellow-300 text-yellow-900 ring-2 ring-yellow-500'
-                                                            : 'bg-blue-100 text-blue-700'
-                                                            }`}
-                                                        onMouseEnter={() => setHoveredTeacherId(slot.standby2?.id ?? null)}
-                                                        onMouseLeave={() => setHoveredTeacherId(null)}
-                                                    >
-                                                        2 {slot.standby2.name}
-                                                    </span>
-                                                )}
-                                                {slot?.standby3 && (
-                                                    <span
-                                                        className={`rounded px-2 py-1 cursor-pointer transition-all ${isHighlighted(slot.standby3?.id)
-                                                            ? 'bg-yellow-300 text-yellow-900 ring-2 ring-yellow-500'
-                                                            : 'bg-slate-100 text-slate-600'
-                                                            }`}
-                                                        onMouseEnter={() => setHoveredTeacherId(slot.standby3?.id ?? null)}
-                                                        onMouseLeave={() => setHoveredTeacherId(null)}
-                                                    >
-                                                        3 {slot.standby3.name}
-                                                    </span>
-                                                )}
-                                                {!slot?.standby1 && !slot?.standby2 && !slot?.standby3 && (
-                                                    <span className="text-slate-400 text-center">-</span>
-                                                )}
+                                                <TeacherSlot slot={slot} position={1} colorClass="bg-emerald-100 text-emerald-700 font-medium" />
+                                                <TeacherSlot slot={slot} position={2} colorClass="bg-blue-100 text-blue-700" />
+                                                <TeacherSlot slot={slot} position={3} colorClass="bg-slate-100 text-slate-600" />
                                             </div>
                                         </td>
                                     )
@@ -582,7 +708,7 @@ function SimulationTab({
                         المعلمين الغائبين ({selectedTeacherIds.length})
                     </label>
                     <div className="max-h-[300px] overflow-y-auto space-y-1 rounded-2xl border border-slate-200 p-2">
-                        {quotas.map(q => (
+                        {quotas.filter(q => q.current_load > 0).map(q => (
                             <label
                                 key={q.teacher_id}
                                 className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition ${selectedTeacherIds.includes(q.teacher_id)
@@ -624,83 +750,85 @@ function SimulationTab({
                     )}
                 </h3>
 
-                {selectedTeacherIds.length === 0 ? (
-                    <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 text-sm text-muted">
-                        <div className="text-5xl">👥</div>
-                        <p>اختر معلم أو أكثر من القائمة لمحاكاة غيابهم</p>
-                    </div>
-                ) : sortedPeriods.length === 0 ? (
-                    <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 text-sm text-muted">
-                        <div className="text-5xl">📅</div>
-                        <p>لا توجد حصص في هذا اليوم</p>
-                    </div>
-                ) : (
-                    <div className="space-y-4">
-                        {sortedPeriods.map(period => {
-                            const periodAssignments = periodGroups.get(period)!
-                            const hasConflict = periodAssignments.some(a => a.conflict || a.allBusy)
+                {
+                    selectedTeacherIds.length === 0 ? (
+                        <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 text-sm text-muted">
+                            <div className="text-5xl">👥</div>
+                            <p>اختر معلم أو أكثر من القائمة لمحاكاة غيابهم</p>
+                        </div>
+                    ) : sortedPeriods.length === 0 ? (
+                        <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 text-sm text-muted">
+                            <div className="text-5xl">📅</div>
+                            <p>لا توجد حصص في هذا اليوم</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {sortedPeriods.map(period => {
+                                const periodAssignments = periodGroups.get(period)!
+                                const hasConflict = periodAssignments.some(a => a.conflict || a.allBusy)
 
-                            return (
-                                <div
-                                    key={period}
-                                    className={`rounded-xl border p-4 ${hasConflict ? 'border-amber-300 bg-amber-50' : 'border-slate-200'
-                                        }`}
-                                >
-                                    <div className="flex items-center gap-3 mb-3">
-                                        <span className="inline-flex items-center justify-center rounded-full bg-slate-800 text-white h-10 w-10 font-bold text-lg">
-                                            {period}
-                                        </span>
-                                        <span className="text-lg font-semibold text-slate-900">
-                                            الحصة {period}
-                                        </span>
-                                        {hasConflict && (
-                                            <span className="text-xs bg-amber-200 text-amber-800 px-2 py-1 rounded-full">
-                                                تعارض
+                                return (
+                                    <div
+                                        key={period}
+                                        className={`rounded-xl border p-4 ${hasConflict ? 'border-amber-300 bg-amber-50' : 'border-slate-200'
+                                            }`}
+                                    >
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <span className="inline-flex items-center justify-center rounded-full bg-slate-800 text-white h-10 w-10 font-bold text-lg">
+                                                {period}
                                             </span>
-                                        )}
-                                    </div>
+                                            <span className="text-lg font-semibold text-slate-900">
+                                                الحصة {period}
+                                            </span>
+                                            {hasConflict && (
+                                                <span className="text-xs bg-amber-200 text-amber-800 px-2 py-1 rounded-full">
+                                                    تعارض
+                                                </span>
+                                            )}
+                                        </div>
 
-                                    <div className="space-y-2">
-                                        {periodAssignments.map((a, idx) => (
-                                            <div
-                                                key={idx}
-                                                className={`flex items-center justify-between p-3 rounded-lg ${a.allBusy
-                                                    ? 'bg-red-100 border border-red-300'
-                                                    : a.conflict
-                                                        ? 'bg-amber-100 border border-amber-300'
-                                                        : 'bg-emerald-50 border border-emerald-200'
-                                                    }`}
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-red-600 font-medium">❌ {a.absentTeacherName}</span>
-                                                    <span className="text-slate-400">→</span>
-                                                    {a.allBusy ? (
-                                                        <span className="text-red-700 font-medium">⚠️ لا يوجد بديل متاح!</span>
-                                                    ) : (
-                                                        <span className={`font-medium ${a.priority === 1 ? 'text-emerald-700' :
-                                                            a.priority === 2 ? 'text-blue-700' : 'text-slate-700'
+                                        <div className="space-y-2">
+                                            {periodAssignments.map((a, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    className={`flex items-center justify-between p-3 rounded-lg ${a.allBusy
+                                                        ? 'bg-red-100 border border-red-300'
+                                                        : a.conflict
+                                                            ? 'bg-amber-100 border border-amber-300'
+                                                            : 'bg-emerald-50 border border-emerald-200'
+                                                        }`}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-red-600 font-medium">❌ {a.absentTeacherName}</span>
+                                                        <span className="text-slate-400">→</span>
+                                                        {a.allBusy ? (
+                                                            <span className="text-red-700 font-medium">⚠️ لا يوجد بديل متاح!</span>
+                                                        ) : (
+                                                            <span className={`font-medium ${a.priority === 1 ? 'text-emerald-700' :
+                                                                a.priority === 2 ? 'text-blue-700' : 'text-slate-700'
+                                                                }`}>
+                                                                ✅ {a.assignedSubstitute}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {!a.allBusy && (
+                                                        <span className={`text-xs px-2 py-1 rounded-full ${a.priority === 1 ? 'bg-emerald-200 text-emerald-800' :
+                                                            a.priority === 2 ? 'bg-blue-200 text-blue-800' : 'bg-slate-200 text-slate-700'
                                                             }`}>
-                                                            ✅ {a.assignedSubstitute}
+                                                            م{a.priority}
                                                         </span>
                                                     )}
                                                 </div>
-                                                {!a.allBusy && (
-                                                    <span className={`text-xs px-2 py-1 rounded-full ${a.priority === 1 ? 'bg-emerald-200 text-emerald-800' :
-                                                        a.priority === 2 ? 'bg-blue-200 text-blue-800' : 'bg-slate-200 text-slate-700'
-                                                        }`}>
-                                                        م{a.priority}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        ))}
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
-                            )
-                        })}
-                    </div>
-                )}
-            </section>
-        </div>
+                                )
+                            })}
+                        </div>
+                    )
+                }
+            </section >
+        </div >
     )
 }
 
