@@ -9,6 +9,7 @@ import {
     ChevronRight,
     FileText,
     Image,
+    Info,
     Loader2,
     Send,
     UserCheck,
@@ -51,6 +52,9 @@ type DailyAbsencesResponse = {
     data: {
         date: string
         day: string
+        has_published?: boolean
+        schedule_id?: number
+        schedule_status?: string
         absent_teachers: AbsentTeacher[]
         message?: string
     }
@@ -92,7 +96,7 @@ async function distributeStandby(payload: DistributePayload): Promise<{ success:
     return data
 }
 
-async function approveAndNotify(scheduleId: number): Promise<{ success: boolean; data: { whatsapp_sent: number; whatsapp_failed: number } }> {
+async function approveAndNotify(scheduleId: number): Promise<{ success: boolean; data: { schedule_id: number; status: string; messages_queued: number; estimated_time_minutes: number } }> {
     const { data } = await apiClient.post('/admin/teacher-standby/approve-notify', { schedule_id: scheduleId })
     return data
 }
@@ -130,6 +134,8 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
     const [absentTeachers, setAbsentTeachers] = useState<AbsentTeacher[]>([])
     const [scheduleId, setScheduleId] = useState<number | null>(null)
     const [editingPeriod, setEditingPeriod] = useState<{ teacherId: number; periodNumber: number } | null>(null)
+    const [hasPublished, setHasPublished] = useState(false)
+    const [isViewingPublished, setIsViewingPublished] = useState(false)
 
     // Queries
     const absencesQuery = useQuery({
@@ -160,10 +166,13 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
     const approveMutation = useMutation({
         mutationFn: (id: number) => approveAndNotify(id),
         onSuccess: (result) => {
+            const queued = result.data.messages_queued || 0
+            const estimatedTime = result.data.estimated_time_minutes || 0
+
             toast({
                 type: 'success',
-                title: `تم الاعتماد والإرسال`,
-                description: `تم إرسال ${result.data.whatsapp_sent} رسالة، فشل ${result.data.whatsapp_failed}`
+                title: `تم الاعتماد والجدولة`,
+                description: `تم جدولة ${queued} رسالة للإرسال (الوقت المتوقع: ${estimatedTime} دقيقة)`
             })
             queryClient.invalidateQueries({ queryKey: ['standby-daily-absences'] })
             onClose()
@@ -175,16 +184,29 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
 
     // Initialize absent teachers when data loads
     useEffect(() => {
-        if (absencesQuery.data?.data?.absent_teachers) {
-            const teachers = absencesQuery.data.data.absent_teachers.map(t => ({
-                ...t,
-                periods: t.periods.map(p => ({
-                    ...p,
-                    // استخدام selectedStandby من الـ API (محسوب مسبقاً مع فلترة التعارضات)
-                    selectedStandby: p.selectedStandby || p.standby1 || p.standby2 || p.standby3 || null,
-                })),
-            }))
-            setAbsentTeachers(teachers)
+        if (absencesQuery.data?.data) {
+            const data = absencesQuery.data.data
+
+            // تحديث flags الحالة
+            setHasPublished(data.has_published || false)
+            setIsViewingPublished(data.has_published || false)
+
+            // إذا كان هناك schedule_id من البيانات، احفظه
+            if (data.schedule_id) {
+                setScheduleId(data.schedule_id)
+            }
+
+            // معالجة المعلمين الغائبين
+            if (data.absent_teachers) {
+                const teachers = data.absent_teachers.map(t => ({
+                    ...t,
+                    periods: t.periods.map(p => ({
+                        ...p,
+                        selectedStandby: p.selectedStandby || p.standby1 || p.standby2 || p.standby3 || null,
+                    })),
+                }))
+                setAbsentTeachers(teachers)
+            }
         }
     }, [absencesQuery.data])
 
@@ -192,8 +214,8 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
     useEffect(() => {
         if (isOpen) {
             setStep(1)
-            setScheduleId(null)
             setEditingPeriod(null)
+            // لا نعيد تعيين scheduleId هنا لأنه سيتم تحديثه من البيانات
         }
     }, [isOpen])
 
@@ -521,6 +543,31 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
                     ) : step === 1 ? (
                         /* Step 1: Select absent teachers */
                         <div className="space-y-4">
+                            {/* Banner: عرض التوزيع المعتمد */}
+                            {hasPublished && isViewingPublished && (
+                                <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                                    <div className="flex items-start gap-3">
+                                        <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                                        <div className="flex-1">
+                                            <h4 className="font-semibold text-blue-900">عرض التوزيع المعتمد</h4>
+                                            <p className="text-sm text-blue-700 mt-1">
+                                                هذا التوزيع تم اعتماده وإرساله للمعلمين سابقاً. يمكنك تعديله أو البدء من جديد.
+                                            </p>
+                                            <button
+                                                onClick={() => {
+                                                    setIsViewingPublished(false)
+                                                    setScheduleId(null)
+                                                    absencesQuery.refetch()
+                                                }}
+                                                className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-800 underline"
+                                            >
+                                                إعادة التوزيع من جديد (تجاهل المعتمد)
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="flex items-center justify-between">
                                 <h3 className="text-lg font-semibold text-slate-900">اختر المعلمين الغائبين</h3>
                                 <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-600">
@@ -749,7 +796,7 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
                                     </>
                                 ) : (
                                     <>
-                                        حفظ التوزيع
+                                        {isViewingPublished ? 'تحديث التوزيع' : 'حفظ التوزيع'}
                                         <ChevronLeft className="h-4 w-4" />
                                     </>
                                 )}

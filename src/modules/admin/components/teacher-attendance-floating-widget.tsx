@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { BarChart3, RefreshCw, X, ChevronUp } from 'lucide-react'
+import { BarChart3, RefreshCw, X, ChevronUp, ClipboardList } from 'lucide-react'
 
 interface TeacherAttendanceFloatingWidgetProps {
   onStatsClick: () => void
   onRefresh: () => void
+  onStandbyClick?: () => void
   isRefreshing?: boolean
 }
 
@@ -12,6 +13,7 @@ const WIDGET_STATE_KEY = 'teacher-attendance-widget-expanded'
 export function TeacherAttendanceFloatingWidget({
   onStatsClick,
   onRefresh,
+  onStandbyClick,
   isRefreshing = false,
 }: TeacherAttendanceFloatingWidgetProps) {
   const [isExpanded, setIsExpanded] = useState(() => {
@@ -59,7 +61,7 @@ export function TeacherAttendanceFloatingWidget({
           title="فتح الاختصارات"
         >
           <ChevronUp className="h-4 w-4" />
-          
+
           {/* نقطة نشاط */}
           <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/60 opacity-75"></span>
@@ -74,7 +76,7 @@ export function TeacherAttendanceFloatingWidget({
   return (
     <div className="pointer-events-none fixed bottom-8 left-1/2 z-[9999] -translate-x-1/2">
       <div className="pointer-events-auto relative">
-        <div 
+        <div
           className="relative overflow-visible"
           style={{
             borderRadius: '6px',
@@ -125,6 +127,35 @@ export function TeacherAttendanceFloatingWidget({
             {/* فاصل */}
             <div className="h-6 w-px" style={{ backgroundColor: 'rgba(0, 0, 0, 0.1)' }} />
 
+            {/* زر توزيع الانتظار */}
+            {onStandbyClick && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onStandbyClick()
+                    setTimeout(() => setIsExpanded(false), 300)
+                  }}
+                  className="group flex items-center gap-1.5 px-3 py-2 text-black transition-all duration-150 hover:scale-105"
+                  style={{
+                    borderRadius: '6px',
+                    fontSize: '0.75rem',
+                    fontWeight: 500,
+                    minHeight: '2rem',
+                    background: 'rgba(255, 255, 255, 0.8)',
+                    border: '1px solid rgba(0, 0, 0, 0.1)',
+                    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.08)',
+                    backdropFilter: 'blur(8px)',
+                  }}
+                >
+                  <ClipboardList className="h-3.5 w-3.5" />
+                  <span>توزيع الانتظار</span>
+                </button>
+                {/* فاصل */}
+                <div className="h-6 w-px" style={{ backgroundColor: 'rgba(0, 0, 0, 0.1)' }} />
+              </>
+            )}
+
             {/* زر التحديث */}
             <button
               type="button"
@@ -142,7 +173,7 @@ export function TeacherAttendanceFloatingWidget({
                 backdropFilter: 'blur(8px)',
               }}
             >
-              <RefreshCw 
+              <RefreshCw
                 className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`}
               />
               <span>{isRefreshing ? 'جارٍ التحديث...' : 'تحديث'}</span>

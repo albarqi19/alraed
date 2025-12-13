@@ -2190,6 +2190,7 @@ export function AdminTeacherAttendancePage() {
       <TeacherAttendanceFloatingWidget
         onStatsClick={() => setIsStatsModalOpen(true)}
         onRefresh={() => attendanceQuery.refetch()}
+        onStandbyClick={() => setIsStandbyModalOpen(true)}
         isRefreshing={attendanceQuery.isFetching}
       />
 

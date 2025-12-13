@@ -535,8 +535,16 @@ export function AdminAbsenceExcusesPage() {
 
       {/* View Dialog */}
       {viewDialogOpen && selectedExcuse && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal="true">
-          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 text-right shadow-xl max-h-[90vh] overflow-y-auto">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setViewDialogOpen(false)}
+        >
+          <div
+            className="w-full max-w-2xl rounded-3xl bg-white p-6 text-right shadow-xl max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <header className="space-y-2 mb-6">
               <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">تفاصيل العذر</p>
               <h2 className="text-xl font-semibold text-slate-900">عذر الطالب {selectedExcuse.student?.name}</h2>
@@ -696,8 +704,16 @@ export function AdminAbsenceExcusesPage() {
 
       {/* Approve Dialog */}
       {approveDialogOpen && selectedExcuse && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal="true">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 text-right shadow-xl">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setApproveDialogOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-3xl bg-white p-6 text-right shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <header className="space-y-2 mb-4">
               <p className="text-xs font-semibold uppercase tracking-widest text-emerald-600">قبول العذر</p>
               <h2 className="text-xl font-semibold text-slate-900">
@@ -745,8 +761,16 @@ export function AdminAbsenceExcusesPage() {
 
       {/* Reject Dialog */}
       {rejectDialogOpen && selectedExcuse && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal="true">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 text-right shadow-xl">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setRejectDialogOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-3xl bg-white p-6 text-right shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <header className="space-y-2 mb-4">
               <p className="text-xs font-semibold uppercase tracking-widest text-rose-600">رفض العذر</p>
               <h2 className="text-xl font-semibold text-slate-900">
