@@ -984,4 +984,47 @@
   .animate-progress {
     animation: progress 2s ease-in-out infinite;
   }
+
+  /* تخصيص صفحة الصلاحيات */
+  [data-theme='enterprise-compact'] .admin-permissions-page .bg-blue-100 {
+    background-color: #E2D9C9 !important;
+    color: #1A1A1A !important;
+  }
+
+  [data-theme='enterprise-compact'] .admin-permissions-page .text-blue-600 {
+    color: #2D2D44 !important;
+  }
+
+  [data-theme='enterprise-compact'] .admin-permissions-page .bg-blue-600 {
+    background-color: #2D2D44 !important;
+  }
+
+  [data-theme='enterprise-compact'] .admin-permissions-page .bg-blue-50 {
+    background-color: #F8F5F0 !important;
+  }
+
+  [data-theme='enterprise-compact'] .admin-permissions-page .border-blue-200 {
+    border-color: #D4CFC5 !important;
+  }
+
+  [data-theme='enterprise-compact'] .admin-permissions-page button[role="switch"][aria-checked="true"] {
+    background-color: #2D2D44 !important;
+  }
+
+  [data-theme='enterprise-compact'] .admin-permissions-page button[role="switch"][aria-checked="false"] {
+    background-color: #E2D9C9 !important;
+  }
+
+  [data-theme='enterprise-compact'] .admin-permissions-page .ring-blue-200 {
+    --tw-ring-color: #E2D9C9 !important;
+  }
+
+  [data-theme='enterprise-compact'] .admin-permissions-page .shadow-blue-200 {
+    --tw-shadow-color: #E2D9C9 !important;
+  }
+
+  /* تخصيص أيقونات الصلاحيات */
+  [data-theme='enterprise-compact'] .admin-permissions-page .rounded-2xl {
+    border-radius: 6px !important;
+  }
 }
