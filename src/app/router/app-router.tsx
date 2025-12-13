@@ -30,6 +30,7 @@ import { AdminApprovalPage } from '@/modules/admin/pages/admin-approval-page'
 import { AdminAbsenceMessagesPage } from '@/modules/admin/pages/admin-absence-messages-page'
 import { AdminLateArrivalsPage } from '@/modules/admin/pages/admin-late-arrivals-page'
 import { AdminDutyRostersPage } from '@/modules/admin/pages/admin-duty-rosters-page'
+import { AdminTeacherStandbyPage } from '@/modules/admin/pages/admin-teacher-standby-page'
 import { AdminTeacherMessagesPage } from '@/modules/admin/pages/admin-teacher-messages-page'
 import { AdminSettingsPage } from '@/modules/admin/pages/admin-settings-page'
 import { AdminThemeSettingsPage } from '@/modules/admin/pages/admin-theme-settings-page'
@@ -184,6 +185,7 @@ const appRoutes = [
           { path: 'absence-messages', element: <AdminAbsenceMessagesPage /> },
           { path: 'late-arrivals', element: <AdminLateArrivalsPage /> },
           { path: 'duty-rosters', element: <AdminDutyRostersPage /> },
+          { path: 'teacher-standby', element: <AdminTeacherStandbyPage /> },
           { path: 'leave-requests', element: <AdminLeaveRequestsPage /> },
           { path: 'behavior', element: <AdminBehaviorPage /> },
           { path: 'behavior/:violationId', element: <AdminBehaviorDetailPage /> },

@@ -325,6 +325,7 @@
 }
 
 @layer components {
+
   [data-theme='classic-admin'] .glass-card,
   [data-theme='classic-admin'] .soft-card {
     border-radius: 4px;
@@ -356,11 +357,11 @@
 }
 
 @layer utilities {
-  [data-theme='classic-admin'] .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+  [data-theme='classic-admin'] .space-y-6> :not([hidden])~ :not([hidden]) {
     margin-top: 0.75rem !important;
   }
 
-  [data-theme='classic-admin'] .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+  [data-theme='classic-admin'] .space-y-4> :not([hidden])~ :not([hidden]) {
     margin-top: 0.5rem !important;
   }
 
@@ -425,6 +426,7 @@
    ======================================== */
 
 @layer base {
+
   /* تنسيق خاص لعنوان نظام الرائد في الثيم المؤسسي المضغوط */
   [data-theme='enterprise-compact'] .sidebar-brand-title {
     font-size: 2rem !important;
@@ -501,6 +503,7 @@
 }
 
 @layer components {
+
   [data-theme='enterprise-compact'] .glass-card,
   [data-theme='enterprise-compact'] .soft-card {
     border-radius: 8px;
@@ -576,23 +579,23 @@
 }
 
 @layer utilities {
-  [data-theme='enterprise-compact'] .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+  [data-theme='enterprise-compact'] .space-y-6> :not([hidden])~ :not([hidden]) {
     margin-top: 0.75rem !important;
   }
 
-  [data-theme='enterprise-compact'] .space-y-5 > :not([hidden]) ~ :not([hidden]) {
+  [data-theme='enterprise-compact'] .space-y-5> :not([hidden])~ :not([hidden]) {
     margin-top: 0.625rem !important;
   }
 
-  [data-theme='enterprise-compact'] .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+  [data-theme='enterprise-compact'] .space-y-4> :not([hidden])~ :not([hidden]) {
     margin-top: 0.5rem !important;
   }
 
-  [data-theme='enterprise-compact'] .space-y-3 > :not([hidden]) ~ :not([hidden]) {
+  [data-theme='enterprise-compact'] .space-y-3> :not([hidden])~ :not([hidden]) {
     margin-top: 0.375rem !important;
   }
 
-  [data-theme='enterprise-compact'] .space-y-2 > :not([hidden]) ~ :not([hidden]) {
+  [data-theme='enterprise-compact'] .space-y-2> :not([hidden])~ :not([hidden]) {
     margin-top: 0.25rem !important;
   }
 
@@ -968,9 +971,11 @@
     0% {
       width: 0%;
     }
+
     50% {
       width: 70%;
     }
+
     100% {
       width: 100%;
     }

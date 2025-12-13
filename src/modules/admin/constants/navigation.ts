@@ -69,6 +69,7 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
       { to: '/admin/teachers', label: 'إدارة المعلمين', icon: Users, permission: 'admin.teachers' },
       { to: '/admin/teacher-attendance', label: 'حضور المعلمين', icon: Fingerprint, permission: 'admin.teacher-attendance' },
       { to: '/admin/duty-rosters', label: 'الإشراف اليومي', icon: Eye, permission: 'admin.duty-rosters' },
+      { to: '/admin/teacher-standby', label: 'جدول الانتظار', icon: Clock, permission: 'admin.teacher-standby' },
       { to: '/admin/teacher-preparation', label: 'تحضير مدرستي', icon: ClipboardPen, permission: 'admin.teacher-preparation' },
       { to: '/admin/students', label: 'إدارة الطلاب', icon: GraduationCap, permission: 'admin.students' },
       { to: '/admin/forms', label: 'النماذج الإلكترونية', icon: FileText, permission: 'admin.forms' },
