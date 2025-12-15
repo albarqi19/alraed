@@ -19,6 +19,7 @@ export function WhatsappInstancesManager() {
   const toast = useToast()
   const [selectedQrCode, setSelectedQrCode] = useState<string | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showLimitModal, setShowLimitModal] = useState(false)
   const [newDepartment, setNewDepartment] = useState('')
   const [pollingInstanceIds, setPollingInstanceIds] = useState<Set<number>>(new Set())
 
@@ -37,12 +38,12 @@ export function WhatsappInstancesManager() {
       setShowAddModal(false)
       setNewDepartment('')
       toast({ title: 'تم إنشاء رقم واتساب جديد', type: 'success' })
-      
+
       // إذا كان QR Code متوفر، عرضه مباشرة
       if (newInstance.qr_code) {
         setSelectedQrCode(newInstance.qr_code)
       }
-      
+
       // بدء polling لحالة Instance الجديد
       if (newInstance.status === 'connecting') {
         startPolling(newInstance.id)
@@ -70,7 +71,7 @@ export function WhatsappInstancesManager() {
     mutationFn: checkWhatsappInstanceStatus,
     onSuccess: (instance) => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'whatsapp', 'instances'] })
-      
+
       if (instance.status === 'connected') {
         toast({ title: `تم الاتصال بنجاح! الرقم: ${instance.phone_number}`, type: 'success' })
         // لا نوقف polling - نستمر في المراقبة حتى بعد الاتصال
@@ -118,7 +119,7 @@ export function WhatsappInstancesManager() {
 
   // اختبار الإرسال
   const testMutation = useMutation({
-    mutationFn: ({ instanceId, phoneNumber }: { instanceId: number; phoneNumber: string }) => 
+    mutationFn: ({ instanceId, phoneNumber }: { instanceId: number; phoneNumber: string }) =>
       testWhatsappInstance(instanceId, phoneNumber),
     onSuccess: (data) => {
       // تحديث البيانات فوراً بعد الإرسال
@@ -158,7 +159,7 @@ export function WhatsappInstancesManager() {
             // حفظ الحالة السابقة
             const oldInstances = queryClient.getQueryData<WhatsappInstance[]>(['admin', 'whatsapp', 'instances'])
             const oldInstance = oldInstances?.find(i => i.id === instance.id)
-            
+
             queryClient.setQueryData(
               ['admin', 'whatsapp', 'instances'],
               (old: WhatsappInstance[] | undefined) => {
@@ -166,7 +167,7 @@ export function WhatsappInstancesManager() {
                 return old.map(i => i.id === instance.id ? instance : i)
               }
             )
-            
+
             // عرض toast فقط عند تغيير الحالة
             if (instance.status === 'connected' && oldInstance?.status !== 'connected') {
               // اتصل للتو (كان connecting أو disconnected)
@@ -175,9 +176,9 @@ export function WhatsappInstancesManager() {
               // نستمر في المراقبة حتى بعد الاتصال
             } else if (instance.status === 'disconnected' && oldInstance?.status === 'connected') {
               // إذا كان متصل سابقاً والآن مفصول
-              toast({ 
-                title: `⚠️ تم قطع الاتصال: ${instance.instance_name}`, 
-                type: 'warning' 
+              toast({
+                title: `⚠️ تم قطع الاتصال: ${instance.instance_name}`,
+                type: 'warning'
               })
             }
           })
@@ -195,14 +196,14 @@ export function WhatsappInstancesManager() {
     // 🔥 مراقبة **جميع** instances حتى disconnected لاكتشاف الاتصال التلقائي
     // هذا يحل مشكلة: Instance متصل في Evolution لكن يظهر disconnected في الواجهة
     const allInstanceIds = instances.map(i => i.id)
-    
+
     // إضافة instances الجديدة للـ polling
     allInstanceIds.forEach(id => {
       if (!pollingInstanceIds.has(id)) {
         startPolling(id)
       }
     })
-    
+
     // إزالة instances المحذوفة فقط من polling
     pollingInstanceIds.forEach(id => {
       if (!allInstanceIds.includes(id)) {
@@ -301,7 +302,13 @@ export function WhatsappInstancesManager() {
         </div>
         <button
           type="button"
-          onClick={() => setShowAddModal(true)}
+          onClick={() => {
+            if (instances.length > 0) {
+              setShowLimitModal(true)
+            } else {
+              setShowAddModal(true)
+            }
+          }}
           className="button-primary inline-flex items-center gap-2"
         >
           <Plus className="h-4 w-4" />
@@ -386,7 +393,7 @@ export function WhatsappInstancesManager() {
                     </button>
                   </>
                 )}
-                
+
                 {instance.status === 'disconnected' && (
                   <>
                     <button
@@ -409,7 +416,7 @@ export function WhatsappInstancesManager() {
                     </button>
                   </>
                 )}
-                
+
                 {instance.status === 'connecting' && (
                   <button
                     type="button"
@@ -442,7 +449,7 @@ export function WhatsappInstancesManager() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="glass-card w-full max-w-md space-y-4 p-6">
             <h3 className="text-lg font-semibold text-slate-900">إضافة رقم واتساب جديد</h3>
-            
+
             <div className="space-y-2">
               <label className="block text-sm font-medium text-slate-700">اسم القسم</label>
               <select
@@ -497,12 +504,12 @@ export function WhatsappInstancesManager() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="glass-card w-full max-w-md space-y-4 p-6 text-center">
             <h3 className="text-lg font-semibold text-slate-900">امسح رمز QR للربط</h3>
-            
+
             <div className="flex justify-center">
               <div className="rounded-2xl bg-white p-4">
-                <img 
-                  src={selectedQrCode} 
-                  alt="QR Code" 
+                <img
+                  src={selectedQrCode}
+                  alt="QR Code"
                   className="h-64 w-64 object-contain"
                 />
               </div>
@@ -520,6 +527,26 @@ export function WhatsappInstancesManager() {
               className="button-primary w-full"
             >
               إغلاق
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Limit Modal - التنبيه عند محاولة إضافة رقم ثانٍ */}
+      {showLimitModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="glass-card w-full max-w-md space-y-4 p-6 text-center">
+            <div className="mx-auto w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center">
+              <span className="text-3xl">⚠️</span>
+            </div>
+            <h3 className="text-lg font-bold text-slate-900">لا يمكن إضافة رقم آخر حالياً</h3>
+            <p className="text-sm text-slate-600">إضافة أرقام متعددة ستُتاح قريباً.</p>
+            <button
+              type="button"
+              onClick={() => setShowLimitModal(false)}
+              className="button-primary w-full"
+            >
+              فهمت
             </button>
           </div>
         </div>
