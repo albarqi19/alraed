@@ -6,7 +6,7 @@ import {
   useUpdateAttendanceStatusMutation,
 } from '../hooks'
 import type { AttendanceReportRecord, AttendanceSessionDetails } from '../types'
-import { getTodayRiyadh, formatDateRiyadh, isToday as isTodayRiyadh } from '@/lib/date-utils'
+import { getTodayRiyadh, isToday as isTodayRiyadh } from '@/lib/date-utils'
 
 type FilterState = {
   grade: string
