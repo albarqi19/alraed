@@ -284,18 +284,21 @@ export function AdminTeacherMessagesPage() {
                 </div>
               </label>
 
-              <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
                 <label className="block text-right text-sm font-semibold text-slate-900">
                   الحد اليومي لكل معلم
                 </label>
                 <input
                   type="number"
                   name="daily_limit"
-                  defaultValue={settings.daily_limit_per_teacher}
+                  defaultValue={Math.min(settings.daily_limit_per_teacher, 5)}
                   min="1"
-                  max="100"
+                  max="5"
                   className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-center"
                 />
+                <p className="text-xs text-amber-700 mt-2 text-right">
+                  ⚠️ حرصاً على حماية الرقم الخاص بالمدرسة من التقييد والحظر، الحد الأقصى حالياً 5 رسائل يومياً. سيتم زيادة الحد تدريجياً مع الوقت.
+                </p>
               </div>
 
               <div className="rounded-xl border border-slate-200 bg-white p-4">
