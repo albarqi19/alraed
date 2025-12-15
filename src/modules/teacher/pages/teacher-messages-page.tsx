@@ -47,7 +47,7 @@ export function TeacherMessagesPage() {
   const navigate = useNavigate()
   const toast = useToast()
   const queryClient = useQueryClient()
-  
+
   // State management
   const [selectedClass, setSelectedClass] = useState<TeacherClass | null>(null)
   const [selectedStudents, setSelectedStudents] = useState<number[]>([])
@@ -93,6 +93,16 @@ export function TeacherMessagesPage() {
     teacher_name: 'المعلم',
   }
   const todayStats = statsData?.stats || { sent_today: 0, remaining: 10 }
+
+  // Fetch unread replies count
+  const { data: repliesData } = useQuery({
+    queryKey: ['teacher', 'message-replies'],
+    queryFn: async () => {
+      const response = await apiClient.get('/teacher/messages/replies')
+      return response.data
+    },
+  })
+  const unreadRepliesCount = repliesData?.unread_count || 0
 
   // Fetch teacher classes
   const { data: classesData } = useQuery({
@@ -277,22 +287,22 @@ export function TeacherMessagesPage() {
     const now = new Date()
     const hour = now.getHours()
     const day = now.getDay() // 0 = الأحد، 6 = السبت
-    
+
     // التحقق من يوم الدوام (الأحد إلى الخميس)
     const isWorkDay = day >= 0 && day <= 4
-    
+
     // التحقق من الوقت (من الإعدادات)
     const isAllowedTime = hour >= settings.allowed_start_hour && hour < settings.allowed_end_hour
-    
+
     return {
       allowed: isWorkDay && isAllowedTime && settings.is_enabled,
       reason: !settings.is_enabled
         ? 'تم إيقاف نظام الرسائل من قبل الإدارة'
-        : !isWorkDay 
-        ? 'لا يمكن إرسال الرسائل في أيام العطلة (الجمعة والسبت)'
-        : !isAllowedTime 
-        ? `يمكن إرسال الرسائل فقط من الساعة ${settings.allowed_start_hour} صباحاً إلى ${settings.allowed_end_hour} صباحاً`
-        : '',
+        : !isWorkDay
+          ? 'لا يمكن إرسال الرسائل في أيام العطلة (الجمعة والسبت)'
+          : !isAllowedTime
+            ? `يمكن إرسال الرسائل فقط من الساعة ${settings.allowed_start_hour} صباحاً إلى ${settings.allowed_end_hour} صباحاً`
+            : '',
       isAcademicHoliday: false,
     }
   }, [settings, canSendMessagesData])
@@ -300,8 +310,8 @@ export function TeacherMessagesPage() {
   const selectedTemplateData = templates.find(t => t.id === selectedTemplate)
 
   const handleStudentToggle = (studentId: number) => {
-    setSelectedStudents(prev => 
-      prev.includes(studentId) 
+    setSelectedStudents(prev =>
+      prev.includes(studentId)
         ? prev.filter(id => id !== studentId)
         : [...prev, studentId]
     )
@@ -470,7 +480,7 @@ export function TeacherMessagesPage() {
       <section className="space-y-6">
         {/* Holiday Banner - عرض بانر الإجازة */}
         <HolidayBanner />
-        
+
         {/* Header */}
         <header className="flex items-center gap-4 text-right">
           <button
@@ -484,6 +494,20 @@ export function TeacherMessagesPage() {
             <h1 className="text-3xl font-bold text-slate-900">إرسال رسائل لأولياء الأمور</h1>
             <p className="text-sm text-muted">تواصل مع أولياء أمور طلابك بسهولة</p>
           </div>
+          {/* زر الردود */}
+          <button
+            type="button"
+            onClick={() => navigate('/teacher/messages/replies')}
+            className="relative rounded-xl border-2 border-teal-200 bg-teal-50 px-4 py-2 text-teal-700 font-semibold hover:bg-teal-100 transition flex items-center gap-2"
+          >
+            <i className="bi bi-reply-all text-lg" />
+            <span>الردود</span>
+            {unreadRepliesCount > 0 && (
+              <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] flex items-center justify-center bg-rose-500 text-white text-xs font-bold rounded-full px-1 animate-pulse">
+                {unreadRepliesCount > 99 ? '99+' : unreadRepliesCount}
+              </span>
+            )}
+          </button>
         </header>
 
         {/* بطاقة حالة النظام والإحصائيات */}
@@ -494,8 +518,8 @@ export function TeacherMessagesPage() {
               {/* حالة النظام */}
               <div className={clsx(
                 'rounded-xl border-2 p-4 text-center',
-                settings.is_enabled 
-                  ? 'border-emerald-300 bg-emerald-50' 
+                settings.is_enabled
+                  ? 'border-emerald-300 bg-emerald-50'
                   : 'border-rose-300 bg-rose-50'
               )}>
                 <div className="text-3xl mb-2">{settings.is_enabled ? '✅' : '🚫'}</div>
@@ -538,7 +562,7 @@ export function TeacherMessagesPage() {
         {!checkSendingTime.allowed && (
           <div className={clsx(
             'rounded-2xl border p-4 text-right',
-            !settings.is_enabled 
+            !settings.is_enabled
               ? 'bg-rose-50 border-rose-200'
               : 'bg-amber-50 border-amber-200'
           )}>
@@ -569,7 +593,7 @@ export function TeacherMessagesPage() {
         {/* اختيار الفصل */}
         <div className="glass-card space-y-4">
           <h2 className="text-xl font-semibold text-slate-900 text-right">1. اختر الفصل</h2>
-          
+
           {teacherClasses.length === 0 ? (
             <div className="rounded-xl border-2 border-slate-200 bg-slate-50 p-8 text-center">
               <div className="text-4xl mb-3">📚</div>
@@ -632,7 +656,7 @@ export function TeacherMessagesPage() {
               )}
               <h2 className="text-xl font-semibold text-slate-900">2. اختر الطلاب</h2>
             </div>
-            
+
             {students.length === 0 ? (
               <div className="rounded-xl border-2 border-slate-200 bg-slate-50 p-8 text-center">
                 <div className="text-4xl mb-3">👥</div>

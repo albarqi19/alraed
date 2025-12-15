@@ -22,6 +22,8 @@ interface MessageSettings {
   daily_limit_per_teacher: number
   allowed_start_hour: number
   allowed_end_hour: number
+  enable_replies: boolean
+  reply_expiry_days: number
 }
 
 export function AdminTeacherMessagesPage() {
@@ -107,6 +109,8 @@ export function AdminTeacherMessagesPage() {
     daily_limit_per_teacher: 10,
     allowed_start_hour: 7,
     allowed_end_hour: 11,
+    enable_replies: false,
+    reply_expiry_days: 3,
   }
   const statistics = statisticsData?.statistics || {
     total_sent_today: 0,
@@ -260,6 +264,8 @@ export function AdminTeacherMessagesPage() {
                 daily_limit_per_teacher: Number(formData.get('daily_limit')),
                 allowed_start_hour: Number(formData.get('start_hour')),
                 allowed_end_hour: Number(formData.get('end_hour')),
+                enable_replies: formData.get('enable_replies') === 'on',
+                reply_expiry_days: Number(formData.get('reply_expiry_days')),
               })
             }}
             className="space-y-4"
@@ -319,6 +325,33 @@ export function AdminTeacherMessagesPage() {
                   className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-center"
                 />
               </div>
+
+              <label className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                <input
+                  type="checkbox"
+                  name="enable_replies"
+                  defaultChecked={settings.enable_replies}
+                  className="h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                />
+                <div className="flex-1 text-right">
+                  <p className="font-semibold text-slate-900">تفعيل ردود أولياء الأمور</p>
+                  <p className="text-xs text-muted">إضافة رابط رد سحري للرسائل</p>
+                </div>
+              </label>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <label className="block text-right text-sm font-semibold text-slate-900">
+                  صلاحية رابط الرد (أيام)
+                </label>
+                <input
+                  type="number"
+                  name="reply_expiry_days"
+                  defaultValue={settings.reply_expiry_days}
+                  min="1"
+                  max="30"
+                  className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-center"
+                />
+              </div>
             </div>
 
             <button
@@ -350,6 +383,16 @@ export function AdminTeacherMessagesPage() {
               <p className="text-2xl font-bold text-slate-900">{settings.allowed_end_hour}:00</p>
               <p className="text-sm text-muted">نهاية الوقت</p>
             </div>
+
+            <div className={clsx('rounded-xl border p-4 text-center', settings.enable_replies ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-slate-50')}>
+              <p className="text-2xl font-bold">{settings.enable_replies ? 'مفعّل' : 'معطّل'}</p>
+              <p className="text-sm text-muted">ردود أولياء الأمور</p>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-4 text-center">
+              <p className="text-2xl font-bold text-slate-900">{settings.reply_expiry_days} أيام</p>
+              <p className="text-sm text-muted">صلاحية الرابط</p>
+            </div>
           </div>
         )}
       </div>
@@ -370,8 +413,8 @@ export function AdminTeacherMessagesPage() {
               key={template.id}
               className={clsx(
                 'group relative rounded-2xl border-2 p-6 transition-all duration-300 hover:shadow-lg',
-                template.is_active 
-                  ? 'border-emerald-300 bg-gradient-to-br from-emerald-50 to-white' 
+                template.is_active
+                  ? 'border-emerald-300 bg-gradient-to-br from-emerald-50 to-white'
                   : 'border-slate-200 bg-slate-50 opacity-60 hover:opacity-80'
               )}
             >
@@ -388,8 +431,8 @@ export function AdminTeacherMessagesPage() {
                     <div className="text-5xl drop-shadow-sm">{template.icon}</div>
                     <div className={clsx(
                       'mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold shadow-sm',
-                      template.is_active 
-                        ? 'bg-emerald-500 text-white' 
+                      template.is_active
+                        ? 'bg-emerald-500 text-white'
                         : 'bg-slate-300 text-slate-700'
                     )}>
                       {template.is_active ? '✓ مفعّل' : '✕ معطّل'}

@@ -6,6 +6,7 @@ import {
   useUpdateAttendanceStatusMutation,
 } from '../hooks'
 import type { AttendanceReportRecord, AttendanceSessionDetails } from '../types'
+import { getTodayRiyadh, formatDateRiyadh, isToday as isTodayRiyadh } from '@/lib/date-utils'
 
 type FilterState = {
   grade: string
@@ -217,7 +218,7 @@ function StatsGrid({ records }: { records: AttendanceReportRecord[] }) {
 }
 
 export function AdminAttendancePage() {
-  const today = new Date().toISOString().split('T')[0] // تاريخ اليوم بصيغة YYYY-MM-DD
+  const today = getTodayRiyadh() // تاريخ اليوم بصيغة YYYY-MM-DD بتوقيت الرياض
   
   const [filters, setFilters] = useState<FilterState>({
     grade: '',
@@ -265,19 +266,18 @@ export function AdminAttendancePage() {
 
   const detailsQuery = useAttendanceSessionDetailsQuery(selectedRecord?.first_id || selectedRecord?.id)
 
-  // التحقق مما إذا كان التاريخ المحدد هو اليوم
+  // التحقق مما إذا كان التاريخ المحدد هو اليوم (بتوقيت الرياض)
   const isSelectedDateToday = useMemo(() => {
     if (!selectedRecord?.attendance_date) return false
-    const selectedDate = new Date(selectedRecord.attendance_date).toISOString().split('T')[0]
-    return selectedDate === today
-  }, [selectedRecord, today])
+    return isTodayRiyadh(selectedRecord.attendance_date)
+  }, [selectedRecord])
 
   const handleFilterChange = (field: keyof FilterState, value: string) => {
     setFilters((prev) => ({ ...prev, [field]: value }))
   }
 
   const handleResetFilters = () => {
-    const today = new Date().toISOString().split('T')[0]
+    const today = getTodayRiyadh()
     setFilters({ grade: '', className: '', status: 'all', fromDate: today, toDate: today, search: '' })
   }
 

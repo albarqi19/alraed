@@ -6,6 +6,7 @@ import { AdminLoginPage } from '@/modules/auth/pages/admin-login-page'
 import { ForgotPasswordPage } from '@/modules/auth/pages/forgot-password-page'
 import { TeacherDashboardPage } from '@/modules/teacher/pages/teacher-dashboard-page'
 import { TeacherMessagesPage } from '@/modules/teacher/pages/teacher-messages-page'
+import { TeacherRepliesPage } from '@/modules/teacher/pages/teacher-replies-page'
 import { TeacherPointsPage } from '@/modules/teacher/pages/teacher-points-page'
 import { TeacherServicesPage } from '@/modules/teacher/pages/teacher-services-page'
 import { AdminDashboardPage } from '@/modules/admin/pages/admin-dashboard-page'
@@ -77,6 +78,7 @@ import { AdminBehaviorPlansPage } from '@/modules/admin/pages/admin-behavior-pla
 import { AdminBehaviorAnalyticsPage } from '@/modules/admin/pages/admin-behavior-analytics-page'
 import { AdminPermissionsPage } from '@/modules/permissions/pages/admin-permissions-page'
 import { ExcuseSubmissionPage, AdminAbsenceExcusesPage } from '@/modules/excuse'
+import { ReplySubmissionPage } from '@/modules/reply'
 import { AdminSupportPage } from '@/modules/admin/pages/admin-support-page'
 import { AdminActivitiesPage } from '@/modules/activities/pages/admin-activities-page'
 import { TeacherActivitiesPage } from '@/modules/activities/pages/teacher-activities-page'
@@ -145,6 +147,7 @@ const appRoutes = [
           { path: 'dashboard', element: <TeacherDashboardPage /> },
           { path: 'schedule', element: <TeacherSchedulePage /> },
           { path: 'messages', element: <TeacherMessagesPage /> },
+          { path: 'messages/replies', element: <TeacherRepliesPage /> },
           { path: 'points', element: <TeacherPointsPage /> },
           { path: 'services', element: <TeacherServicesPage /> },
           { path: 'activities', element: <TeacherActivitiesPage /> },
@@ -246,6 +249,10 @@ const appRoutes = [
       {
         path: 'excuse/:token',
         element: <ExcuseSubmissionPage />,
+      },
+      {
+        path: 'reply/:token',
+        element: <ReplySubmissionPage />,
       },
       {
         path: 'display/auto-call',
