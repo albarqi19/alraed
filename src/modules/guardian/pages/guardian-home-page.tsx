@@ -1,5 +1,5 @@
 import { useGuardianContext } from '../context/guardian-context'
-import { TrendingUp, TrendingDown, Clock, Award, Calendar, UserCheck, AlertTriangle, Star } from 'lucide-react'
+import { TrendingUp, TrendingDown, Clock, Award, UserCheck, AlertTriangle, Star } from 'lucide-react'
 
 export function GuardianHomePage() {
     const { studentSummary, storeOverview } = useGuardianContext()
