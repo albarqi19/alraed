@@ -52,7 +52,11 @@ import { AdminStudentCaseDetailsPage } from '@/modules/admin/pages/admin-student
 import { AdminTreatmentPlanDetailsPage } from '@/modules/admin/pages/admin-treatment-plan-details-page'
 import { AdminTreatmentPlanFormPage } from '@/modules/admin/pages/admin-treatment-plan-form-page'
 import { AdminLeaveRequestsPage } from '@/modules/admin/pages/admin-leave-requests-page'
-import { GuardianLeaveRequestPage } from '@/modules/guardian/pages/guardian-leave-request-page'
+import { GuardianShell } from '@/modules/guardian/layouts/guardian-shell'
+import { GuardianHomePage } from '@/modules/guardian/pages/guardian-home-page'
+import { GuardianServicesPage } from '@/modules/guardian/pages/guardian-services-page'
+import { GuardianFormsPage } from '@/modules/guardian/pages/guardian-forms-page'
+import { GuardianMessagesPage } from '@/modules/guardian/pages/guardian-messages-page'
 import { NotFoundPage } from '@/modules/core/pages/not-found-page'
 import { RequireAuth, RedirectIfAuthenticated } from '@/modules/auth/components/route-guards'
 import { TeacherShell } from '@/modules/teacher/layouts/teacher-shell'
@@ -243,8 +247,20 @@ const appRoutes = [
         ],
       },
       {
+        path: 'guardian',
+        element: <GuardianShell />,
+        children: [
+          { index: true, element: <Navigate to="/guardian/home" replace /> },
+          { path: 'home', element: <GuardianHomePage /> },
+          { path: 'services', element: <GuardianServicesPage /> },
+          { path: 'forms', element: <GuardianFormsPage /> },
+          { path: 'messages', element: <GuardianMessagesPage /> },
+        ],
+      },
+      // Backwards compatibility for old route
+      {
         path: 'guardian/leave-request',
-        element: <GuardianLeaveRequestPage />,
+        element: <Navigate to="/guardian/services" replace />,
       },
       {
         path: 'excuse/:token',

@@ -26,7 +26,8 @@ export function RootLayout() {
   )
   const isNoHeaderRoute = NO_HEADER_ROUTES.includes(location.pathname)
 
-  if (isFullscreenRoute) {
+  // Guardian portal and fullscreen routes render directly without any wrapper
+  if (isFullscreenRoute || isGuardianPortal) {
     return <Outlet />
   }
 
