@@ -1,28 +1,33 @@
 import { useGuardianContext } from '../context/guardian-context'
-import { TrendingUp, TrendingDown, Clock, Award, UserCheck, AlertTriangle, Star } from 'lucide-react'
+import { useGuardianDashboardQuery } from '../hooks'
+import { TrendingUp, TrendingDown, Clock, Award, UserCheck, AlertTriangle, Star, Loader2 } from 'lucide-react'
 
 export function GuardianHomePage() {
-    const { studentSummary, storeOverview } = useGuardianContext()
+    const { currentNationalId, studentSummary, storeOverview } = useGuardianContext()
+    const dashboardQuery = useGuardianDashboardQuery(currentNationalId)
 
-    const points = storeOverview?.points ?? {
+    const dashboardData = dashboardQuery.data
+    const isLoading = dashboardQuery.isLoading
+
+    // Fallback to store overview points if dashboard hasn't loaded yet
+    const points = dashboardData?.points ?? storeOverview?.points ?? {
         total: 0,
         lifetime_rewards: 0,
         lifetime_violations: 0,
         lifetime_redemptions: 0,
     }
 
-    // Mock data for now - these would come from backend hooks
-    const attendanceStats = {
-        present: 85,
-        absent: 8,
-        late: 7,
-        attendanceRate: 85,
+    const attendanceStats = dashboardData?.attendance ?? {
+        present_days: 0,
+        absent_days: 0,
+        late_days: 0,
+        attendance_rate: 0,
     }
 
-    const behaviorStats = {
-        positive: points.lifetime_rewards,
-        negative: points.lifetime_violations,
-        score: Math.max(0, points.lifetime_rewards - points.lifetime_violations),
+    const behaviorStats = dashboardData?.behavior ?? {
+        positive_count: 0,
+        negative_count: 0,
+        balance: 0,
     }
 
     return (
@@ -40,6 +45,14 @@ export function GuardianHomePage() {
                     </p>
                 </div>
             </div>
+
+            {/* Loading state */}
+            {isLoading && (
+                <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+                    <span className="mr-2 text-sm text-slate-500">جاري تحميل البيانات...</span>
+                </div>
+            )}
 
             {/* Points summary */}
             <div className="grid grid-cols-2 gap-3">
@@ -71,7 +84,7 @@ export function GuardianHomePage() {
                 <div className="mb-4 flex items-center justify-between">
                     <h3 className="font-bold text-slate-900">المواظبة</h3>
                     <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">
-                        هذا الشهر
+                        هذا الفصل
                     </span>
                 </div>
 
@@ -92,12 +105,12 @@ export function GuardianHomePage() {
                                 stroke="currentColor"
                                 strokeWidth="3"
                                 strokeLinecap="round"
-                                strokeDasharray={`${attendanceStats.attendanceRate}, 100`}
+                                strokeDasharray={`${attendanceStats.attendance_rate}, 100`}
                                 d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                             />
                         </svg>
                         <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className="text-2xl font-bold text-slate-900">{attendanceStats.attendanceRate}%</span>
+                            <span className="text-2xl font-bold text-slate-900">{attendanceStats.attendance_rate}%</span>
                             <span className="text-[10px] text-slate-500">نسبة الحضور</span>
                         </div>
                     </div>
@@ -108,21 +121,21 @@ export function GuardianHomePage() {
                                 <UserCheck className="h-4 w-4 text-emerald-500" />
                                 حضور
                             </span>
-                            <span className="text-sm font-bold text-emerald-600">{attendanceStats.present}</span>
+                            <span className="text-sm font-bold text-emerald-600">{attendanceStats.present_days}</span>
                         </div>
                         <div className="flex items-center justify-between rounded-xl bg-rose-50 px-3 py-2">
                             <span className="flex items-center gap-2 text-xs text-slate-600">
                                 <AlertTriangle className="h-4 w-4 text-rose-500" />
                                 غياب
                             </span>
-                            <span className="text-sm font-bold text-rose-600">{attendanceStats.absent}</span>
+                            <span className="text-sm font-bold text-rose-600">{attendanceStats.absent_days}</span>
                         </div>
                         <div className="flex items-center justify-between rounded-xl bg-amber-50 px-3 py-2">
                             <span className="flex items-center gap-2 text-xs text-slate-600">
                                 <Clock className="h-4 w-4 text-amber-500" />
                                 تأخر
                             </span>
-                            <span className="text-sm font-bold text-amber-600">{attendanceStats.late}</span>
+                            <span className="text-sm font-bold text-amber-600">{attendanceStats.late_days}</span>
                         </div>
                     </div>
                 </div>
@@ -140,17 +153,17 @@ export function GuardianHomePage() {
                 <div className="grid grid-cols-3 gap-3">
                     <div className="rounded-2xl bg-emerald-50 p-3 text-center">
                         <TrendingUp className="mx-auto h-6 w-6 text-emerald-500" />
-                        <p className="mt-2 text-xl font-bold text-emerald-600">{behaviorStats.positive}</p>
+                        <p className="mt-2 text-xl font-bold text-emerald-600">{behaviorStats.positive_count}</p>
                         <p className="text-xs text-slate-500">إيجابي</p>
                     </div>
                     <div className="rounded-2xl bg-rose-50 p-3 text-center">
                         <TrendingDown className="mx-auto h-6 w-6 text-rose-500" />
-                        <p className="mt-2 text-xl font-bold text-rose-600">{behaviorStats.negative}</p>
+                        <p className="mt-2 text-xl font-bold text-rose-600">{behaviorStats.negative_count}</p>
                         <p className="text-xs text-slate-500">سلبي</p>
                     </div>
                     <div className="rounded-2xl bg-indigo-50 p-3 text-center">
                         <Award className="mx-auto h-6 w-6 text-indigo-500" />
-                        <p className="mt-2 text-xl font-bold text-indigo-600">{behaviorStats.score}</p>
+                        <p className="mt-2 text-xl font-bold text-indigo-600">{behaviorStats.balance}</p>
                         <p className="text-xs text-slate-500">الرصيد</p>
                     </div>
                 </div>

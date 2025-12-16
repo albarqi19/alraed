@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
     MessageSquare,
     AlertTriangle,
@@ -7,58 +7,36 @@ import {
     Phone,
     ChevronDown,
     ChevronUp,
+    Loader2,
 } from 'lucide-react'
 import { useGuardianContext } from '../context/guardian-context'
+import { useGuardianMessagesQuery } from '../hooks'
+import type { GuardianMessage } from '../api'
 
-interface MessageItem {
-    id: number
-    type: 'absence' | 'late' | 'teacher'
-    title: string
-    content: string
-    date: string
-    teacherName?: string
-    isRead: boolean
-}
-
-// Mock data - would come from backend
-const MOCK_MESSAGES: MessageItem[] = [
-    {
-        id: 1,
-        type: 'absence',
-        title: 'إشعار غياب',
-        content: 'نود إعلامكم بغياب الطالب عن الحصة الثانية يوم الأحد',
-        date: '2025-12-15',
-        isRead: false,
-    },
-    {
-        id: 2,
-        type: 'late',
-        title: 'تأخر عن الحضور',
-        content: 'تأخر الطالب عن الطابور الصباحي بـ 15 دقيقة',
-        date: '2025-12-14',
-        isRead: true,
-    },
-    {
-        id: 3,
-        type: 'teacher',
-        title: 'رسالة من معلم الرياضيات',
-        content: 'نرجو متابعة الطالب في الواجبات المنزلية',
-        date: '2025-12-13',
-        teacherName: 'أ. محمد العلي',
-        isRead: true,
-    },
-]
+type MessageFilter = 'all' | 'absence' | 'late' | 'teacher'
 
 export function GuardianMessagesPage() {
-    const { guardianSettings } = useGuardianContext()
+    const { currentNationalId, guardianSettings } = useGuardianContext()
+    const messagesQuery = useGuardianMessagesQuery(currentNationalId)
+
     const [expandedMessage, setExpandedMessage] = useState<number | null>(null)
-    const [activeFilter, setActiveFilter] = useState<'all' | 'absence' | 'late' | 'teacher'>('all')
+    const [activeFilter, setActiveFilter] = useState<MessageFilter>('all')
 
-    const filteredMessages = MOCK_MESSAGES.filter(msg =>
-        activeFilter === 'all' || msg.type === activeFilter
-    )
+    const messages = messagesQuery.data?.messages ?? []
+    const unreadCount = messagesQuery.data?.unread ?? 0
+    const isLoading = messagesQuery.isLoading
 
-    const unreadCount = MOCK_MESSAGES.filter(m => !m.isRead).length
+    const filteredMessages = useMemo(() => {
+        if (activeFilter === 'all') return messages
+        return messages.filter(msg => msg.type === activeFilter)
+    }, [messages, activeFilter])
+
+    const messageCounts = useMemo(() => ({
+        all: messages.length,
+        absence: messages.filter(m => m.type === 'absence').length,
+        late: messages.filter(m => m.type === 'late').length,
+        teacher: messages.filter(m => m.type === 'teacher').length,
+    }), [messages])
 
     return (
         <div className="space-y-4">
@@ -66,7 +44,7 @@ export function GuardianMessagesPage() {
             <div className="text-center">
                 <h2 className="text-xl font-bold text-slate-900">الرسائل</h2>
                 <p className="mt-1 text-sm text-slate-500">
-                    {unreadCount > 0 ? `لديك ${unreadCount} رسائل جديدة` : 'لا توجد رسائل جديدة'}
+                    {unreadCount > 0 ? `لديك ${unreadCount} رسائل جديدة` : 'جميع إشعارات الطالب'}
                 </p>
             </div>
 
@@ -76,51 +54,63 @@ export function GuardianMessagesPage() {
                     active={activeFilter === 'all'}
                     onClick={() => setActiveFilter('all')}
                     label="الكل"
-                    count={MOCK_MESSAGES.length}
+                    count={messageCounts.all}
                 />
                 <FilterButton
                     active={activeFilter === 'absence'}
                     onClick={() => setActiveFilter('absence')}
                     label="الغياب"
                     icon={<AlertTriangle className="h-4 w-4" />}
-                    count={MOCK_MESSAGES.filter(m => m.type === 'absence').length}
+                    count={messageCounts.absence}
                 />
                 <FilterButton
                     active={activeFilter === 'late'}
                     onClick={() => setActiveFilter('late')}
                     label="التأخر"
                     icon={<Clock className="h-4 w-4" />}
-                    count={MOCK_MESSAGES.filter(m => m.type === 'late').length}
+                    count={messageCounts.late}
                 />
                 <FilterButton
                     active={activeFilter === 'teacher'}
                     onClick={() => setActiveFilter('teacher')}
                     label="المعلمين"
                     icon={<User className="h-4 w-4" />}
-                    count={MOCK_MESSAGES.filter(m => m.type === 'teacher').length}
+                    count={messageCounts.teacher}
                 />
             </div>
 
+            {/* Loading state */}
+            {isLoading && (
+                <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+                    <span className="mr-2 text-sm text-slate-500">جاري تحميل الرسائل...</span>
+                </div>
+            )}
+
             {/* Messages list */}
-            <div className="space-y-3">
-                {filteredMessages.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center">
-                        <MessageSquare className="mx-auto h-12 w-12 text-slate-300" />
-                        <p className="mt-3 text-sm text-slate-500">لا توجد رسائل</p>
-                    </div>
-                ) : (
-                    filteredMessages.map((message) => (
-                        <MessageCard
-                            key={message.id}
-                            message={message}
-                            isExpanded={expandedMessage === message.id}
-                            onToggle={() => setExpandedMessage(
-                                expandedMessage === message.id ? null : message.id
-                            )}
-                        />
-                    ))
-                )}
-            </div>
+            {!isLoading && (
+                <div className="space-y-3">
+                    {filteredMessages.length === 0 ? (
+                        <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center">
+                            <MessageSquare className="mx-auto h-12 w-12 text-slate-300" />
+                            <p className="mt-3 text-sm text-slate-500">
+                                {messages.length === 0 ? 'لا توجد رسائل' : 'لا توجد رسائل في هذا التصنيف'}
+                            </p>
+                        </div>
+                    ) : (
+                        filteredMessages.map((message) => (
+                            <MessageCard
+                                key={message.id}
+                                message={message}
+                                isExpanded={expandedMessage === message.id}
+                                onToggle={() => setExpandedMessage(
+                                    expandedMessage === message.id ? null : message.id
+                                )}
+                            />
+                        ))
+                    )}
+                </div>
+            )}
 
             {/* Contact school button */}
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -192,7 +182,7 @@ function MessageCard({
     isExpanded,
     onToggle
 }: {
-    message: MessageItem
+    message: GuardianMessage
     isExpanded: boolean
     onToggle: () => void
 }) {
@@ -212,14 +202,19 @@ function MessageCard({
             color: 'text-indigo-600',
             bg: 'bg-indigo-100',
         },
+        general: {
+            icon: MessageSquare,
+            color: 'text-slate-600',
+            bg: 'bg-slate-100',
+        },
     }
 
-    const style = typeStyles[message.type]
+    const style = typeStyles[message.type] ?? typeStyles.general
     const Icon = style.icon
 
     return (
         <div
-            className={`rounded-2xl border bg-white shadow-sm transition ${message.isRead ? 'border-slate-200' : 'border-indigo-200 bg-indigo-50/30'
+            className={`rounded-2xl border bg-white shadow-sm transition ${message.is_read ? 'border-slate-200' : 'border-indigo-200 bg-indigo-50/30'
                 }`}
         >
             <button
@@ -232,10 +227,10 @@ function MessageCard({
                 </div>
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                        <p className={`font-semibold ${message.isRead ? 'text-slate-700' : 'text-slate-900'}`}>
+                        <p className={`font-semibold ${message.is_read ? 'text-slate-700' : 'text-slate-900'}`}>
                             {message.title}
                         </p>
-                        {!message.isRead && (
+                        {!message.is_read && (
                             <span className="h-2 w-2 rounded-full bg-indigo-500" />
                         )}
                     </div>
@@ -253,9 +248,9 @@ function MessageCard({
             {isExpanded && (
                 <div className="border-t border-slate-100 px-4 pb-4 pt-3">
                     <p className="text-sm text-slate-600 leading-relaxed">{message.content}</p>
-                    {message.teacherName && (
+                    {message.teacher_name && (
                         <p className="mt-2 text-xs text-slate-500">
-                            من: {message.teacherName}
+                            من: {message.teacher_name}
                         </p>
                     )}
                 </div>

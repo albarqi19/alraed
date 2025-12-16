@@ -121,3 +121,53 @@ export function useGuardianStoreOrderMutation() {
     },
   })
 }
+
+// ================== Guardian Dashboard Hooks ==================
+
+import {
+  fetchGuardianDashboard,
+  fetchGuardianMessages,
+  fetchGuardianAttendance,
+  fetchGuardianBehavior,
+  type GuardianDashboardData,
+  type GuardianMessagesData,
+  type GuardianAttendanceData,
+  type GuardianBehaviorData,
+} from './api'
+
+export function useGuardianDashboardQuery(nationalId: string | null) {
+  return useQuery<GuardianDashboardData>({
+    queryKey: ['guardian', 'dashboard', nationalId],
+    queryFn: () => fetchGuardianDashboard(nationalId as string),
+    enabled: Boolean(nationalId),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  })
+}
+
+export function useGuardianMessagesQuery(nationalId: string | null) {
+  return useQuery<GuardianMessagesData>({
+    queryKey: ['guardian', 'messages', nationalId],
+    queryFn: () => fetchGuardianMessages(nationalId as string),
+    enabled: Boolean(nationalId),
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  })
+}
+
+export function useGuardianAttendanceQuery(nationalId: string | null) {
+  return useQuery<GuardianAttendanceData>({
+    queryKey: ['guardian', 'attendance', nationalId],
+    queryFn: () => fetchGuardianAttendance(nationalId as string),
+    enabled: Boolean(nationalId),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  })
+}
+
+export function useGuardianBehaviorQuery(nationalId: string | null) {
+  return useQuery<GuardianBehaviorData>({
+    queryKey: ['guardian', 'behavior', nationalId],
+    queryFn: () => fetchGuardianBehavior(nationalId as string),
+    enabled: Boolean(nationalId),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  })
+}
+
