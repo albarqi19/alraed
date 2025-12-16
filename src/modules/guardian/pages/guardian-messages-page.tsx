@@ -8,34 +8,38 @@ import {
     ChevronDown,
     ChevronUp,
     Loader2,
+    School,
 } from 'lucide-react'
 import { useGuardianContext } from '../context/guardian-context'
 import { useGuardianMessagesQuery } from '../hooks'
 import type { GuardianMessage } from '../api'
 
-type MessageFilter = 'all' | 'absence' | 'late' | 'teacher'
+type MessageFilter = 'school' | 'teacher' | 'absence' | 'late'
 
 export function GuardianMessagesPage() {
     const { currentNationalId, guardianSettings } = useGuardianContext()
     const messagesQuery = useGuardianMessagesQuery(currentNationalId)
 
     const [expandedMessage, setExpandedMessage] = useState<number | null>(null)
-    const [activeFilter, setActiveFilter] = useState<MessageFilter>('all')
+    const [activeFilter, setActiveFilter] = useState<MessageFilter>('school')
 
     const messages = messagesQuery.data?.messages ?? []
     const unreadCount = messagesQuery.data?.unread ?? 0
     const isLoading = messagesQuery.isLoading
 
     const filteredMessages = useMemo(() => {
-        if (activeFilter === 'all') return messages
+        if (activeFilter === 'school') {
+            // School messages = general type (not absence, late, or teacher)
+            return messages.filter(msg => msg.type === 'general')
+        }
         return messages.filter(msg => msg.type === activeFilter)
     }, [messages, activeFilter])
 
     const messageCounts = useMemo(() => ({
-        all: messages.length,
+        school: messages.filter(m => m.type === 'general').length,
+        teacher: messages.filter(m => m.type === 'teacher').length,
         absence: messages.filter(m => m.type === 'absence').length,
         late: messages.filter(m => m.type === 'late').length,
-        teacher: messages.filter(m => m.type === 'teacher').length,
     }), [messages])
 
     return (
@@ -51,10 +55,18 @@ export function GuardianMessagesPage() {
             {/* Filter tabs */}
             <div className="flex gap-2 overflow-x-auto pb-2">
                 <FilterButton
-                    active={activeFilter === 'all'}
-                    onClick={() => setActiveFilter('all')}
-                    label="الكل"
-                    count={messageCounts.all}
+                    active={activeFilter === 'school'}
+                    onClick={() => setActiveFilter('school')}
+                    label="المدرسة"
+                    icon={<School className="h-4 w-4" />}
+                    count={messageCounts.school}
+                />
+                <FilterButton
+                    active={activeFilter === 'teacher'}
+                    onClick={() => setActiveFilter('teacher')}
+                    label="المعلمين"
+                    icon={<User className="h-4 w-4" />}
+                    count={messageCounts.teacher}
                 />
                 <FilterButton
                     active={activeFilter === 'absence'}
@@ -69,13 +81,6 @@ export function GuardianMessagesPage() {
                     label="التأخر"
                     icon={<Clock className="h-4 w-4" />}
                     count={messageCounts.late}
-                />
-                <FilterButton
-                    active={activeFilter === 'teacher'}
-                    onClick={() => setActiveFilter('teacher')}
-                    label="المعلمين"
-                    icon={<User className="h-4 w-4" />}
-                    count={messageCounts.teacher}
                 />
             </div>
 
@@ -163,8 +168,8 @@ function FilterButton({
             type="button"
             onClick={onClick}
             className={`flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition ${active
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
                 }`}
         >
             {icon}
