@@ -441,7 +441,7 @@ function WeeklyTab({ schedule, periodsPerDay }: { schedule: Record<string, Weekl
             const promises = Array.from(pendingChanges.values()).map(change =>
                 apiClient.post('/admin/teacher-standby/update-slot', {
                     slot_id: change.slotId,
-                    position: change.position,
+                    position: `standby_${change.position}_id`, // تحويل الرقم إلى الصيغة الصحيحة
                     teacher_id: change.teacherId
                 })
             )
