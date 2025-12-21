@@ -86,8 +86,8 @@ type AllStaffResponse = {
 // API Functions
 // =====================================================
 
-async function fetchDailyAbsences(date: string): Promise<DailyAbsencesResponse> {
-    const { data } = await apiClient.get(`/admin/teacher-standby/daily-absences?date=${date}`)
+async function fetchDailyAbsences(date: string, ignorePublished: boolean = false): Promise<DailyAbsencesResponse> {
+    const { data } = await apiClient.get(`/admin/teacher-standby/daily-absences?date=${date}&ignore_published=${ignorePublished ? '1' : '0'}`)
     return data
 }
 
@@ -136,11 +136,12 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
     const [editingPeriod, setEditingPeriod] = useState<{ teacherId: number; periodNumber: number } | null>(null)
     const [hasPublished, setHasPublished] = useState(false)
     const [isViewingPublished, setIsViewingPublished] = useState(false)
+    const [ignorePublished, setIgnorePublished] = useState(false)
 
     // Queries
     const absencesQuery = useQuery({
-        queryKey: ['standby-daily-absences', date],
-        queryFn: () => fetchDailyAbsences(date),
+        queryKey: ['standby-daily-absences', date, ignorePublished],
+        queryFn: () => fetchDailyAbsences(date, ignorePublished),
         enabled: isOpen,
     })
 
@@ -215,6 +216,7 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
         if (isOpen) {
             setStep(1)
             setEditingPeriod(null)
+            setIgnorePublished(false)
             // لا نعيد تعيين scheduleId هنا لأنه سيتم تحديثه من البيانات
         }
     }, [isOpen])
@@ -557,7 +559,7 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
                                                 onClick={() => {
                                                     setIsViewingPublished(false)
                                                     setScheduleId(null)
-                                                    absencesQuery.refetch()
+                                                    setIgnorePublished(true)
                                                 }}
                                                 className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-800 underline"
                                             >
