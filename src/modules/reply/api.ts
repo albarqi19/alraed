@@ -1,6 +1,6 @@
-// API functions for teacher message reply
+// API functions for teacher message reply and referral reply
 
-export interface ReplyData {
+export interface TeacherMessageData {
     student_name: string
     teacher_name: string
     subject_name: string
@@ -11,11 +11,24 @@ export interface ReplyData {
     expires_at: string
 }
 
+export interface ReferralData {
+    student_name: string
+    school_name: string
+    referral_title: string
+    referral_type: string
+    message_content: string // النص الذي كتبته الإدارة
+    sent_at: string
+    expires_at: string
+}
+
+export type ReplyData = TeacherMessageData | ReferralData
+
 export interface ReplyResponse {
     success: boolean
     message?: string
     error_code?: string
     can_reply?: boolean
+    reply_type?: 'teacher_message' | 'referral'
     data?: ReplyData
     replied_at?: string
     errors?: Record<string, string[]>

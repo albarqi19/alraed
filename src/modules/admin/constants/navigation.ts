@@ -130,6 +130,7 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
       { to: '/admin/referrals', label: 'جميع الإحالات', icon: ClipboardList, permission: 'admin.referrals' },
       { to: '/admin/referrals/guidance', label: 'إحالات الضعف الدراسي', icon: BookOpenCheck, permission: 'admin.referrals.guidance' },
       { to: '/admin/referrals/behavioral', label: 'إحالات المخالفات', icon: UserX, permission: 'admin.referrals.behavioral' },
+      { to: '/admin/parent-replies', label: 'ردود أولياء الأمور', icon: MessageCircle, permission: 'admin.parent-replies' },
     ],
   },
   {

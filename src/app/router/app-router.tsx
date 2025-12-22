@@ -91,6 +91,7 @@ import { NewReferralPage } from '@/modules/teacher/pages/new-referral-page'
 import { ReferralDetailPage } from '@/modules/teacher/pages/referral-detail-page'
 import { AdminReferralsPage } from '@/modules/admin/pages/admin-referrals-page'
 import { AdminReferralDetailPage } from '@/modules/admin/pages/admin-referral-detail-page'
+import { AdminParentRepliesPage } from '@/modules/admin/pages/admin-parent-replies-page'
 import {
   GuidanceAccessPage,
   GuidanceDashboardPage,
@@ -229,6 +230,7 @@ const appRoutes = [
           { path: 'referrals/guidance', element: <AdminReferralsPage /> },
           { path: 'referrals/behavioral', element: <AdminReferralsPage /> },
           { path: 'referrals/:id', element: <AdminReferralDetailPage /> },
+          { path: 'parent-replies', element: <AdminParentRepliesPage /> },
         ],
       },
       {
