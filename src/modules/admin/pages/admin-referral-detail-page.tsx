@@ -104,6 +104,7 @@ export function AdminReferralDetailPage() {
   const [parentMessageText, setParentMessageText] = useState('')
   const [meetingDate, setMeetingDate] = useState<string | null>(null)
   const [showDatePicker, setShowDatePicker] = useState(false)
+  const [enableReply, setEnableReply] = useState(false)
   const [showCaseModal, setShowCaseModal] = useState(false)
   const [showTreatmentPlanModal, setShowTreatmentPlanModal] = useState(false)
 
@@ -408,6 +409,11 @@ export function AdminReferralDetailPage() {
       message += `\n\nنرجو منكم الحضور إلى المدرسة يوم ${dayName} بتاريخ ${formattedDate}`
     }
 
+    // إضافة رابط الرد قبل اسم المدرسة إذا تم تفعيله
+    if (enableReply) {
+      message += '\n\n📩 للرد على هذه الرسالة:\n[سيتم إضافة الرابط تلقائياً عند الإرسال]'
+    }
+
     message += `\n\nإدارة ${schoolName}`
 
     return message
@@ -424,11 +430,13 @@ export function AdminReferralDetailPage() {
     try {
       await parentNotifyMutation.mutateAsync({
         id: referral.id,
-        message: completeMessage
+        message: completeMessage,
+        enable_reply: enableReply
       })
       setShowParentMessageModal(false)
       setParentMessageText('')
       setMeetingDate(null)
+      setEnableReply(false)
       refetch()
       toast({ type: 'success', title: 'تم إرسال الإشعار بنجاح' })
     } catch (err) {
@@ -1511,8 +1519,8 @@ export function AdminReferralDetailPage() {
               />
             </div>
 
-            {/* Meeting Date Section */}
-            <div className="mb-4">
+            {/* Meeting Date and Reply Options Section */}
+            <div className="mb-4 flex gap-2">
               {!meetingDate ? (
                 <button
                   onClick={() => setShowDatePicker(true)}
@@ -1537,6 +1545,19 @@ export function AdminReferralDetailPage() {
                   </button>
                 </div>
               )}
+
+              {/* Enable Reply Button */}
+              <button
+                onClick={() => setEnableReply(!enableReply)}
+                className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
+                  enableReply
+                    ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'
+                    : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                }`}
+              >
+                <i className={`bi ${enableReply ? 'bi-check-circle-fill' : 'bi-reply'}`} />
+                استقبال الرد
+              </button>
             </div>
 
             {/* Date Picker Modal */}

@@ -216,8 +216,8 @@ export function useNotifyParentMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ id, message }: { id: number; message: string }) => {
-      const { data } = await apiClient.post<ReferralDetailResponse>(`/admin/referrals/${id}/notify-parent`, { message })
+    mutationFn: async ({ id, message, enable_reply }: { id: number; message: string; enable_reply?: boolean }) => {
+      const { data } = await apiClient.post<ReferralDetailResponse>(`/admin/referrals/${id}/notify-parent`, { message, enable_reply })
       return data.data
     },
     onSuccess: () => {
