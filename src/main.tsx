@@ -57,7 +57,7 @@ const updateSW = registerSW({
         z-index: 9999;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       ">
-        ✅ التطبيق جاهز
+        ✅ التطبيق جاهز للعمل
       </div>
     `
     document.body.appendChild(toast)
