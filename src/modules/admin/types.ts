@@ -863,6 +863,8 @@ export interface WhatsappHistoryItem {
   recipient?: string | null
   recipient_name?: string | null
   recipient_phone?: string | null
+  parent_name?: string | null
+  parent_phone?: string | null
   student_name?: string | null
   student_grade?: string | null
   student_class?: string | null
