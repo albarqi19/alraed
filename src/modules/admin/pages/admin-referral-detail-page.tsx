@@ -104,7 +104,7 @@ export function AdminReferralDetailPage() {
   const [parentMessageText, setParentMessageText] = useState('')
   const [meetingDate, setMeetingDate] = useState<string | null>(null)
   const [showDatePicker, setShowDatePicker] = useState(false)
-  const [enableReply, setEnableReply] = useState(false)
+  const [enableReply, setEnableReply] = useState(true)
   const [showCaseModal, setShowCaseModal] = useState(false)
   const [showTreatmentPlanModal, setShowTreatmentPlanModal] = useState(false)
 
@@ -409,10 +409,8 @@ export function AdminReferralDetailPage() {
       message += `\n\nنرجو منكم الحضور إلى المدرسة يوم ${dayName} بتاريخ ${formattedDate}`
     }
 
-    // إضافة رابط الرد قبل اسم المدرسة إذا تم تفعيله
-    if (enableReply) {
-      message += '\n\n📩 للرد على هذه الرسالة:\n[سيتم إضافة الرابط تلقائياً عند الإرسال]'
-    }
+    // ملاحظة: رابط الرد سيتم إضافته تلقائياً من الباك إند إذا تم تفعيله
+    // لا نحتاج إضافته هنا لتجنب التكرار
 
     message += `\n\nإدارة ${schoolName}`
 
@@ -1549,11 +1547,10 @@ export function AdminReferralDetailPage() {
               {/* Enable Reply Button */}
               <button
                 onClick={() => setEnableReply(!enableReply)}
-                className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
-                  enableReply
-                    ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'
-                    : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
-                }`}
+                className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${enableReply
+                  ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'
+                  : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                  }`}
               >
                 <i className={`bi ${enableReply ? 'bi-check-circle-fill' : 'bi-reply'}`} />
                 استقبال الرد
