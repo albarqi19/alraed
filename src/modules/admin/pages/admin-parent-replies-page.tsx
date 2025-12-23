@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Loader2, MessageSquare, School, User, Calendar, Eye, EyeOff, CheckCheck, ExternalLink } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -51,13 +50,31 @@ export function AdminParentRepliesPage() {
     const queryClient = useQueryClient()
     const [activeTab, setActiveTab] = useState<'all' | 'referral' | 'teacher_message'>('all')
     const [statusFilter, setStatusFilter] = useState<'all' | 'unread' | 'read'>('all')
+    const [gradeFilter, setGradeFilter] = useState<string>('all')
+    const [classFilter, setClassFilter] = useState<string>('all')
+    const [searchQuery, setSearchQuery] = useState<string>('')
     const [selectedReply, setSelectedReply] = useState<ParentReply | null>(null)
 
+    // جلب خيارات الفلاتر (الصفوف والفصول المتاحة)
+    const { data: filterOptions } = useQuery<{ success: boolean; data: { grades: string[]; classes: string[] } }>({
+        queryKey: ['parent-replies-filter-options'],
+        queryFn: async () => {
+            const response = await apiClient.get('/admin/parent-replies/filter-options')
+            return response.data
+        },
+    })
+
     const { data, isLoading, error } = useQuery<ParentRepliesResponse>({
-        queryKey: ['parent-replies', activeTab, statusFilter],
+        queryKey: ['parent-replies', activeTab, statusFilter, gradeFilter, classFilter, searchQuery],
         queryFn: async () => {
             const response = await apiClient.get<ParentRepliesResponse>('/admin/parent-replies', {
-                params: { type: activeTab, status: statusFilter }
+                params: {
+                    type: activeTab,
+                    status: statusFilter,
+                    grade: gradeFilter !== 'all' ? gradeFilter : undefined,
+                    class_name: classFilter !== 'all' ? classFilter : undefined,
+                    search: searchQuery || undefined,
+                }
             })
             return response.data
         },
@@ -195,36 +212,70 @@ export function AdminParentRepliesPage() {
             {/* Tabs and Content */}
             <Card>
                 <CardHeader>
-                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
-                            <TabsList>
-                                <TabsTrigger value="all" className="gap-2">
-                                    الكل
-                                    {stats && <Badge variant="secondary">{stats.total}</Badge>}
-                                </TabsTrigger>
-                                <TabsTrigger value="referral" className="gap-2">
-                                    <School className="w-4 h-4" />
-                                    الإحالات
-                                    {stats && <Badge variant="secondary">{stats.referral.total}</Badge>}
-                                </TabsTrigger>
-                                <TabsTrigger value="teacher_message" className="gap-2">
-                                    <MessageSquare className="w-4 h-4" />
-                                    رسائل المعلمين
-                                    {stats && <Badge variant="secondary">{stats.teacher_message.total}</Badge>}
-                                </TabsTrigger>
-                            </TabsList>
-                        </Tabs>
+                    <div className="flex flex-col gap-4">
+                        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+                                <TabsList>
+                                    <TabsTrigger value="all" className="gap-2">
+                                        الكل
+                                        {stats && <Badge variant="secondary">{stats.total}</Badge>}
+                                    </TabsTrigger>
+                                    <TabsTrigger value="referral" className="gap-2">
+                                        <School className="w-4 h-4" />
+                                        الإحالات
+                                        {stats && <Badge variant="secondary">{stats.referral.total}</Badge>}
+                                    </TabsTrigger>
+                                    <TabsTrigger value="teacher_message" className="gap-2">
+                                        <MessageSquare className="w-4 h-4" />
+                                        رسائل المعلمين
+                                        {stats && <Badge variant="secondary">{stats.teacher_message.total}</Badge>}
+                                    </TabsTrigger>
+                                </TabsList>
+                            </Tabs>
 
-                        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
-                            <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="حالة القراءة" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">الكل</SelectItem>
-                                <SelectItem value="unread">غير مقروء</SelectItem>
-                                <SelectItem value="read">مقروء</SelectItem>
-                            </SelectContent>
-                        </Select>
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+                                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none w-full md:w-[180px]"
+                            >
+                                <option value="all">الكل</option>
+                                <option value="unread">غير مقروء</option>
+                                <option value="read">مقروء</option>
+                            </select>
+                        </div>
+
+                        {/* Filters Row */}
+                        <div className="flex flex-col gap-3 md:flex-row md:items-center">
+                            <div className="flex-1">
+                                <input
+                                    type="text"
+                                    placeholder="بحث بالاسم..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
+                                />
+                            </div>
+                            <select
+                                value={gradeFilter}
+                                onChange={(e) => setGradeFilter(e.target.value)}
+                                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none w-full md:w-[150px]"
+                            >
+                                <option value="all">الكل</option>
+                                {filterOptions?.data.grades.map((grade) => (
+                                    <option key={grade} value={grade}>{grade}</option>
+                                ))}
+                            </select>
+                            <select
+                                value={classFilter}
+                                onChange={(e) => setClassFilter(e.target.value)}
+                                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none w-full md:w-[150px]"
+                            >
+                                <option value="all">الكل</option>
+                                {filterOptions?.data.classes.map((className) => (
+                                    <option key={className} value={className}>{className}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
                 </CardHeader>
 
@@ -232,7 +283,26 @@ export function AdminParentRepliesPage() {
                     <div className="grid gap-6 lg:grid-cols-2">
                         {/* Replies List */}
                         <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                            {data?.data.length === 0 ? (
+                            {isLoading ? (
+                                <div className="space-y-3">
+                                    {[1, 2, 3, 4, 5].map((i) => (
+                                        <div key={i} className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 animate-pulse">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="flex-1 space-y-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="h-5 w-20 bg-slate-200 dark:bg-slate-700 rounded" />
+                                                        <div className="h-2 w-2 bg-slate-200 dark:bg-slate-700 rounded-full" />
+                                                    </div>
+                                                    <div className="h-4 w-32 bg-slate-200 dark:bg-slate-700 rounded" />
+                                                    <div className="h-3 w-48 bg-slate-200 dark:bg-slate-700 rounded" />
+                                                    <div className="h-3 w-24 bg-slate-200 dark:bg-slate-700 rounded" />
+                                                </div>
+                                                <div className="h-4 w-4 bg-slate-200 dark:bg-slate-700 rounded" />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : data?.data.length === 0 ? (
                                 <div className="text-center py-12 text-slate-500">
                                     <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
                                     <p>لا توجد ردود</p>
@@ -251,10 +321,15 @@ export function AdminParentRepliesPage() {
                                     >
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 mb-1">
+                                                <div className="flex items-center gap-2 mb-1 flex-wrap">
                                                     <Badge variant={reply.type === 'referral' ? 'default' : 'secondary'} className="text-xs">
                                                         {reply.type_label}
                                                     </Badge>
+                                                    {reply.type === 'teacher_message' && reply.receiver_name && (
+                                                        <span className="text-xs text-slate-500">
+                                                            ({reply.receiver_name})
+                                                        </span>
+                                                    )}
                                                     {!reply.is_read && (
                                                         <span className="w-2 h-2 rounded-full bg-sky-500" />
                                                     )}

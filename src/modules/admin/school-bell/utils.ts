@@ -20,8 +20,7 @@ export const WEEKDAYS: { value: Weekday; label: string; short: string }[] = [
 ]
 
 export const DEFAULT_AUDIO_ASSETS: BellAudioAsset[] = [
-  { id: 'calm-start-v1', title: 'بداية هادئة', durationSeconds: 9, status: 'ready', sizeKb: 410 },
-  { id: 'calm-end-v1', title: 'نهاية هادئة', durationSeconds: 7, status: 'ready', sizeKb: 360 },
+  // سيتم إضافة الأصوات لاحقاً
 ]
 
 export const DEFAULT_TONE_PROFILES: ToneProfile[] = [
@@ -91,7 +90,7 @@ export const DEFAULT_SCHEDULES: BellSchedule[] = [
     name: 'الجدول الشتوي',
     description: 'مناسب للفترة الشتوية، يبدأ الدوام الساعة 6:45 صباحًا.',
     isEnabled: false,
-    allowBackgroundExecution: true,
+    allowBackgroundExecution: false,  // معطّل افتراضياً
     toneProfileId: 'calm-voice-v1',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -225,9 +224,9 @@ export function loadInitialState(): BellManagerState {
       DEFAULT_AUDIO_ASSETS,
       DEFAULT_TONE_PROFILES,
       DEFAULT_SCHEDULES[0]?.id ?? null,
-      true,
+      false,  // backgroundExecution: معطّل افتراضياً
       false,
-      true,
+      false,  // showWidget: مخفي افتراضياً
     )
   }
 
@@ -239,9 +238,9 @@ export function loadInitialState(): BellManagerState {
         DEFAULT_AUDIO_ASSETS,
         DEFAULT_TONE_PROFILES,
         DEFAULT_SCHEDULES[0]?.id ?? null,
-        true,
+        false,  // backgroundExecution: معطّل افتراضياً
         false,
-        true,
+        false,  // showWidget: مخفي افتراضياً
       )
     }
 
@@ -254,9 +253,9 @@ export function loadInitialState(): BellManagerState {
       audioAssets,
       toneProfiles,
       parsed.activeScheduleId ?? schedules[0]?.id ?? null,
-      parsed.backgroundExecution ?? true,
+      parsed.backgroundExecution ?? false,  // معطّل افتراضياً
       Boolean(parsed.installReminderDismissed),
-      parsed.showWidget ?? true,
+      parsed.showWidget ?? false,  // مخفي افتراضياً
     )
   } catch (error) {
     console.warn('تعذر قراءة حالة الجرس المدرسي من التخزين المحلي. سيتم استخدام الإعدادات الافتراضية.', error)
@@ -265,9 +264,9 @@ export function loadInitialState(): BellManagerState {
       DEFAULT_AUDIO_ASSETS,
       DEFAULT_TONE_PROFILES,
       DEFAULT_SCHEDULES[0]?.id ?? null,
-      true,
+      false,  // backgroundExecution: معطّل افتراضياً
       false,
-      true,
+      false,  // showWidget: مخفي افتراضياً
     )
   }
 }

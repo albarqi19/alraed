@@ -22,13 +22,13 @@ export function GlobalBellWidget() {
   } = useBellManager()
   const location = useLocation()
   const pushToast = useToast()
-  
-  // حالة إظهار/إخفاء الويدجت - مغلق بشكل افتراضي
+
+  // حالة إظهار/إخفاء الويدجت - مخفي بشكل افتراضي
   const [isWidgetVisible, setIsWidgetVisible] = useState(() => {
     const saved = localStorage.getItem(WIDGET_VISIBILITY_KEY)
-    return saved === 'true' // افتراضياً false (مغلق)
+    return saved === 'true' // افتراضياً false
   })
-  
+
   // حفظ حالة الرؤية في localStorage
   useEffect(() => {
     localStorage.setItem(WIDGET_VISIBILITY_KEY, String(isWidgetVisible))
@@ -105,7 +105,7 @@ export function GlobalBellWidget() {
         >
           <X className="h-4 w-4" />
         </button>
-        
+
         <div className="flex items-center justify-between gap-2">
           <span className="text-[11px] font-semibold uppercase tracking-[0.35em] text-emerald-300">
             الوقت الآن
