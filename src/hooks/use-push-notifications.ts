@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { fcmService, type PushNotificationPayload } from '@/services/notifications/fcm-service'
 import { useAuthStore } from '@/modules/auth/store/auth-store'
-import { apiClient } from '@/services/api/client'
 
 interface UsePushNotificationsResult {
   isSupported: boolean
@@ -138,7 +137,7 @@ async function saveFcmTokenToServer(token: string, _userId: number): Promise<voi
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('teacher_token')}`,
+        Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
       },
       body: JSON.stringify({
         token,
@@ -167,7 +166,7 @@ async function deleteFcmTokenFromServer(token: string, _userId: number): Promise
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('teacher_token')}`,
+        Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
       },
       body: JSON.stringify({ token }),
     })
