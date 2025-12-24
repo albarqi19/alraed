@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { fcmService, type PushNotificationPayload } from '@/services/notifications/fcm-service'
 import { useAuthStore } from '@/modules/auth/store/auth-store'
+import { apiClient } from '@/services/api/client'
 
 interface UsePushNotificationsResult {
   isSupported: boolean
