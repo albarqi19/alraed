@@ -2,6 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { fcmService, type PushNotificationPayload } from '@/services/notifications/fcm-service'
 import { useAuthStore } from '@/modules/auth/store/auth-store'
 
+// استخدام VITE_API_BASE_URL من environment variables
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.brqq.site/api'
+
 interface UsePushNotificationsResult {
   isSupported: boolean
   isEnabled: boolean
@@ -133,7 +136,7 @@ export function usePushNotifications(): UsePushNotificationsResult {
  */
 async function saveFcmTokenToServer(token: string, _userId: number): Promise<void> {
   try {
-    const response = await fetch('/api/fcm/token', {
+    const response = await fetch(`${API_BASE_URL}/fcm/token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -162,7 +165,7 @@ async function saveFcmTokenToServer(token: string, _userId: number): Promise<voi
  */
 async function deleteFcmTokenFromServer(token: string, _userId: number): Promise<void> {
   try {
-    const response = await fetch('/api/fcm/token', {
+    const response = await fetch(`${API_BASE_URL}/fcm/token`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',

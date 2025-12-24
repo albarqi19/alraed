@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { usePushNotifications } from '@/hooks/use-push-notifications'
 import { useToast } from '@/shared/feedback/use-toast'
 
+// استخدام VITE_API_BASE_URL من environment variables
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.brqq.site/api'
+
 interface NotificationModalProps {
   isOpen: boolean
   onClose: () => void
@@ -71,7 +74,7 @@ export function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
   const handleTest = async () => {
     setIsTesting(true)
     try {
-      const response = await fetch('/api/fcm/token/test', {
+      const response = await fetch(`${API_BASE_URL}/fcm/token/test`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
