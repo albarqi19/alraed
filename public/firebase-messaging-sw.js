@@ -8,7 +8,7 @@
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js')
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js')
 
-// إعدادات Firebase - مباشرة
+// إعدادات Firebase
 const firebaseConfig = {
   apiKey: 'AIzaSyAeJ0Q7DnO1w2veu4MwoUGIcZKDy1KxBAM',
   authDomain: 'alraed-8db3a.firebaseapp.com',
@@ -21,103 +21,76 @@ const firebaseConfig = {
 
 // تهيئة Firebase
 try {
-  if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig)
-    console.log('[FCM SW] Firebase initialized')
-  }
+  firebase.initializeApp(firebaseConfig)
+  console.log('[FCM SW] ✅ Firebase initialized')
 
   const messaging = firebase.messaging()
 
-  // التعامل مع الرسائل في الخلفية
+  // التعامل مع الرسائل في الخلفية - هذا هو المهم!
   messaging.onBackgroundMessage((payload) => {
-    console.log('[FCM SW] Received background message:', payload)
+    console.log('[FCM SW] 📩 Background message received:', payload)
 
-    const notificationTitle = payload.notification?.title || payload.data?.title || 'إشعار جديد'
-    const notificationOptions = {
-      body: payload.notification?.body || payload.data?.body || '',
-      icon: payload.notification?.icon || '/icons/icon-192x192.png',
+    // استخراج البيانات
+    const title = payload.notification?.title || payload.data?.title || 'إشعار جديد'
+    const body = payload.notification?.body || payload.data?.body || ''
+    const icon = payload.notification?.icon || '/icons/icon-192x192.png'
+
+    console.log('[FCM SW] 🔔 Showing notification:', title)
+
+    // عرض الإشعار
+    return self.registration.showNotification(title, {
+      body: body,
+      icon: icon,
       badge: '/icons/icon-96x96.png',
-      tag: payload.data?.tag || `notification-${Date.now()}`,
+      tag: `fcm-${Date.now()}`,
       requireInteraction: false,
-      data: payload.data || {},
-      actions: [
-        {
-          action: 'view',
-          title: 'عرض',
-        },
-        {
-          action: 'dismiss',
-          title: 'تجاهل',
-        },
-      ],
       vibrate: [200, 100, 200],
-      silent: false,
-    }
-
-    return self.registration.showNotification(notificationTitle, notificationOptions)
+      data: {
+        url: payload.data?.url || payload.notification?.click_action || '/',
+        ...payload.data
+      }
+    })
   })
 
-  console.log('[FCM SW] Service Worker ready')
+  console.log('[FCM SW] ✅ Service Worker ready')
 } catch (error) {
-  console.error('[FCM SW] Error initializing Firebase:', error)
+  console.error('[FCM SW] ❌ Error:', error)
 }
 
 // التعامل مع النقر على الإشعار
 self.addEventListener('notificationclick', (event) => {
-  console.log('[FCM SW] Notification clicked:', event)
+  console.log('[FCM SW] 👆 Notification clicked')
 
   event.notification.close()
 
-  const data = event.notification.data || {}
-  let url = data.url || data.click_action || '/teacher'
+  const url = event.notification.data?.url || '/'
+  const fullUrl = new URL(url, self.location.origin).href
 
-  // التحقق من نوع الإجراء
-  if (event.action === 'view') {
-    url = data.url || '/teacher/schedule'
-  } else if (event.action === 'dismiss') {
-    return
-  }
-
-  // فتح أو التركيز على النافذة
   event.waitUntil(
-    self.clients
-      .matchAll({
-        type: 'window',
-        includeUncontrolled: true,
-      })
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then((clientList) => {
         // البحث عن نافذة مفتوحة
         for (const client of clientList) {
-          if (client.url.includes('/teacher') && 'focus' in client) {
-            client.postMessage({
-              type: 'NOTIFICATION_CLICKED',
-              data: data,
-            })
+          if (client.url === fullUrl && 'focus' in client) {
             return client.focus()
           }
         }
-
-        // فتح نافذة جديدة إذا لم تكن موجودة
-        if (self.clients.openWindow) {
-          return self.clients.openWindow(url)
+        // فتح نافذة جديدة
+        if (clients.openWindow) {
+          return clients.openWindow(fullUrl)
         }
       })
   )
 })
 
-// التعامل مع إغلاق الإشعار
-self.addEventListener('notificationclose', (event) => {
-  console.log('[FCM SW] Notification closed:', event.notification.tag)
-})
-
-// تهيئة عند تنشيط Service Worker
+// تفعيل Service Worker
 self.addEventListener('activate', (event) => {
-  console.log('[FCM SW] Service Worker activated')
-  event.waitUntil(self.clients.claim())
+  console.log('[FCM SW] 🟢 Activated')
+  event.waitUntil(clients.claim())
 })
 
-// تهيئة عند التثبيت
+// تثبيت Service Worker
 self.addEventListener('install', (event) => {
-  console.log('[FCM SW] Service Worker installed')
+  console.log('[FCM SW] 📦 Installing')
   self.skipWaiting()
 })
