@@ -30,21 +30,38 @@ class FCMService {
   private currentToken: string | null = null
   private tokenListeners: ((token: string | null) => void)[] = []
   private messageListeners: ((payload: PushNotificationPayload) => void)[] = []
+  private initialized = false
+  private initializing = false
+  private foregroundListenerSetup = false
 
   /**
-   * تهيئة خدمة FCM
+   * تهيئة خدمة FCM (مرة واحدة فقط)
    */
   async initialize(): Promise<boolean> {
+    // إذا تمت التهيئة مسبقاً، لا تعيدها
+    if (this.initialized) {
+      return true
+    }
+
+    // إذا التهيئة جارية، انتظر
+    if (this.initializing) {
+      return false
+    }
+
+    this.initializing = true
+
     try {
       // التحقق من دعم المتصفح
       if (!this.isSupported()) {
         console.warn('[FCM] Push notifications not supported in this browser')
+        this.initializing = false
         return false
       }
 
       const app = getFirebaseApp()
       if (!app) {
         console.warn('[FCM] Firebase app not initialized')
+        this.initializing = false
         return false
       }
 
@@ -56,10 +73,13 @@ class FCMService {
       // الاستماع للرسائل في المقدمة
       this.setupForegroundListener()
 
+      this.initialized = true
+      this.initializing = false
       console.log('[FCM] Service initialized successfully')
       return true
     } catch (error) {
       console.error('[FCM] Failed to initialize:', error)
+      this.initializing = false
       return false
     }
   }
@@ -77,16 +97,22 @@ class FCMService {
   }
 
   /**
-   * تسجيل Service Worker
+   * تسجيل Service Worker (أو استخدام المسجل مسبقاً)
    */
   private async registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
     try {
-      // تسجيل Firebase Messaging SW
-      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-        scope: '/',
-      })
+      // التحقق من وجود SW مسجل مسبقاً
+      let registration = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js')
 
-      // إرسال إعدادات Firebase إلى SW
+      if (!registration) {
+        // تسجيل Firebase Messaging SW
+        registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+          scope: '/',
+        })
+        console.log('[FCM] Service Worker registered:', registration.scope)
+      }
+
+      // إرسال إعدادات Firebase إلى SW (مرة واحدة فقط عند التسجيل الجديد)
       const firebaseConfig = {
         apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
         authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -96,22 +122,25 @@ class FCMService {
         appId: import.meta.env.VITE_FIREBASE_APP_ID,
       }
 
-      // انتظار تفعيل SW
+      // انتظار تفعيل SW ثم إرسال الإعدادات
       if (registration.active) {
         registration.active.postMessage({
           type: 'FIREBASE_CONFIG',
           config: firebaseConfig,
         })
-      } else {
-        registration.addEventListener('activate', () => {
-          registration.active?.postMessage({
-            type: 'FIREBASE_CONFIG',
-            config: firebaseConfig,
-          })
+      } else if (registration.installing || registration.waiting) {
+        const sw = registration.installing || registration.waiting
+        sw?.addEventListener('statechange', function handler() {
+          if (this.state === 'activated') {
+            registration?.active?.postMessage({
+              type: 'FIREBASE_CONFIG',
+              config: firebaseConfig,
+            })
+            this.removeEventListener('statechange', handler)
+          }
         })
       }
 
-      console.log('[FCM] Service Worker registered:', registration.scope)
       return registration
     } catch (error) {
       console.error('[FCM] Service Worker registration failed:', error)
@@ -175,10 +204,11 @@ class FCMService {
   }
 
   /**
-   * إعداد مستمع الرسائل في المقدمة (عندما التطبيق مفتوح)
+   * إعداد مستمع الرسائل في المقدمة (عندما التطبيق مفتوح) - مرة واحدة فقط
    */
   private setupForegroundListener(): void {
-    if (!this.messaging) return
+    if (!this.messaging || this.foregroundListenerSetup) return
+    this.foregroundListenerSetup = true
 
     onMessage(this.messaging, (payload) => {
       console.log('[FCM] Foreground message received:', payload)

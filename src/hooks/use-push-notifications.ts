@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { fcmService, type PushNotificationPayload } from '@/services/notifications/fcm-service'
 import { useAuthStore } from '@/modules/auth/store/auth-store'
 
@@ -18,7 +18,7 @@ interface UsePushNotificationsResult {
 export function usePushNotifications(): UsePushNotificationsResult {
   const user = useAuthStore((state) => state.user)
   const [isSupported] = useState(() => fcmService.isSupported())
-  const [isEnabled, setIsEnabled] = useState(false)
+  const [isEnabled, setIsEnabled] = useState(() => fcmService.isEnabled())
   const [isLoading, setIsLoading] = useState(false)
   const [permissionState, setPermissionState] = useState<NotificationPermission>(() => {
     if (typeof window === 'undefined' || !('Notification' in window)) {
@@ -26,15 +26,19 @@ export function usePushNotifications(): UsePushNotificationsResult {
     }
     return Notification.permission
   })
-  const [fcmToken, setFcmToken] = useState<string | null>(null)
+  const [fcmToken, setFcmToken] = useState<string | null>(() => fcmService.getCurrentToken())
+  const initializedRef = useRef(false)
 
-  // تهيئة FCM عند التحميل
+  // تهيئة FCM عند التحميل (مرة واحدة فقط)
   useEffect(() => {
-    if (!isSupported) return
+    if (!isSupported || initializedRef.current) return
+    initializedRef.current = true
+
+    let mounted = true
 
     const initFCM = async () => {
       const initialized = await fcmService.initialize()
-      if (initialized) {
+      if (initialized && mounted) {
         const token = fcmService.getCurrentToken()
         setFcmToken(token)
         setIsEnabled(!!token)
@@ -46,11 +50,16 @@ export function usePushNotifications(): UsePushNotificationsResult {
 
     // الاستماع لتغييرات Token
     const unsubscribe = fcmService.onTokenChange((token) => {
-      setFcmToken(token)
-      setIsEnabled(!!token)
+      if (mounted) {
+        setFcmToken(token)
+        setIsEnabled(!!token)
+      }
     })
 
-    return unsubscribe
+    return () => {
+      mounted = false
+      unsubscribe()
+    }
   }, [isSupported])
 
   // تفعيل الإشعارات
