@@ -49,6 +49,8 @@ interface AutoCallProviderProps {
   schoolIdOverride?: string | null
   historyLimit?: number
   allowFallbackSchoolId?: boolean
+  /** إذا كان true، لن يتم تفعيل الاستماع لـ Firestore */
+  disabled?: boolean
 }
 
 interface AutoCallLoadingState {
@@ -95,15 +97,12 @@ function normalizeTimestamp(value: unknown): string | null {
 }
 
 function normalizeSettings(data: DocumentData | undefined, envGeofence: AutoCallSettings['geofence'] | null): AutoCallSettings {
-  console.log('🔧 normalizeSettings called with:', { data, envGeofence })
-  
   const base: AutoCallSettings = {
     ...DEFAULT_AUTO_CALL_SETTINGS,
     geofence: envGeofence ?? DEFAULT_AUTO_CALL_SETTINGS.geofence ?? null,
   }
 
   if (!data) {
-    console.log('⚠️ No data provided, returning base settings:', base)
     return base
   }
 
@@ -138,8 +137,7 @@ function normalizeSettings(data: DocumentData | undefined, envGeofence: AutoCall
     updatedAt: normalizeTimestamp(data.updatedAt) ?? base.updatedAt ?? null,
     createdAt: normalizeTimestamp(data.createdAt) ?? base.createdAt ?? null,
   }
-  
-  console.log('✅ Returning normalized settings:', normalized)
+
   return normalized
 }
 
@@ -217,6 +215,7 @@ export function AutoCallProvider({
   schoolIdOverride = null,
   historyLimit = AUTO_CALL_HISTORY_LIMIT,
   allowFallbackSchoolId = true,
+  disabled = false,
 }: AutoCallProviderProps) {
   const authSchoolId = useAuthStore((state) => state.user?.school_id)
   const fallbackSchoolId = useMemo(() => {
@@ -230,23 +229,12 @@ export function AutoCallProvider({
     return String(raw)
   }, [allowFallbackSchoolId])
   const schoolId = useMemo(() => {
-    const resolved = schoolIdOverride != null
+    return schoolIdOverride != null
       ? schoolIdOverride
       : authSchoolId != null
         ? String(authSchoolId)
         : fallbackSchoolId
-    
-    console.log('🏫 School ID resolution:', {
-      schoolIdOverride,
-      authSchoolId,
-      fallbackSchoolId,
-      allowFallbackSchoolId,
-      'VITE_AUTO_CALL_FALLBACK_SCHOOL_ID': import.meta.env.VITE_AUTO_CALL_FALLBACK_SCHOOL_ID,
-      resolved,
-    })
-    
-    return resolved
-  }, [allowFallbackSchoolId, authSchoolId, fallbackSchoolId, schoolIdOverride])
+  }, [authSchoolId, fallbackSchoolId, schoolIdOverride])
 
   const envGeofence = useMemo(resolveEnvGeofence, [])
 
@@ -259,6 +247,12 @@ export function AutoCallProvider({
   const firestoreRef = useRef<Firestore | null>(null)
 
   useEffect(() => {
+    // إذا كان معطلاً، لا نحتاج Firestore
+    if (disabled) {
+      firestoreRef.current = null
+      return
+    }
+
     try {
       const client = getFirestoreClient()
       if (client) {
@@ -274,10 +268,10 @@ export function AutoCallProvider({
       firestoreRef.current = null
       setError(null) // لا نعتبره خطأ لتجنب كسر الصفحة
     }
-  }, [])
+  }, [disabled])
 
   useEffect(() => {
-    if (!schoolId || !firestoreRef.current) {
+    if (disabled || !schoolId || !firestoreRef.current) {
       setSettings(null)
       return
     }
@@ -289,16 +283,9 @@ export function AutoCallProvider({
     const unsubscribe = onSnapshot(
       settingsRef,
       (snapshot) => {
-        console.log('📡 Firestore settings snapshot received:', {
-          exists: snapshot.exists(),
-          data: snapshot.data(),
-          path: settingsRef.path,
-          schoolId,
-        })
         setLoading((prev) => ({ ...prev, settings: false }))
         setError(null)
         const normalizedSettings = normalizeSettings(snapshot.data(), envGeofence)
-        console.log('✨ Normalized settings:', normalizedSettings)
         setSettings(normalizedSettings)
       },
       (snapshotError) => {
@@ -309,10 +296,10 @@ export function AutoCallProvider({
     )
 
     return () => unsubscribe()
-  }, [envGeofence, schoolId])
+  }, [disabled, envGeofence, schoolId])
 
   useEffect(() => {
-    if (!schoolId || !firestoreRef.current) {
+    if (disabled || !schoolId || !firestoreRef.current) {
       setQueue([])
       return
     }
@@ -340,10 +327,10 @@ export function AutoCallProvider({
     )
 
     return () => unsubscribe()
-  }, [schoolId])
+  }, [disabled, schoolId])
 
   useEffect(() => {
-    if (!schoolId || !firestoreRef.current) {
+    if (disabled || !schoolId || !firestoreRef.current) {
       setHistory([])
       return
     }
@@ -379,10 +366,10 @@ export function AutoCallProvider({
     )
 
     return () => unsubscribe()
-  }, [historyLimit, schoolId])
+  }, [disabled, historyLimit, schoolId])
 
   useEffect(() => {
-    if (!schoolId || !firestoreRef.current) {
+    if (disabled || !schoolId || !firestoreRef.current) {
       setGuardianStatuses(new Map())
       return
     }
@@ -410,7 +397,7 @@ export function AutoCallProvider({
     )
 
     return () => unsubscribe()
-  }, [schoolId])
+  }, [disabled, schoolId])
 
   const updateSettings = useCallback(async (payload: Partial<AutoCallSettings>) => {
     if (!schoolId || !firestoreRef.current) {

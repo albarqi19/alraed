@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useMemo, type ReactNode } from 'react'
-import { BrowserRouter } from 'react-router-dom'
+import { BrowserRouter, useLocation } from 'react-router-dom'
 import { DirectionProvider } from './direction-provider'
 import { ToastProvider } from '@/shared/feedback/toast-provider'
 import { AuthBootstrap } from './auth-bootstrap'
@@ -11,6 +11,28 @@ import { IdleTimeoutProvider } from './idle-timeout-provider'
 
 interface AppProvidersProps {
   children: ReactNode
+}
+
+/** المسارات التي تحتاج AutoCallProvider */
+const AUTO_CALL_ENABLED_PATHS = [
+  '/admin/auto-call',
+  '/auto-call',
+  '/guardian',
+]
+
+function AutoCallWrapper({ children }: { children: ReactNode }) {
+  const location = useLocation()
+
+  // تفعيل AutoCall فقط على المسارات المحددة
+  const isAutoCallEnabled = AUTO_CALL_ENABLED_PATHS.some(
+    (path) => location.pathname.startsWith(path)
+  )
+
+  return (
+    <AutoCallProvider disabled={!isAutoCallEnabled}>
+      {children}
+    </AutoCallProvider>
+  )
 }
 
 export function AppProviders({ children }: AppProvidersProps) {
@@ -40,7 +62,7 @@ export function AppProviders({ children }: AppProvidersProps) {
               <AuthBootstrap>
                 <IdleTimeoutProvider>
                   <BellManagerProvider>
-                    <AutoCallProvider>{children}</AutoCallProvider>
+                    <AutoCallWrapper>{children}</AutoCallWrapper>
                   </BellManagerProvider>
                 </IdleTimeoutProvider>
               </AuthBootstrap>
