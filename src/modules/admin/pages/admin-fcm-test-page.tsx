@@ -15,6 +15,7 @@ export default function FCMTestPage() {
     const [selectedUserId, setSelectedUserId] = useState('')
     const [title, setTitle] = useState('إشعار تجريبي 🔔')
     const [body, setBody] = useState('هذا إشعار تجريبي من لوحة الاختبار')
+    const [imageUrl, setImageUrl] = useState('') // صورة اختيارية
     const [loading, setLoading] = useState(false)
     const [sending, setSending] = useState(false)
 
@@ -53,6 +54,7 @@ export default function FCMTestPage() {
                 user_id: parseInt(selectedUserId),
                 title: title.trim(),
                 body: body.trim(),
+                image: imageUrl.trim() || undefined, // صورة اختيارية
             })
 
             if (response.data.success) {
@@ -154,6 +156,23 @@ export default function FCMTestPage() {
                         </p>
                     </div>
 
+                    {/* Image URL Input */}
+                    <div className="mb-6">
+                        <label className="mb-2 block text-sm font-semibold text-gray-700">
+                            رابط الصورة (اختياري)
+                        </label>
+                        <input
+                            type="url"
+                            value={imageUrl}
+                            onChange={(e) => setImageUrl(e.target.value)}
+                            placeholder="https://example.com/image.jpg"
+                            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        />
+                        <p className="mt-1 text-xs text-gray-500">
+                            اختياري: أضف رابط صورة لتظهر في الإشعار
+                        </p>
+                    </div>
+
                     {/* Preview */}
                     <div className="mb-6 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-4">
                         <p className="mb-2 text-xs font-semibold uppercase text-gray-500">
@@ -169,6 +188,14 @@ export default function FCMTestPage() {
                                     <p className="mt-1 text-sm text-gray-600">
                                         {body || 'نص الإشعار'}
                                     </p>
+                                    {imageUrl && (
+                                        <img
+                                            src={imageUrl}
+                                            alt="Preview"
+                                            className="mt-2 max-h-40 w-full rounded object-cover"
+                                            onError={(e) => e.currentTarget.style.display = 'none'}
+                                        />
+                                    )}
                                     <p className="mt-2 text-xs text-gray-400">الآن</p>
                                 </div>
                             </div>
