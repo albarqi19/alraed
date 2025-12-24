@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLocalNotifications } from '@/hooks/use-local-notifications'
+import { usePushNotifications } from '@/hooks/use-push-notifications'
 import { useTeacherSessionsQuery } from '../hooks'
 import { useToast } from '@/shared/feedback/use-toast'
 
@@ -9,20 +10,30 @@ interface NotificationModalProps {
 }
 
 /**
- * Modal إعدادات الإشعارات المحلية للحصص
+ * Modal إعدادات الإشعارات (Push + Local)
  */
 export function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
   const toast = useToast()
+
+  // الإشعارات المحلية (Fallback)
   const {
-    isSupported,
-    hasPermission,
-    isRequesting,
-    requestPermission,
+    isSupported: isLocalSupported,
+    hasPermission: hasLocalPermission,
     scheduleWeeklyNotifications,
-    cancelAllNotifications,
-    sendTestNotification,
+    cancelAllNotifications: cancelLocalNotifications,
+    sendTestNotification: sendLocalTestNotification,
     scheduledCount,
   } = useLocalNotifications()
+
+  // Push Notifications (Firebase)
+  const {
+    isSupported: isPushSupported,
+    isEnabled: isPushEnabled,
+    isLoading: isPushLoading,
+    permissionState,
+    enableNotifications: enablePushNotifications,
+    disableNotifications: disablePushNotifications,
+  } = usePushNotifications()
 
   const { data: sessionsData } = useTeacherSessionsQuery()
   const sessions = sessionsData?.sessions || []
@@ -44,30 +55,46 @@ export function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
     setIsAppInstalled(checkIfInstalled())
   }, [])
 
+  // تحديد نوع الإشعارات المتاح
+  const isAnySupported = isPushSupported || isLocalSupported
+  const isAnyEnabled = isPushEnabled || (hasLocalPermission && scheduledCount > 0)
+
   // تفعيل الإشعارات
   const handleEnable = async () => {
-    if (sessions.length === 0) {
-      toast({ type: 'warning', title: 'لا توجد حصص لجدولة الإشعارات' })
-      return
-    }
-
     setIsEnabling(true)
     try {
-      if (!hasPermission) {
-        const granted = await requestPermission()
-        if (!granted) {
-          toast({ type: 'error', title: 'لم يتم منح إذن الإشعارات' })
+      // محاولة تفعيل Push Notifications أولاً
+      if (isPushSupported) {
+        const success = await enablePushNotifications()
+        if (success) {
+          toast({
+            type: 'success',
+            title: 'تم تفعيل الإشعارات',
+            description: 'ستصلك إشعارات الحصص حتى عند إغلاق التطبيق',
+          })
+
+          // جدولة الإشعارات المحلية أيضاً كنسخة احتياطية
+          if (isLocalSupported && sessions.length > 0) {
+            await scheduleWeeklyNotifications(sessions)
+          }
           return
         }
       }
 
-      await scheduleWeeklyNotifications(sessions)
+      // Fallback للإشعارات المحلية
+      if (isLocalSupported) {
+        if (sessions.length === 0) {
+          toast({ type: 'warning', title: 'لا توجد حصص لجدولة الإشعارات' })
+          return
+        }
 
-      toast({
-        type: 'success',
-        title: 'تم تفعيل الإشعارات',
-        description: `سيتم تذكيرك قبل 5 دقائق من كل حصة`,
-      })
+        await scheduleWeeklyNotifications(sessions)
+        toast({
+          type: 'success',
+          title: 'تم تفعيل الإشعارات المحلية',
+          description: 'ستصلك إشعارات عندما يكون التطبيق مفتوحاً',
+        })
+      }
     } catch (error) {
       console.error('خطأ في تفعيل الإشعارات:', error)
       toast({ type: 'error', title: 'فشل تفعيل الإشعارات' })
@@ -76,10 +103,16 @@ export function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
     }
   }
 
+  // تعطيل الإشعارات
   const handleDisable = async () => {
     setIsDisabling(true)
     try {
-      await cancelAllNotifications()
+      if (isPushEnabled) {
+        await disablePushNotifications()
+      }
+      if (scheduledCount > 0) {
+        await cancelLocalNotifications()
+      }
       toast({ type: 'success', title: 'تم إلغاء جميع الإشعارات' })
     } catch (error) {
       console.error('خطأ في إلغاء الإشعارات:', error)
@@ -89,10 +122,11 @@ export function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
     }
   }
 
+  // إرسال إشعار تجريبي
   const handleTest = async () => {
     setIsTesting(true)
     try {
-      await sendTestNotification()
+      await sendLocalTestNotification()
       toast({ type: 'success', title: 'تم إرسال إشعار تجريبي' })
     } catch (error) {
       console.error('خطأ في إرسال الإشعار التجريبي:', error)
@@ -131,14 +165,14 @@ export function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
             {/* Content */}
             <div className="max-h-[70vh] space-y-6 overflow-y-auto px-6 py-6">
               {/* تحذير إذا المتصفح لا يدعم */}
-              {!isSupported && (
+              {!isAnySupported && (
                 <div className="rounded-xl border-2 border-rose-200 bg-rose-50 p-4">
                   <div className="flex items-start gap-3 text-right">
                     <div className="flex-shrink-0 text-3xl">⚠️</div>
                     <div className="flex-1">
                       <h3 className="text-base font-bold text-rose-900">الإشعارات غير مدعومة</h3>
                       <p className="mt-1 text-sm text-rose-700">
-                        متصفحك لا يدعم الإشعارات المحلية. يرجى استخدام متصفح حديث.
+                        متصفحك لا يدعم الإشعارات. يرجى استخدام متصفح حديث مثل Chrome أو Firefox.
                       </p>
                     </div>
                   </div>
@@ -146,12 +180,12 @@ export function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
               )}
 
               {/* تحذير إذا لم يكن التطبيق مثبتاً */}
-              {isSupported && !isAppInstalled && (
+              {isAnySupported && !isAppInstalled && (
                 <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4">
                   <div className="flex items-start gap-3 text-right">
                     <div className="flex-shrink-0 text-2xl">📱</div>
                     <div className="flex-1">
-                      <h4 className="text-base font-bold text-amber-900">ثبّت التطبيق أولاً</h4>
+                      <h4 className="text-base font-bold text-amber-900">ثبّت التطبيق للحصول على أفضل تجربة</h4>
                       <p className="mt-1 text-sm text-amber-800 leading-relaxed">
                         للحصول على إشعارات موثوقة ومستمرة، يُنصح بتثبيت التطبيق على جهازك.
                         اضغط على زر <strong>المشاركة</strong> في المتصفح ثم اختر{' '}
@@ -162,7 +196,7 @@ export function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
                 </div>
               )}
 
-              {isSupported && (
+              {isAnySupported && (
                 <>
                   {/* وصف الميزة */}
                   <div className="text-center">
@@ -177,25 +211,53 @@ export function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
                   <div
                     className="rounded-xl border-2 p-5 text-center"
                     style={{
-                      borderColor: scheduledCount > 0 ? '#10b981' : '#94a3b8',
-                      backgroundColor: scheduledCount > 0 ? '#ecfdf5' : '#f8fafc',
+                      borderColor: isAnyEnabled ? '#10b981' : '#94a3b8',
+                      backgroundColor: isAnyEnabled ? '#ecfdf5' : '#f8fafc',
                     }}
                   >
-                    <div
-                      className="text-4xl font-bold"
-                      style={{
-                        color: scheduledCount > 0 ? '#10b981' : '#64748b',
-                      }}
-                    >
-                      {scheduledCount}
+                    <div className="flex items-center justify-center gap-3">
+                      <div
+                        className="text-4xl font-bold"
+                        style={{
+                          color: isAnyEnabled ? '#10b981' : '#64748b',
+                        }}
+                      >
+                        {isPushEnabled ? '✅' : scheduledCount > 0 ? scheduledCount : '❌'}
+                      </div>
                     </div>
                     <p className="mt-2 text-sm font-semibold text-slate-900">
-                      {scheduledCount > 0 ? 'إشعار مجدول' : 'لا توجد إشعارات مجدولة'}
+                      {isPushEnabled
+                        ? 'الإشعارات مفعلة (Push)'
+                        : scheduledCount > 0
+                          ? `${scheduledCount} إشعار مجدول (محلي)`
+                          : 'الإشعارات غير مفعلة'}
                     </p>
-                    {scheduledCount > 0 && (
-                      <p className="mt-1 text-xs text-muted">للحصص القادمة خلال الأسبوع</p>
+                    {isPushEnabled && (
+                      <p className="mt-1 text-xs text-muted">
+                        ستصلك الإشعارات حتى عند إغلاق التطبيق
+                      </p>
+                    )}
+                    {!isPushEnabled && scheduledCount > 0 && (
+                      <p className="mt-1 text-xs text-amber-600">
+                        تعمل فقط عندما يكون التطبيق مفتوحاً
+                      </p>
                     )}
                   </div>
+
+                  {/* نوع الإشعارات */}
+                  {isPushSupported && (
+                    <div className="rounded-xl bg-emerald-50 p-4">
+                      <div className="flex items-start gap-3 text-right">
+                        <span className="text-2xl">🚀</span>
+                        <div className="flex-1">
+                          <h4 className="font-bold text-emerald-900">Push Notifications</h4>
+                          <p className="mt-1 text-sm text-emerald-700">
+                            إشعارات فورية تصلك حتى عند إغلاق التطبيق أو الهاتف
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* المميزات */}
                   <div className="rounded-xl bg-slate-50 p-4">
@@ -203,19 +265,19 @@ export function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
                       <div className="flex items-start gap-3 text-right text-sm">
                         <span className="text-lg">✅</span>
                         <p className="flex-1 text-slate-700">
-                          <strong className="font-semibold">تلقائي 100%:</strong> لا يحتاج اتصال بالإنترنت
+                          <strong className="font-semibold">تعمل في الخلفية:</strong> حتى عند إغلاق التطبيق
+                        </p>
+                      </div>
+                      <div className="flex items-start gap-3 text-right text-sm">
+                        <span className="text-lg">⏰</span>
+                        <p className="flex-1 text-slate-700">
+                          <strong className="font-semibold">تنبيه مبكر:</strong> قبل 5 دقائق من كل حصة
                         </p>
                       </div>
                       <div className="flex items-start gap-3 text-right text-sm">
                         <span className="text-lg">🔒</span>
                         <p className="flex-1 text-slate-700">
-                          <strong className="font-semibold">خصوصية كاملة:</strong> جميع البيانات محلية
-                        </p>
-                      </div>
-                      <div className="flex items-start gap-3 text-right text-sm">
-                        <span className="text-lg">⚡</span>
-                        <p className="flex-1 text-slate-700">
-                          <strong className="font-semibold">سريع وموفر:</strong> لا يستهلك بطارية أو بيانات
+                          <strong className="font-semibold">خصوصية كاملة:</strong> بياناتك آمنة
                         </p>
                       </div>
                     </div>
@@ -223,14 +285,14 @@ export function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
 
                   {/* الأزرار */}
                   <div className="space-y-3">
-                    {scheduledCount === 0 ? (
+                    {!isAnyEnabled ? (
                       <button
                         type="button"
                         onClick={handleEnable}
-                        disabled={isEnabling || isRequesting || sessions.length === 0}
+                        disabled={isEnabling || isPushLoading || sessions.length === 0}
                         className="button-primary w-full py-3.5 text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {isEnabling || isRequesting ? (
+                        {isEnabling || isPushLoading ? (
                           <>
                             <span className="inline-block animate-spin">⏳</span>
                             <span className="mr-2">جاري التفعيل...</span>
@@ -238,7 +300,7 @@ export function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
                         ) : (
                           <>
                             <span>🔔</span>
-                            <span className="mr-2">تفعيل الإشعارات التلقائية</span>
+                            <span className="mr-2">تفعيل الإشعارات</span>
                           </>
                         )}
                       </button>
@@ -286,7 +348,7 @@ export function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
                     <button
                       type="button"
                       onClick={handleTest}
-                      disabled={isTesting || !hasPermission}
+                      disabled={isTesting || (!hasLocalPermission && !isPushEnabled)}
                       className="button-secondary w-full py-2.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isTesting ? (
@@ -303,6 +365,18 @@ export function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
                     </button>
                   </div>
 
+                  {/* تنبيه حالة الإذن */}
+                  {permissionState === 'denied' && (
+                    <div className="rounded-xl border-2 border-rose-200 bg-rose-50 p-4 text-center">
+                      <p className="text-sm font-semibold text-rose-800">
+                        ⚠️ تم رفض إذن الإشعارات
+                      </p>
+                      <p className="mt-1 text-xs text-rose-700">
+                        يرجى تفعيل الإشعارات من إعدادات المتصفح ثم إعادة المحاولة
+                      </p>
+                    </div>
+                  )}
+
                   {/* تنبيه إذا لم يكن هناك حصص */}
                   {sessions.length === 0 && (
                     <div className="rounded-xl border-2 border-amber-200 bg-amber-50 p-4 text-center">
@@ -314,8 +388,10 @@ export function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
                   {/* ملاحظة */}
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-right">
                     <p className="text-xs text-slate-600 leading-relaxed">
-                      <strong className="font-semibold text-slate-900">ملاحظة:</strong> يتم حفظ الإشعارات محلياً في
-                      جهازك. إذا قمت بمسح بيانات المتصفح، ستحتاج لإعادة تفعيل الإشعارات.
+                      <strong className="font-semibold text-slate-900">ملاحظة:</strong>{' '}
+                      {isPushEnabled
+                        ? 'الإشعارات مرتبطة بهذا الجهاز. إذا سجلت الدخول من جهاز آخر، ستحتاج لتفعيل الإشعارات عليه أيضاً.'
+                        : 'للحصول على إشعارات تعمل في الخلفية، يُنصح بتفعيل Push Notifications.'}
                     </p>
                   </div>
                 </>
