@@ -90,12 +90,24 @@ export function useLocalNotifications(): UseLocalNotificationsResult {
     await localNotificationService.sendTestNotification()
   }, [hasPermission, requestPermission])
 
-  // إعادة جدولة الإشعارات عند فتح التطبيق
+  // إعادة جدولة الإشعارات عند فتح التطبيق (مرة واحدة فقط)
   useEffect(() => {
-    if (hasPermission && isSupported) {
-      localNotificationService.rescheduleNotifications()
+    let mounted = true
+
+    if (hasPermission && isSupported && mounted) {
+      // تأخير بسيط لتجنب التنفيذ المتكرر
+      const timeout = setTimeout(() => {
+        if (mounted) {
+          localNotificationService.rescheduleNotifications()
+        }
+      }, 1000)
+
+      return () => {
+        mounted = false
+        clearTimeout(timeout)
+      }
     }
-  }, [hasPermission, isSupported])
+  }, []) // فقط عند mount الأولي - لا نحتاج dependencies
 
   return {
     isSupported,

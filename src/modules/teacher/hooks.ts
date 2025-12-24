@@ -12,7 +12,10 @@ export function useTeacherSessionsQuery() {
   return useQuery({
     queryKey: ['teacher', 'sessions'],
     queryFn: fetchTeacherSessions,
-    refetchOnMount: true,
+    staleTime: 5 * 60 * 1000, // 5 دقائق - البيانات تبقى fresh
+    gcTime: 10 * 60 * 1000, // 10 دقائق - تبقى في الكاش
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   })
 }
 
