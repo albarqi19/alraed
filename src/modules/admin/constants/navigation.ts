@@ -43,6 +43,7 @@ import {
   BookOpenCheck,
   UserX,
   Eye, // أيقونة الإشراف اليومي
+  Bell, // أيقونة اختبار الإشعارات
 } from 'lucide-react'
 
 export interface AdminNavItem {
@@ -160,6 +161,7 @@ export const settingsAdminNav: AdminNavGroup = {
     { to: '/admin/settings', label: 'الإعدادات', icon: Settings, permission: 'admin.settings' },
     { to: '/admin/theme', label: 'المظهر والألوان', icon: Palette, permission: 'admin.theme' },
     { to: '/admin/permissions', label: 'إدارة الصلاحيات', icon: ShieldAlert, permission: 'admin.permissions' },
+    { to: '/admin/fcm-test', label: 'اختبار الإشعارات', icon: Bell, permission: 'admin.fcm-test' },
     { to: '/admin/support', label: 'الدعم الفني', icon: Headphones },
   ],
 }

@@ -8,66 +8,58 @@
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js')
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js')
 
-// إعدادات Firebase - يتم تحديثها من الفرونت
-let firebaseConfig = null
-
-// استقبال إعدادات Firebase من الصفحة الرئيسية
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'FIREBASE_CONFIG') {
-    firebaseConfig = event.data.config
-    initializeFirebase()
-  }
-})
+// إعدادات Firebase - مباشرة
+const firebaseConfig = {
+  apiKey: 'AIzaSyAeJ0Q7DnO1w2veu4MwoUGIcZKDy1KxBAM',
+  authDomain: 'alraed-8db3a.firebaseapp.com',
+  projectId: 'alraed-8db3a',
+  storageBucket: 'alraed-8db3a.firebasestorage.app',
+  messagingSenderId: '890280441907',
+  appId: '1:890280441907:web:4f08a69bbed60191d04b46',
+  databaseURL: 'https://alraed-8db3a-default-rtdb.firebaseio.com',
+}
 
 // تهيئة Firebase
-function initializeFirebase() {
-  if (!firebaseConfig) {
-    console.warn('[FCM SW] Firebase config not available yet')
-    return
+try {
+  if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig)
+    console.log('[FCM SW] Firebase initialized')
   }
 
-  try {
-    // تهيئة Firebase فقط إذا لم يتم تهيئته
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig)
+  const messaging = firebase.messaging()
+
+  // التعامل مع الرسائل في الخلفية
+  messaging.onBackgroundMessage((payload) => {
+    console.log('[FCM SW] Received background message:', payload)
+
+    const notificationTitle = payload.notification?.title || payload.data?.title || 'إشعار جديد'
+    const notificationOptions = {
+      body: payload.notification?.body || payload.data?.body || '',
+      icon: payload.notification?.icon || '/icons/icon-192x192.png',
+      badge: '/icons/icon-96x96.png',
+      tag: payload.data?.tag || `notification-${Date.now()}`,
+      requireInteraction: false,
+      data: payload.data || {},
+      actions: [
+        {
+          action: 'view',
+          title: 'عرض',
+        },
+        {
+          action: 'dismiss',
+          title: 'تجاهل',
+        },
+      ],
+      vibrate: [200, 100, 200],
+      silent: false,
     }
 
-    const messaging = firebase.messaging()
+    return self.registration.showNotification(notificationTitle, notificationOptions)
+  })
 
-    // التعامل مع الرسائل في الخلفية
-    messaging.onBackgroundMessage((payload) => {
-      console.log('[FCM SW] Received background message:', payload)
-
-      const notificationTitle = payload.notification?.title || payload.data?.title || 'إشعار جديد'
-      const notificationOptions = {
-        body: payload.notification?.body || payload.data?.body || '',
-        icon: payload.notification?.icon || '/icons/icon-192x192.png',
-        badge: '/icons/icon-96x96.png',
-        tag: payload.data?.tag || `notification-${Date.now()}`,
-        requireInteraction: payload.data?.requireInteraction === 'true',
-        data: payload.data || {},
-        actions: [
-          {
-            action: 'view',
-            title: 'عرض',
-          },
-          {
-            action: 'dismiss',
-            title: 'تجاهل',
-          },
-        ],
-        // إضافة صوت واهتزاز
-        vibrate: [200, 100, 200],
-        silent: false,
-      }
-
-      self.registration.showNotification(notificationTitle, notificationOptions)
-    })
-
-    console.log('[FCM SW] Firebase initialized successfully')
-  } catch (error) {
-    console.error('[FCM SW] Error initializing Firebase:', error)
-  }
+  console.log('[FCM SW] Service Worker ready')
+} catch (error) {
+  console.error('[FCM SW] Error initializing Firebase:', error)
 }
 
 // التعامل مع النقر على الإشعار
@@ -81,10 +73,8 @@ self.addEventListener('notificationclick', (event) => {
 
   // التحقق من نوع الإجراء
   if (event.action === 'view') {
-    // فتح الرابط المحدد
     url = data.url || '/teacher/schedule'
   } else if (event.action === 'dismiss') {
-    // تم الإغلاق بالفعل
     return
   }
 

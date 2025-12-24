@@ -103,6 +103,7 @@ import {
   GuidanceReferralsPage,
   GuidanceReferralDetailsPage,
 } from '@/modules/guidance/pages'
+import AdminFCMTestPage from '@/modules/admin/pages/admin-fcm-test-page'
 
 const appRoutes = [
   {
@@ -231,6 +232,7 @@ const appRoutes = [
           { path: 'referrals/behavioral', element: <AdminReferralsPage /> },
           { path: 'referrals/:id', element: <AdminReferralDetailPage /> },
           { path: 'parent-replies', element: <AdminParentRepliesPage /> },
+          { path: 'fcm-test', element: <AdminFCMTestPage /> },
         ],
       },
       {
