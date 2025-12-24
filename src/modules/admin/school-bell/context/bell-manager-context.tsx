@@ -49,9 +49,15 @@ interface BellManagerContextValue {
   activeToneProfile: ToneProfile | null
 }
 
+interface BellManagerProviderProps {
+  children: ReactNode
+  /** إذا كان true، لن يتم تفعيل الـ timer */
+  disabled?: boolean
+}
+
 const BellManagerContext = createContext<BellManagerContextValue | null>(null)
 
-export function BellManagerProvider({ children }: { children: ReactNode }) {
+export function BellManagerProvider({ children, disabled = false }: BellManagerProviderProps) {
   const initialStateRef = useRef<BellManagerState | null>(null)
   if (!initialStateRef.current) {
     initialStateRef.current = loadInitialState()
@@ -80,12 +86,14 @@ export function BellManagerProvider({ children }: { children: ReactNode }) {
   }, [updateState])
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
+    // لا تفعّل الـ timer إذا كان Provider معطلاً
+    if (disabled || typeof window === 'undefined') return
+
     const timer = window.setInterval(() => {
       setCurrentTime(new Date())
     }, 1000)
     return () => window.clearInterval(timer)
-  }, [])
+  }, [disabled])
 
   useEffect(() => {
     isMountedRef.current = true

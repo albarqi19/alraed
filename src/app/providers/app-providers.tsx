@@ -20,7 +20,12 @@ const AUTO_CALL_ENABLED_PATHS = [
   '/guardian',
 ]
 
-function AutoCallWrapper({ children }: { children: ReactNode }) {
+/** المسارات التي تحتاج BellManagerProvider (جرس المدرسة) */
+const BELL_MANAGER_ENABLED_PATHS = [
+  '/admin',
+]
+
+function ProvidersWrapper({ children }: { children: ReactNode }) {
   const location = useLocation()
 
   // تفعيل AutoCall فقط على المسارات المحددة
@@ -28,10 +33,17 @@ function AutoCallWrapper({ children }: { children: ReactNode }) {
     (path) => location.pathname.startsWith(path)
   )
 
+  // تفعيل BellManager فقط على صفحات الأدمن
+  const isBellManagerEnabled = BELL_MANAGER_ENABLED_PATHS.some(
+    (path) => location.pathname.startsWith(path)
+  )
+
   return (
-    <AutoCallProvider disabled={!isAutoCallEnabled}>
-      {children}
-    </AutoCallProvider>
+    <BellManagerProvider disabled={!isBellManagerEnabled}>
+      <AutoCallProvider disabled={!isAutoCallEnabled}>
+        {children}
+      </AutoCallProvider>
+    </BellManagerProvider>
   )
 }
 
@@ -61,9 +73,7 @@ export function AppProviders({ children }: AppProvidersProps) {
             <ToastProvider>
               <AuthBootstrap>
                 <IdleTimeoutProvider>
-                  <BellManagerProvider>
-                    <AutoCallWrapper>{children}</AutoCallWrapper>
-                  </BellManagerProvider>
+                  <ProvidersWrapper>{children}</ProvidersWrapper>
                 </IdleTimeoutProvider>
               </AuthBootstrap>
             </ToastProvider>
