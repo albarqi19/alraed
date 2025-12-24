@@ -68,14 +68,16 @@ export function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
   }
 
   // إرسال إشعار تجريبي من السيرفر
-  const handleTest = async () => {
-    setIsTesting(true)
+  const sendTestNotification = async () => {
+    setIsSendingTest(true)
+    setTestResult(null)
+
     try {
-      const response = await fetch('/api/teacher/fcm-token/test', {
+      const response = await fetch('/api/fcm/token/test', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('teacher_token')}`,
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
         },
       })
 

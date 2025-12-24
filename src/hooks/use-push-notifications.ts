@@ -133,7 +133,7 @@ export function usePushNotifications(): UsePushNotificationsResult {
  */
 async function saveFcmTokenToServer(token: string, _userId: number): Promise<void> {
   try {
-    const response = await fetch('/api/teacher/fcm-token', {
+    const response = await fetch('/api/fcm/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -162,7 +162,7 @@ async function saveFcmTokenToServer(token: string, _userId: number): Promise<voi
  */
 async function deleteFcmTokenFromServer(token: string, _userId: number): Promise<void> {
   try {
-    const response = await fetch('/api/teacher/fcm-token', {
+    const response = await fetch('/api/fcm/token', {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
