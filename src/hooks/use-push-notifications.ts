@@ -111,6 +111,9 @@ export function usePushNotifications(): UsePushNotificationsResult {
         await deleteFcmTokenFromServer(fcmToken, user.id)
       }
 
+      // حذف من localStorage
+      localStorage.removeItem('fcm_token')
+
       setFcmToken(null)
       setIsEnabled(false)
     } catch (error) {

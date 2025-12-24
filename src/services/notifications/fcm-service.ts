@@ -33,6 +33,7 @@ class FCMService {
   private initialized = false
   private initializing = false
   private foregroundListenerSetup = false
+  private readonly FCM_TOKEN_KEY = 'fcm_token' // مفتاح localStorage
 
   /**
    * تهيئة خدمة FCM (مرة واحدة فقط)
@@ -72,6 +73,13 @@ class FCMService {
 
       // الاستماع للرسائل في المقدمة
       this.setupForegroundListener()
+
+      // استرجاع Token المحفوظ من localStorage
+      const savedToken = localStorage.getItem(this.FCM_TOKEN_KEY)
+      if (savedToken) {
+        this.currentToken = savedToken
+        console.log('[FCM] Restored token from localStorage')
+      }
 
       this.initialized = true
       this.initializing = false
@@ -192,6 +200,8 @@ class FCMService {
 
       if (token) {
         this.currentToken = token
+        // حفظ Token في localStorage
+        localStorage.setItem(this.FCM_TOKEN_KEY, token)
         this.notifyTokenListeners(token)
         console.log('[FCM] Token obtained:', token.substring(0, 20) + '...')
       }
@@ -279,6 +289,10 @@ class FCMService {
    * الحصول على Token الحالي
    */
   getCurrentToken(): string | null {
+    // إذا لم يكن في الذاكرة، استرجعه من localStorage
+    if (!this.currentToken) {
+      this.currentToken = localStorage.getItem(this.FCM_TOKEN_KEY)
+    }
     return this.currentToken
   }
 
