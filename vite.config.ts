@@ -10,7 +10,6 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['vite.svg', 'icons/*.png'],
-      // تعطيل Service Worker الافتراضي من التعامل مع الإشعارات
       disable: false,
       manifest: {
         name: 'نظام الرائد للإدارة المدرسية - المعلم',
@@ -77,10 +76,8 @@ export default defineConfig({
       },
       workbox: {
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
-        // استبعاد firebase-messaging-sw.js من التعامل
+        globPatterns: ['**/*.{ js, css, html, ico, png, svg, woff, woff2 }'],
         navigateFallbackDenylist: [/^\/firebase-messaging-sw\.js$/],
-        // تعطيل التعامل مع push notifications - دع Firebase يديرها
         skipWaiting: true,
         clientsClaim: true,
         runtimeCaching: [
@@ -91,7 +88,7 @@ export default defineConfig({
               cacheName: 'google-fonts-cache',
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+                maxAgeSeconds: 60 * 60 * 24 * 365,
               },
               cacheableResponse: {
                 statuses: [0, 200],
@@ -105,7 +102,7 @@ export default defineConfig({
               cacheName: 'cdn-cache',
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+                maxAgeSeconds: 60 * 60 * 24 * 30,
               },
               cacheableResponse: {
                 statuses: [0, 200],
