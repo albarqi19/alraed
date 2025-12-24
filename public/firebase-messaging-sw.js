@@ -37,12 +37,13 @@ try {
     // استخراج البيانات
     const title = payload.notification?.title || payload.data?.title || 'إشعار جديد'
     const body = payload.notification?.body || payload.data?.body || ''
-    const icon = payload.notification?.icon || '/icons/icon-192x192.png'
+    const icon = payload.notification?.icon || payload.data?.icon || '/icons/icon-192x192.png'
+    const image = payload.data?.image // الصورة الكبيرة
 
     console.log('[FCM SW] 🔔 Showing notification:', title)
 
-    // عرض الإشعار
-    return self.registration.showNotification(title, {
+    // إعداد خيارات الإشعار
+    const options = {
       body: body,
       icon: icon,
       badge: '/icons/icon-96x96.png',
@@ -50,10 +51,19 @@ try {
       requireInteraction: false,
       vibrate: [200, 100, 200],
       data: {
-        url: payload.data?.url || payload.notification?.click_action || '/',
+        url: payload.data?.url || payload.notification?.click_action || '/teacher/dashboard',
         ...payload.data
       }
-    })
+    }
+
+    // إضافة الصورة إذا كانت موجودة
+    if (image) {
+      options.image = image
+      console.log('[FCM SW] 📸 Image added:', image)
+    }
+
+    // عرض الإشعار
+    return self.registration.showNotification(title, options)
   })
 
   console.log('[FCM SW] ✅ Service Worker ready')
