@@ -68,10 +68,8 @@ export function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
   }
 
   // إرسال إشعار تجريبي من السيرفر
-  const sendTestNotification = async () => {
-    setIsSendingTest(true)
-    setTestResult(null)
-
+  const handleTest = async () => {
+    setIsTesting(true)
     try {
       const response = await fetch('/api/fcm/token/test', {
         method: 'POST',
