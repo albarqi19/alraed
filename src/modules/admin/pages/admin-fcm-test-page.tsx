@@ -66,10 +66,17 @@ export default function FCMTestPage() {
             }
         } catch (error: any) {
             console.error('Error sending notification:', error)
+
+            // رسالة واضحة للمعلم الذي لم يفعل الإشعارات
+            const errorMsg = error.response?.data?.message || error.message || ''
+            const isNoToken = errorMsg.includes('لا يوجد جهاز') || errorMsg.includes('no device')
+
             toast({
                 type: 'error',
-                title: 'فشل إرسال الإشعار',
-                description: error.response?.data?.message || error.message,
+                title: isNoToken ? '❌ المعلم لم يفعّل الإشعارات' : 'فشل إرسال الإشعار',
+                description: isNoToken
+                    ? 'يجب على المعلم تفعيل الإشعارات من إعداداته أولاً'
+                    : errorMsg,
             })
         } finally {
             setSending(false)

@@ -2,7 +2,11 @@
 /**
  * Firebase Cloud Messaging Service Worker
  * يعمل في الخلفية لاستقبال الإشعارات حتى عند إغلاق التطبيق
+ * @version 2.0.0
  */
+
+const SW_VERSION = 'fcm-v2.0.0'
+console.log(`[FCM SW] ${SW_VERSION} Starting...`)
 
 // استيراد مكتبات Firebase
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js')
