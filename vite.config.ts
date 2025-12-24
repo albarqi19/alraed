@@ -10,6 +10,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['vite.svg', 'icons/*.png'],
+      // تعطيل Service Worker الافتراضي من التعامل مع الإشعارات
+      disable: false,
       manifest: {
         name: 'نظام الرائد للإدارة المدرسية - المعلم',
         short_name: 'نظام الرائد',
@@ -78,6 +80,9 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
         // استبعاد firebase-messaging-sw.js من التعامل
         navigateFallbackDenylist: [/^\/firebase-messaging-sw\.js$/],
+        // تعطيل التعامل مع push notifications - دع Firebase يديرها
+        skipWaiting: true,
+        clientsClaim: true,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
