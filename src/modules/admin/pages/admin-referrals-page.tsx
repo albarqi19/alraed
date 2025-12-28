@@ -8,6 +8,7 @@ import {
 import type { StudentReferral, ReferralStatus, ReferralFilters } from '../referrals/types'
 import { ReferralStatsModal } from '../referrals/components/ReferralStatsModal'
 import { ReferralSettingsModal } from '../referrals/components/ReferralSettingsModal'
+import { AbsenceReferralsPanel, useAbsenceReferralStatsQuery } from '../referrals/components/AbsenceReferralsPanel'
 
 // نوع التبويب
 type ReferralTab = 'teacher' | 'admin' | 'system'
@@ -271,7 +272,11 @@ export function AdminReferralsPage() {
 
   const { data: allReferrals } = useAdminReferralsQuery(allReferralsFilters)
   const { data: stats } = useAdminReferralStatsQuery(statsFilters)
+  const { data: absenceStats } = useAbsenceReferralStatsQuery()
   const receiveMutation = useReceiveReferralMutation()
+
+  // هل توجد حالات غياب متواصل تتطلب إجراء عاجل؟
+  const hasEmergencyAbsences = (absenceStats?.consecutive?.total || 0) > 0
 
   // حساب إحصائيات الفلاتر (المحيل، المكلف، الصف)
   const filterStats = useMemo(() => {
@@ -415,6 +420,12 @@ export function AdminReferralsPage() {
                 <div className="flex items-center justify-center gap-2">
                   <i className={`${tab.icon} text-lg`} />
                   <span>{tab.label}</span>
+                  {tab.key === 'system' && hasEmergencyAbsences && (
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                    </span>
+                  )}
                   {tabCounts[tab.key] > 0 && (
                     <span className={`
                       inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-semibold
@@ -598,7 +609,11 @@ export function AdminReferralsPage() {
         </div>
 
         {/* Table Content */}
-        {isLoading ? (
+        {activeTab === 'system' ? (
+          <div className="p-4">
+            <AbsenceReferralsPanel />
+          </div>
+        ) : isLoading ? (
           <div className="flex items-center justify-center py-20">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-sky-600" />
           </div>
@@ -698,12 +713,10 @@ export function AdminReferralsPage() {
             <p className="mt-4 text-lg font-medium text-slate-600">
               {activeTab === 'teacher' && 'لا توجد إحالات من المعلمين'}
               {activeTab === 'admin' && 'لا توجد إحالات من الإدارة'}
-              {activeTab === 'system' && 'لا توجد إحالات تلقائية من النظام'}
             </p>
             <p className="mt-1 text-sm text-slate-400">
               {activeTab === 'teacher' && 'ستظهر هنا الإحالات المرسلة من المعلمين'}
               {activeTab === 'admin' && 'ستظهر هنا الإحالات من وكيل شؤون الطلاب'}
-              {activeTab === 'system' && 'ستظهر هنا الإحالات التلقائية عند تراكم المخالفات'}
             </p>
           </div>
         )}
