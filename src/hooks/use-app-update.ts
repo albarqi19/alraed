@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 
+// مفتاح لتخزين إصدار الـ SW الحالي المُفعَّل
+const CURRENT_SW_VERSION_KEY = 'app-sw-current-version'
+
 interface AppUpdateState {
   isUpdateAvailable: boolean
   isUpdating: boolean
@@ -25,6 +28,7 @@ export const useAppUpdate = (): UseAppUpdateReturn => {
 
   const waitingWorkerRef = useRef<ServiceWorker | null>(null)
   const dismissedRef = useRef(false)
+  const currentVersionRef = useRef<string | null>(null)
 
   // التحقق من التحديثات يدوياً
   const checkForUpdate = useCallback(async () => {
@@ -90,6 +94,10 @@ export const useAppUpdate = (): UseAppUpdateReturn => {
       return
     }
 
+    // جلب الإصدار المحفوظ محلياً
+    const savedVersion = localStorage.getItem(CURRENT_SW_VERSION_KEY)
+    console.log('[AppUpdate] Saved version:', savedVersion)
+
     let mounted = true
 
     const registerServiceWorker = async () => {
@@ -103,25 +111,55 @@ export const useAppUpdate = (): UseAppUpdateReturn => {
         console.log('[AppUpdate] Service Worker registered:', registration)
         setState((prev) => ({ ...prev, registration }))
 
-        // جلب الإصدار الحالي
+        // جلب الإصدار الحالي من الـ SW النشط
         if (registration.active) {
           const messageChannel = new MessageChannel()
           messageChannel.port1.onmessage = (event) => {
             if (event.data?.version) {
-              setState((prev) => ({ ...prev, currentVersion: event.data.version }))
-              console.log('[AppUpdate] Current version:', event.data.version)
+              const activeVersion = event.data.version
+              currentVersionRef.current = activeVersion
+              setState((prev) => ({ ...prev, currentVersion: activeVersion }))
+              console.log('[AppUpdate] Active SW version:', activeVersion)
+              
+              // حفظ الإصدار الحالي
+              localStorage.setItem(CURRENT_SW_VERSION_KEY, activeVersion)
             }
           }
           registration.active.postMessage({ type: 'GET_VERSION' }, [messageChannel.port2])
+        }
+
+        // دالة مساعدة للتحقق وإظهار التحديث
+        const showUpdateIfNeeded = (newWorker: ServiceWorker) => {
+          // جلب إصدار الـ Worker الجديد
+          const messageChannel = new MessageChannel()
+          messageChannel.port1.onmessage = (event) => {
+            if (event.data?.version) {
+              const newVersion = event.data.version
+              const currentVersion = currentVersionRef.current || savedVersion
+              
+              console.log('[AppUpdate] Comparing versions:', { currentVersion, newVersion })
+              
+              // فقط أظهر الإشعار إذا كان الإصدار الجديد مختلف فعلاً
+              if (newVersion && currentVersion && newVersion !== currentVersion) {
+                console.log('[AppUpdate] Real update available!')
+                setState((prev) => ({ ...prev, newVersion }))
+                
+                if (!dismissedRef.current && mounted) {
+                  setState((prev) => ({ ...prev, isUpdateAvailable: true }))
+                }
+              } else {
+                console.log('[AppUpdate] Same version, no update needed')
+              }
+            }
+          }
+          newWorker.postMessage({ type: 'GET_VERSION' }, [messageChannel.port2])
         }
 
         // التحقق إذا كان هناك Service Worker في انتظار التفعيل
         if (registration.waiting) {
           console.log('[AppUpdate] Found waiting worker on load')
           waitingWorkerRef.current = registration.waiting
-          if (!dismissedRef.current) {
-            setState((prev) => ({ ...prev, isUpdateAvailable: true }))
-          }
+          showUpdateIfNeeded(registration.waiting)
         }
 
         // الاستماع لتحديثات جديدة
@@ -136,28 +174,26 @@ export const useAppUpdate = (): UseAppUpdateReturn => {
 
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
               // هناك تحديث جديد جاهز
-              console.log('[AppUpdate] Update available!')
+              console.log('[AppUpdate] New worker installed, checking version...')
               waitingWorkerRef.current = newWorker
-
-              // جلب إصدار الـ Worker الجديد
-              const messageChannel = new MessageChannel()
-              messageChannel.port1.onmessage = (event) => {
-                if (event.data?.version) {
-                  setState((prev) => ({ ...prev, newVersion: event.data.version }))
-                }
-              }
-              newWorker.postMessage({ type: 'GET_VERSION' }, [messageChannel.port2])
-
-              if (!dismissedRef.current && mounted) {
-                setState((prev) => ({ ...prev, isUpdateAvailable: true }))
-              }
+              showUpdateIfNeeded(newWorker)
             }
           })
         })
 
         // الاستماع لتغيير الـ controller (عند تفعيل Worker جديد)
+        let reloading = false
         navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (reloading) return
+          reloading = true
+          
           console.log('[AppUpdate] Controller changed, reloading page...')
+          
+          // تحديث الإصدار المحفوظ قبل إعادة التحميل
+          if (state.newVersion) {
+            localStorage.setItem(CURRENT_SW_VERSION_KEY, state.newVersion)
+          }
+          
           // إعادة تحميل الصفحة للحصول على النسخة الجديدة
           window.location.reload()
         })
