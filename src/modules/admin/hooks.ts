@@ -1467,8 +1467,17 @@ export function useDownloadStudentsTemplateMutation() {
 
   return useMutation({
     mutationFn: downloadStudentsTemplate,
-    onSuccess: () => {
-      toast({ type: 'info', title: 'جارٍ تنزيل قالب الطلاب' })
+    onSuccess: (blob) => {
+      // تنزيل الملف فعلياً
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'قالب_استيراد_الطلاب.csv'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      toast({ type: 'success', title: 'تم تنزيل قالب الطلاب بنجاح' })
     },
     onError: (error) => {
       toast({ type: 'error', title: getErrorMessage(error, 'تعذر تنزيل القالب') })
@@ -1481,8 +1490,17 @@ export function useDownloadTeachersTemplateMutation() {
 
   return useMutation({
     mutationFn: downloadTeachersTemplate,
-    onSuccess: () => {
-      toast({ type: 'info', title: 'جارٍ تنزيل قالب المعلمين' })
+    onSuccess: (blob) => {
+      // تنزيل الملف فعلياً
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'قالب_استيراد_المعلمين.csv'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      toast({ type: 'success', title: 'تم تنزيل قالب المعلمين بنجاح' })
     },
     onError: (error) => {
       toast({ type: 'error', title: getErrorMessage(error, 'تعذر تنزيل القالب') })
