@@ -87,7 +87,7 @@ export const useAppUpdate = (): UseAppUpdateReturn => {
     }, 5 * 60 * 1000)
   }, [])
 
-  // تسجيل Service Worker والاستماع للتحديثات
+  // تسجيل Service Worker  والاستماع للتحديثات
   useEffect(() => {
     if (!('serviceWorker' in navigator)) {
       console.log('[AppUpdate] Service Workers not supported')
