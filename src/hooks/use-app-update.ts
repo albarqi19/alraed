@@ -183,8 +183,19 @@ export const useAppUpdate = (): UseAppUpdateReturn => {
 
         // الاستماع لتغيير الـ controller (عند تفعيل Worker جديد)
         let reloading = false
+        
+        // نحتاج نتحقق إذا كان هناك controller سابق قبل الاستماع
+        const hadController = !!navigator.serviceWorker.controller
+        
         navigator.serviceWorker.addEventListener('controllerchange', () => {
           if (reloading) return
+          
+          // لا نعيد التحميل إذا كانت هذه أول مرة (لم يكن هناك controller سابق)
+          if (!hadController) {
+            console.log('[AppUpdate] First install, skipping reload')
+            return
+          }
+          
           reloading = true
           
           console.log('[AppUpdate] Controller changed, reloading page...')

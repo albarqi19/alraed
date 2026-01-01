@@ -54,6 +54,8 @@ self.addEventListener('activate', (event) => {
       );
     }).then(() => {
       console.log(`[SW ${SW_VERSION}] Claiming clients`);
+      // نستخدم claim() فقط عند التحديث (وليس التثبيت الأول)
+      // هذا يمنع reload loop في الزيارة الأولى
       return self.clients.claim();
     })
   );
