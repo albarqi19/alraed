@@ -321,9 +321,9 @@ function TeacherCredentialsPanel({
   const [currentY, setCurrentY] = React.useState<number>(0)
   const [isDragging, setIsDragging] = React.useState(false)
 
-  // منع التمرير على الصفحة الخلفية عندما يكون المكون مفتوح
+  // منع التمرير على الصفحة الخلفية عندما يكون المكون مفتوح (للجوال فقط)
   React.useEffect(() => {
-    if (selectedTeacher) {
+    if (selectedTeacher && window.innerWidth < 1024) {
       document.body.style.overflow = 'hidden'
       return () => {
         document.body.style.overflow = ''
@@ -467,7 +467,7 @@ function TeacherCredentialsPanel({
       )}
 
       {/* للشاشات الكبيرة: الشريط الجانبي الثابت */}
-      <aside className="hidden lg:flex sticky top-4 glass-card flex-col gap-4 max-h-[calc(100vh-2rem)] overflow-y-auto">
+      <aside className="hidden lg:flex sticky top-20 self-start glass-card flex-col gap-4 max-h-[calc(100vh-6rem)] overflow-y-auto">
       {/* Teacher Details Section */}
       {selectedTeacher && (
         <div className="space-y-3">
@@ -811,7 +811,7 @@ export function AdminTeachersPage() {
         </p>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start overflow-hidden">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-6 min-w-0">
           <div className="grid grid-cols-3 gap-4 min-w-0">
             {stats.map((stat) => (

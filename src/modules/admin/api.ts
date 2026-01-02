@@ -3362,3 +3362,78 @@ export async function fetchSimulateAbsence(teacherId: number, day: string): Prom
   )
   return unwrapResponse(data, 'تعذر تحميل بيانات المحاكاة')
 }
+
+// ========================================
+// Schedule Matching API - المطابقة اليدوية
+// ========================================
+
+export interface UnmatchedTeacher {
+  chrome_name: string
+  current_match: { id: number; name: string } | null
+  match_score: number | null
+  match_status: string | null
+  sessions_count: number
+}
+
+export interface UnmatchedSubject {
+  chrome_name: string
+  current_match: { id: number; name: string } | null
+  match_score: number | null
+  match_status: string | null
+  sessions_count: number
+}
+
+export interface AvailableTeacher {
+  id: number
+  name: string
+}
+
+export interface AvailableSubject {
+  id: number
+  name: string
+}
+
+export interface PendingMatchesData {
+  unmatched_teachers: UnmatchedTeacher[]
+  unmatched_subjects: UnmatchedSubject[]
+  available_teachers: AvailableTeacher[]
+  available_subjects: AvailableSubject[]
+  total_sessions_need_review: number
+}
+
+export async function fetchPendingMatches(): Promise<PendingMatchesData> {
+  const { data } = await apiClient.get<ApiResponse<PendingMatchesData>>('/admin/schedule-matching/pending')
+  return unwrapResponse(data, 'تعذر تحميل بيانات المطابقة')
+}
+
+export async function linkTeacher(chromeName: string, teacherId: number): Promise<{ message: string; updated_count: number }> {
+  const { data } = await apiClient.post<ApiResponse<{ message: string; updated_count: number }>>(
+    '/admin/schedule-matching/link-teacher',
+    { chrome_name: chromeName, teacher_id: teacherId }
+  )
+  return unwrapResponse(data, 'تعذر ربط المعلم')
+}
+
+export async function linkSubject(chromeName: string, subjectId: number): Promise<{ message: string; updated_count: number }> {
+  const { data } = await apiClient.post<ApiResponse<{ message: string; updated_count: number }>>(
+    '/admin/schedule-matching/link-subject',
+    { chrome_name: chromeName, subject_id: subjectId }
+  )
+  return unwrapResponse(data, 'تعذر ربط المادة')
+}
+
+export async function createAndLinkTeacher(chromeName: string, name: string): Promise<{ message: string; teacher: { id: number; name: string }; updated_count: number }> {
+  const { data } = await apiClient.post<ApiResponse<{ message: string; teacher: { id: number; name: string }; updated_count: number }>>(
+    '/admin/schedule-matching/create-and-link-teacher',
+    { chrome_name: chromeName, name }
+  )
+  return unwrapResponse(data, 'تعذر إنشاء وربط المعلم')
+}
+
+export async function createAndLinkSubject(chromeName: string, name: string): Promise<{ message: string; subject: { id: number; name: string }; updated_count: number }> {
+  const { data } = await apiClient.post<ApiResponse<{ message: string; subject: { id: number; name: string }; updated_count: number }>>(
+    '/admin/schedule-matching/create-and-link-subject',
+    { chrome_name: chromeName, name }
+  )
+  return unwrapResponse(data, 'تعذر إنشاء وربط المادة')
+}
