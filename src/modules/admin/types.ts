@@ -23,6 +23,7 @@ export type StaffRole =
   | 'administrative_staff'
   | 'student_counselor'
   | 'learning_resources_admin'
+  | 'health_counselor'
 
 export interface TeacherRecord {
   id: number

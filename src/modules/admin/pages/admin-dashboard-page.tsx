@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useAdminDashboardStatsQuery } from '@/modules/admin/hooks'
 import type { AdminDashboardStats } from '@/modules/admin/types'
+import { OnboardingProgressCard } from '../components/onboarding-progress-card'
 
 type WeeklyAttendanceStat = NonNullable<AdminDashboardStats['weekly_attendance']>[number]
 
@@ -66,6 +67,9 @@ export function AdminDashboardPage() {
           </div>
         ) : null}
       </header>
+
+      {/* Onboarding Progress */}
+      <OnboardingProgressCard />
 
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         {cards.map((card) => (

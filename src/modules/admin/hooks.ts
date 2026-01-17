@@ -126,6 +126,9 @@ import {
   deleteSubject,
   fetchStudents,
   fetchSubjects,
+  fetchGrades,
+  fetchClasses,
+  fetchGradesWithClasses,
   fetchScheduleSessionData,
   fetchSchedules,
   createDutyRoster,
@@ -592,6 +595,36 @@ export function useDeleteStudentMutation() {
     onError: (error) => {
       toast({ type: 'error', title: getErrorMessage(error, 'تعذر حذف الطالب') })
     },
+  })
+}
+
+/** جلب الصفوف الدراسية المتاحة للمدرسة الحالية (ديناميكياً) */
+export function useGradesQuery(options: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: adminQueryKeys.students.grades(),
+    queryFn: fetchGrades,
+    enabled: options.enabled ?? true,
+    staleTime: 5 * 60 * 1000, // 5 دقائق
+  })
+}
+
+/** جلب الفصول لصف معين (ديناميكياً) */
+export function useClassesQuery(grade?: string, options: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: adminQueryKeys.students.classes(grade),
+    queryFn: () => fetchClasses(grade),
+    enabled: options.enabled ?? true,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+/** جلب الصفوف مع فصولها (ديناميكياً) */
+export function useGradesWithClassesQuery(options: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: adminQueryKeys.students.gradesWithClasses(),
+    queryFn: fetchGradesWithClasses,
+    enabled: options.enabled ?? true,
+    staleTime: 5 * 60 * 1000,
   })
 }
 

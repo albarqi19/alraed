@@ -44,6 +44,7 @@ import {
   UserX,
   Eye, // أيقونة الإشراف اليومي
   Bell, // أيقونة اختبار الإشعارات
+  Wand2, // أيقونة محاكي الجداول
 } from 'lucide-react'
 
 export interface AdminNavItem {
@@ -87,6 +88,7 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
       { to: '/admin/teacher-schedules', label: 'جداول المعلمين', icon: Users, permission: 'admin.teacher-schedules' },
       { to: '/admin/class-sessions', label: 'إدارة الحصص', icon: Clock, permission: 'admin.class-sessions' },
       { to: '/admin/schedules', label: 'الخطط الزمنية', icon: ListTodo, permission: 'admin.schedules' },
+      { to: '/admin/schedule-simulator', label: 'محاكي الجداول الذكي', icon: Wand2, permission: 'admin.schedule-simulator' },
     ],
   },
   {

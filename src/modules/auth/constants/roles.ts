@@ -58,6 +58,13 @@ export const USER_ROLES: Record<UserRole, RoleInfo> = {
     color: 'amber',
     icon: '📚',
   },
+  health_counselor: {
+    value: 'health_counselor',
+    label: 'موجه صحي',
+    description: 'متابعة الشؤون الصحية للطلاب',
+    color: 'red',
+    icon: '🏥',
+  },
   teacher: {
     value: 'teacher',
     label: 'معلم',
@@ -80,6 +87,7 @@ export const ROLE_OPTIONS: RoleInfo[] = [
   USER_ROLES.deputy_students,
   USER_ROLES.student_counselor,
   USER_ROLES.learning_resources_admin,
+  USER_ROLES.health_counselor,
   USER_ROLES.administrative_staff,
   USER_ROLES.teacher,
 ]
@@ -93,12 +101,14 @@ export const MANAGEMENT_ROLES: UserRole[] = [
   'student_counselor',
   'administrative_staff',
   'learning_resources_admin',
+  'health_counselor',
 ]
 
 export const STAFF_ROLES: UserRole[] = [
   'administrative_staff',
   'student_counselor',
   'learning_resources_admin',
+  'health_counselor',
 ]
 
 export function getRoleLabel(role: UserRole): string {

@@ -1,6 +1,6 @@
-export type UserRole = 
+export type UserRole =
   | 'teacher'
-  | 'admin' 
+  | 'admin'
   | 'super_admin'
   | 'school_principal'
   | 'deputy_teachers'
@@ -8,6 +8,7 @@ export type UserRole =
   | 'administrative_staff'
   | 'student_counselor'
   | 'learning_resources_admin'
+  | 'health_counselor'
 
 export type SubscriptionPlan = 'trial' | 'basic' | 'premium' | 'enterprise'
 export type SubscriptionStatus = 'trial' | 'active' | 'suspended' | 'cancelled' | 'expired'
@@ -38,6 +39,7 @@ export interface AuthenticatedUser {
   email?: string | null
   phone?: string | null
   needs_password_change?: boolean
+  needs_onboarding?: boolean // هل يحتاج لإكمال إعداد المدرسة
   permissions?: string[] // صلاحيات بسيطة للفرونت
   permissions_simple?: string[] // نسخة بديلة
   detailed_permissions?: Array<{

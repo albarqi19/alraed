@@ -157,7 +157,8 @@ const semesterOneRaw: SemesterOneRawDay[] = [
   { week: 19, dayName: 'الإثنين', hijriDay: '07/16', hijriMonth: 'رجب', gregorian: '01/05', gregorianMonth: 'يناير' },
   { week: 19, dayName: 'الثلاثاء', hijriDay: '07/17', hijriMonth: 'رجب', gregorian: '01/06', gregorianMonth: 'يناير' },
   { week: 19, dayName: 'الأربعاء', hijriDay: '07/18', hijriMonth: 'رجب', gregorian: '01/07', gregorianMonth: 'يناير' },
-  { week: 19, dayName: 'الخميس', hijriDay: '07/19', hijriMonth: 'رجب', gregorian: '01/08', gregorianMonth: 'يناير', note: 'نهاية دوام العام - إجازة تصحيح' },
+  { week: 19, dayName: 'الخميس', hijriDay: '07/19', hijriMonth: 'رجب', gregorian: '01/08', gregorianMonth: 'يناير' },
+  { week: 19, dayName: 'الجمعة', hijriDay: '07/20', hijriMonth: 'رجب', gregorian: '01/09', gregorianMonth: 'يناير', note: 'نهاية دوام العام - إجازة تصحيح' },
 ]
 
 const semesterTwoRaw: SemesterTwoRawDay[] = [
@@ -349,9 +350,9 @@ export const academicSemesterSummaries = {
     id: 'first' as const,
     title: 'الفصل الدراسي الأول',
     startIso: semesterOneDays[0]?.gregorianIso ?? '2025-08-24',
-    endIso: semesterOneDays[semesterOneDays.length - 1]?.gregorianIso ?? '2026-01-08',
+    endIso: semesterOneDays[semesterOneDays.length - 1]?.gregorianIso ?? '2026-01-09',
     startHijri: '03/01/1447',
-    endHijri: `${semesterOneDays[semesterOneDays.length - 1]?.hijriDay ?? '07/19'}/1447`,
+    endHijri: `${semesterOneDays[semesterOneDays.length - 1]?.hijriDay ?? '07/20'}/1447`,
     totalWeeks: new Set(semesterOneDays.map((day) => day.week)).size,
     totalDays: semesterOneDays.length,
   },
@@ -433,10 +434,10 @@ const milestones: AcademicMilestone[] = [
     semester: 'first',
     title: 'نهاية دوام الفصل',
     description: 'ختام أعمال الفصل الأول',
-    isoDate: '2026-01-08',
-    hijriDate: '07/19/1447',
+    isoDate: '2026-01-09',
+    hijriDate: '07/20/1447',
     category: 'deadline',
-    timestamp: toTimestamp('2026-01-08'),
+    timestamp: toTimestamp('2026-01-09'),
   },
   {
     id: 'second-start',

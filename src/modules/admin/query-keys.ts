@@ -8,6 +8,9 @@ export const adminQueryKeys = {
   students: {
     all: () => ['admin', 'students', 'list'] as const,
     detail: (id: number) => ['admin', 'students', id] as const,
+    grades: () => ['admin', 'students', 'grades'] as const,
+    classes: (grade?: string) => ['admin', 'students', 'classes', grade ?? 'all'] as const,
+    gradesWithClasses: () => ['admin', 'students', 'grades-with-classes'] as const,
   },
   subjects: {
     all: () => ['admin', 'subjects', 'list'] as const,

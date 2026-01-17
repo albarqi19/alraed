@@ -8,9 +8,10 @@ interface RequireAuthProps {
   children?: ReactNode
   role?: UserRole
   requireManagement?: boolean
+  skipOnboardingCheck?: boolean
 }
 
-export function RequireAuth({ children, role, requireManagement }: RequireAuthProps) {
+export function RequireAuth({ children, role, requireManagement, skipOnboardingCheck }: RequireAuthProps) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const user = useAuthStore((state) => state.user)
   const location = useLocation()
@@ -37,6 +38,16 @@ export function RequireAuth({ children, role, requireManagement }: RequireAuthPr
     return <Navigate to={destination} replace />
   }
 
+  // التحقق من الحاجة لإكمال الإعداد (للمدير ومساعده)
+  if (
+    !skipOnboardingCheck &&
+    user.needs_onboarding &&
+    (user.role === 'school_principal' || user.role === 'admin') &&
+    !location.pathname.startsWith('/onboarding')
+  ) {
+    return <Navigate to="/onboarding" replace />
+  }
+
   return children ? <>{children}</> : <Outlet />
 }
 
@@ -45,8 +56,37 @@ export function RedirectIfAuthenticated({ children }: { children: ReactNode }) {
   const user = useAuthStore((state) => state.user)
 
   if (isAuthenticated && user) {
+    // التوجيه للإعداد إذا لم يكتمل
+    if (user.needs_onboarding && (user.role === 'school_principal' || user.role === 'admin')) {
+      return <Navigate to="/onboarding" replace />
+    }
     const destination = getUserDashboard(user.role)
     return <Navigate to={destination} replace />
+  }
+
+  return <>{children}</>
+}
+
+/**
+ * حماية صفحة الإعداد - تتطلب مستخدم مسجل دخول ويحتاج إعداد
+ */
+export function RequireOnboarding({ children }: { children: ReactNode }) {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const user = useAuthStore((state) => state.user)
+
+  // غير مسجل دخول
+  if (!isAuthenticated || !user) {
+    return <Navigate to="/auth/admin" replace />
+  }
+
+  // ليس مدير المدرسة أو مساعده
+  if (user.role !== 'school_principal' && user.role !== 'admin') {
+    return <Navigate to={getUserDashboard(user.role)} replace />
+  }
+
+  // اكتمل الإعداد بالفعل
+  if (!user.needs_onboarding) {
+    return <Navigate to="/admin/dashboard" replace />
   }
 
   return <>{children}</>
@@ -63,6 +103,7 @@ function getUserDashboard(role: UserRole): string {
     case 'administrative_staff':
     case 'student_counselor':
     case 'learning_resources_admin':
+    case 'health_counselor':
       return '/admin/dashboard'
     case 'teacher':
     default:

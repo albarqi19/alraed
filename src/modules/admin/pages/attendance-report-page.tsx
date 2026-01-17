@@ -4,6 +4,7 @@ import {
   useAttendanceReportMatrixQuery,
   useExportAttendanceReportMutation,
   useStudentsQuery,
+  useGradesWithClassesQuery,
 } from '../hooks'
 import type {
   AttendanceReportFiltersPayload,
@@ -34,14 +35,7 @@ const PERIOD_OPTIONS = [
 
 type ReportPeriod = (typeof PERIOD_OPTIONS)[number]['value']
 
-const GRADE_OPTIONS: Array<{ value: string; label: string; classes: string[] }> = [
-  { value: 'الصف الأول', label: 'الصف الأول', classes: ['1', '2', '3', '4', '5'] },
-  { value: 'الصف الثاني', label: 'الصف الثاني', classes: ['1', '2', '3', '4'] },
-  { value: 'الصف الثالث', label: 'الصف الثالث', classes: ['1', '2', '3', '4'] },
-  { value: 'الصف الرابع', label: 'الصف الرابع', classes: ['1', '2', '3', '4', '5', '6'] },
-  { value: 'الصف الخامس', label: 'الصف الخامس', classes: ['1', '2', '3', '4', '5'] },
-  { value: 'الصف السادس', label: 'الصف السادس', classes: ['1', '2', '3', '4'] },
-]
+// الصفوف والفصول تُجلب ديناميكياً من الـ API
 
 const STATUS_ORDER = ['present', 'absent', 'late', 'excused'] as const
 
@@ -195,11 +189,7 @@ function buildDefaultFilterState(): FilterState {
   }
 }
 
-function getClassesForGrade(grade: string) {
-  if (!grade) return []
-  const record = GRADE_OPTIONS.find((option) => option.value === grade)
-  return record ? record.classes : []
-}
+// تم نقل هذه الدالة للاستخدام مع البيانات الديناميكية داخل المكون
 
 function formatRange(start: string, end: string) {
   if (!start || !end) return '—'
@@ -325,8 +315,16 @@ export function AttendanceReportPage() {
   const toast = useToast()
   const studentsQuery = useStudentsQuery()
   const exportMutation = useExportAttendanceReportMutation()
+  const gradesWithClassesQuery = useGradesWithClassesQuery()
 
-  const classOptions = useMemo(() => getClassesForGrade(filters.grade), [filters.grade])
+  // الصفوف والفصول ديناميكياً
+  const gradeOptions = useMemo(() => gradesWithClassesQuery.data ?? [], [gradesWithClassesQuery.data])
+
+  const classOptions = useMemo(() => {
+    if (!filters.grade) return []
+    const record = gradeOptions.find((g) => g.grade === filters.grade)
+    return record ? record.classes : []
+  }, [filters.grade, gradeOptions])
 
   const filteredStudents = useMemo(() => {
     const list = studentsQuery.data ?? []
@@ -686,9 +684,9 @@ export function AttendanceReportPage() {
                     className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
                   >
                     <option value="">اختر الصف</option>
-                    {GRADE_OPTIONS.map((grade) => (
-                      <option key={grade.value} value={grade.value}>
-                        {grade.label}
+                    {gradeOptions.map((g) => (
+                      <option key={g.grade} value={g.grade}>
+                        {g.grade}
                       </option>
                     ))}
                   </select>

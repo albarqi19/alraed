@@ -76,7 +76,7 @@ export function SchoolRegistrationPage() {
     event.preventDefault()
     setHasSubmitted(true)
 
-    if (!form.school_name || !form.admin_name || !form.admin_national_id || !form.admin_phone || !form.school_level) {
+    if (!form.school_name || !form.admin_name || !form.admin_national_id || !form.admin_phone || !form.school_level || !form.ministry_number) {
       return
     }
 
@@ -247,14 +247,18 @@ export function SchoolRegistrationPage() {
               ) : null}
             </label>
             <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
-              الرقم الوزاري للمدرسة (اختياري)
+              الرقم الوزاري للمدرسة
               <input
                 type="text"
+                required
                 value={form.ministry_number ?? ''}
                 onChange={(event) => handleChange('ministry_number', event.target.value)}
                 placeholder="مثال: 12345678"
                 className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-normal text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
               />
+              {hasSubmitted && !form.ministry_number ? (
+                <span className="text-xs font-normal text-rose-600">هذا الحقل مطلوب</span>
+              ) : null}
             </label>
             <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
               النطاق الفرعي (اختياري)

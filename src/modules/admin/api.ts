@@ -1496,6 +1496,30 @@ export async function deleteStudent(id: number): Promise<void> {
   unwrapResponse(data, 'تعذر حذف الطالب')
 }
 
+/** جلب الصفوف الدراسية المتاحة للمدرسة الحالية (ديناميكياً) */
+export async function fetchGrades(): Promise<string[]> {
+  const { data } = await apiClient.get<ApiResponse<string[]>>('/admin/students/grades')
+  return unwrapResponse(data, 'تعذر تحميل الصفوف')
+}
+
+/** جلب الفصول لصف معين (ديناميكياً) */
+export async function fetchClasses(grade?: string): Promise<string[]> {
+  const params = grade ? { grade } : {}
+  const { data } = await apiClient.get<ApiResponse<string[]>>('/admin/students/classes', { params })
+  return unwrapResponse(data, 'تعذر تحميل الفصول')
+}
+
+/** جلب الصفوف مع فصولها (ديناميكياً) */
+export interface GradeWithClasses {
+  grade: string
+  classes: string[]
+}
+
+export async function fetchGradesWithClasses(): Promise<GradeWithClasses[]> {
+  const { data } = await apiClient.get<ApiResponse<GradeWithClasses[]>>('/admin/students/grades-with-classes')
+  return unwrapResponse(data, 'تعذر تحميل الصفوف والفصول')
+}
+
 export async function fetchSubjects(): Promise<SubjectRecord[]> {
   const { data } = await apiClient.get<ApiResponse<SubjectRecord[]>>('/admin/subjects')
   return unwrapResponse(data, 'تعذر تحميل قائمة المواد')

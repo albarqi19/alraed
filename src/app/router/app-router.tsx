@@ -10,6 +10,7 @@ import { TeacherRepliesPage } from '@/modules/teacher/pages/teacher-replies-page
 import { TeacherPointsPage } from '@/modules/teacher/pages/teacher-points-page'
 import { TeacherServicesPage } from '@/modules/teacher/pages/teacher-services-page'
 import { AdminDashboardPage } from '@/modules/admin/pages/admin-dashboard-page'
+import { OnboardingWizardPage } from '@/modules/onboarding/pages/onboarding-wizard-page'
 import { AdminTeachersPage } from '@/modules/admin/pages/admin-teachers-page'
 import { AdminStudentsPage } from '@/modules/admin/pages/admin-students-page'
 import { AdminStudentProfilePage } from '@/modules/admin/pages/admin-student-profile-page'
@@ -58,7 +59,7 @@ import { GuardianServicesPage } from '@/modules/guardian/pages/guardian-services
 import { GuardianFormsPage } from '@/modules/guardian/pages/guardian-forms-page'
 import { GuardianMessagesPage } from '@/modules/guardian/pages/guardian-messages-page'
 import { NotFoundPage } from '@/modules/core/pages/not-found-page'
-import { RequireAuth, RedirectIfAuthenticated } from '@/modules/auth/components/route-guards'
+import { RequireAuth, RedirectIfAuthenticated, RequireOnboarding } from '@/modules/auth/components/route-guards'
 import { TeacherShell } from '@/modules/teacher/layouts/teacher-shell'
 import { TeacherSchedulePage } from '@/modules/teacher/pages/teacher-schedule-page'
 import { AdminShell } from '@/modules/admin/layouts/admin-shell'
@@ -104,6 +105,7 @@ import {
   GuidanceReferralDetailsPage,
 } from '@/modules/guidance/pages'
 import AdminFCMTestPage from '@/modules/admin/pages/admin-fcm-test-page'
+import { AdminScheduleSimulatorPage } from '@/modules/admin/pages/admin-schedule-simulator-page'
 
 const appRoutes = [
   {
@@ -139,6 +141,14 @@ const appRoutes = [
           <RedirectIfAuthenticated>
             <SuperAdminLoginPage />
           </RedirectIfAuthenticated>
+        ),
+      },
+      {
+        path: 'onboarding',
+        element: (
+          <RequireOnboarding>
+            <OnboardingWizardPage />
+          </RequireOnboarding>
         ),
       },
       {
@@ -233,6 +243,7 @@ const appRoutes = [
           { path: 'referrals/:id', element: <AdminReferralDetailPage /> },
           { path: 'parent-replies', element: <AdminParentRepliesPage /> },
           { path: 'fcm-test', element: <AdminFCMTestPage /> },
+          { path: 'schedule-simulator', element: <AdminScheduleSimulatorPage /> },
         ],
       },
       {
