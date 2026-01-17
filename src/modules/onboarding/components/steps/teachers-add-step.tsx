@@ -54,7 +54,6 @@ export function TeachersAddStep({ onComplete, onSkip, stats, isCompleting, isSki
         national_id: teacherForm.national_id.trim(),
         phone: teacherForm.phone.trim() || undefined,
         role: teacherForm.role,
-        status: 'active',
       },
       {
         onSuccess: () => {
@@ -151,7 +150,7 @@ export function TeachersAddStep({ onComplete, onSkip, stats, isCompleting, isSki
             </label>
             <select
               value={teacherForm.role}
-              onChange={(e) => setTeacherForm((f) => ({ ...f, role: e.target.value }))}
+              onChange={(e) => setTeacherForm((f) => ({ ...f, role: e.target.value as StaffRole }))}
               className="w-full rounded-xl border border-slate-200 px-4 py-2.5 focus:border-teal-500 focus:outline-none"
             >
               {ROLES.map((role) => (

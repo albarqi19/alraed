@@ -17,7 +17,7 @@ export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
           {steps.map((step, index) => {
             const isActive = step.key === currentStep
             const isCompleted = step.is_completed
-            const _isPending = index > currentIndex
+            // index > currentIndex indicates pending steps
 
             return (
               <div key={step.key} className="flex flex-1 items-center">

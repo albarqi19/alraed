@@ -142,7 +142,7 @@ export function ScheduleSetupStep({ onComplete, onSkip, stats, isCompleting, isS
       }
     }
 
-    const payload: SchedulePayload = {
+    const payload = {
       name: scheduleForm.name,
       type: scheduleForm.type,
       is_active: true,
