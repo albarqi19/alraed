@@ -326,6 +326,11 @@ export function AttendanceReportPage() {
     return record ? record.classes : []
   }, [filters.grade, gradeOptions])
 
+  const getClassesForGrade = (grade: string): string[] => {
+    const record = gradeOptions.find((g) => g.grade === grade)
+    return record ? record.classes : []
+  }
+
   const filteredStudents = useMemo(() => {
     const list = studentsQuery.data ?? []
     const search = filters.studentSearch.trim()

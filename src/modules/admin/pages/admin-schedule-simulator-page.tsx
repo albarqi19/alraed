@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
-  Calendar,
   Users,
   BookOpen,
   GraduationCap,
@@ -8,14 +7,10 @@ import {
   Play,
   AlertTriangle,
   CheckCircle,
-  Clock,
   ChevronLeft,
   ChevronRight,
   Download,
-  RefreshCcw,
   Trash2,
-  Eye,
-  BarChart3,
   Loader2,
   Database,
   Sparkles,
@@ -743,24 +738,6 @@ export function AdminScheduleSimulatorPage() {
 
   const updateSubjectName = (id: number, name: string) => {
     setSubjects(subjects.map(s => s.id === id ? { ...s, name } : s))
-  }
-
-  const addClassGroup = () => {
-    const newId = classes.length > 0 ? Math.max(...classes.map(c => c.id)) + 1 : 1
-    const grades = ['الصف الأول', 'الصف الثاني', 'الصف الثالث', 'الصف الرابع', 'الصف الخامس', 'الصف السادس']
-    const classNames = ['أ', 'ب', 'ج', 'د', 'هـ']
-    const gradeIndex = Math.floor(classes.length / classNames.length) % grades.length
-    const classIndex = classes.length % classNames.length
-    setClasses([...classes, {
-      id: newId,
-      grade: grades[gradeIndex],
-      class_name: classNames[classIndex]
-    }])
-  }
-
-  const removeClassGroup = (id: number) => {
-    setClasses(classes.filter(c => c.id !== id))
-    setRequirements(requirements.filter(r => r.class_id !== id))
   }
 
   const renderStep4 = () => (

@@ -121,7 +121,6 @@ export function OnboardingWizardPage() {
     <OnboardingLayout
       steps={status.steps}
       currentStep={currentStepKey}
-      progress={status.progress}
     >
       <StepComponent
         onComplete={handleCompleteStep}

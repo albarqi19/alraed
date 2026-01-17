@@ -3,12 +3,13 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useCreateTeacherMutation, useTeachersQuery } from '@/modules/admin/hooks'
 import { useToast } from '@/shared/feedback/use-toast'
 import type { StepComponentProps } from '../../types'
+import type { StaffRole } from '@/modules/admin/types'
 
 interface TeacherForm {
   name: string
   national_id: string
   phone: string
-  role: string
+  role: StaffRole
 }
 
 const DEFAULT_TEACHER: TeacherForm = {

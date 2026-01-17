@@ -6,7 +6,6 @@ import {
   fetchSchedules,
   createSchedule,
 } from '@/modules/admin/api'
-import type { SchedulePayload } from '@/modules/admin/types'
 import { useToast } from '@/shared/feedback/use-toast'
 import type { StepComponentProps } from '../../types'
 
