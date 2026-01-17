@@ -6,11 +6,13 @@ import {
   usePendingApprovalsQuery,
   useRejectAttendanceSessionMutation,
   useUpdateAttendanceStatusMutation,
+  useAbsenceSmsSettingsQuery,
+  useUpdateAbsenceSmsSettingsMutation,
 } from '../hooks'
 import type { PendingApprovalRecord, AttendanceSessionDetails } from '../types'
 import { MissingSessionsModal } from '../components/missing-sessions-modal'
 import { ManualAbsenceModal } from '../components/manual-absence-modal'
-import { Clock, Loader2, AlertCircle, Plus } from 'lucide-react'
+import { Clock, Loader2, AlertCircle, Plus, MessageSquare, MessageSquareOff } from 'lucide-react'
 
 interface ApprovalProgress {
   totalRecords: number
@@ -201,6 +203,11 @@ export function AdminApprovalPage() {
   const rejectMutation = useRejectAttendanceSessionMutation()
   const approveAllMutation = useApproveAllPendingSessionsMutation()
   const updateStatusMutation = useUpdateAttendanceStatusMutation()
+
+  // إعدادات إرسال رسائل الغياب
+  const smsSettingsQuery = useAbsenceSmsSettingsQuery()
+  const updateSmsMutation = useUpdateAbsenceSmsSettingsMutation()
+  const sendAbsenceSms = smsSettingsQuery.data?.send_absence_sms ?? false
 
   const totals = useMemo(() => {
     const totalStudents = approvals.reduce((sum, item) => sum + (item.student_count ?? 0), 0)
@@ -437,6 +444,43 @@ export function AdminApprovalPage() {
         <p className="text-sm text-muted">
           راجع سجل الحضور، حرر حالات الطلاب مباشرة، ثم اعتمد أو ارفض التحضير بحسب البيانات المتوفرة.
         </p>
+
+        {/* إعداد إرسال رسائل الغياب */}
+        <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3">
+          <div className="flex items-center gap-3">
+            {sendAbsenceSms ? (
+              <MessageSquare className="h-5 w-5 text-emerald-600" />
+            ) : (
+              <MessageSquareOff className="h-5 w-5 text-slate-400" />
+            )}
+            <div className="text-right">
+              <p className="text-sm font-semibold text-slate-700">
+                إرسال رسائل الغياب لأولياء الأمور
+              </p>
+              <p className="text-xs text-muted">
+                {sendAbsenceSms
+                  ? 'سيتم إرسال رسائل واتساب تلقائياً عند اعتماد التحضير'
+                  : 'لن يتم إرسال أي رسائل عند اعتماد التحضير'}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => updateSmsMutation.mutate({ send_absence_sms: !sendAbsenceSms })}
+            disabled={updateSmsMutation.isPending || smsSettingsQuery.isLoading}
+            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+              sendAbsenceSms ? 'bg-emerald-500' : 'bg-slate-300'
+            }`}
+            role="switch"
+            aria-checked={sendAbsenceSms}
+          >
+            <span
+              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                sendAbsenceSms ? '-translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
       </header>
 
       <section className="glass-card space-y-6">

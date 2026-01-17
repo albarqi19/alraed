@@ -138,6 +138,8 @@ import {
   deleteDutyRosterTemplate,
   fetchDutyRosterTemplates,
   updateDutyRosterTemplate,
+  fetchAbsenceSmsSettings,
+  updateAbsenceSmsSettings,
 } from './api'
 import { adminQueryKeys } from './query-keys'
 import { useToast } from '@/shared/feedback/use-toast'
@@ -2490,5 +2492,36 @@ export function useStandbyAdvancedStatsQuery(options: { enabled?: boolean } = {}
     },
     enabled: options.enabled ?? true,
     staleTime: 2 * 60 * 1000, // دقيقتين
+  })
+}
+
+// ========================================
+// إعدادات إرسال رسائل الغياب
+// ========================================
+
+export function useAbsenceSmsSettingsQuery() {
+  return useQuery({
+    queryKey: ['admin', 'attendance', 'sms-settings'],
+    queryFn: fetchAbsenceSmsSettings,
+    staleTime: 5 * 60 * 1000, // 5 دقائق
+  })
+}
+
+export function useUpdateAbsenceSmsSettingsMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: updateAbsenceSmsSettings,
+    onSuccess: (result) => {
+      toast({
+        type: 'success',
+        title: result.send_absence_sms ? 'تم تفعيل إرسال رسائل الغياب' : 'تم إيقاف إرسال رسائل الغياب',
+      })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'attendance', 'sms-settings'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تحديث إعدادات الرسائل') })
+    },
   })
 }

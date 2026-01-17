@@ -3461,3 +3461,26 @@ export async function createAndLinkSubject(chromeName: string, name: string): Pr
   )
   return unwrapResponse(data, 'تعذر إنشاء وربط المادة')
 }
+
+// ========================================
+// إعدادات إرسال رسائل الغياب
+// ========================================
+
+export interface AbsenceSmsSettings {
+  send_absence_sms: boolean
+}
+
+export async function fetchAbsenceSmsSettings(): Promise<AbsenceSmsSettings> {
+  const { data } = await apiClient.get<ApiResponse<AbsenceSmsSettings>>(
+    '/admin/attendance-reports/sms-settings'
+  )
+  return unwrapResponse(data, 'تعذر تحميل إعدادات الرسائل')
+}
+
+export async function updateAbsenceSmsSettings(payload: AbsenceSmsSettings): Promise<AbsenceSmsSettings> {
+  const { data } = await apiClient.put<ApiResponse<AbsenceSmsSettings>>(
+    '/admin/attendance-reports/sms-settings',
+    payload
+  )
+  return unwrapResponse(data, 'تعذر تحديث إعدادات الرسائل')
+}
