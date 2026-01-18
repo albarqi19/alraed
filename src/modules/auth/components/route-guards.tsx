@@ -39,9 +39,10 @@ export function RequireAuth({ children, role, requireManagement, skipOnboardingC
   }
 
   // التحقق من الحاجة لإكمال الإعداد (للمدير ومساعده)
+  // يجب أن تكون needs_onboarding === true صراحةً وليس مجرد truthy
   if (
     !skipOnboardingCheck &&
-    user.needs_onboarding &&
+    user.needs_onboarding === true &&
     (user.role === 'school_principal' || user.role === 'admin') &&
     !location.pathname.startsWith('/onboarding')
   ) {

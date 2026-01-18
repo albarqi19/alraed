@@ -25,10 +25,39 @@ function getSubjectName(session: TeacherSession): string {
 }
 
 function classifySession(session: TeacherSession) {
-  if (session.is_current) return { badge: 'جارية الآن', tone: 'text-emerald-600', accent: 'bg-emerald-50' }
-  if (session.is_past) return { badge: 'منتهية', tone: 'text-slate-500', accent: 'bg-slate-100' }
-  if (session.can_take_attendance) return { badge: 'متاح للتحضير', tone: 'text-amber-600', accent: 'bg-amber-50' }
-  return { badge: 'قادمة', tone: 'text-slate-500', accent: 'bg-white' }
+  // إذا كانت حصة انتظار، نضيف علامة مميزة
+  const isStandby = session.is_standby === true
+
+  if (session.is_current) {
+    return {
+      badge: isStandby ? 'انتظار - جارية' : 'جارية الآن',
+      tone: isStandby ? 'text-orange-600' : 'text-emerald-600',
+      accent: isStandby ? 'bg-orange-50' : 'bg-emerald-50',
+      isStandby
+    }
+  }
+  if (session.is_past) {
+    return {
+      badge: isStandby ? 'انتظار - منتهية' : 'منتهية',
+      tone: 'text-slate-500',
+      accent: 'bg-slate-100',
+      isStandby
+    }
+  }
+  if (session.can_take_attendance) {
+    return {
+      badge: isStandby ? 'انتظار - متاح' : 'متاح للتحضير',
+      tone: isStandby ? 'text-orange-600' : 'text-amber-600',
+      accent: isStandby ? 'bg-orange-50' : 'bg-amber-50',
+      isStandby
+    }
+  }
+  return {
+    badge: isStandby ? 'انتظار - قادمة' : 'قادمة',
+    tone: 'text-slate-500',
+    accent: 'bg-white',
+    isStandby
+  }
 }
 
 export function TeacherDashboardPage() {
@@ -182,25 +211,58 @@ export function TeacherDashboardPage() {
 
       {/* إخفاء الحصص أثناء الإجازة */}
       {!isHoliday && actionableSession ? (
-        <article className="rounded-3xl border border-emerald-300 bg-white p-6 text-right">
+        <article className={clsx(
+          'rounded-3xl border bg-white p-6 text-right',
+          actionableSession.is_standby ? 'border-orange-300' : 'border-emerald-300'
+        )}>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-2">
-              <p className="text-sm font-semibold text-emerald-700">الحصة المتاحة للتحضير الآن</p>
-              <h2 className="text-2xl font-bold text-emerald-900">
+              <div className="flex items-center gap-2">
+                <p className={clsx(
+                  'text-sm font-semibold',
+                  actionableSession.is_standby ? 'text-orange-700' : 'text-emerald-700'
+                )}>
+                  {actionableSession.is_standby ? 'حصة انتظار متاحة للتحضير' : 'الحصة المتاحة للتحضير الآن'}
+                </p>
+                {actionableSession.is_standby && (
+                  <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700">
+                    انتظار
+                  </span>
+                )}
+              </div>
+              <h2 className={clsx(
+                'text-2xl font-bold',
+                actionableSession.is_standby ? 'text-orange-900' : 'text-emerald-900'
+              )}>
                 {getSubjectName(actionableSession)}
               </h2>
-              <p className="text-sm text-emerald-700">
+              <p className={clsx(
+                'text-sm',
+                actionableSession.is_standby ? 'text-orange-700' : 'text-emerald-700'
+              )}>
                 {actionableSession.grade} — {actionableSession.class_name} • الحصة رقم{' '}
                 {actionableSession.period_number ?? '--'}
               </p>
-              <p className="text-xs text-emerald-600">
+              {actionableSession.is_standby && actionableSession.replacing_teacher_name && (
+                <p className="text-sm font-medium text-orange-600">
+                  <i className="bi bi-arrow-left-right ml-1" aria-hidden></i>
+                  بديلاً عن أ. {actionableSession.replacing_teacher_name}
+                </p>
+              )}
+              <p className={clsx(
+                'text-xs',
+                actionableSession.is_standby ? 'text-orange-600' : 'text-emerald-600'
+              )}>
                 من {formatTime(actionableSession.formatted_start_time ?? actionableSession.start_time)} إلى{' '}
                 {formatTime(actionableSession.formatted_end_time ?? actionableSession.end_time)}
               </p>
             </div>
-            <Link 
-              to={`/teacher/sessions/${actionableSession.id}`} 
-              className="button-primary w-full lg:w-auto"
+            <Link
+              to={`/teacher/sessions/${actionableSession.id}`}
+              className={clsx(
+                'w-full lg:w-auto',
+                actionableSession.is_standby ? 'button-primary !bg-orange-600 hover:!bg-orange-700' : 'button-primary'
+              )}
               onClick={(e) => handleSessionClick(actionableSession, e)}
             >
               {actionableSession.is_current ? 'ابدأ التحضير الآن' : 'فتح صفحة التحضير'}
@@ -234,12 +296,15 @@ export function TeacherDashboardPage() {
             {sessions.map((session) => {
               const status = classifySession(session)
               const isHighlighted = highlightedSessionId === session.id
+              const isStandby = session.is_standby === true
               return (
                 <article
-                  key={session.id}
+                  key={`${session.id}-${isStandby ? 'standby' : 'original'}`}
                   className={clsx(
                     'flex h-full flex-col gap-3 rounded-3xl border bg-white p-5 transition',
-                    isHighlighted ? 'border-emerald-300' : 'border-slate-200 hover:border-emerald-200',
+                    isHighlighted
+                      ? isStandby ? 'border-orange-300' : 'border-emerald-300'
+                      : isStandby ? 'border-orange-200 hover:border-orange-300' : 'border-slate-200 hover:border-emerald-200',
                   )}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -250,8 +315,19 @@ export function TeacherDashboardPage() {
                       <p className="text-xs text-muted">
                         {session.grade} — {session.class_name}
                       </p>
+                      {isStandby && session.replacing_teacher_name && (
+                        <p className="text-xs font-medium text-orange-600">
+                          <i className="bi bi-arrow-left-right ml-1" aria-hidden></i>
+                          بديلاً عن أ. {session.replacing_teacher_name}
+                        </p>
+                      )}
                     </div>
-                    <span className={clsx('rounded-full px-3 py-1 text-xs font-semibold border', status.accent, status.tone)}>
+                    <span className={clsx(
+                      'rounded-full px-3 py-1 text-xs font-semibold border',
+                      status.accent,
+                      status.tone,
+                      isStandby && 'border-orange-200'
+                    )}>
                       {status.badge}
                     </span>
                   </div>
@@ -263,15 +339,18 @@ export function TeacherDashboardPage() {
                     <span>الحصة رقم {session.period_number ?? '--'}</span>
                   </div>
                   {session.is_current || session.can_take_attendance ? (
-                    <Link 
-                      to={`/teacher/sessions/${session.id}`} 
-                      className="button-primary mt-auto w-full"
+                    <Link
+                      to={`/teacher/sessions/${session.id}`}
+                      className={clsx(
+                        'mt-auto w-full',
+                        isStandby ? 'button-primary !bg-orange-600 hover:!bg-orange-700' : 'button-primary'
+                      )}
                       onClick={(e) => handleSessionClick(session, e)}
                     >
                       فتح صفحة التحضير
                     </Link>
                   ) : (
-                    <Link 
+                    <Link
                       to={`/teacher/sessions/${session.id}`}
                       className="button-secondary mt-auto w-full opacity-70"
                       onClick={(e) => handleSessionClick(session, e)}

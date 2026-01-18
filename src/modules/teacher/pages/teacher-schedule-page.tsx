@@ -202,20 +202,39 @@ export function TeacherSchedulePage() {
                         )
                       }
 
+                      const isStandby = session.is_standby === true
                       return (
                         <td key={day} className="px-3 py-4">
                           <div
-                            className={`space-y-1 rounded-2xl border border-transparent px-3 py-2 ${
-                              session.is_today ? 'bg-emerald-50 border-emerald-200' : 'bg-white/70'
+                            className={`space-y-1 rounded-2xl border px-3 py-2 ${
+                              isStandby
+                                ? 'bg-orange-50 border-orange-200'
+                                : session.is_today
+                                  ? 'bg-emerald-50 border-emerald-200'
+                                  : 'bg-white/70 border-transparent'
                             }`}
                           >
-                            <p className="text-sm font-semibold text-slate-900">
-                              {session.subject?.name ?? 'مادة غير محددة'}
-                            </p>
+                            <div className="flex items-center justify-between gap-1">
+                              <p className="text-sm font-semibold text-slate-900">
+                                {session.subject?.name ?? 'مادة غير محددة'}
+                              </p>
+                              {isStandby && (
+                                <span className="rounded-full bg-orange-100 px-1.5 py-0.5 text-[10px] font-semibold text-orange-700">
+                                  انتظار
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs text-muted">
                               {session.grade} — {session.class_name}
                             </p>
-                            <p className="text-xs text-emerald-600">{getSessionTimeRange(session)}</p>
+                            {isStandby && session.replacing_teacher_name && (
+                              <p className="text-[10px] font-medium text-orange-600">
+                                بديلاً عن أ. {session.replacing_teacher_name}
+                              </p>
+                            )}
+                            <p className={`text-xs ${isStandby ? 'text-orange-600' : 'text-emerald-600'}`}>
+                              {getSessionTimeRange(session)}
+                            </p>
                           </div>
                         </td>
                       )

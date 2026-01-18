@@ -17,6 +17,10 @@ export interface TeacherSession {
   is_current?: boolean
   is_past?: boolean
   can_take_attendance?: boolean
+  // حقول الانتظار
+  is_standby?: boolean
+  replacing_teacher_name?: string | null
+  standby_assignment_id?: number | null
 }
 
 export interface TeacherSessionsPayload {

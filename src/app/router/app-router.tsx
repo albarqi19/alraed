@@ -90,6 +90,8 @@ import { TeacherActivitiesPage } from '@/modules/activities/pages/teacher-activi
 import { TeacherReferralsPage } from '@/modules/teacher/pages/teacher-referrals-page'
 import { NewReferralPage } from '@/modules/teacher/pages/new-referral-page'
 import { ReferralDetailPage } from '@/modules/teacher/pages/referral-detail-page'
+import { TeacherCoverageRequestPage } from '@/modules/teacher/pages/teacher-coverage-request-page'
+import { TeacherCoverageIncomingPage } from '@/modules/teacher/pages/teacher-coverage-incoming-page'
 import { AdminReferralsPage } from '@/modules/admin/pages/admin-referrals-page'
 import { AdminReferralDetailPage } from '@/modules/admin/pages/admin-referral-detail-page'
 import { AdminParentRepliesPage } from '@/modules/admin/pages/admin-parent-replies-page'
@@ -170,6 +172,8 @@ const appRoutes = [
           { path: 'referrals', element: <TeacherReferralsPage /> },
           { path: 'referrals/new', element: <NewReferralPage /> },
           { path: 'referrals/:id', element: <ReferralDetailPage /> },
+          { path: 'coverage-request', element: <TeacherCoverageRequestPage /> },
+          { path: 'coverage-incoming', element: <TeacherCoverageIncomingPage /> },
           { path: 'sessions/:sessionId', element: <TeacherSessionAttendancePage /> },
         ],
       },

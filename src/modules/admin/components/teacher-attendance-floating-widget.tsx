@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
-import { BarChart3, RefreshCw, X, ChevronUp, ClipboardList } from 'lucide-react'
+import { BarChart3, RefreshCw, X, ChevronUp, ClipboardList, UserMinus, ClipboardCheck } from 'lucide-react'
 
 interface TeacherAttendanceFloatingWidgetProps {
   onStatsClick: () => void
   onRefresh: () => void
   onStandbyClick?: () => void
+  onLeaveRequestClick?: () => void
+  onCoverageRequestsClick?: () => void
+  pendingCoverageCount?: number
   isRefreshing?: boolean
 }
 
@@ -14,6 +17,9 @@ export function TeacherAttendanceFloatingWidget({
   onStatsClick,
   onRefresh,
   onStandbyClick,
+  onLeaveRequestClick,
+  onCoverageRequestsClick,
+  pendingCoverageCount = 0,
   isRefreshing = false,
 }: TeacherAttendanceFloatingWidgetProps) {
   const [isExpanded, setIsExpanded] = useState(() => {
@@ -150,6 +156,69 @@ export function TeacherAttendanceFloatingWidget({
                 >
                   <ClipboardList className="h-3.5 w-3.5" />
                   <span>توزيع الانتظار</span>
+                </button>
+                {/* فاصل */}
+                <div className="h-6 w-px" style={{ backgroundColor: 'rgba(0, 0, 0, 0.1)' }} />
+              </>
+            )}
+
+            {/* زر الاستئذان */}
+            {onLeaveRequestClick && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onLeaveRequestClick()
+                    setTimeout(() => setIsExpanded(false), 300)
+                  }}
+                  className="group flex items-center gap-1.5 px-3 py-2 text-black transition-all duration-150 hover:scale-105"
+                  style={{
+                    borderRadius: '6px',
+                    fontSize: '0.75rem',
+                    fontWeight: 500,
+                    minHeight: '2rem',
+                    background: 'rgba(255, 255, 255, 0.8)',
+                    border: '1px solid rgba(0, 0, 0, 0.1)',
+                    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.08)',
+                    backdropFilter: 'blur(8px)',
+                  }}
+                >
+                  <UserMinus className="h-3.5 w-3.5" />
+                  <span>استئذان</span>
+                </button>
+                {/* فاصل */}
+                <div className="h-6 w-px" style={{ backgroundColor: 'rgba(0, 0, 0, 0.1)' }} />
+              </>
+            )}
+
+            {/* زر طلبات التأمين */}
+            {onCoverageRequestsClick && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onCoverageRequestsClick()
+                    setTimeout(() => setIsExpanded(false), 300)
+                  }}
+                  className="group relative flex items-center gap-1.5 px-3 py-2 text-black transition-all duration-150 hover:scale-105"
+                  style={{
+                    borderRadius: '6px',
+                    fontSize: '0.75rem',
+                    fontWeight: 500,
+                    minHeight: '2rem',
+                    background: 'rgba(255, 255, 255, 0.8)',
+                    border: '1px solid rgba(0, 0, 0, 0.1)',
+                    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.08)',
+                    backdropFilter: 'blur(8px)',
+                  }}
+                >
+                  <ClipboardCheck className="h-3.5 w-3.5" />
+                  <span>طلبات التأمين</span>
+                  {pendingCoverageCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[10px] font-bold text-white">
+                      {pendingCoverageCount > 9 ? '9+' : pendingCoverageCount}
+                    </span>
+                  )}
                 </button>
                 {/* فاصل */}
                 <div className="h-6 w-px" style={{ backgroundColor: 'rgba(0, 0, 0, 0.1)' }} />

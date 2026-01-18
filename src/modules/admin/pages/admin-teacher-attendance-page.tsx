@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { apiClient } from '@/services/api/client'
 import {
   useTeacherHudoriAttendanceQuery,
   useTeacherAttendanceSettingsQuery,
@@ -13,6 +15,8 @@ import {
 import { TeacherAttendanceStatsModal } from '../components/teacher-attendance-stats-modal'
 import { TeacherAttendanceFloatingWidget } from '../components/teacher-attendance-floating-widget'
 import { StandbyDistributionModal } from '../components/standby-distribution-modal'
+import { LeaveRequestModal } from '../components/leave-request-modal'
+import { CoverageRequestsModal } from '../components/coverage-requests-modal'
 import type {
   TeacherHudoriAttendanceFilters,
   TeacherHudoriAttendanceLoginMethod,
@@ -450,6 +454,8 @@ export function AdminTeacherAttendancePage() {
   const [inquiryDialog, setInquiryDialog] = useState<InquiryDialogState | null>(null)
   const [bulkInquiryDialog, setBulkInquiryDialog] = useState<BulkInquiryDialogState | null>(null)
   const [isStandbyModalOpen, setIsStandbyModalOpen] = useState(false)
+  const [isLeaveRequestModalOpen, setIsLeaveRequestModalOpen] = useState(false)
+  const [isCoverageRequestsModalOpen, setIsCoverageRequestsModalOpen] = useState(false)
 
   const queryFilters = useMemo<TeacherHudoriAttendanceFilters>(() => {
     const payload: TeacherHudoriAttendanceFilters = {}
@@ -465,6 +471,16 @@ export function AdminTeacherAttendancePage() {
   const settingsQuery = useTeacherAttendanceSettingsQuery()
   const updateSettingsMutation = useUpdateTeacherAttendanceSettingsMutation()
   const adminSettingsQuery = useAdminSettingsQuery()
+
+  // عدد طلبات التأمين المعلقة
+  const pendingCoverageCountQuery = useQuery({
+    queryKey: ['admin-coverage-pending-count'],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/admin/coverage/requests/pending/count')
+      return data.count as number
+    },
+    refetchInterval: 30_000,
+  })
 
   const delayQueryFilters = useMemo<TeacherAttendanceDelayFilters>(() => {
     const payload: TeacherAttendanceDelayFilters = {
@@ -2191,6 +2207,9 @@ export function AdminTeacherAttendancePage() {
         onStatsClick={() => setIsStatsModalOpen(true)}
         onRefresh={() => attendanceQuery.refetch()}
         onStandbyClick={() => setIsStandbyModalOpen(true)}
+        onLeaveRequestClick={() => setIsLeaveRequestModalOpen(true)}
+        onCoverageRequestsClick={() => setIsCoverageRequestsModalOpen(true)}
+        pendingCoverageCount={pendingCoverageCountQuery.data ?? 0}
         isRefreshing={attendanceQuery.isFetching}
       />
 
@@ -2199,6 +2218,19 @@ export function AdminTeacherAttendancePage() {
         isOpen={isStandbyModalOpen}
         onClose={() => setIsStandbyModalOpen(false)}
         date={delayFilters.start_date || today}
+      />
+
+      {/* نافذة طلب الاستئذان */}
+      <LeaveRequestModal
+        isOpen={isLeaveRequestModalOpen}
+        onClose={() => setIsLeaveRequestModalOpen(false)}
+        date={delayFilters.start_date || today}
+      />
+
+      {/* نافذة طلبات التأمين */}
+      <CoverageRequestsModal
+        isOpen={isCoverageRequestsModalOpen}
+        onClose={() => setIsCoverageRequestsModalOpen(false)}
       />
     </section>
   )

@@ -53,6 +53,16 @@ const SERVICES: ServiceCard[] = [
     to: '/teacher/referrals',
   },
   {
+    id: 'coverage-request',
+    title: 'الاستئذان',
+    description: 'تأمين الحصص المتبقية',
+    icon: 'bi-calendar-x',
+    iconColor: 'text-orange-600',
+    iconBg: 'bg-orange-100/80',
+    accentBar: 'from-orange-400/50 via-orange-200/40 to-transparent',
+    to: '/teacher/coverage-request',
+  },
+  {
     id: 'certificates',
     title: 'الشهادات',
     description: 'طباعة الشهادات والنماذج',
