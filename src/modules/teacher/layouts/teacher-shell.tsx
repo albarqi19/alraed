@@ -3,6 +3,9 @@ import { useAuthStore } from '@/modules/auth/store/auth-store'
 import { useLogoutMutation } from '@/modules/auth/hooks'
 import clsx from 'classnames'
 import { useState, useEffect, useRef } from 'react'
+import { MoodTrackerSheet } from '../mood/components/mood-tracker-sheet'
+import { useTodayMoodQuery, useSubmitMoodMutation } from '../mood/hooks'
+import type { MoodType } from '../mood/types'
 
 const navItems = [
   { to: '/teacher/dashboard', label: 'الرئيسية', exact: true },
@@ -18,6 +21,34 @@ export function TeacherShell() {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [navigationOpen, setNavigationOpen] = useState(false)
   const profileMenuRef = useRef<HTMLDivElement>(null)
+
+  // Mood Tracker state and queries
+  const [showMoodSheet, setShowMoodSheet] = useState(false)
+  const { data: todayMood, isLoading: isMoodLoading } = useTodayMoodQuery()
+  const submitMoodMutation = useSubmitMoodMutation({
+    onSuccess: () => {
+      setShowMoodSheet(false)
+    },
+  })
+
+  // Show mood sheet if teacher hasn't submitted mood today
+  useEffect(() => {
+    if (!isMoodLoading && todayMood && !todayMood.has_mood) {
+      // Small delay for better UX - let the page load first
+      const timer = setTimeout(() => {
+        setShowMoodSheet(true)
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+  }, [todayMood, isMoodLoading])
+
+  const handleMoodSelect = (mood: MoodType) => {
+    submitMoodMutation.mutate(mood)
+  }
+
+  const handleMoodSkip = () => {
+    setShowMoodSheet(false)
+  }
 
   // Close profile menu when clicking outside
   useEffect(() => {
@@ -115,6 +146,14 @@ export function TeacherShell() {
           <Outlet />
         </div>
       </main>
+
+      {/* Mood Tracker Sheet */}
+      <MoodTrackerSheet
+        isOpen={showMoodSheet}
+        isSubmitting={submitMoodMutation.isPending}
+        onSelect={handleMoodSelect}
+        onSkip={handleMoodSkip}
+      />
     </div>
   )
 }

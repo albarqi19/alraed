@@ -46,6 +46,7 @@ import {
   Bell, // أيقونة اختبار الإشعارات
   Wand2, // أيقونة محاكي الجداول
   FileWarning, // أيقونة إجراءات التأخير
+  HeartPulse, // أيقونة نبض الفريق
 } from 'lucide-react'
 
 export interface AdminNavItem {
@@ -71,6 +72,7 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
       { to: '/admin/dashboard', label: 'نظرة عامة', icon: LayoutDashboard, exact: true, permission: 'admin.dashboard' },
       { to: '/admin/teachers', label: 'إدارة المعلمين', icon: Users, permission: 'admin.teachers' },
       { to: '/admin/teacher-attendance', label: 'حضور المعلمين', icon: Fingerprint, permission: 'admin.teacher-attendance' },
+      { to: '/admin/team-pulse', label: 'نبض الفريق', icon: HeartPulse, permission: 'admin.team-pulse' },
       { to: '/admin/delay-actions', label: 'إجراءات التأخير', icon: FileWarning, permission: 'admin.delay-actions' },
       { to: '/admin/duty-rosters', label: 'الإشراف اليومي', icon: Eye, permission: 'admin.duty-rosters' },
       { to: '/admin/teacher-standby', label: 'جدول الانتظار', icon: Clock, permission: 'admin.teacher-standby' },
