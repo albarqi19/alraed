@@ -108,6 +108,7 @@ import {
 } from '@/modules/guidance/pages'
 import AdminFCMTestPage from '@/modules/admin/pages/admin-fcm-test-page'
 import { AdminScheduleSimulatorPage } from '@/modules/admin/pages/admin-schedule-simulator-page'
+import { AdminDelayActionsPage } from '@/modules/admin/delay-actions'
 
 const appRoutes = [
   {
@@ -207,6 +208,7 @@ const appRoutes = [
           { path: 'approval', element: <AdminApprovalPage /> },
           { path: 'absence-messages', element: <AdminAbsenceMessagesPage /> },
           { path: 'late-arrivals', element: <AdminLateArrivalsPage /> },
+          { path: 'delay-actions', element: <AdminDelayActionsPage /> },
           { path: 'duty-rosters', element: <AdminDutyRostersPage /> },
           { path: 'teacher-standby', element: <AdminTeacherStandbyPage /> },
           { path: 'leave-requests', element: <AdminLeaveRequestsPage /> },
