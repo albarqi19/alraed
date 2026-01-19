@@ -29,6 +29,7 @@ export const useAppUpdate = (): UseAppUpdateReturn => {
   const waitingWorkerRef = useRef<ServiceWorker | null>(null)
   const dismissedRef = useRef(false)
   const currentVersionRef = useRef<string | null>(null)
+  const newVersionRef = useRef<string | null>(null)
 
   // التحقق من التحديثات يدوياً
   const checkForUpdate = useCallback(async () => {
@@ -142,6 +143,7 @@ export const useAppUpdate = (): UseAppUpdateReturn => {
               // فقط أظهر الإشعار إذا كان الإصدار الجديد مختلف فعلاً
               if (newVersion && currentVersion && newVersion !== currentVersion) {
                 console.log('[AppUpdate] Real update available!')
+                newVersionRef.current = newVersion
                 setState((prev) => ({ ...prev, newVersion }))
                 
                 if (!dismissedRef.current && mounted) {
@@ -199,12 +201,13 @@ export const useAppUpdate = (): UseAppUpdateReturn => {
           reloading = true
           
           console.log('[AppUpdate] Controller changed, reloading page...')
-          
+
           // تحديث الإصدار المحفوظ قبل إعادة التحميل
-          if (state.newVersion) {
-            localStorage.setItem(CURRENT_SW_VERSION_KEY, state.newVersion)
+          if (newVersionRef.current) {
+            localStorage.setItem(CURRENT_SW_VERSION_KEY, newVersionRef.current)
+            console.log('[AppUpdate] Saved new version:', newVersionRef.current)
           }
-          
+
           // إعادة تحميل الصفحة للحصول على النسخة الجديدة
           window.location.reload()
         })
