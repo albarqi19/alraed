@@ -160,7 +160,7 @@ export function ActionsHistoryTable({
     window.open(url, '_blank')
   }
 
-  const handleMarkSigned = async (name: string) => {
+  const handleMarkSigned = async (_name: string) => {
     if (!signDialogActionId) return
     setIsSignSubmitting(true)
     try {

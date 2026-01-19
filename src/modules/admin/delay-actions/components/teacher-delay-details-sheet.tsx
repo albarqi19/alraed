@@ -2,7 +2,7 @@
  * لوحة تفاصيل تأخير معلم (Sheet)
  */
 
-import { Phone, User, Clock, Calendar, AlertTriangle, FileWarning, Check, Printer } from 'lucide-react'
+import { Phone, User, Calendar, AlertTriangle, FileWarning, Check, Printer } from 'lucide-react'
 import {
   Sheet,
   SheetContent,
