@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/services/api/client'
 import { useToast } from '@/shared/feedback/use-toast'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 // =====================================================
 // Types
@@ -31,6 +31,15 @@ interface IncomingResponse {
   count: number
 }
 
+interface CoverageSettings {
+  is_enabled: boolean
+}
+
+interface SettingsResponse {
+  success: boolean
+  data: CoverageSettings
+}
+
 const PERIOD_NAMES: Record<number, string> = {
   1: 'الأولى',
   2: 'الثانية',
@@ -44,6 +53,11 @@ const PERIOD_NAMES: Record<number, string> = {
 // =====================================================
 // API Functions
 // =====================================================
+
+async function fetchCoverageSettings(): Promise<SettingsResponse> {
+  const { data } = await apiClient.get('/teacher/coverage/settings')
+  return data
+}
 
 async function fetchIncomingCoverage(): Promise<IncomingResponse> {
   const { data } = await apiClient.get('/teacher/coverage/incoming')
@@ -67,11 +81,21 @@ async function rejectCoverage(itemId: number): Promise<{ success: boolean }> {
 export function TeacherCoverageIncomingPage() {
   const toast = useToast()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
+
+  // التحقق من تفعيل الميزة
+  const settingsQuery = useQuery({
+    queryKey: ['teacher-coverage-settings'],
+    queryFn: fetchCoverageSettings,
+  })
+
+  const isFeatureEnabled = settingsQuery.data?.data?.is_enabled ?? true
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['teacher-coverage-incoming'],
     queryFn: fetchIncomingCoverage,
     refetchInterval: 30000, // تحديث كل 30 ثانية
+    enabled: isFeatureEnabled, // لا تجلب البيانات إذا كانت الميزة معطلة
   })
 
   const acceptMutation = useMutation({
@@ -97,6 +121,47 @@ export function TeacherCoverageIncomingPage() {
   })
 
   const items = data?.data ?? []
+
+  // Settings loading state
+  if (settingsQuery.isLoading) {
+    return (
+      <section className="space-y-6">
+        <header className="space-y-1">
+          <h1 className="text-2xl font-bold text-slate-900">طلبات التأمين الواردة</h1>
+        </header>
+        <div className="glass-card flex items-center justify-center py-12">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-orange-500/30 border-t-orange-500" />
+        </div>
+      </section>
+    )
+  }
+
+  // Feature disabled state
+  if (!isFeatureEnabled) {
+    return (
+      <section className="space-y-6">
+        <header className="space-y-1">
+          <h1 className="text-2xl font-bold text-slate-900">طلبات التأمين الواردة</h1>
+        </header>
+        <div className="glass-card text-center py-12 border-amber-200 bg-amber-50/50">
+          <i className="bi bi-slash-circle text-5xl text-amber-500" />
+          <p className="mt-4 text-lg font-semibold text-amber-900">
+            الإدارة عطلت هذه الميزة
+          </p>
+          <p className="mt-2 text-sm text-amber-700">
+            يرجى التواصل مع الإدارة لمزيد من المعلومات
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="button-secondary mt-6"
+          >
+            العودة
+          </button>
+        </div>
+      </section>
+    )
+  }
 
   // Loading state
   if (isLoading) {

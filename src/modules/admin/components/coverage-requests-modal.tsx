@@ -11,6 +11,7 @@ import {
   ClipboardCheck,
   Clock,
   Loader2,
+  Power,
   User,
   X,
   XCircle
@@ -56,6 +57,15 @@ interface PendingResponse {
   count: number
 }
 
+interface CoverageSettings {
+  is_enabled: boolean
+}
+
+interface SettingsResponse {
+  success: boolean
+  data: CoverageSettings
+}
+
 const PERIOD_NAMES: Record<number, string> = {
   1: 'الأولى',
   2: 'الثانية',
@@ -72,6 +82,16 @@ const PERIOD_NAMES: Record<number, string> = {
 
 async function fetchPendingRequests(): Promise<PendingResponse> {
   const { data } = await apiClient.get('/admin/coverage/requests/pending')
+  return data
+}
+
+async function fetchCoverageSettings(): Promise<SettingsResponse> {
+  const { data } = await apiClient.get('/admin/coverage/settings')
+  return data
+}
+
+async function updateCoverageSettings(is_enabled: boolean): Promise<{ success: boolean; message: string }> {
+  const { data } = await apiClient.put('/admin/coverage/settings', { is_enabled })
   return data
 }
 
@@ -102,13 +122,37 @@ export function CoverageRequestsModal({ isOpen, onClose }: CoverageRequestsModal
   const [actionNotes, setActionNotes] = useState<string>('')
   const [confirmAction, setConfirmAction] = useState<{ type: 'approve' | 'reject'; requestId: number } | null>(null)
 
-  // Query
+  // Settings Query
+  const { data: settingsData, isLoading: settingsLoading } = useQuery({
+    queryKey: ['admin-coverage-settings'],
+    queryFn: fetchCoverageSettings,
+    enabled: isOpen,
+  })
+
+  // Pending Requests Query
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['admin-coverage-pending'],
     queryFn: fetchPendingRequests,
     enabled: isOpen,
     refetchInterval: 30000,
   })
+
+  // Settings Toggle Mutation
+  const toggleMutation = useMutation({
+    mutationFn: (enabled: boolean) => updateCoverageSettings(enabled),
+    onSuccess: (_, enabled) => {
+      toast({
+        type: 'success',
+        title: enabled ? 'تم تفعيل ميزة تأمين الحصص' : 'تم تعطيل ميزة تأمين الحصص'
+      })
+      queryClient.invalidateQueries({ queryKey: ['admin-coverage-settings'] })
+    },
+    onError: () => {
+      toast({ type: 'error', title: 'فشل في تحديث الإعدادات' })
+    },
+  })
+
+  const isEnabled = settingsData?.data?.is_enabled ?? true
 
   // Mutations
   const approveMutation = useMutation({
@@ -162,6 +206,41 @@ export function CoverageRequestsModal({ isOpen, onClose }: CoverageRequestsModal
       <div className="relative max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl">
         {/* Header */}
         <header className="flex items-center justify-between border-b border-slate-200 bg-orange-50 px-6 py-4">
+          {/* Toggle Switch */}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => toggleMutation.mutate(!isEnabled)}
+              disabled={toggleMutation.isPending || settingsLoading}
+              className={`
+                relative inline-flex h-8 w-14 flex-shrink-0 items-center rounded-full
+                transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed
+                ${toggleMutation.isPending ? 'animate-pulse' : ''}
+                ${isEnabled ? 'bg-emerald-500' : 'bg-slate-300'}
+              `}
+              title={isEnabled ? 'تعطيل الميزة' : 'تفعيل الميزة'}
+            >
+              <span
+                className={`
+                  inline-flex h-6 w-6 transform items-center justify-center rounded-full bg-white shadow-lg
+                  transition-transform duration-300
+                  ${isEnabled ? 'translate-x-7' : 'translate-x-1'}
+                `}
+              >
+                <Power className={`h-3.5 w-3.5 ${isEnabled ? 'text-emerald-600' : 'text-slate-400'}`} />
+              </span>
+            </button>
+            <div className="text-right">
+              <p className="text-sm font-semibold text-slate-900">
+                {toggleMutation.isPending ? 'جاري التحديث...' : isEnabled ? 'الميزة مفعّلة' : 'الميزة معطّلة'}
+              </p>
+              <p className="text-xs text-muted">
+                {isEnabled ? 'المعلمون يمكنهم طلب التأمين' : 'لا يمكن للمعلمين طلب التأمين'}
+              </p>
+            </div>
+          </div>
+
+          {/* Title */}
           <div className="text-right">
             <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
               <ClipboardCheck className="h-5 w-5 text-orange-600" />
@@ -171,6 +250,8 @@ export function CoverageRequestsModal({ isOpen, onClose }: CoverageRequestsModal
               {requests.length} طلب{requests.length > 1 ? 'ات' : ''} بانتظار الاعتماد
             </p>
           </div>
+
+          {/* Actions */}
           <div className="flex items-center gap-3">
             <button
               onClick={() => refetch()}

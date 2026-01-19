@@ -44,6 +44,15 @@ interface MySessionsResponse {
   }
 }
 
+interface CoverageSettings {
+  is_enabled: boolean
+}
+
+interface SettingsResponse {
+  success: boolean
+  data: CoverageSettings
+}
+
 interface CoverageItem {
   class_session_id: number
   period_number: number
@@ -71,6 +80,11 @@ const REASON_TYPES = [
 // =====================================================
 // API Functions
 // =====================================================
+
+async function fetchCoverageSettings(): Promise<SettingsResponse> {
+  const { data } = await apiClient.get('/teacher/coverage/settings')
+  return data
+}
 
 async function fetchMySessions(): Promise<MySessionsResponse> {
   const { data } = await apiClient.get('/teacher/coverage/my-sessions')
@@ -112,10 +126,19 @@ export function TeacherCoverageRequestPage() {
   const [loadingSubstitutes, setLoadingSubstitutes] = useState<number | null>(null)
   const [substitutesCache, setSubstitutesCache] = useState<Map<number, AvailableSubstitutesResponse['data']>>(new Map())
 
+  // التحقق من تفعيل الميزة
+  const settingsQuery = useQuery({
+    queryKey: ['teacher-coverage-settings'],
+    queryFn: fetchCoverageSettings,
+  })
+
+  const isFeatureEnabled = settingsQuery.data?.data?.is_enabled ?? true
+
   // جلب حصص المعلم
   const sessionsQuery = useQuery({
     queryKey: ['teacher-coverage-sessions'],
     queryFn: fetchMySessions,
+    enabled: isFeatureEnabled, // لا تجلب البيانات إذا كانت الميزة معطلة
   })
 
   const sessions = sessionsQuery.data?.data?.sessions ?? []
@@ -189,6 +212,47 @@ export function TeacherCoverageRequestPage() {
       reason_type: reasonType,
       items
     })
+  }
+
+  // Settings loading state
+  if (settingsQuery.isLoading) {
+    return (
+      <section className="space-y-6">
+        <header className="space-y-1">
+          <h1 className="text-2xl font-bold text-slate-900">طلب تأمين الحصص</h1>
+        </header>
+        <div className="glass-card flex items-center justify-center py-12">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-orange-500/30 border-t-orange-500" />
+        </div>
+      </section>
+    )
+  }
+
+  // Feature disabled state
+  if (!isFeatureEnabled) {
+    return (
+      <section className="space-y-6">
+        <header className="space-y-1">
+          <h1 className="text-2xl font-bold text-slate-900">طلب تأمين الحصص</h1>
+        </header>
+        <div className="glass-card text-center py-12 border-amber-200 bg-amber-50/50">
+          <i className="bi bi-slash-circle text-5xl text-amber-500" />
+          <p className="mt-4 text-lg font-semibold text-amber-900">
+            الإدارة عطلت هذه الميزة
+          </p>
+          <p className="mt-2 text-sm text-amber-700">
+            يرجى التواصل مع الإدارة لمزيد من المعلومات
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="button-secondary mt-6"
+          >
+            العودة
+          </button>
+        </div>
+      </section>
+    )
   }
 
   // Loading state
