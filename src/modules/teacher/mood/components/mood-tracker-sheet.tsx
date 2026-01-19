@@ -4,7 +4,6 @@ import { MOOD_OPTIONS, type MoodType } from '../types'
 
 interface MoodTrackerSheetProps {
   isOpen: boolean
-  isSubmitting?: boolean
   onSelect: (mood: MoodType) => void
   onSkip: () => void
 }
@@ -16,11 +15,14 @@ const springConfig = {
   stiffness: 300,
 }
 
-export function MoodTrackerSheet({ isOpen, isSubmitting, onSelect, onSkip }: MoodTrackerSheetProps) {
-  if (!isOpen) return null
+export function MoodTrackerSheet({ isOpen, onSelect, onSkip }: MoodTrackerSheetProps) {
+  const handleSelect = (mood: MoodType) => {
+    // إرسال الطلب في الخلفية وإغلاق المكون فوراً
+    onSelect(mood)
+  }
 
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait">
       {isOpen && (
         <>
           {/* Backdrop */}
@@ -111,9 +113,8 @@ export function MoodTrackerSheet({ isOpen, isSubmitting, onSelect, onSkip }: Moo
                     transition={{ ...springConfig, delay: 0.3 + index * 0.05 }}
                     whileHover={{ scale: 1.1, y: -5 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => onSelect(mood.key)}
-                    disabled={isSubmitting}
-                    className="group flex flex-col items-center gap-2 rounded-2xl border-2 border-transparent bg-slate-50 p-3 transition-colors hover:border-slate-200 hover:bg-white disabled:opacity-50"
+                    onClick={() => handleSelect(mood.key)}
+                    className="group flex flex-col items-center gap-2 rounded-2xl border-2 border-transparent bg-slate-50 p-3 transition-colors hover:border-slate-200 hover:bg-white"
                   >
                     <motion.span
                       className="text-4xl"

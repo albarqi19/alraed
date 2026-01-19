@@ -25,11 +25,7 @@ export function TeacherShell() {
   // Mood Tracker state and queries
   const [showMoodSheet, setShowMoodSheet] = useState(false)
   const { data: todayMood, isLoading: isMoodLoading } = useTodayMoodQuery()
-  const submitMoodMutation = useSubmitMoodMutation({
-    onSuccess: () => {
-      setShowMoodSheet(false)
-    },
-  })
+  const submitMoodMutation = useSubmitMoodMutation()
 
   // Show mood sheet if teacher hasn't submitted mood today
   useEffect(() => {
@@ -43,6 +39,8 @@ export function TeacherShell() {
   }, [todayMood, isMoodLoading])
 
   const handleMoodSelect = (mood: MoodType) => {
+    // إغلاق المكون فوراً ثم إرسال الطلب في الخلفية
+    setShowMoodSheet(false)
     submitMoodMutation.mutate(mood)
   }
 
@@ -150,7 +148,6 @@ export function TeacherShell() {
       {/* Mood Tracker Sheet */}
       <MoodTrackerSheet
         isOpen={showMoodSheet}
-        isSubmitting={submitMoodMutation.isPending}
         onSelect={handleMoodSelect}
         onSkip={handleMoodSkip}
       />
