@@ -13,7 +13,6 @@ import type {
   TrackerBreakDutySlot,
   TrackerDismissalDutySlot,
   TrackerRecordedAction,
-  PreparationStatus,
 } from '../types'
 import { SLOT_BG_COLORS, PREPARATION_STATUS_COLORS } from '../types'
 import { cn } from '@/lib/utils'
