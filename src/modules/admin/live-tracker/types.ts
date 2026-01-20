@@ -208,7 +208,7 @@ export const PERIOD_TYPE_LABELS: Record<TrackerPeriodType, string> = {
 export const SLOT_BG_COLORS: Record<TrackerSlotType, string> = {
   assembly: 'bg-slate-50',
   class: 'bg-emerald-50',
-  free: 'bg-emerald-100',
+  free: 'bg-slate-100',
   standby: 'bg-amber-50',
   break_duty: 'bg-sky-50',
   dismissal_duty: 'bg-purple-50',

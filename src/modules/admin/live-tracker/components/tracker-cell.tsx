@@ -3,7 +3,7 @@
 // Tracker Cell Component
 // =============================================
 
-import { CheckCircle, XCircle, Eye, Flag, Clock, AlertTriangle, BookOpen, Hourglass } from 'lucide-react'
+import { CheckCircle, XCircle, Eye, Flag, Clock, AlertTriangle, BookOpen, Hourglass, Coffee } from 'lucide-react'
 import type {
   TrackerSlot,
   TrackerAssemblySlot,
@@ -104,11 +104,11 @@ function ClassCell({ slot }: { slot: TrackerClassSlot }) {
   )
 }
 
-// خلية الفراغ
+// خلية الفراغ (الفسحة)
 function FreeCell({ slot: _slot }: { slot: TrackerFreeSlot }) {
   return (
     <div className="flex items-center justify-center">
-      <span className="text-[10px] text-emerald-600">فراغ</span>
+      <Coffee className="h-3 w-3 text-slate-400" />
     </div>
   )
 }
