@@ -427,7 +427,7 @@ export function AdminShell() {
       </aside>
 
       <div className="flex min-h-screen w-full flex-1 flex-col lg:mr-72">
-        <header className="sticky top-0 z-10 border-b shadow-sm" style={{ backgroundColor: 'var(--color-header)', borderColor: 'rgba(0, 0, 0, 0.1)' }}>
+        <header className="sticky top-0 z-20 border-b shadow-sm" style={{ backgroundColor: 'var(--color-header)', borderColor: 'rgba(0, 0, 0, 0.1)' }}>
           <div className="flex w-full items-center justify-between px-6 py-4 lg:px-10">
             {/* زر القائمة للجوال */}
             <button
