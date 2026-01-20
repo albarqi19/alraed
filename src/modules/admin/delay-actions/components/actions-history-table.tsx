@@ -3,7 +3,7 @@
  */
 
 import { useState } from 'react'
-import { AlertTriangle, FileWarning, Check, Printer, ChevronLeft, ChevronRight } from 'lucide-react'
+import { AlertTriangle, FileWarning, Check, Printer, ChevronLeft, ChevronRight, ArrowLeftRight } from 'lucide-react'
 import type { DelayActionRecord, PaginationMeta } from '../types'
 import { getPrintUrl } from '../api'
 
@@ -198,6 +198,7 @@ export function ActionsHistoryTable({
               <th className="px-4 py-3 font-semibold">النوع</th>
               <th className="px-4 py-3 font-semibold">المعلم</th>
               <th className="px-4 py-3 font-semibold">إجمالي التأخير</th>
+              <th className="px-4 py-3 font-semibold">المرحّل</th>
               <th className="px-4 py-3 font-semibold">الرقم التسلسلي</th>
               <th className="px-4 py-3 font-semibold">تاريخ التسجيل</th>
               <th className="px-4 py-3 font-semibold">الحالة</th>
@@ -218,6 +219,16 @@ export function ActionsHistoryTable({
                   <p className="font-semibold text-slate-900">{action.teacher_name ?? '—'}</p>
                 </td>
                 <td className="px-4 py-3 text-slate-700">{action.formatted_delay}</td>
+                <td className="px-4 py-3">
+                  {action.action_type === 'deduction' && action.carried_over_minutes > 0 ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700">
+                      <ArrowLeftRight className="h-3 w-3" />
+                      {action.formatted_carried_over}
+                    </span>
+                  ) : (
+                    <span className="text-slate-400">—</span>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-slate-600">
                   <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
                     #{action.sequence_number}

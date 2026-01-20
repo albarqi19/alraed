@@ -11,6 +11,7 @@ export interface ActionInfo {
   created_at: string
   is_printed: boolean
   is_signed: boolean
+  carried_over_minutes?: number
 }
 
 // إحصائيات إجراءات التأخير
@@ -32,8 +33,12 @@ export interface TeacherDelayData {
   teacher_phone: string | null
   national_id: string | null
   total_minutes: number
+  new_delay_minutes: number
+  carried_over_minutes: number
   total_hours: number
   formatted_delay: string
+  formatted_new_delay: string
+  formatted_carried_over: string
   records_count: number
   calculation_start_date: string
   calculation_end_date: string
@@ -60,8 +65,11 @@ export interface DelayActionRecord {
   action_type: DelayActionType
   action_type_label: string
   total_delay_minutes: number
+  deducted_minutes: number
+  carried_over_minutes: number
   total_delay_hours: number
   formatted_delay: string
+  formatted_carried_over: string
   calculation_start_date: string
   calculation_end_date: string
   fiscal_year: number
@@ -91,8 +99,12 @@ export interface TeacherDelayDetails {
   }
   delay_summary: {
     total_minutes: number
+    new_delay_minutes: number
+    carried_over_minutes: number
     total_hours: number
     formatted_delay: string
+    formatted_new_delay: string
+    formatted_carried_over: string
     records_count: number
     calculation_start_date: string
     calculation_end_date: string

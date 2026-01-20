@@ -2,7 +2,7 @@
  * لوحة تفاصيل تأخير معلم (Sheet)
  */
 
-import { Phone, User, Calendar, AlertTriangle, FileWarning, Check, Printer } from 'lucide-react'
+import { Phone, User, Calendar, AlertTriangle, FileWarning, Check, Printer, ArrowLeftRight } from 'lucide-react'
 import {
   Sheet,
   SheetContent,
@@ -48,40 +48,52 @@ function formatTime(value?: string | null) {
 
 function ActionHistoryItem({ action, onPrint }: { action: DelayActionRecord; onPrint: (id: number) => void }) {
   const isWarning = action.action_type === 'warning'
+  const isDeduction = action.action_type === 'deduction'
+  const hasCarriedOver = isDeduction && action.carried_over_minutes > 0
 
   return (
     <div
-      className={`flex items-center justify-between rounded-xl border p-3 ${
+      className={`rounded-xl border p-3 ${
         isWarning ? 'border-amber-200 bg-amber-50/50' : 'border-rose-200 bg-rose-50/50'
       }`}
     >
-      <div className="flex items-center gap-3">
-        {isWarning ? (
-          <AlertTriangle className="h-4 w-4 text-amber-600" />
-        ) : (
-          <FileWarning className="h-4 w-4 text-rose-600" />
-        )}
-        <div>
-          <p className="text-sm font-medium">{action.action_type_label} #{action.sequence_number}</p>
-          <p className="text-xs text-slate-500">{formatDate(action.created_at)}</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          {isWarning ? (
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
+          ) : (
+            <FileWarning className="h-4 w-4 text-rose-600" />
+          )}
+          <div>
+            <p className="text-sm font-medium">{action.action_type_label} #{action.sequence_number}</p>
+            <p className="text-xs text-slate-500">{formatDate(action.created_at)}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {action.is_signed && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+              <Check className="h-3 w-3" />
+              موقع
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => onPrint(action.id)}
+            className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
+          >
+            <Printer className="h-3 w-3" />
+            طباعة
+          </button>
         </div>
       </div>
-      <div className="flex items-center gap-2">
-        {action.is_signed && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-            <Check className="h-3 w-3" />
-            موقع
-          </span>
-        )}
-        <button
-          type="button"
-          onClick={() => onPrint(action.id)}
-          className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
-        >
-          <Printer className="h-3 w-3" />
-          طباعة
-        </button>
-      </div>
+      {/* عرض المرحّل للحسومات */}
+      {hasCarriedOver && (
+        <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-violet-50 px-2 py-1 text-[11px]">
+          <ArrowLeftRight className="h-3 w-3 text-violet-600" />
+          <span className="text-slate-600">مرحّل للدورة القادمة:</span>
+          <span className="font-semibold text-violet-700">{action.formatted_carried_over}</span>
+        </div>
+      )}
     </div>
   )
 }
@@ -185,6 +197,35 @@ export function TeacherDelayDetailsSheet({
                     <p className="text-xs text-slate-500">يوم تأخير</p>
                   </div>
                 </div>
+
+                {/* تفاصيل التأخير الجديد والمرحّل */}
+                {(data.delay_summary.carried_over_minutes > 0 || data.delay_summary.new_delay_minutes > 0) && (
+                  <div className="mt-3 rounded-xl border border-violet-200 bg-violet-50/50 p-3">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-violet-700 mb-2">
+                      <ArrowLeftRight className="h-3.5 w-3.5" />
+                      تفاصيل حساب التأخير
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-slate-600">تأخير جديد:</span>
+                        <span className="font-medium text-slate-900">
+                          {data.delay_summary.formatted_new_delay || data.delay_summary.formatted_delay}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-600">مرحّل من حسم سابق:</span>
+                        <span className="font-medium text-violet-700">
+                          {data.delay_summary.formatted_carried_over || '0 دقيقة'}
+                        </span>
+                      </div>
+                    </div>
+                    {data.delay_summary.carried_over_minutes > 0 && (
+                      <p className="mt-2 text-[11px] text-slate-500">
+                        * المرحّل هو الفائض من الحسم السابق (الإجمالي - 7 ساعات)
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 <div className="mt-3 flex items-center justify-center gap-2 text-xs text-slate-500">
                   <Calendar className="h-3.5 w-3.5" />

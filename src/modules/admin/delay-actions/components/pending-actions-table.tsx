@@ -2,7 +2,7 @@
  * جدول المعلمين الذين ينتظرون إجراء (تنبيه أو حسم)
  */
 
-import { Printer, Eye } from 'lucide-react'
+import { Printer, Eye, ArrowLeftRight } from 'lucide-react'
 import type { TeacherDelayData, DelayActionType } from '../types'
 
 interface PendingActionsTableProps {
@@ -102,7 +102,9 @@ export function PendingActionsTable({
         <thead className="bg-slate-50/80 text-[11px] uppercase tracking-wide text-slate-500">
           <tr>
             <th className="px-4 py-3 font-semibold">المعلم</th>
-            <th className="px-4 py-3 font-semibold">إجمالي التأخير</th>
+            <th className="px-4 py-3 font-semibold">التأخير الجديد</th>
+            <th className="px-4 py-3 font-semibold">المرحّل</th>
+            <th className="px-4 py-3 font-semibold">الإجمالي</th>
             <th className="px-4 py-3 font-semibold">عدد الأيام</th>
             <th className="px-4 py-3 font-semibold">الإجراء المستحق</th>
             <th className="px-4 py-3 font-semibold">آخر إجراء</th>
@@ -127,7 +129,20 @@ export function PendingActionsTable({
                   <p className="text-[11px] text-muted">{teacher.national_id}</p>
                 )}
               </td>
-              <td className="px-4 py-3 text-slate-700">{teacher.formatted_delay}</td>
+              <td className="px-4 py-3 text-slate-700">
+                {teacher.formatted_new_delay || teacher.formatted_delay}
+              </td>
+              <td className="px-4 py-3">
+                {teacher.carried_over_minutes > 0 ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700">
+                    <ArrowLeftRight className="h-3 w-3" />
+                    {teacher.formatted_carried_over}
+                  </span>
+                ) : (
+                  <span className="text-slate-400">—</span>
+                )}
+              </td>
+              <td className="px-4 py-3 font-semibold text-slate-900">{teacher.formatted_delay}</td>
               <td className="px-4 py-3 text-slate-600">
                 {teacher.records_count.toLocaleString('ar-SA')} يوم
               </td>
