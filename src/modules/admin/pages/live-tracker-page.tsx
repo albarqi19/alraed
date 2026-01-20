@@ -183,7 +183,7 @@ export function LiveTrackerPage() {
       </header>
 
       {/* معلومات الفترة الحالية */}
-      {data.current_period && (
+      {data.current_period !== null && data.current_period !== undefined && (
         <div className="rounded-lg bg-indigo-50 px-4 py-2">
           <p className="text-sm text-indigo-700">
             <span className="font-medium">الفترة الحالية:</span>{' '}
