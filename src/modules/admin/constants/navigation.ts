@@ -72,6 +72,7 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
       { to: '/admin/dashboard', label: 'نظرة عامة', icon: LayoutDashboard, exact: true, permission: 'admin.dashboard' },
       { to: '/admin/teachers', label: 'إدارة المعلمين', icon: Users, permission: 'admin.teachers' },
       { to: '/admin/teacher-attendance', label: 'حضور المعلمين', icon: Fingerprint, permission: 'admin.teacher-attendance' },
+      { to: '/admin/live-tracker', label: 'المتابعة المباشرة', icon: Activity, permission: 'admin.live-tracker' },
       { to: '/admin/delay-actions', label: 'إجراءات التأخير', icon: FileWarning, permission: 'admin.delay-actions' },
       { to: '/admin/duty-rosters', label: 'الإشراف اليومي', icon: Eye, permission: 'admin.duty-rosters' },
       { to: '/admin/teacher-standby', label: 'جدول الانتظار', icon: Clock, permission: 'admin.teacher-standby' },

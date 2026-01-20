@@ -140,6 +140,9 @@ import {
   updateDutyRosterTemplate,
   fetchAbsenceSmsSettings,
   updateAbsenceSmsSettings,
+  fetchLiveTrackerData,
+  recordTrackerAction,
+  deleteTrackerAction,
 } from './api'
 import { adminQueryKeys } from './query-keys'
 import { useToast } from '@/shared/feedback/use-toast'
@@ -2522,6 +2525,73 @@ export function useUpdateAbsenceSmsSettingsMutation() {
     },
     onError: (error) => {
       toast({ type: 'error', title: getErrorMessage(error, 'تعذر تحديث إعدادات الرسائل') })
+    },
+  })
+}
+
+// ========================================
+// مؤشر المتابعة المباشر (Live Tracker)
+// ========================================
+
+import type { RecordActionPayload, DeleteActionPayload } from './live-tracker/types'
+
+/**
+ * Hook لجلب بيانات مؤشر المتابعة المباشر مع التحديث التلقائي
+ */
+export function useLiveTrackerQuery(date?: string | null, options: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: ['admin', 'live-tracker', date ?? 'today'],
+    queryFn: () => fetchLiveTrackerData(date),
+    enabled: options.enabled ?? true,
+    refetchInterval: 30000, // تحديث كل 30 ثانية
+    refetchIntervalInBackground: false, // إيقاف التحديث عند مغادرة الصفحة
+    staleTime: 15000, // 15 ثانية قبل اعتبار البيانات قديمة
+  })
+}
+
+/**
+ * Hook لتسجيل إجراء متابعة
+ */
+export function useRecordTrackerActionMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: RecordActionPayload) => recordTrackerAction(payload),
+    onSuccess: (result) => {
+      toast({
+        type: 'success',
+        title: 'تم تسجيل الإجراء',
+        description: `${result.action_type_label} - ${result.period_type_label}`,
+      })
+      // تحديث البيانات
+      queryClient.invalidateQueries({ queryKey: ['admin', 'live-tracker'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تسجيل الإجراء') })
+    },
+  })
+}
+
+/**
+ * Hook لحذف إجراء متابعة
+ */
+export function useDeleteTrackerActionMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: DeleteActionPayload) => deleteTrackerAction(payload),
+    onSuccess: () => {
+      toast({
+        type: 'success',
+        title: 'تم حذف الإجراء',
+      })
+      // تحديث البيانات
+      queryClient.invalidateQueries({ queryKey: ['admin', 'live-tracker'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر حذف الإجراء') })
     },
   })
 }

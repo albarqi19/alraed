@@ -110,6 +110,7 @@ import AdminFCMTestPage from '@/modules/admin/pages/admin-fcm-test-page'
 import { AdminScheduleSimulatorPage } from '@/modules/admin/pages/admin-schedule-simulator-page'
 import { AdminDelayActionsPage } from '@/modules/admin/delay-actions'
 import { AdminTeamPulsePage } from '@/modules/admin/pages/admin-team-pulse-page'
+import { LiveTrackerPage } from '@/modules/admin/pages/live-tracker-page'
 
 const appRoutes = [
   {
@@ -205,6 +206,7 @@ const appRoutes = [
           { path: 'import', element: <AdminImportPage /> },
           { path: 'attendance', element: <AdminAttendancePage /> },
           { path: 'teacher-attendance', element: <AdminTeacherAttendancePage /> },
+          { path: 'live-tracker', element: <LiveTrackerPage /> },
           { path: 'team-pulse', element: <AdminTeamPulsePage /> },
           { path: 'teacher-preparation', element: <AdminTeacherPreparationPage /> },
           { path: 'approval', element: <AdminApprovalPage /> },

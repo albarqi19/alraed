@@ -500,11 +500,18 @@ export function AdminShell() {
           </div>
         </header>
         <main className="flex flex-1 flex-col">
-          <div className="w-full flex-1 px-6 py-8 lg:px-10 xl:px-14 2xl:px-18">
-            <div className="mx-auto w-full max-w-7xl space-y-8">
+          {/* صفحة المتابعة المباشرة بدون فراغات لعرض أكبر قدر من البيانات */}
+          {location.pathname === '/admin/live-tracker' ? (
+            <div className="w-full flex-1">
               <Outlet />
             </div>
-          </div>
+          ) : (
+            <div className="w-full flex-1 px-6 py-8 lg:px-10 xl:px-14 2xl:px-18">
+              <div className="mx-auto w-full max-w-7xl space-y-8">
+                <Outlet />
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>

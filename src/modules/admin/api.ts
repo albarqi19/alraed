@@ -3484,3 +3484,86 @@ export async function updateAbsenceSmsSettings(payload: AbsenceSmsSettings): Pro
   )
   return unwrapResponse(data, 'تعذر تحديث إعدادات الرسائل')
 }
+
+// ========================================
+// مؤشر المتابعة المباشر (Live Tracker)
+// ========================================
+
+import type {
+  LiveTrackerData,
+  LiveTrackerResponse,
+  RecordActionPayload,
+  RecordActionResponse,
+  DeleteActionPayload,
+  DeleteActionResponse,
+  TrackerTeacher,
+  TrackerPeriod,
+  TrackerSchedule,
+  TrackerSlot,
+  TrackerSlotsMap,
+  TrackerPeriodType,
+  TrackerActionType,
+  TrackerSlotType,
+  PreparationStatus,
+} from './live-tracker/types'
+
+// Re-export types
+export type {
+  LiveTrackerData,
+  LiveTrackerResponse,
+  RecordActionPayload,
+  RecordActionResponse,
+  DeleteActionPayload,
+  DeleteActionResponse,
+  TrackerTeacher,
+  TrackerPeriod,
+  TrackerSchedule,
+  TrackerSlot,
+  TrackerSlotsMap,
+  TrackerPeriodType,
+  TrackerActionType,
+  TrackerSlotType,
+  PreparationStatus,
+}
+
+/**
+ * جلب بيانات مؤشر المتابعة المباشر
+ */
+export async function fetchLiveTrackerData(date?: string | null): Promise<LiveTrackerData> {
+  const params: Record<string, string> = {}
+  if (date) params.date = date
+
+  const { data } = await apiClient.get<LiveTrackerResponse>('/admin/live-tracker', { params })
+
+  if (!data.success || !data.data) {
+    throw new Error('تعذر تحميل بيانات المتابعة المباشرة')
+  }
+
+  return data.data
+}
+
+/**
+ * تسجيل إجراء متابعة (غياب، تأخر، انصراف مبكر، الخ)
+ */
+export async function recordTrackerAction(payload: RecordActionPayload): Promise<RecordActionResponse['data']> {
+  const { data } = await apiClient.post<RecordActionResponse>('/admin/live-tracker/record-action', payload)
+
+  if (!data.success) {
+    throw new Error(data.message || 'تعذر تسجيل الإجراء')
+  }
+
+  return data.data
+}
+
+/**
+ * حذف إجراء متابعة
+ */
+export async function deleteTrackerAction(payload: DeleteActionPayload): Promise<void> {
+  const { data } = await apiClient.delete<DeleteActionResponse>('/admin/live-tracker/delete-action', {
+    data: payload,
+  })
+
+  if (!data.success) {
+    throw new Error(data.message || 'تعذر حذف الإجراء')
+  }
+}
