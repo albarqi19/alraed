@@ -296,3 +296,251 @@ export function useCreateTreatmentPlanFromReferralMutation() {
     },
   })
 }
+
+// ==================== إعدادات الإحالات ====================
+
+const SETTINGS_KEYS = {
+  all: ['referral-settings'] as const,
+  global: () => [...SETTINGS_KEYS.all, 'global'] as const,
+  teachers: () => [...SETTINGS_KEYS.all, 'teachers'] as const,
+  teacher: (id: number) => [...SETTINGS_KEYS.all, 'teacher', id] as const,
+}
+
+export interface ReferralSettings {
+  id: number
+  school_id: number
+  referrals_enabled: boolean
+  academic_weakness_enabled: boolean
+  behavioral_violation_enabled: boolean
+  student_absence_enabled: boolean
+  daily_referral_cap: number
+  daily_per_student_cap: number
+  weekly_referral_cap: number | null
+  allowed_roles: string[]
+  allowed_target_roles: string[]
+  notify_on_create: boolean
+  notify_on_receive: boolean
+  notify_on_complete: boolean
+  notify_teacher_on_status_change: boolean
+  auto_notify_parent: boolean
+  parent_notification_template_id: number | null
+  teacher_notification_template_id: number | null
+  parent_message_template: string | null
+}
+
+export interface TeacherReferralSettings {
+  id: number
+  teacher_id: number
+  daily_referral_cap: number | null
+  daily_per_student_cap: number | null
+  weekly_referral_cap: number | null
+  referrals_disabled: boolean
+  disabled_reason: string | null
+  disabled_at: string | null
+  academic_weakness_allowed: boolean | null
+  behavioral_violation_allowed: boolean | null
+  admin_notes: string | null
+}
+
+export interface TeacherWithSettings {
+  id: number
+  name: string
+  national_id: string
+  referrals_disabled: boolean
+  disabled_reason: string | null
+  disabled_at: string | null
+  daily_referral_cap: number
+  daily_per_student_cap: number
+  weekly_referral_cap: number | null
+  has_custom_settings: boolean
+  today_referrals_count: number
+  week_referrals_count: number
+}
+
+export interface UpdateReferralSettingsPayload {
+  referrals_enabled?: boolean
+  academic_weakness_enabled?: boolean
+  behavioral_violation_enabled?: boolean
+  student_absence_enabled?: boolean
+  daily_referral_cap?: number
+  daily_per_student_cap?: number
+  weekly_referral_cap?: number | null
+  allowed_roles?: string[]
+  allowed_target_roles?: string[]
+  notify_on_create?: boolean
+  notify_on_receive?: boolean
+  notify_on_complete?: boolean
+  notify_teacher_on_status_change?: boolean
+  auto_notify_parent?: boolean
+  parent_notification_template_id?: number | null
+  parent_message_template?: string | null
+}
+
+export interface UpdateTeacherReferralSettingsPayload {
+  daily_referral_cap?: number | null
+  daily_per_student_cap?: number | null
+  weekly_referral_cap?: number | null
+  referrals_disabled?: boolean
+  disabled_reason?: string | null
+  academic_weakness_allowed?: boolean | null
+  behavioral_violation_allowed?: boolean | null
+  admin_notes?: string | null
+}
+
+// جلب الإعدادات العامة
+export function useReferralSettingsQuery() {
+  return useQuery<ReferralSettings>({
+    queryKey: SETTINGS_KEYS.global(),
+    queryFn: async () => {
+      const { data } = await apiClient.get<{ success: boolean; data: ReferralSettings }>('/admin/referral-settings')
+      return data.data
+    },
+  })
+}
+
+// تحديث الإعدادات العامة
+export function useUpdateReferralSettingsMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (payload: UpdateReferralSettingsPayload) => {
+      const { data } = await apiClient.put<{ success: boolean; data: ReferralSettings; message: string }>(
+        '/admin/referral-settings',
+        payload
+      )
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: SETTINGS_KEYS.all })
+    },
+  })
+}
+
+// جلب قائمة المعلمين مع إعداداتهم
+export function useTeachersWithSettingsQuery(filters?: { search?: string; status?: string }) {
+  return useQuery<TeacherWithSettings[]>({
+    queryKey: [...SETTINGS_KEYS.teachers(), filters ?? {}],
+    queryFn: async () => {
+      const params = new URLSearchParams()
+      if (filters?.search) params.append('search', filters.search)
+      if (filters?.status) params.append('status', filters.status)
+
+      const { data } = await apiClient.get<{ success: boolean; data: TeacherWithSettings[] }>(
+        `/admin/referral-settings/teachers?${params.toString()}`
+      )
+      return data.data
+    },
+  })
+}
+
+// جلب إعدادات معلم معين
+export function useTeacherReferralSettingsQuery(teacherId: number) {
+  return useQuery({
+    queryKey: SETTINGS_KEYS.teacher(teacherId),
+    queryFn: async () => {
+      const { data } = await apiClient.get<{
+        success: boolean
+        data: {
+          teacher: { id: number; name: string; national_id: string }
+          effective_settings: Record<string, unknown>
+          override: TeacherReferralSettings | null
+        }
+      }>(`/admin/referral-settings/teachers/${teacherId}`)
+      return data.data
+    },
+    enabled: teacherId > 0,
+  })
+}
+
+// تحديث إعدادات معلم
+export function useUpdateTeacherReferralSettingsMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ teacherId, payload }: { teacherId: number; payload: UpdateTeacherReferralSettingsPayload }) => {
+      const { data } = await apiClient.put<{ success: boolean; data: TeacherReferralSettings; message: string }>(
+        `/admin/referral-settings/teachers/${teacherId}`,
+        payload
+      )
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: SETTINGS_KEYS.all })
+    },
+  })
+}
+
+// إيقاف إحالات معلم
+export function useDisableTeacherReferralsMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ teacherId, reason }: { teacherId: number; reason: string }) => {
+      const { data } = await apiClient.post<{ success: boolean; message: string }>(
+        `/admin/referral-settings/teachers/${teacherId}/disable`,
+        { reason }
+      )
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: SETTINGS_KEYS.all })
+    },
+  })
+}
+
+// تفعيل إحالات معلم
+export function useEnableTeacherReferralsMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (teacherId: number) => {
+      const { data } = await apiClient.post<{ success: boolean; message: string }>(
+        `/admin/referral-settings/teachers/${teacherId}/enable`
+      )
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: SETTINGS_KEYS.all })
+    },
+  })
+}
+
+// إعادة تعيين إعدادات معلم
+export function useResetTeacherReferralSettingsMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (teacherId: number) => {
+      const { data } = await apiClient.delete<{ success: boolean; message: string }>(
+        `/admin/referral-settings/teachers/${teacherId}/reset`
+      )
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: SETTINGS_KEYS.all })
+    },
+  })
+}
+
+// تحديث مجموعة معلمين
+export function useBulkUpdateTeachersMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (payload: {
+      teacher_ids: number[]
+      action: 'disable' | 'enable' | 'reset' | 'update_cap'
+      reason?: string
+      daily_referral_cap?: number
+    }) => {
+      const { data } = await apiClient.post<{ success: boolean; message: string; affected_count: number }>(
+        '/admin/referral-settings/teachers/bulk',
+        payload
+      )
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: SETTINGS_KEYS.all })
+    },
+  })
+}
