@@ -172,3 +172,24 @@ export interface RecordActionPayload {
 export interface MarkSignedPayload {
   signed_by_name: string
 }
+
+// إعدادات إجراءات التأخير
+export interface DelayActionsSettings {
+  send_whatsapp_for_delay_actions: boolean
+  delay_warning_template_id: number | null
+  delay_deduction_template_id: number | null
+  warning_threshold_minutes: number
+  deduction_threshold_minutes: number
+  available_templates: Array<{
+    id: number
+    name: string
+    type: string
+  }>
+}
+
+// بيانات تحديث الإعدادات
+export interface UpdateDelayActionsSettingsPayload {
+  send_whatsapp_for_delay_actions?: boolean
+  delay_warning_template_id?: number | null
+  delay_deduction_template_id?: number | null
+}

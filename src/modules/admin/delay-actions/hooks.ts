@@ -13,12 +13,15 @@ import {
   recordWarning,
   recordDeduction,
   markActionSigned,
+  fetchDelayActionsSettings,
+  updateDelayActionsSettings,
 } from './api'
 import type {
   DelayActionsFilters,
   DelayActionsHistoryFilters,
   RecordActionPayload,
   MarkSignedPayload,
+  UpdateDelayActionsSettingsPayload,
 } from './types'
 
 /**
@@ -172,6 +175,44 @@ export function useMarkActionSignedMutation() {
       toast({
         type: 'error',
         title: 'تعذر تحديث حالة التوقيع',
+        description: error instanceof Error ? error.message : 'حدث خطأ غير متوقع',
+      })
+    },
+  })
+}
+
+/**
+ * جلب إعدادات إجراءات التأخير
+ */
+export function useDelayActionsSettingsQuery(options: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: delayActionsQueryKeys.settings(),
+    queryFn: () => fetchDelayActionsSettings(),
+    enabled: options.enabled ?? true,
+    staleTime: 60_000,
+  })
+}
+
+/**
+ * تحديث إعدادات إجراءات التأخير
+ */
+export function useUpdateDelayActionsSettingsMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: UpdateDelayActionsSettingsPayload) => updateDelayActionsSettings(payload),
+    onSuccess: () => {
+      toast({
+        type: 'success',
+        title: 'تم حفظ الإعدادات بنجاح',
+      })
+      void queryClient.invalidateQueries({ queryKey: delayActionsQueryKeys.settings() })
+    },
+    onError: (error) => {
+      toast({
+        type: 'error',
+        title: 'تعذر حفظ الإعدادات',
         description: error instanceof Error ? error.message : 'حدث خطأ غير متوقع',
       })
     },

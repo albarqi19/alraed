@@ -14,6 +14,8 @@ import type {
   RecordActionPayload,
   MarkSignedPayload,
   DelayActionRecord,
+  DelayActionsSettings,
+  UpdateDelayActionsSettingsPayload,
 } from './types'
 
 const BASE_PATH = '/admin/teacher-delay-actions'
@@ -176,10 +178,54 @@ export async function markActionSigned(
 }
 
 /**
- * الحصول على رابط الطباعة
+ * الحصول على رابط الطباعة (للتوافق مع الكود القديم)
  * GET /api/admin/teacher-delay-actions/{id}/print
  */
 export function getPrintUrl(actionId: number): string {
   const baseUrl = apiClient.defaults.baseURL ?? ''
   return `${baseUrl}${BASE_PATH}/${actionId}/print`
+}
+
+/**
+ * جلب صفحة الطباعة كـ HTML وفتحها في نافذة جديدة
+ * GET /api/admin/teacher-delay-actions/{id}/print
+ */
+export async function fetchAndOpenPrintPage(actionId: number): Promise<void> {
+  const response = await apiClient.get<string>(`${BASE_PATH}/${actionId}/print`, {
+    responseType: 'text' as const,
+  })
+
+  // فتح نافذة جديدة وكتابة الـ HTML فيها
+  const printWindow = window.open('', '_blank')
+  if (printWindow) {
+    printWindow.document.write(response.data)
+    printWindow.document.close()
+  } else {
+    throw new Error('تعذر فتح نافذة الطباعة - تأكد من السماح بالنوافذ المنبثقة')
+  }
+}
+
+/**
+ * جلب إعدادات إجراءات التأخير
+ * GET /api/admin/teacher-attendance/settings
+ */
+export async function fetchDelayActionsSettings(): Promise<DelayActionsSettings> {
+  const { data } = await apiClient.get<ApiResponse<DelayActionsSettings>>(
+    '/admin/teacher-attendance/settings',
+  )
+  return unwrapResponse(data, 'تعذر تحميل الإعدادات')
+}
+
+/**
+ * تحديث إعدادات إجراءات التأخير
+ * PUT /api/admin/teacher-attendance/settings
+ */
+export async function updateDelayActionsSettings(
+  payload: UpdateDelayActionsSettingsPayload,
+): Promise<DelayActionsSettings> {
+  const { data } = await apiClient.put<ApiResponse<DelayActionsSettings>>(
+    '/admin/teacher-attendance/settings',
+    payload,
+  )
+  return unwrapResponse(data, 'تعذر حفظ الإعدادات')
 }

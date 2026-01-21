@@ -29,4 +29,7 @@ export const delayActionsQueryKeys = {
   // تاريخ الإجراءات
   history: (filters: Record<string, unknown>) =>
     ['delay-actions', 'history', filters] as const,
+
+  // الإعدادات
+  settings: () => ['delay-actions', 'settings'] as const,
 }

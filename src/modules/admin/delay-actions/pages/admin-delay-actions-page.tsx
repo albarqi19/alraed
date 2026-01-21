@@ -4,7 +4,7 @@
  */
 
 import { useState, useMemo, useCallback } from 'react'
-import { RefreshCw, Search, Filter, ChevronDown, Eye } from 'lucide-react'
+import { RefreshCw, Search, Filter, ChevronDown, Eye, Settings } from 'lucide-react'
 import {
   useDelayActionsStatisticsQuery,
   useTeacherDelayListQuery,
@@ -13,12 +13,13 @@ import {
   useRecordDeductionMutation,
   useMarkActionSignedMutation,
 } from '../hooks'
-import { getPrintUrl } from '../api'
+import { fetchAndOpenPrintPage } from '../api'
 import { DelayActionsStats } from '../components/delay-actions-stats'
 import { PendingActionsTable } from '../components/pending-actions-table'
 import { ActionsHistoryTable } from '../components/actions-history-table'
 import { TeacherDelayDetailsSheet } from '../components/teacher-delay-details-sheet'
 import { ActionConfirmationDialog } from '../components/action-confirmation-dialog'
+import { DelayActionsSettingsDialog } from '../components/delay-actions-settings-dialog'
 import type { DelayActionType, DelayActionsFilters, DelayActionsHistoryFilters } from '../types'
 
 type ActiveTab = 'pending' | 'history'
@@ -45,6 +46,7 @@ export function AdminDelayActionsPage() {
   // هل نحن في وضع العرض فقط (السنة السابقة)
   const isReadOnly = selectedYear !== currentYear
   const [selectedTeacherId, setSelectedTeacherId] = useState<number | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [pendingAction, setPendingAction] = useState<{
     type: DelayActionType
     userId: number
@@ -111,8 +113,7 @@ export function AdminDelayActionsPage() {
         onSuccess: (data) => {
           setPendingAction(null)
           // فتح الطباعة في نافذة جديدة
-          const printUrl = getPrintUrl(data.id)
-          window.open(printUrl, '_blank')
+          void fetchAndOpenPrintPage(data.id)
         },
       })
     },
@@ -125,8 +126,7 @@ export function AdminDelayActionsPage() {
   }, [recordWarningMutation.isPending, recordDeductionMutation.isPending])
 
   const handlePrintAction = useCallback((actionId: number) => {
-    const printUrl = getPrintUrl(actionId)
-    window.open(printUrl, '_blank')
+    void fetchAndOpenPrintPage(actionId)
   }, [])
 
   const handleMarkSigned = useCallback(
@@ -166,6 +166,14 @@ export function AdminDelayActionsPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
+            >
+              <Settings className="h-4 w-4" />
+              الإعدادات
+            </button>
             <button
               type="button"
               onClick={handleRefresh}
@@ -344,6 +352,12 @@ export function AdminDelayActionsPage() {
         isSubmitting={isSubmitting}
         onConfirm={handleConfirmAction}
         onCancel={handleCancelAction}
+      />
+
+      {/* Settings Dialog */}
+      <DelayActionsSettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
       />
     </section>
   )
