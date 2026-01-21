@@ -5,7 +5,7 @@
 import { useState } from 'react'
 import { AlertTriangle, FileWarning, Check, Printer, ChevronLeft, ChevronRight, ArrowLeftRight } from 'lucide-react'
 import type { DelayActionRecord, PaginationMeta } from '../types'
-import { getPrintUrl } from '../api'
+import { fetchAndOpenPrintPage } from '../api'
 
 interface ActionsHistoryTableProps {
   data: DelayActionRecord[]
@@ -156,8 +156,7 @@ export function ActionsHistoryTable({
   const [isSignSubmitting, setIsSignSubmitting] = useState(false)
 
   const handlePrint = (actionId: number) => {
-    const url = getPrintUrl(actionId)
-    window.open(url, '_blank')
+    void fetchAndOpenPrintPage(actionId)
   }
 
   const handleMarkSigned = async (_name: string) => {
