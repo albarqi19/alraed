@@ -1,4 +1,4 @@
-import { useState, useRef, type FormEvent } from 'react'
+import { useState, useRef, useEffect, type FormEvent } from 'react'
 import {
     ClipboardCheck,
     Megaphone,
@@ -13,6 +13,7 @@ import {
     FileText,
     Trash2,
     Send,
+    Bell,
 } from 'lucide-react'
 import { useGuardianContext } from '../context/guardian-context'
 import {
@@ -78,11 +79,166 @@ const SERVICES: ServiceItem[] = [
 
 type ServiceSheetType = 'leave-request' | 'auto-call' | 'points' | 'behavior' | 'attendance' | null
 
+// ============ Animated Alert for Absence Excuses ============
+function AbsenceExcuseAlert({
+    count,
+    onAction,
+    onDismiss,
+}: {
+    count: number
+    onAction: () => void
+    onDismiss: () => void
+}) {
+    return (
+        <div
+            className="relative overflow-hidden rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-4 shadow-lg"
+            style={{
+                animation: 'bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+            }}
+        >
+            {/* Animated Background Pulse */}
+            <div
+                className="absolute inset-0 bg-gradient-to-r from-amber-100/50 to-orange-100/50"
+                style={{
+                    animation: 'pulse 2s ease-in-out infinite',
+                }}
+            />
+
+            {/* Content */}
+            <div className="relative flex items-start gap-3">
+                {/* Animated Bell Icon */}
+                <div
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-md"
+                    style={{
+                        animation: 'wiggle 1s ease-in-out infinite',
+                    }}
+                >
+                    <Bell className="h-6 w-6 text-white" />
+                </div>
+
+                <div className="flex-1 min-w-0">
+                    <h4 className="font-bold text-amber-900">
+                        {count === 1 ? 'يوجد غياب يحتاج لتقديم عذر' : `يوجد ${count} أيام غياب تحتاج لتقديم عذر`}
+                    </h4>
+                    <p className="mt-1 text-sm text-amber-700">
+                        يمكنك تقديم العذر مع المستندات المطلوبة قبل انتهاء المهلة
+                    </p>
+
+                    {/* Action Buttons */}
+                    <div className="mt-3 flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={onAction}
+                            className="rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2 text-sm font-bold text-white shadow-md transition hover:from-amber-600 hover:to-orange-600 active:scale-95"
+                            style={{
+                                animation: 'bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) 0.3s both',
+                            }}
+                        >
+                            تقديم العذر الآن
+                        </button>
+                        <button
+                            type="button"
+                            onClick={onDismiss}
+                            className="rounded-xl bg-white/80 px-3 py-2 text-sm font-medium text-amber-700 transition hover:bg-white active:scale-95"
+                        >
+                            لاحقاً
+                        </button>
+                    </div>
+                </div>
+
+                {/* Close Button */}
+                <button
+                    type="button"
+                    onClick={onDismiss}
+                    className="absolute top-2 left-2 flex h-6 w-6 items-center justify-center rounded-full text-amber-400 transition hover:bg-amber-100 hover:text-amber-600"
+                >
+                    <X className="h-4 w-4" />
+                </button>
+            </div>
+
+            {/* CSS Animations */}
+            <style>{`
+                @keyframes bounceIn {
+                    0% {
+                        opacity: 0;
+                        transform: scale(0.3) translateY(-20px);
+                    }
+                    50% {
+                        transform: scale(1.05) translateY(0);
+                    }
+                    70% {
+                        transform: scale(0.95);
+                    }
+                    100% {
+                        opacity: 1;
+                        transform: scale(1);
+                    }
+                }
+
+                @keyframes wiggle {
+                    0%, 100% {
+                        transform: rotate(0deg);
+                    }
+                    25% {
+                        transform: rotate(-10deg);
+                    }
+                    75% {
+                        transform: rotate(10deg);
+                    }
+                }
+
+                @keyframes pulse {
+                    0%, 100% {
+                        opacity: 0.5;
+                    }
+                    50% {
+                        opacity: 0.8;
+                    }
+                }
+            `}</style>
+        </div>
+    )
+}
+
 export function GuardianServicesPage() {
     const [activeSheet, setActiveSheet] = useState<ServiceSheetType>(null)
+    const { currentNationalId } = useGuardianContext()
+    const absencesQuery = useGuardianAbsencesQuery(currentNationalId)
+    const [showAlert, setShowAlert] = useState(false)
+    const [alertDismissed, setAlertDismissed] = useState(false)
+
+    const canSubmitCount = absencesQuery.data?.stats?.can_submit ?? 0
+
+    // Show alert when there are absences needing excuses
+    useEffect(() => {
+        if (canSubmitCount > 0 && !alertDismissed) {
+            // Small delay to make the animation more noticeable
+            const timer = setTimeout(() => setShowAlert(true), 300)
+            return () => clearTimeout(timer)
+        }
+    }, [canSubmitCount, alertDismissed])
+
+    const handleAlertAction = () => {
+        setActiveSheet('attendance')
+        setShowAlert(false)
+    }
+
+    const handleDismissAlert = () => {
+        setShowAlert(false)
+        setAlertDismissed(true)
+    }
 
     return (
         <div className="space-y-4">
+            {/* Animated Alert for Pending Excuses */}
+            {showAlert && canSubmitCount > 0 && (
+                <AbsenceExcuseAlert
+                    count={canSubmitCount}
+                    onAction={handleAlertAction}
+                    onDismiss={handleDismissAlert}
+                />
+            )}
+
             <div className="text-center">
                 <h2 className="text-xl font-bold text-slate-900">الخدمات</h2>
                 <p className="mt-1 text-sm text-slate-500">اختر الخدمة المطلوبة</p>
