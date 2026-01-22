@@ -53,6 +53,9 @@ export const useAppUpdate = (): UseAppUpdateReturn => {
     setState((prev) => ({ ...prev, isUpdating: true }))
 
     try {
+      // ✅ وضع علامة أن التحديث مطلوب من المستخدم
+      sessionStorage.setItem('app-update-requested', 'true')
+      
       // أولاً: مسح الكاش من Cache Storage (لا يمس localStorage)
       console.log('[AppUpdate] Clearing caches...')
 
@@ -70,6 +73,7 @@ export const useAppUpdate = (): UseAppUpdateReturn => {
       // سنستمع لحدث controllerchange في useEffect
     } catch (error) {
       console.error('[AppUpdate] Apply update failed:', error)
+      sessionStorage.removeItem('app-update-requested')
       setState((prev) => ({ ...prev, isUpdating: false }))
     }
   }, [])
@@ -189,6 +193,9 @@ export const useAppUpdate = (): UseAppUpdateReturn => {
         // نحتاج نتحقق إذا كان هناك controller سابق قبل الاستماع
         const hadController = !!navigator.serviceWorker.controller
         
+        // مفتاح لمنع reload loop - يُحفظ فقط عندما يطلب المستخدم التحديث
+        const UPDATE_REQUESTED_KEY = 'app-update-requested'
+        
         navigator.serviceWorker.addEventListener('controllerchange', () => {
           if (reloading) return
           
@@ -198,9 +205,19 @@ export const useAppUpdate = (): UseAppUpdateReturn => {
             return
           }
           
+          // ✅ منع الـ reload إلا إذا طلب المستخدم التحديث صراحة
+          const updateRequested = sessionStorage.getItem(UPDATE_REQUESTED_KEY)
+          if (!updateRequested) {
+            console.log('[AppUpdate] Controller changed but update not requested by user, skipping reload')
+            return
+          }
+          
           reloading = true
           
           console.log('[AppUpdate] Controller changed, reloading page...')
+
+          // مسح علامة التحديث
+          sessionStorage.removeItem(UPDATE_REQUESTED_KEY)
 
           // تحديث الإصدار المحفوظ قبل إعادة التحميل
           if (newVersionRef.current) {

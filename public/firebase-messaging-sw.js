@@ -106,5 +106,6 @@ self.addEventListener('activate', (event) => {
 // تثبيت Service Worker
 self.addEventListener('install', (event) => {
   console.log('[FCM SW] 📦 Installing')
-  self.skipWaiting()
+  // ❌ لا نستخدم skipWaiting() هنا لتجنب تعارض مع sw.js الرئيسي
+  // self.skipWaiting()
 })
