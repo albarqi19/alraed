@@ -8,38 +8,28 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import {
-  addDoc,
-  collection,
-  doc,
-  getDoc,
-  limit,
-  onSnapshot,
-  orderBy,
-  query,
-  runTransaction,
-  serverTimestamp,
-  setDoc,
-  Timestamp,
-  updateDoc,
-  type DocumentData,
-  type Firestore,
-} from 'firebase/firestore'
-import { getFirestoreClient } from '@/services/firebase'
 import { useAuthStore } from '@/modules/auth/store/auth-store'
+import { subscribeToAutoCallChannel } from '@/services/echo'
 import { AUTO_CALL_HISTORY_LIMIT, DEFAULT_AUTO_CALL_SETTINGS } from '../constants'
 import {
-  autoCallGuardiansPath,
-  autoCallHistoryPath,
-  autoCallQueuePath,
-  autoCallSettingsPath,
-} from '../firestore-paths'
+  getAutoCallSettings,
+  updateAutoCallSettings as apiUpdateSettings,
+  getAutoCallQueue,
+  enqueueAutoCall as apiEnqueueCall,
+  updateAutoCallStatus as apiUpdateStatus,
+  acknowledgeAutoCall as apiAcknowledgeCall,
+  getTodayAutoCallHistory,
+  getGuardianStatuses,
+  recordGuardianStrike as apiRecordStrike,
+  unblockGuardian as apiUnblockGuardian,
+  normalizeQueueEntryFromApi,
+  normalizeSettingsFromApi,
+} from '../api/auto-call-api'
 import type {
   AutoCallGuardianStatus,
   AutoCallHistoryEntry,
   AutoCallQueueEntry,
   AutoCallSettings,
-  AutoCallStatus,
   EnqueueAutoCallPayload,
   UpdateAutoCallStatusOptions,
 } from '../types'
@@ -49,7 +39,7 @@ interface AutoCallProviderProps {
   schoolIdOverride?: string | null
   historyLimit?: number
   allowFallbackSchoolId?: boolean
-  /** إذا كان true، لن يتم تفعيل الاستماع لـ Firestore */
+  /** إذا كان true، لن يتم تفعيل الاستماع للـ API/Echo */
   disabled?: boolean
 }
 
@@ -76,115 +66,11 @@ interface AutoCallContextValue {
   blockGuardian: (guardianNationalId: string, blockedUntil: Date | null) => Promise<void>
   unblockGuardian: (guardianNationalId: string) => Promise<void>
   isGuardianBlocked: (guardianNationalId: string, at?: Date) => boolean
+  /** إعادة تحميل البيانات من الـ API */
+  refresh: () => Promise<void>
 }
 
 const AutoCallContext = createContext<AutoCallContextValue | null>(null)
-
-function normalizeTimestamp(value: unknown): string | null {
-  if (!value) return null
-  if (typeof value === 'string') return value
-  if (value instanceof Date) return value.toISOString()
-  if (value instanceof Timestamp) return value.toDate().toISOString()
-  if (typeof value === 'object' && value !== null && 'toDate' in value) {
-    try {
-      const date = (value as Timestamp).toDate()
-      return date.toISOString()
-    } catch (error) {
-      console.warn('Failed to normalize timestamp', error)
-    }
-  }
-  return null
-}
-
-function normalizeSettings(data: DocumentData | undefined, envGeofence: AutoCallSettings['geofence'] | null): AutoCallSettings {
-  const base: AutoCallSettings = {
-    ...DEFAULT_AUTO_CALL_SETTINGS,
-    geofence: envGeofence ?? DEFAULT_AUTO_CALL_SETTINGS.geofence ?? null,
-  }
-
-  if (!data) {
-    return base
-  }
-
-  const geofenceRecord = data.geofence ?? envGeofence ?? null
-
-  const normalized = {
-    ...base,
-    enabled: typeof data.enabled === 'boolean' ? data.enabled : base.enabled,
-    openFrom: typeof data.openFrom === 'string' ? data.openFrom : null,
-    openUntil: typeof data.openUntil === 'string' ? data.openUntil : null,
-    repeatIntervalSeconds: typeof data.repeatIntervalSeconds === 'number' ? data.repeatIntervalSeconds : base.repeatIntervalSeconds,
-    announcementDurationSeconds:
-      typeof data.announcementDurationSeconds === 'number'
-        ? data.announcementDurationSeconds
-        : base.announcementDurationSeconds,
-    enableSpeech: typeof data.enableSpeech === 'boolean' ? data.enableSpeech : base.enableSpeech,
-    voiceGender: data.voiceGender ?? base.voiceGender,
-    voiceLocale: typeof data.voiceLocale === 'string' ? data.voiceLocale : base.voiceLocale,
-    allowGuardianAcknowledgement:
-      typeof data.allowGuardianAcknowledgement === 'boolean'
-        ? data.allowGuardianAcknowledgement
-        : base.allowGuardianAcknowledgement,
-    geofence:
-      geofenceRecord && typeof geofenceRecord === 'object'
-        ? normalizeGeofence(geofenceRecord) ?? base.geofence ?? null
-        : base.geofence ?? null,
-    maxStrikesBeforeBlock:
-      typeof data.maxStrikesBeforeBlock === 'number' ? data.maxStrikesBeforeBlock : base.maxStrikesBeforeBlock,
-    blockDurationMinutes:
-      typeof data.blockDurationMinutes === 'number' ? data.blockDurationMinutes : base.blockDurationMinutes,
-    displayTheme: data.displayTheme === 'light' ? 'light' : base.displayTheme,
-    updatedAt: normalizeTimestamp(data.updatedAt) ?? base.updatedAt ?? null,
-    createdAt: normalizeTimestamp(data.createdAt) ?? base.createdAt ?? null,
-  }
-
-  return normalized
-}
-
-function normalizeGeofence(value: unknown): AutoCallSettings['geofence'] | null {
-  if (!value || typeof value !== 'object') return null
-  const latitude = Number((value as Record<string, unknown>).latitude ?? (value as Record<string, unknown>).lat)
-  const longitude = Number((value as Record<string, unknown>).longitude ?? (value as Record<string, unknown>).lng)
-  const radiusMeters = Number((value as Record<string, unknown>).radiusMeters ?? (value as Record<string, unknown>).radius)
-
-  if (Number.isFinite(latitude) && Number.isFinite(longitude) && Number.isFinite(radiusMeters)) {
-    return { latitude, longitude, radiusMeters }
-  }
-  return null
-}
-
-function normalizeQueueEntry(docId: string, data: DocumentData): AutoCallQueueEntry {
-  return {
-    id: docId,
-    studentId: Number.isFinite(Number(data.studentId)) ? Number(data.studentId) : null,
-    studentNationalId: typeof data.studentNationalId === 'string' ? data.studentNationalId : '',
-    studentName: typeof data.studentName === 'string' ? data.studentName : '',
-    classLabel: typeof data.classLabel === 'string' ? data.classLabel : null,
-    guardianName: typeof data.guardianName === 'string' ? data.guardianName : null,
-    guardianPhone: typeof data.guardianPhone === 'string' ? data.guardianPhone : null,
-    createdAt: normalizeTimestamp(data.createdAt) ?? new Date().toISOString(),
-    status: (['pending', 'announcing', 'acknowledged', 'expired', 'cancelled'] as AutoCallStatus[]).includes(data.status)
-      ? (data.status as AutoCallStatus)
-      : 'pending',
-    lastAnnouncedAt: normalizeTimestamp(data.lastAnnouncedAt),
-    announcedCount: typeof data.announcedCount === 'number' ? data.announcedCount : 0,
-    acknowledgedAt: normalizeTimestamp(data.acknowledgedAt),
-    acknowledgedBy:
-      data.acknowledgedBy === 'guardian' || data.acknowledgedBy === 'admin' ? data.acknowledgedBy : null,
-    expiresAt: normalizeTimestamp(data.expiresAt),
-    notes: typeof data.notes === 'string' ? data.notes : null,
-  }
-}
-
-function normalizeGuardianStatus(docId: string, data: DocumentData): AutoCallGuardianStatus {
-  return {
-    guardianNationalId: typeof data.guardianNationalId === 'string' ? data.guardianNationalId : docId,
-    strikeCount: typeof data.strikeCount === 'number' ? data.strikeCount : 0,
-    blockedUntil: normalizeTimestamp(data.blockedUntil),
-    lastViolationAt: normalizeTimestamp(data.lastViolationAt),
-    lastStrikeReason: typeof data.lastStrikeReason === 'string' ? data.lastStrikeReason : null,
-  }
-}
 
 function resolveEnvGeofence(): AutoCallSettings['geofence'] | null {
   const rawLat = import.meta.env.VITE_AUTO_CALL_SCHOOL_LAT
@@ -218,6 +104,8 @@ export function AutoCallProvider({
   disabled = false,
 }: AutoCallProviderProps) {
   const authSchoolId = useAuthStore((state) => state.user?.school_id)
+  const token = useAuthStore((state) => state.token)
+
   const fallbackSchoolId = useMemo(() => {
     if (!allowFallbackSchoolId) {
       return null
@@ -228,6 +116,7 @@ export function AutoCallProvider({
     }
     return String(raw)
   }, [allowFallbackSchoolId])
+
   const schoolId = useMemo(() => {
     return schoolIdOverride != null
       ? schoolIdOverride
@@ -244,294 +133,224 @@ export function AutoCallProvider({
   const [guardianStatuses, setGuardianStatuses] = useState<Map<string, AutoCallGuardianStatus>>(new Map())
   const [loading, setLoading] = useState<AutoCallLoadingState>({ settings: false, queue: false, history: false, guardians: false })
   const [error, setError] = useState<string | null>(null)
-  const firestoreRef = useRef<Firestore | null>(null)
 
-  useEffect(() => {
-    // إذا كان معطلاً، لا نحتاج Firestore
-    if (disabled) {
-      firestoreRef.current = null
-      return
-    }
+  // Track if initial load is done
+  const initialLoadDone = useRef(false)
 
-    try {
-      const client = getFirestoreClient()
-      if (client) {
-        firestoreRef.current = client
-        setError(null)
-      } else {
-        // Firebase غير متاح - هذا طبيعي للمعلمين أو عندما لا يكون مُعدّاً
-        firestoreRef.current = null
-        setError(null) // لا نعتبره خطأ
-      }
-    } catch (initializationError) {
-      console.warn('فشل تهيئة Firebase للاستخدام في النداء الآلي', initializationError)
-      firestoreRef.current = null
-      setError(null) // لا نعتبره خطأ لتجنب كسر الصفحة
-    }
-  }, [disabled])
-
-  useEffect(() => {
-    if (disabled || !schoolId || !firestoreRef.current) {
+  // Fetch all data from API
+  const fetchAllData = useCallback(async () => {
+    if (disabled || !schoolId || !token) {
       setSettings(null)
-      return
-    }
-
-    const db = firestoreRef.current
-    const settingsRef = doc(db, ...autoCallSettingsPath(schoolId))
-    setLoading((prev) => ({ ...prev, settings: true }))
-
-    const unsubscribe = onSnapshot(
-      settingsRef,
-      (snapshot) => {
-        setLoading((prev) => ({ ...prev, settings: false }))
-        setError(null)
-        const normalizedSettings = normalizeSettings(snapshot.data(), envGeofence)
-        setSettings(normalizedSettings)
-      },
-      (snapshotError) => {
-        console.error('Failed to subscribe to auto-call settings', snapshotError)
-        setLoading((prev) => ({ ...prev, settings: false }))
-        setError(snapshotError.message)
-      },
-    )
-
-    return () => unsubscribe()
-  }, [disabled, envGeofence, schoolId])
-
-  useEffect(() => {
-    if (disabled || !schoolId || !firestoreRef.current) {
       setQueue([])
-      return
-    }
-
-    const db = firestoreRef.current
-    const queuePath = autoCallQueuePath(schoolId)
-    setLoading((prev) => ({ ...prev, queue: true }))
-    const queueQuery = query(
-      collection(db, ...queuePath),
-      orderBy('createdAt', 'asc'),
-    )
-
-    const unsubscribe = onSnapshot(
-      queueQuery,
-      (snapshot) => {
-        setLoading((prev) => ({ ...prev, queue: false }))
-        const entries = snapshot.docs.map((docSnapshot) => normalizeQueueEntry(docSnapshot.id, docSnapshot.data()))
-        setQueue(entries)
-      },
-      (snapshotError) => {
-        console.error('Failed to subscribe to auto-call queue', snapshotError)
-        setLoading((prev) => ({ ...prev, queue: false }))
-        setError(snapshotError.message)
-      },
-    )
-
-    return () => unsubscribe()
-  }, [disabled, schoolId])
-
-  useEffect(() => {
-    if (disabled || !schoolId || !firestoreRef.current) {
       setHistory([])
-      return
-    }
-
-    const db = firestoreRef.current
-    const historyPath = autoCallHistoryPath(schoolId)
-    setLoading((prev) => ({ ...prev, history: true }))
-    const historyQuery = query(
-      collection(db, ...historyPath),
-      orderBy('resolvedAt', 'desc'),
-      limit(historyLimit),
-    )
-
-    const unsubscribe = onSnapshot(
-      historyQuery,
-      (snapshot) => {
-        setLoading((prev) => ({ ...prev, history: false }))
-        const entries = snapshot.docs.map((docSnapshot) => {
-          const base = normalizeQueueEntry(docSnapshot.id, docSnapshot.data())
-          return {
-            ...base,
-            resolvedAt: normalizeTimestamp(docSnapshot.data().resolvedAt),
-            resolutionNotes: typeof docSnapshot.data().resolutionNotes === 'string' ? docSnapshot.data().resolutionNotes : null,
-          }
-        })
-        setHistory(entries)
-      },
-      (snapshotError) => {
-        console.error('Failed to subscribe to auto-call history', snapshotError)
-        setLoading((prev) => ({ ...prev, history: false }))
-        setError(snapshotError.message)
-      },
-    )
-
-    return () => unsubscribe()
-  }, [disabled, historyLimit, schoolId])
-
-  useEffect(() => {
-    if (disabled || !schoolId || !firestoreRef.current) {
       setGuardianStatuses(new Map())
       return
     }
 
-    const db = firestoreRef.current
-    const guardiansPath = autoCallGuardiansPath(schoolId)
-    setLoading((prev) => ({ ...prev, guardians: true }))
+    setLoading({ settings: true, queue: true, history: true, guardians: true })
+    setError(null)
 
-    const unsubscribe = onSnapshot(
-      collection(db, ...guardiansPath),
-      (snapshot) => {
-        setLoading((prev) => ({ ...prev, guardians: false }))
-        const nextMap = new Map<string, AutoCallGuardianStatus>()
-        snapshot.forEach((docSnapshot) => {
-          const status = normalizeGuardianStatus(docSnapshot.id, docSnapshot.data())
-          nextMap.set(status.guardianNationalId, status)
+    try {
+      // Fetch all data in parallel
+      const [settingsData, queueData, historyData, guardiansData] = await Promise.all([
+        getAutoCallSettings().catch(() => null),
+        getAutoCallQueue().catch(() => []),
+        getTodayAutoCallHistory().catch(() => []),
+        getGuardianStatuses().catch(() => []),
+      ])
+
+      // Apply settings with env geofence fallback
+      if (settingsData) {
+        setSettings({
+          ...settingsData,
+          geofence: settingsData.geofence ?? envGeofence ?? null,
         })
-        setGuardianStatuses(nextMap)
-      },
-      (snapshotError) => {
-        console.error('Failed to subscribe to auto-call guardian statuses', snapshotError)
-        setLoading((prev) => ({ ...prev, guardians: false }))
-        setError(snapshotError.message)
-      },
-    )
+      } else {
+        setSettings({
+          ...DEFAULT_AUTO_CALL_SETTINGS,
+          geofence: envGeofence ?? null,
+        })
+      }
 
-    return () => unsubscribe()
-  }, [disabled, schoolId])
+      setQueue(queueData)
+      setHistory(historyData.slice(0, historyLimit))
+
+      // Convert guardians array to Map
+      const guardiansMap = new Map<string, AutoCallGuardianStatus>()
+      guardiansData.forEach((g) => guardiansMap.set(g.guardianNationalId, g))
+      setGuardianStatuses(guardiansMap)
+
+      initialLoadDone.current = true
+    } catch (err) {
+      console.error('Failed to fetch auto-call data:', err)
+      setError(err instanceof Error ? err.message : 'حدث خطأ في تحميل بيانات النداء الآلي')
+    } finally {
+      setLoading({ settings: false, queue: false, history: false, guardians: false })
+    }
+  }, [disabled, schoolId, token, envGeofence, historyLimit])
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchAllData()
+  }, [fetchAllData])
+
+  // Subscribe to Echo channel for real-time updates
+  useEffect(() => {
+    if (disabled || !schoolId || !token) {
+      return
+    }
+
+    const unsubscribe = subscribeToAutoCallChannel(schoolId, {
+      onEnqueued: (data) => {
+        // Add new call to queue
+        const newEntry = normalizeQueueEntryFromApi(data as Record<string, unknown>)
+        setQueue((prev) => [...prev, newEntry].sort((a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        ))
+      },
+
+      onStatusUpdated: (data) => {
+        const updated = normalizeQueueEntryFromApi(data as Record<string, unknown>)
+
+        // If status is terminal (expired, cancelled, acknowledged), remove from queue
+        if (['expired', 'cancelled', 'acknowledged'].includes(updated.status)) {
+          setQueue((prev) => prev.filter((q) => q.id !== updated.id))
+          // Optionally add to history
+          if (updated.status !== 'cancelled') {
+            setHistory((prev) => [{
+              ...updated,
+              resolvedAt: new Date().toISOString(),
+              resolutionNotes: null,
+            }, ...prev].slice(0, historyLimit))
+          }
+        } else {
+          // Update in queue
+          setQueue((prev) => prev.map((q) => q.id === updated.id ? updated : q))
+        }
+      },
+
+      onAcknowledged: (data) => {
+        const updated = normalizeQueueEntryFromApi(data as Record<string, unknown>)
+        // Remove from queue and add to history
+        setQueue((prev) => prev.filter((q) => q.id !== updated.id))
+        setHistory((prev) => [{
+          ...updated,
+          resolvedAt: updated.acknowledgedAt ?? new Date().toISOString(),
+          resolutionNotes: null,
+        }, ...prev].slice(0, historyLimit))
+      },
+
+      onSettingsUpdated: (data) => {
+        const updated = normalizeSettingsFromApi(data as Record<string, unknown>)
+        setSettings({
+          ...updated,
+          geofence: updated.geofence ?? envGeofence ?? null,
+        })
+      },
+    })
+
+    return () => {
+      unsubscribe()
+    }
+  }, [disabled, schoolId, token, envGeofence, historyLimit])
+
+  // ============ Actions ============
 
   const updateSettings = useCallback(async (payload: Partial<AutoCallSettings>) => {
-    if (!schoolId || !firestoreRef.current) {
+    if (!schoolId || !token) {
       throw new Error('لا يمكن تحديث الإعدادات قبل تحديد المدرسة')
     }
 
-    const db = firestoreRef.current
-    const settingsRef = doc(db, ...autoCallSettingsPath(schoolId))
-    
-    // تحقق من وجود الوثيقة أولاً
-    const snapshot = await getDoc(settingsRef)
-    const exists = snapshot.exists()
-    
-    const { geofence, ...rest } = payload
-    
-    const updateData: Record<string, unknown> = {
-      ...rest,
-      ...(geofence !== undefined ? { geofence } : {}),
-      updatedAt: serverTimestamp(),
-    }
-    
-    // أضف createdAt فقط إذا كانت الوثيقة جديدة
-    if (!exists) {
-      updateData.createdAt = serverTimestamp()
-    }
+    const updated = await apiUpdateSettings(payload)
+    setSettings({
+      ...updated,
+      geofence: updated.geofence ?? envGeofence ?? null,
+    })
+  }, [schoolId, token, envGeofence])
 
-    await setDoc(settingsRef, updateData, { merge: true })
-  }, [schoolId])
-
-  const enqueueCall = useCallback(async (payload: EnqueueAutoCallPayload) => {
-    if (!schoolId || !firestoreRef.current) {
+  const enqueueCall = useCallback(async (payload: EnqueueAutoCallPayload): Promise<string> => {
+    if (!schoolId || !token) {
       throw new Error('لا يمكن إنشاء مناداة بدون مدرسة محددة')
     }
 
-    const db = firestoreRef.current
-    const queuePath = autoCallQueuePath(schoolId)
-    const nowIso = new Date().toISOString()
-
-    const docRef = await addDoc(collection(db, ...queuePath), {
-      studentId: payload.studentId ?? null,
-      studentNationalId: payload.studentNationalId,
-      studentName: payload.studentName,
-      classLabel: payload.classLabel ?? null,
-      guardianName: payload.guardianName ?? null,
-      guardianPhone: payload.guardianPhone ?? null,
-      createdAt: nowIso,
-      status: 'pending',
-      announcedCount: 0,
-      requestedBy: payload.requestedBy,
-      notes: payload.notes ?? null,
+    const newEntry = await apiEnqueueCall(payload)
+    // Entry will be added via Echo event, but add optimistically
+    setQueue((prev) => {
+      if (prev.some((q) => q.id === newEntry.id)) {
+        return prev
+      }
+      return [...prev, newEntry].sort((a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      )
     })
-
-    return docRef.id
-  }, [schoolId])
+    return newEntry.id
+  }, [schoolId, token])
 
   const updateCallStatus = useCallback(async (callId: string, options: UpdateAutoCallStatusOptions) => {
-    if (!schoolId || !firestoreRef.current) {
+    if (!schoolId || !token) {
       throw new Error('لا يمكن تحديث حالة المناداة')
     }
 
-  const db = firestoreRef.current
-  const callDoc = doc(db, ...autoCallQueuePath(schoolId), callId)
+    const updated = await apiUpdateStatus(callId, options.status, options.notes)
 
-    await updateDoc(callDoc, {
-      status: options.status,
-      acknowledgedBy: options.acknowledgedBy ?? null,
-      acknowledgedAt: options.acknowledgedBy ? new Date().toISOString() : null,
-      notes: options.notes ?? null,
-    })
-  }, [schoolId])
+    // Optimistic update
+    if (['expired', 'cancelled', 'acknowledged'].includes(updated.status)) {
+      setQueue((prev) => prev.filter((q) => q.id !== callId))
+    } else {
+      setQueue((prev) => prev.map((q) => q.id === callId ? updated : q))
+    }
+  }, [schoolId, token])
 
   const acknowledgeCall = useCallback(async (callId: string, acknowledgedBy: 'guardian' | 'admin') => {
-    await updateCallStatus(callId, { status: 'acknowledged', acknowledgedBy })
-  }, [updateCallStatus])
+    if (!schoolId || !token) {
+      throw new Error('لا يمكن تأكيد استلام المناداة')
+    }
+
+    const updated = await apiAcknowledgeCall(callId, acknowledgedBy)
+
+    // Optimistic update - remove from queue
+    setQueue((prev) => prev.filter((q) => q.id !== callId))
+    setHistory((prev) => [{
+      ...updated,
+      resolvedAt: updated.acknowledgedAt ?? new Date().toISOString(),
+      resolutionNotes: null,
+    }, ...prev].slice(0, historyLimit))
+  }, [schoolId, token, historyLimit])
 
   const recordGuardianStrike = useCallback(async (guardianNationalId: string, reason?: string | null) => {
-    if (!schoolId || !firestoreRef.current) {
+    if (!schoolId || !token) {
       throw new Error('لا يمكن تسجيل المخالفة')
     }
 
-    const db = firestoreRef.current
-    const guardiansPath = autoCallGuardiansPath(schoolId)
-    const now = new Date()
-
-    await runTransaction(db, async (transaction) => {
-      const statusRef = doc(db, ...guardiansPath, guardianNationalId)
-      const snapshot = await transaction.get(statusRef)
-      const existing = snapshot.exists() ? normalizeGuardianStatus(snapshot.id, snapshot.data() ?? {}) : null
-      const nextStrikeCount = (existing?.strikeCount ?? 0) + 1
-
-      let blockedUntil: string | null = existing?.blockedUntil ?? null
-      const lastViolationAt = now.toISOString()
-
-      const strikesThreshold = settings?.maxStrikesBeforeBlock ?? DEFAULT_AUTO_CALL_SETTINGS.maxStrikesBeforeBlock
-      const blockDurationMinutes = settings?.blockDurationMinutes ?? DEFAULT_AUTO_CALL_SETTINGS.blockDurationMinutes
-
-      if (nextStrikeCount >= strikesThreshold) {
-        blockedUntil = new Date(now.getTime() + blockDurationMinutes * 60 * 1000).toISOString()
-      }
-
-      transaction.set(
-        statusRef,
-        {
-          guardianNationalId,
-          strikeCount: nextStrikeCount,
-          blockedUntil,
-          lastViolationAt,
-          lastStrikeReason: reason ?? null,
-        },
-        { merge: true },
-      )
+    const updated = await apiRecordStrike(guardianNationalId, reason)
+    setGuardianStatuses((prev) => {
+      const next = new Map(prev)
+      next.set(guardianNationalId, updated)
+      return next
     })
-  }, [schoolId, settings])
+  }, [schoolId, token])
 
-  const blockGuardian = useCallback(async (guardianNationalId: string, blockedUntil: Date | null) => {
-    if (!schoolId || !firestoreRef.current) {
+  const blockGuardian = useCallback(async (_guardianNationalId: string, _blockedUntil: Date | null) => {
+    // This functionality is handled server-side through strikes
+    // Keeping the method for API compatibility
+    console.warn('blockGuardian: Use recordGuardianStrike instead for automatic blocking')
+  }, [])
+
+  const unblockGuardian = useCallback(async (guardianNationalId: string) => {
+    if (!schoolId || !token) {
       throw new Error('لا يمكن تعديل حالة الحظر')
     }
 
-    const db = firestoreRef.current
-    const guardiansPath = autoCallGuardiansPath(schoolId)
-    await setDoc(
-      doc(db, ...guardiansPath, guardianNationalId),
-      {
-        guardianNationalId,
-        blockedUntil: blockedUntil ? blockedUntil.toISOString() : null,
-      },
-      { merge: true },
-    )
-  }, [schoolId])
-
-  const unblockGuardian = useCallback(async (guardianNationalId: string) => {
-    await blockGuardian(guardianNationalId, null)
-  }, [blockGuardian])
+    await apiUnblockGuardian(guardianNationalId)
+    setGuardianStatuses((prev) => {
+      const next = new Map(prev)
+      const existing = next.get(guardianNationalId)
+      if (existing) {
+        next.set(guardianNationalId, { ...existing, blockedUntil: null, strikeCount: 0 })
+      }
+      return next
+    })
+  }, [schoolId, token])
 
   const isGuardianBlocked = useCallback((guardianNationalId: string, at: Date = new Date()) => {
     const status = guardianStatuses.get(guardianNationalId)
@@ -541,6 +360,10 @@ export function AutoCallProvider({
     const blockedUntilDate = new Date(status.blockedUntil)
     return blockedUntilDate.getTime() > at.getTime()
   }, [guardianStatuses])
+
+  const refresh = useCallback(async () => {
+    await fetchAllData()
+  }, [fetchAllData])
 
   const value = useMemo<AutoCallContextValue>(() => ({
     schoolId,
@@ -558,6 +381,7 @@ export function AutoCallProvider({
     blockGuardian,
     unblockGuardian,
     isGuardianBlocked,
+    refresh,
   }), [
     acknowledgeCall,
     blockGuardian,
@@ -569,6 +393,7 @@ export function AutoCallProvider({
     loading,
     queue,
     recordGuardianStrike,
+    refresh,
     schoolId,
     settings,
     unblockGuardian,
@@ -578,6 +403,7 @@ export function AutoCallProvider({
 
   return <AutoCallContext.Provider value={value}>{children}</AutoCallContext.Provider>
 }
+
 // eslint-disable-next-line react-refresh/only-export-components
 export function useAutoCall() {
   const context = useContext(AutoCallContext)
