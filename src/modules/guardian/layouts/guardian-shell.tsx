@@ -17,6 +17,8 @@ function GuardianShellContent() {
         studentSummary,
         nationalIdInput,
         setNationalIdInput,
+        phoneLast4Input,
+        setPhoneLast4Input,
         handleLogin,
         handleLogout,
         isLoggingIn,
@@ -41,7 +43,7 @@ function GuardianShellContent() {
                         </div>
                         <h2 className="text-2xl font-bold text-slate-900">بوابة ولي الأمر</h2>
                         <p className="mt-2 text-sm text-slate-500">
-                            أدخل رقم هوية الطالب للوصول إلى جميع الخدمات
+                            أدخل رقم هوية الطالب وآخر 4 أرقام من الجوال المسجل
                         </p>
                     </div>
 
@@ -49,7 +51,7 @@ function GuardianShellContent() {
                         className="space-y-4"
                         onSubmit={(e) => {
                             e.preventDefault()
-                            handleLogin(nationalIdInput)
+                            handleLogin(nationalIdInput, phoneLast4Input)
                         }}
                     >
                         <div>
@@ -69,13 +71,34 @@ function GuardianShellContent() {
                                 onChange={(e) => setNationalIdInput(e.target.value.replace(/\D/g, ''))}
                                 disabled={isLoggingIn}
                             />
-                            {loginError && (
-                                <p className="mt-2 text-center text-sm text-rose-600">{loginError}</p>
-                            )}
                         </div>
+                        <div>
+                            <label className="mb-2 block text-right text-sm font-semibold text-slate-700">
+                                آخر 4 أرقام من جوال ولي الأمر
+                            </label>
+                            <input
+                                type="text"
+                                inputMode="numeric"
+                                maxLength={4}
+                                className={clsx(
+                                    'w-full rounded-2xl border px-4 py-3 text-center text-xl font-semibold tracking-[0.5em] shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20',
+                                    loginError ? 'border-rose-300 bg-rose-50' : 'border-slate-200 bg-slate-50'
+                                )}
+                                placeholder="••••"
+                                value={phoneLast4Input}
+                                onChange={(e) => setPhoneLast4Input(e.target.value.replace(/\D/g, ''))}
+                                disabled={isLoggingIn}
+                            />
+                            <p className="mt-1 text-center text-xs text-slate-400">
+                                الرقم المسجل في بيانات الطالب
+                            </p>
+                        </div>
+                        {loginError && (
+                            <p className="text-center text-sm text-rose-600">{loginError}</p>
+                        )}
                         <button
                             type="submit"
-                            disabled={isLoggingIn || nationalIdInput.length !== 10}
+                            disabled={isLoggingIn || nationalIdInput.length !== 10 || phoneLast4Input.length !== 4}
                             className="w-full rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 py-3.5 text-base font-bold text-white shadow-lg transition hover:from-indigo-700 hover:to-indigo-800 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {isLoggingIn ? (

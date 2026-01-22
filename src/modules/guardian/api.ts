@@ -40,9 +40,14 @@ function unwrap<T>(response: ApiResponse<T>, fallback: string): T {
   return response.data
 }
 
-export async function lookupGuardianStudent(nationalId: string): Promise<GuardianStudentSummary> {
+export interface GuardianLoginPayload {
+  national_id: string
+  phone_last4: string
+}
+
+export async function lookupGuardianStudent(payload: GuardianLoginPayload): Promise<GuardianStudentSummary> {
   const { data } = await apiClient.get<ApiResponse<GuardianStudentSummary>>('/public/leave-requests/student', {
-    params: { national_id: nationalId },
+    params: { national_id: payload.national_id, phone_last4: payload.phone_last4 },
   })
   return unwrap(data, 'تعذر العثور على الطالب')
 }

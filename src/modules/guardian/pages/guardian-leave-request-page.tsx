@@ -299,6 +299,7 @@ function GuardianLeaveRequestPageBase({
   autoCallAvailabilityReason,
 }: GuardianLeaveRequestPageBaseProps) {
   const [nationalIdInput, setNationalIdInput] = useState('')
+  const [phoneLast4Input, setPhoneLast4Input] = useState('')
   const [currentNationalId, setCurrentNationalId] = useState<string | null>(null)
   const [studentSummary, setStudentSummary] = useState<GuardianStudentSummary | null>(null)
   const [formValues, setFormValues] = useState<FormValues>({
@@ -678,13 +679,20 @@ function GuardianLeaveRequestPageBase({
   function handleLookupSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const nationalId = nationalIdInput.trim()
-    if (!nationalId) {
+    const phoneLast4 = phoneLast4Input.trim()
+
+    if (!nationalId || nationalId.length !== 10) {
       setFormErrors({ national_id: 'يرجى إدخال رقم هوية الطالب المكون من 10 أرقام' })
       return
     }
 
+    if (!phoneLast4 || phoneLast4.length !== 4) {
+      setFormErrors({ national_id: 'يرجى إدخال آخر 4 أرقام من رقم الجوال المسجل' })
+      return
+    }
+
     setFormErrors({})
-    lookupMutation.mutate(nationalId, {
+    lookupMutation.mutate({ national_id: nationalId, phone_last4: phoneLast4 }, {
       onSuccess: (summary) => {
         setStudentSummary(summary)
         setCurrentNationalId(nationalId)
@@ -700,6 +708,7 @@ function GuardianLeaveRequestPageBase({
     setStudentSummary(null)
     setCurrentNationalId(null)
     setNationalIdInput('')
+    setPhoneLast4Input('')
     setFormErrors({})
     onPortalSectionChange('none')
     setFormValues({
@@ -917,13 +926,13 @@ function GuardianLeaveRequestPageBase({
               </div>
               <h2 className="text-xl font-bold text-slate-900">مرحباً بك في بوابة ولي الأمر</h2>
               <p className="mt-2 text-sm text-slate-600">
-                أدخل رقم هوية الطالب للوصول إلى جميع الخدمات
+                أدخل رقم هوية الطالب وآخر 4 أرقام من الجوال المسجل
               </p>
             </div>
 
-            <form className="space-y-3" onSubmit={handleLookupSubmit}>
-              <label className="block text-right text-xs font-semibold text-slate-600">رقم هوية الطالب</label>
-              <div className="flex flex-col gap-3 md:flex-row">
+            <form className="space-y-4" onSubmit={handleLookupSubmit}>
+              <div>
+                <label className="block text-right text-xs font-semibold text-slate-600 mb-1">رقم هوية الطالب</label>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -931,18 +940,32 @@ function GuardianLeaveRequestPageBase({
                   className={`w-full rounded-2xl border px-4 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${formErrors.national_id ? 'border-rose-300' : 'border-slate-200'}`}
                   placeholder="أدخل رقم هوية الطالب (10 أرقام)"
                   value={nationalIdInput}
-                  onChange={(event) => setNationalIdInput(event.target.value)}
+                  onChange={(event) => setNationalIdInput(event.target.value.replace(/\D/g, ''))}
                   disabled={lookupMutation.isPending}
                 />
-                <button
-                  type="submit"
-                  className="rounded-2xl bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-300"
-                  disabled={lookupMutation.isPending}
-                >
-                  {lookupMutation.isPending ? 'جاري التحقق...' : 'دخول'}
-                </button>
               </div>
-              {formErrors.national_id ? <p className="text-xs text-rose-600">{formErrors.national_id}</p> : null}
+              <div>
+                <label className="block text-right text-xs font-semibold text-slate-600 mb-1">آخر 4 أرقام من جوال ولي الأمر</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={4}
+                  className={`w-full rounded-2xl border px-4 py-2.5 text-sm text-center tracking-[0.3em] shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${formErrors.national_id ? 'border-rose-300' : 'border-slate-200'}`}
+                  placeholder="••••"
+                  value={phoneLast4Input}
+                  onChange={(event) => setPhoneLast4Input(event.target.value.replace(/\D/g, ''))}
+                  disabled={lookupMutation.isPending}
+                />
+                <p className="mt-1 text-center text-xs text-slate-400">الرقم المسجل في بيانات الطالب</p>
+              </div>
+              <button
+                type="submit"
+                className="w-full rounded-2xl bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-300"
+                disabled={lookupMutation.isPending || nationalIdInput.length !== 10 || phoneLast4Input.length !== 4}
+              >
+                {lookupMutation.isPending ? 'جاري التحقق...' : 'دخول'}
+              </button>
+              {formErrors.national_id ? <p className="text-xs text-rose-600 text-center">{formErrors.national_id}</p> : null}
             </form>
           </div>
         ) : (

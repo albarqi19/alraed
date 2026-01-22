@@ -18,7 +18,9 @@ interface GuardianContextValue {
     // Auth actions
     nationalIdInput: string
     setNationalIdInput: (value: string) => void
-    handleLogin: (nationalId: string) => Promise<void>
+    phoneLast4Input: string
+    setPhoneLast4Input: (value: string) => void
+    handleLogin: (nationalId: string, phoneLast4: string) => Promise<void>
     handleLogout: () => void
     isLoggingIn: boolean
     loginError: string | null
@@ -48,6 +50,7 @@ export function GuardianProvider({ children }: GuardianProviderProps) {
     const [currentNationalId, setCurrentNationalId] = useState<string | null>(null)
     const [studentSummary, setStudentSummary] = useState<GuardianStudentSummary | null>(null)
     const [nationalIdInput, setNationalIdInput] = useState('')
+    const [phoneLast4Input, setPhoneLast4Input] = useState('')
     const [loginError, setLoginError] = useState<string | null>(null)
 
     // Store modal state
@@ -62,21 +65,31 @@ export function GuardianProvider({ children }: GuardianProviderProps) {
     const storeOverview = storeOverviewQuery.data ?? null
     const isLoggedIn = Boolean(studentSummary && currentNationalId)
 
-    const handleLogin = useCallback(async (nationalId: string) => {
-        const trimmed = nationalId.trim()
-        if (!trimmed || trimmed.length !== 10) {
+    const handleLogin = useCallback(async (nationalId: string, phoneLast4: string) => {
+        const trimmedNationalId = nationalId.trim()
+        const trimmedPhoneLast4 = phoneLast4.trim()
+
+        if (!trimmedNationalId || trimmedNationalId.length !== 10) {
             setLoginError('يرجى إدخال رقم هوية الطالب المكون من 10 أرقام')
+            return
+        }
+
+        if (!trimmedPhoneLast4 || trimmedPhoneLast4.length !== 4) {
+            setLoginError('يرجى إدخال آخر 4 أرقام من رقم الجوال المسجل')
             return
         }
 
         setLoginError(null)
 
         try {
-            const summary = await lookupMutation.mutateAsync(trimmed)
+            const summary = await lookupMutation.mutateAsync({
+                national_id: trimmedNationalId,
+                phone_last4: trimmedPhoneLast4,
+            })
             setStudentSummary(summary)
-            setCurrentNationalId(trimmed)
+            setCurrentNationalId(trimmedNationalId)
         } catch {
-            setLoginError('تعذر العثور على بيانات الطالب. تأكد من رقم الهوية.')
+            setLoginError('تعذر العثور على بيانات الطالب. تأكد من رقم الهوية وآخر 4 أرقام من الجوال.')
         }
     }, [lookupMutation])
 
@@ -84,6 +97,7 @@ export function GuardianProvider({ children }: GuardianProviderProps) {
         setStudentSummary(null)
         setCurrentNationalId(null)
         setNationalIdInput('')
+        setPhoneLast4Input('')
         setLoginError(null)
         setIsStoreModalOpen(false)
     }, [])
@@ -100,6 +114,8 @@ export function GuardianProvider({ children }: GuardianProviderProps) {
         storeOverview,
         nationalIdInput,
         setNationalIdInput,
+        phoneLast4Input,
+        setPhoneLast4Input,
         handleLogin,
         handleLogout,
         isLoggingIn: lookupMutation.isPending,
@@ -115,6 +131,7 @@ export function GuardianProvider({ children }: GuardianProviderProps) {
         guardianSettings,
         storeOverview,
         nationalIdInput,
+        phoneLast4Input,
         handleLogin,
         handleLogout,
         lookupMutation.isPending,

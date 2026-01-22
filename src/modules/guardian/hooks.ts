@@ -9,6 +9,7 @@ import {
   fetchGuardianStoreCatalog,
   fetchGuardianStoreOrders,
   submitGuardianStoreOrder,
+  type GuardianLoginPayload,
 } from './api'
 import { guardianQueryKeys } from './query-keys'
 import type {
@@ -37,8 +38,11 @@ function getErrorMessage(error: unknown, fallback: string) {
 export function useGuardianStudentLookupMutation() {
   const toast = useToast()
 
-  return useMutation<GuardianStudentSummary, unknown, string>({
-    mutationFn: (nationalId: string) => lookupGuardianStudent(nationalId.trim()),
+  return useMutation<GuardianStudentSummary, unknown, GuardianLoginPayload>({
+    mutationFn: (payload: GuardianLoginPayload) => lookupGuardianStudent({
+      national_id: payload.national_id.trim(),
+      phone_last4: payload.phone_last4.trim(),
+    }),
     onError: (error) => {
       toast({ type: 'error', title: getErrorMessage(error, 'تعذر العثور على بيانات الطالب') })
     },
