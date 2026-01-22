@@ -1,5 +1,6 @@
+import { useState, useRef, useEffect } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { Home, Wrench, FileText, MessageSquare, ShoppingCart, Bell, LogOut } from 'lucide-react'
+import { Home, Wrench, FileText, MessageSquare, ShoppingCart, LogOut, Users, UserPlus, X, ChevronDown, Trash2 } from 'lucide-react'
 import clsx from 'classnames'
 import { GuardianProvider, useGuardianContext } from '../context/guardian-context'
 import { GuardianStoreModal } from '../components/guardian-store-modal'
@@ -21,16 +22,40 @@ function GuardianShellContent() {
         setPhoneLast4Input,
         handleLogin,
         handleLogout,
+        handleLogoutAll,
         isLoggingIn,
         loginError,
         storeOverview,
         openStoreModal,
         isStoreModalOpen,
         closeStoreModal,
+        // Multi-child
+        children: storedChildren,
+        activeChildIndex,
+        switchChild,
+        removeChild,
+        hasMultipleChildren,
+        showAddChildForm,
+        setShowAddChildForm,
     } = useGuardianContext()
 
     const location = useLocation()
     const points = storeOverview?.points.total ?? 0
+
+    // Children dropdown state
+    const [showChildrenDropdown, setShowChildrenDropdown] = useState(false)
+    const dropdownRef = useRef<HTMLDivElement>(null)
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setShowChildrenDropdown(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
 
     // Login screen
     if (!isLoggedIn) {
@@ -152,21 +177,130 @@ function GuardianShellContent() {
                             )}
                         </button>
 
-                        {/* Notifications button (UI only) */}
-                        <button
-                            type="button"
-                            className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200"
-                            title="الإشعارات"
-                        >
-                            <Bell className="h-5 w-5" />
-                        </button>
+                        {/* Children switcher button */}
+                        <div className="relative" ref={dropdownRef}>
+                            <button
+                                type="button"
+                                onClick={() => setShowChildrenDropdown(!showChildrenDropdown)}
+                                className={clsx(
+                                    'relative flex h-10 items-center gap-1.5 rounded-full px-3 transition',
+                                    hasMultipleChildren
+                                        ? 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
+                                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                                )}
+                                title="الأبناء"
+                            >
+                                <Users className="h-5 w-5" />
+                                {hasMultipleChildren && (
+                                    <>
+                                        <span className="text-xs font-bold">{storedChildren.length}</span>
+                                        <ChevronDown className={clsx('h-4 w-4 transition-transform', showChildrenDropdown && 'rotate-180')} />
+                                    </>
+                                )}
+                            </button>
+
+                            {/* Dropdown menu */}
+                            {showChildrenDropdown && (
+                                <div className="absolute left-0 top-full mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+                                    <div className="border-b border-slate-100 bg-slate-50 px-4 py-2">
+                                        <p className="text-xs font-semibold text-slate-600">الأبناء المسجلون</p>
+                                    </div>
+
+                                    {/* Children list */}
+                                    <div className="max-h-48 overflow-y-auto">
+                                        {storedChildren.map((child, index) => (
+                                            <div
+                                                key={child.national_id}
+                                                className={clsx(
+                                                    'flex items-center justify-between gap-2 px-4 py-3 transition',
+                                                    index === activeChildIndex
+                                                        ? 'bg-indigo-50'
+                                                        : 'hover:bg-slate-50'
+                                                )}
+                                            >
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        switchChild(index)
+                                                        setShowChildrenDropdown(false)
+                                                    }}
+                                                    className="flex flex-1 items-center gap-3 text-right"
+                                                >
+                                                    <div className={clsx(
+                                                        'flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white',
+                                                        index === activeChildIndex
+                                                            ? 'bg-indigo-600'
+                                                            : 'bg-slate-400'
+                                                    )}>
+                                                        {child.name.charAt(0)}
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className={clsx(
+                                                            'truncate text-sm',
+                                                            index === activeChildIndex ? 'font-bold text-indigo-900' : 'text-slate-700'
+                                                        )}>
+                                                            {child.name}
+                                                        </p>
+                                                        <p className="text-xs text-slate-400">
+                                                            {child.grade} • {child.class_name}
+                                                        </p>
+                                                    </div>
+                                                </button>
+                                                {storedChildren.length > 1 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeChild(index)}
+                                                        className="flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition hover:bg-rose-50 hover:text-rose-500"
+                                                        title="إزالة"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Add child button */}
+                                    <div className="border-t border-slate-100 p-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setShowAddChildForm(true)
+                                                setShowChildrenDropdown(false)
+                                            }}
+                                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-100"
+                                        >
+                                            <UserPlus className="h-4 w-4" />
+                                            إضافة ابن آخر
+                                        </button>
+                                    </div>
+
+                                    {/* Logout all */}
+                                    {storedChildren.length > 1 && (
+                                        <div className="border-t border-slate-100 p-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    handleLogoutAll()
+                                                    setShowChildrenDropdown(false)
+                                                }}
+                                                className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-rose-500 transition hover:bg-rose-50"
+                                            >
+                                                <LogOut className="h-4 w-4" />
+                                                تسجيل خروج الكل
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
 
                         {/* Logout button */}
                         <button
                             type="button"
                             onClick={handleLogout}
                             className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-50 text-rose-500 transition hover:bg-rose-100"
-                            title="تسجيل الخروج"
+                            title={storedChildren.length > 1 ? 'إزالة الابن الحالي' : 'تسجيل الخروج'}
                         >
                             <LogOut className="h-5 w-5" />
                         </button>
@@ -211,6 +345,98 @@ function GuardianShellContent() {
 
             {/* Store Modal */}
             <GuardianStoreModal isOpen={isStoreModalOpen} onClose={closeStoreModal} />
+
+            {/* Add Child Modal */}
+            {showAddChildForm && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+                    <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
+                        {/* Header */}
+                        <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-indigo-500 to-indigo-600 px-5 py-4">
+                            <h3 className="text-lg font-bold text-white">إضافة ابن جديد</h3>
+                            <button
+                                type="button"
+                                onClick={() => setShowAddChildForm(false)}
+                                className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white transition hover:bg-white/30"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        {/* Form */}
+                        <form
+                            className="space-y-4 p-5"
+                            onSubmit={(e) => {
+                                e.preventDefault()
+                                handleLogin(nationalIdInput, phoneLast4Input)
+                            }}
+                        >
+                            <div>
+                                <label className="mb-2 block text-right text-sm font-semibold text-slate-700">
+                                    رقم هوية الطالب
+                                </label>
+                                <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    maxLength={10}
+                                    className={clsx(
+                                        'w-full rounded-2xl border px-4 py-3 text-center text-lg font-semibold tracking-widest shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20',
+                                        loginError ? 'border-rose-300 bg-rose-50' : 'border-slate-200 bg-slate-50'
+                                    )}
+                                    placeholder="••••••••••"
+                                    value={nationalIdInput}
+                                    onChange={(e) => setNationalIdInput(e.target.value.replace(/\D/g, ''))}
+                                    disabled={isLoggingIn}
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-2 block text-right text-sm font-semibold text-slate-700">
+                                    آخر 4 أرقام من جوال ولي الأمر
+                                </label>
+                                <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    maxLength={4}
+                                    className={clsx(
+                                        'w-full rounded-2xl border px-4 py-3 text-center text-xl font-semibold tracking-[0.5em] shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20',
+                                        loginError ? 'border-rose-300 bg-rose-50' : 'border-slate-200 bg-slate-50'
+                                    )}
+                                    placeholder="••••"
+                                    value={phoneLast4Input}
+                                    onChange={(e) => setPhoneLast4Input(e.target.value.replace(/\D/g, ''))}
+                                    disabled={isLoggingIn}
+                                />
+                            </div>
+                            {loginError && (
+                                <p className="text-center text-sm text-rose-600">{loginError}</p>
+                            )}
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAddChildForm(false)}
+                                    className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
+                                    disabled={isLoggingIn}
+                                >
+                                    إلغاء
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isLoggingIn || nationalIdInput.length !== 10 || phoneLast4Input.length !== 4}
+                                    className="flex-1 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 py-3 text-sm font-bold text-white shadow-lg transition hover:from-indigo-700 hover:to-indigo-800 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {isLoggingIn ? (
+                                        <span className="flex items-center justify-center gap-2">
+                                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                            جاري التحقق...
+                                        </span>
+                                    ) : (
+                                        'إضافة'
+                                    )}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
