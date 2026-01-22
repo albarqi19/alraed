@@ -171,3 +171,40 @@ export function useGuardianBehaviorQuery(nationalId: string | null) {
   })
 }
 
+// ================== Guardian Absence Excuses Hooks ==================
+
+import {
+  fetchGuardianAbsences,
+  submitGuardianExcuse,
+} from './api'
+import type {
+  GuardianAbsencesResponse,
+  GuardianSubmitExcusePayload,
+  GuardianSubmitExcuseResponse,
+} from './types'
+
+export function useGuardianAbsencesQuery(nationalId: string | null) {
+  return useQuery<GuardianAbsencesResponse>({
+    queryKey: guardianQueryKeys.absences(nationalId ?? '__idle__'),
+    queryFn: () => fetchGuardianAbsences(nationalId as string),
+    enabled: Boolean(nationalId),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  })
+}
+
+export function useGuardianExcuseSubmissionMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation<GuardianSubmitExcuseResponse, unknown, GuardianSubmitExcusePayload>({
+    mutationFn: submitGuardianExcuse,
+    onSuccess: (_result, variables) => {
+      toast({ type: 'success', title: 'تم تقديم العذر بنجاح' })
+      queryClient.invalidateQueries({ queryKey: guardianQueryKeys.absences(variables.national_id) })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تقديم العذر') })
+    },
+  })
+}
+

@@ -134,3 +134,54 @@ export interface GuardianStoreOrderPayload {
     quantity: number
   }>
 }
+
+// ================== Guardian Absence Excuses Types ==================
+
+export interface GuardianAbsenceExcuse {
+  id: number
+  status: 'pending' | 'approved' | 'rejected'
+  status_label: string
+  is_submitted: boolean
+  submitted_at: string | null
+  excuse_text: string | null
+  has_file: boolean
+  review_notes: string | null
+}
+
+export interface GuardianAbsenceRecord {
+  id: number
+  date: string
+  date_formatted: string
+  date_hijri: string
+  excuse: GuardianAbsenceExcuse | null
+  can_submit_excuse: boolean
+  days_remaining: number
+}
+
+export interface GuardianAbsencesStats {
+  total_absences: number
+  with_excuse: number
+  pending_review: number
+  approved: number
+  rejected: number
+  can_submit: number
+}
+
+export interface GuardianAbsencesResponse {
+  absences: GuardianAbsenceRecord[]
+  stats: GuardianAbsencesStats
+}
+
+export interface GuardianSubmitExcusePayload {
+  national_id: string
+  attendance_id: number
+  excuse_text: string
+  file: File
+  parent_name?: string
+}
+
+export interface GuardianSubmitExcuseResponse {
+  excuse_id: number
+  status: string
+  status_label: string
+}

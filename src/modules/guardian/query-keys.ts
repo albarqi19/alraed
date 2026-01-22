@@ -6,4 +6,5 @@ export const guardianQueryKeys = {
   storeOverview: (nationalId: string) => ['guardian', 'store', 'overview', nationalId] as const,
   storeCatalog: (nationalId: string) => ['guardian', 'store', 'catalog', nationalId] as const,
   storeOrders: (nationalId: string) => ['guardian', 'store', 'orders', nationalId] as const,
+  absences: (nationalId: string) => ['guardian', 'absences', nationalId] as const,
 }

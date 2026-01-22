@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, useRef, type FormEvent } from 'react'
 import {
     ClipboardCheck,
     Megaphone,
@@ -9,13 +9,20 @@ import {
     CheckCircle,
     AlertCircle,
     ChevronDown,
+    Upload,
+    FileText,
+    Trash2,
+    Send,
 } from 'lucide-react'
 import { useGuardianContext } from '../context/guardian-context'
 import {
     useGuardianLeaveRequestSubmissionMutation,
     useGuardianLeaveRequestsQuery,
     useGuardianBehaviorQuery,
+    useGuardianAbsencesQuery,
+    useGuardianExcuseSubmissionMutation,
 } from '../hooks'
+import type { GuardianAbsenceRecord, GuardianSubmitExcusePayload } from '../types'
 
 interface ServiceItem {
     id: string
@@ -463,36 +470,403 @@ function getStatusColor(status: string): string {
     return colors[status] ?? 'bg-slate-100 text-slate-600'
 }
 
-// ============ Attendance Sheet ============
+// ============ Attendance Sheet (with Excuse Submission) ============
 function AttendanceSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+    const { currentNationalId, studentSummary } = useGuardianContext()
+    const absencesQuery = useGuardianAbsencesQuery(currentNationalId)
+    const submitMutation = useGuardianExcuseSubmissionMutation()
+
+    const [selectedAbsence, setSelectedAbsence] = useState<GuardianAbsenceRecord | null>(null)
+    const [excuseFormOpen, setExcuseFormOpen] = useState(false)
+
     if (!isOpen) return null
 
-    return (
-        <BottomSheet title="المواظبة" onClose={onClose}>
-            <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-3">
-                    <div className="rounded-2xl bg-emerald-50 p-4 text-center">
-                        <UserCheck className="mx-auto mb-2 h-6 w-6 text-emerald-500" />
-                        <p className="text-xl font-bold text-emerald-600">85</p>
-                        <p className="text-xs text-slate-500">حضور</p>
-                    </div>
-                    <div className="rounded-2xl bg-rose-50 p-4 text-center">
-                        <AlertCircle className="mx-auto mb-2 h-6 w-6 text-rose-500" />
-                        <p className="text-xl font-bold text-rose-600">8</p>
-                        <p className="text-xs text-slate-500">غياب</p>
-                    </div>
-                    <div className="rounded-2xl bg-amber-50 p-4 text-center">
-                        <Clock className="mx-auto mb-2 h-6 w-6 text-amber-500" />
-                        <p className="text-xl font-bold text-amber-600">7</p>
-                        <p className="text-xs text-slate-500">تأخر</p>
-                    </div>
-                </div>
+    const data = absencesQuery.data
+    const absences = data?.absences ?? []
+    const stats = data?.stats
+    const isLoading = absencesQuery.isLoading
 
-                <div className="rounded-xl bg-slate-50 p-4 text-center">
-                    <p className="text-sm text-slate-500">سيتم عرض تفاصيل المواظبة قريباً</p>
-                </div>
+    const handleOpenExcuseForm = (absence: GuardianAbsenceRecord) => {
+        setSelectedAbsence(absence)
+        setExcuseFormOpen(true)
+    }
+
+    const handleCloseExcuseForm = () => {
+        setSelectedAbsence(null)
+        setExcuseFormOpen(false)
+    }
+
+    return (
+        <BottomSheet title="المواظبة - سجل الغياب" onClose={onClose}>
+            <div className="space-y-4">
+                {/* Stats Summary */}
+                {stats && (
+                    <div className="grid grid-cols-3 gap-2">
+                        <div className="rounded-xl bg-rose-50 p-3 text-center">
+                            <p className="text-xl font-bold text-rose-600">{stats.total_absences}</p>
+                            <p className="text-xs text-slate-500">أيام غياب</p>
+                        </div>
+                        <div className="rounded-xl bg-emerald-50 p-3 text-center">
+                            <p className="text-xl font-bold text-emerald-600">{stats.approved}</p>
+                            <p className="text-xs text-slate-500">أعذار مقبولة</p>
+                        </div>
+                        <div className="rounded-xl bg-amber-50 p-3 text-center">
+                            <p className="text-xl font-bold text-amber-600">{stats.can_submit}</p>
+                            <p className="text-xs text-slate-500">بانتظار العذر</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Loading State */}
+                {isLoading && (
+                    <div className="py-8 text-center">
+                        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-indigo-100 border-t-indigo-500" />
+                        <p className="mt-2 text-sm text-slate-500">جاري التحميل...</p>
+                    </div>
+                )}
+
+                {/* Empty State */}
+                {!isLoading && absences.length === 0 && (
+                    <div className="rounded-2xl border border-dashed border-slate-200 py-8 text-center">
+                        <CheckCircle className="mx-auto h-12 w-12 text-emerald-300" />
+                        <p className="mt-2 text-sm text-slate-500">لا توجد أيام غياب مسجلة</p>
+                    </div>
+                )}
+
+                {/* Absences List */}
+                {!isLoading && absences.length > 0 && (
+                    <div className="space-y-3 max-h-[50vh] overflow-y-auto">
+                        {absences.map((absence) => (
+                            <AbsenceItem
+                                key={absence.id}
+                                absence={absence}
+                                onSubmitExcuse={() => handleOpenExcuseForm(absence)}
+                            />
+                        ))}
+                    </div>
+                )}
+
+                {/* Excuse Form Modal */}
+                {excuseFormOpen && selectedAbsence && currentNationalId && (
+                    <ExcuseFormModal
+                        absence={selectedAbsence}
+                        nationalId={currentNationalId}
+                        parentName={studentSummary?.parent_name ?? ''}
+                        onClose={handleCloseExcuseForm}
+                        onSubmit={async (payload) => {
+                            await submitMutation.mutateAsync(payload)
+                            handleCloseExcuseForm()
+                        }}
+                        isSubmitting={submitMutation.isPending}
+                    />
+                )}
             </div>
         </BottomSheet>
+    )
+}
+
+// ============ Absence Item Component ============
+function AbsenceItem({
+    absence,
+    onSubmitExcuse
+}: {
+    absence: GuardianAbsenceRecord
+    onSubmitExcuse: () => void
+}) {
+    const getStatusBadge = () => {
+        if (!absence.excuse) {
+            if (absence.can_submit_excuse) {
+                return (
+                    <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">
+                        بانتظار العذر ({absence.days_remaining} يوم)
+                    </span>
+                )
+            }
+            return (
+                <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-500">
+                    انتهت مدة التقديم
+                </span>
+            )
+        }
+
+        if (!absence.excuse.is_submitted) {
+            return (
+                <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">
+                    بانتظار العذر
+                </span>
+            )
+        }
+
+        const statusStyles: Record<string, string> = {
+            pending: 'bg-yellow-100 text-yellow-700',
+            approved: 'bg-emerald-100 text-emerald-700',
+            rejected: 'bg-rose-100 text-rose-700',
+        }
+
+        return (
+            <span className={`rounded-full px-2 py-1 text-xs font-medium ${statusStyles[absence.excuse.status] ?? 'bg-slate-100 text-slate-600'}`}>
+                {absence.excuse.status_label}
+            </span>
+        )
+    }
+
+    return (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-100">
+                        <AlertCircle className="h-5 w-5 text-rose-600" />
+                    </div>
+                    <div>
+                        <p className="font-semibold text-slate-800">{absence.date_formatted}</p>
+                        <p className="text-xs text-slate-500">{absence.date_hijri || absence.date}</p>
+                    </div>
+                </div>
+                {getStatusBadge()}
+            </div>
+
+            {/* Show excuse details if submitted */}
+            {absence.excuse?.is_submitted && (
+                <div className="mt-3 rounded-lg bg-slate-50 p-3 text-sm">
+                    <p className="text-slate-600">{absence.excuse.excuse_text}</p>
+                    {absence.excuse.has_file && (
+                        <p className="mt-1 text-xs text-blue-600">📎 يوجد ملف مرفق</p>
+                    )}
+                    {absence.excuse.review_notes && (
+                        <p className="mt-2 text-xs text-slate-500">
+                            <strong>ملاحظات المراجع:</strong> {absence.excuse.review_notes}
+                        </p>
+                    )}
+                </div>
+            )}
+
+            {/* Submit excuse button */}
+            {absence.can_submit_excuse && (!absence.excuse || !absence.excuse.is_submitted) && (
+                <button
+                    type="button"
+                    onClick={onSubmitExcuse}
+                    className="mt-3 w-full rounded-xl bg-indigo-600 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700"
+                >
+                    تقديم عذر
+                </button>
+            )}
+        </div>
+    )
+}
+
+// ============ Excuse Form Modal ============
+function ExcuseFormModal({
+    absence,
+    nationalId,
+    parentName,
+    onClose,
+    onSubmit,
+    isSubmitting,
+}: {
+    absence: GuardianAbsenceRecord
+    nationalId: string
+    parentName: string
+    onClose: () => void
+    onSubmit: (payload: GuardianSubmitExcusePayload) => Promise<void>
+    isSubmitting: boolean
+}) {
+    const [excuseText, setExcuseText] = useState('')
+    const [guardianName, setGuardianName] = useState(parentName)
+    const [file, setFile] = useState<File | null>(null)
+    const [errors, setErrors] = useState<Record<string, string>>({})
+    const fileInputRef = useRef<HTMLInputElement>(null)
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const selectedFile = e.target.files?.[0]
+        if (selectedFile) {
+            const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf']
+            if (!allowedTypes.includes(selectedFile.type)) {
+                setErrors({ file: 'نوع الملف غير مدعوم (JPG, PNG, PDF فقط)' })
+                return
+            }
+            if (selectedFile.size > 5 * 1024 * 1024) {
+                setErrors({ file: 'حجم الملف كبير جداً (الحد الأقصى 5 ميجا)' })
+                return
+            }
+            setFile(selectedFile)
+            setErrors({})
+        }
+    }
+
+    const removeFile = () => {
+        setFile(null)
+        if (fileInputRef.current) {
+            fileInputRef.current.value = ''
+        }
+    }
+
+    const handleSubmit = async (e: FormEvent) => {
+        e.preventDefault()
+
+        const newErrors: Record<string, string> = {}
+        if (excuseText.trim().length < 10) {
+            newErrors.excuse_text = 'يرجى كتابة سبب الغياب بشكل أوضح (10 أحرف على الأقل)'
+        }
+        if (!file) {
+            newErrors.file = 'يرجى رفع صورة أو مستند للعذر'
+        }
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors)
+            return
+        }
+
+        await onSubmit({
+            national_id: nationalId,
+            attendance_id: absence.id,
+            excuse_text: excuseText.trim(),
+            file: file!,
+            parent_name: guardianName.trim() || undefined,
+        })
+    }
+
+    return (
+        <div
+            className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 p-4"
+            onClick={onClose}
+        >
+            <div
+                className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+            >
+                {/* Header */}
+                <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white px-5 py-4">
+                    <h3 className="text-lg font-bold text-slate-900">تقديم عذر غياب</h3>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="p-5 space-y-4">
+                    {/* Absence Info */}
+                    <div className="rounded-xl bg-slate-50 p-4">
+                        <p className="text-sm text-slate-500">تاريخ الغياب</p>
+                        <p className="font-semibold text-slate-800">{absence.date_formatted}</p>
+                        {absence.date_hijri && (
+                            <p className="text-xs text-slate-500">{absence.date_hijri}</p>
+                        )}
+                        {absence.days_remaining > 0 && (
+                            <p className="mt-1 text-xs text-amber-600">
+                                متبقي {absence.days_remaining} يوم لتقديم العذر
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Parent Name (Optional) */}
+                    <div>
+                        <label className="mb-1 block text-sm font-semibold text-slate-700">
+                            اسم ولي الأمر <span className="text-slate-400">(اختياري)</span>
+                        </label>
+                        <input
+                            type="text"
+                            value={guardianName}
+                            onChange={(e) => setGuardianName(e.target.value)}
+                            className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                            placeholder="أدخل اسمك"
+                            disabled={isSubmitting}
+                        />
+                    </div>
+
+                    {/* Excuse Text */}
+                    <div>
+                        <label className="mb-1 block text-sm font-semibold text-slate-700">
+                            سبب الغياب <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
+                            value={excuseText}
+                            onChange={(e) => setExcuseText(e.target.value)}
+                            rows={4}
+                            className={`w-full rounded-xl border px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none ${
+                                errors.excuse_text ? 'border-red-300' : 'border-slate-200'
+                            }`}
+                            placeholder="اكتب سبب غياب الطالب بالتفصيل..."
+                            disabled={isSubmitting}
+                        />
+                        {errors.excuse_text && (
+                            <p className="mt-1 text-sm text-red-600">{errors.excuse_text}</p>
+                        )}
+                    </div>
+
+                    {/* File Upload */}
+                    <div>
+                        <label className="mb-1 block text-sm font-semibold text-slate-700">
+                            مرفق (صورة أو مستند) <span className="text-red-500">*</span>
+                        </label>
+                        <div className="mb-2 rounded-lg bg-blue-50 border border-blue-200 p-2 text-xs text-blue-700">
+                            📎 يجب إرفاق صورة أو مستند يثبت سبب الغياب
+                        </div>
+
+                        {!file ? (
+                            <label className={`flex flex-col items-center justify-center w-full h-28 border-2 border-dashed rounded-xl cursor-pointer transition ${
+                                errors.file ? 'border-red-300 bg-red-50' : 'border-slate-300 bg-slate-50 hover:bg-slate-100'
+                            }`}>
+                                <div className="flex flex-col items-center justify-center py-4">
+                                    <Upload className="h-6 w-6 mb-1 text-slate-400" />
+                                    <p className="text-sm text-slate-500">اضغط لرفع ملف</p>
+                                    <p className="text-xs text-slate-400">JPG, PNG أو PDF (حد 5 ميجا)</p>
+                                </div>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    className="hidden"
+                                    accept=".jpg,.jpeg,.png,.pdf"
+                                    onChange={handleFileChange}
+                                    disabled={isSubmitting}
+                                />
+                            </label>
+                        ) : (
+                            <div className="flex items-center justify-between rounded-xl bg-blue-50 border border-blue-200 p-3">
+                                <div className="flex items-center gap-2">
+                                    <FileText className="h-5 w-5 text-blue-500" />
+                                    <div>
+                                        <p className="text-sm font-medium text-slate-800 truncate max-w-[180px]">{file.name}</p>
+                                        <p className="text-xs text-slate-500">{(file.size / 1024).toFixed(1)} KB</p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={removeFile}
+                                    className="p-1.5 text-red-500 hover:bg-red-100 rounded-lg transition"
+                                    disabled={isSubmitting}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </button>
+                            </div>
+                        )}
+                        {errors.file && (
+                            <p className="mt-1 text-sm text-red-600">{errors.file}</p>
+                        )}
+                    </div>
+
+                    {/* Submit Button */}
+                    <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white transition hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                        {isSubmitting ? (
+                            <>
+                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                جاري الإرسال...
+                            </>
+                        ) : (
+                            <>
+                                <Send className="h-4 w-4" />
+                                إرسال العذر
+                            </>
+                        )}
+                    </button>
+                </form>
+            </div>
+        </div>
     )
 }
 

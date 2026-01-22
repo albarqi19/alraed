@@ -233,3 +233,40 @@ export async function fetchGuardianBehavior(nationalId: string): Promise<Guardia
   return unwrap(data, 'تعذر تحميل سجل السلوك')
 }
 
+// ================== Guardian Absence Excuses APIs ==================
+
+import type {
+  GuardianAbsencesResponse,
+  GuardianSubmitExcusePayload,
+  GuardianSubmitExcuseResponse,
+} from './types'
+
+export async function fetchGuardianAbsences(nationalId: string): Promise<GuardianAbsencesResponse> {
+  const { data } = await apiClient.get<ApiResponse<GuardianAbsencesResponse>>('/public/guardian/absences', {
+    params: { national_id: nationalId },
+  })
+  return unwrap(data, 'تعذر تحميل سجل الغياب')
+}
+
+export async function submitGuardianExcuse(payload: GuardianSubmitExcusePayload): Promise<GuardianSubmitExcuseResponse> {
+  const formData = new FormData()
+  formData.append('national_id', payload.national_id)
+  formData.append('attendance_id', payload.attendance_id.toString())
+  formData.append('excuse_text', payload.excuse_text)
+  formData.append('file', payload.file)
+  if (payload.parent_name) {
+    formData.append('parent_name', payload.parent_name)
+  }
+
+  const { data } = await apiClient.post<ApiResponse<GuardianSubmitExcuseResponse>>(
+    '/public/guardian/absences/excuse',
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }
+  )
+  return unwrap(data, 'تعذر تقديم العذر')
+}
+
