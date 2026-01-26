@@ -20,6 +20,8 @@ import {
   createTeacher,
   createWhatsappTemplate,
   deactivateSchedule,
+  deleteAllClassSchedules,
+  deleteClassSchedule,
   deleteClassScheduleSession,
   deleteClassSession,
   deleteLateArrival,
@@ -908,6 +910,53 @@ export function useDeleteClassScheduleSessionMutation() {
     },
     onError: (error) => {
       toast({ type: 'error', title: getErrorMessage(error, 'تعذر حذف الحصة من الجدول') })
+    },
+  })
+}
+
+export function useDeleteClassScheduleMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ grade, className, password }: { grade: string; className: string; password: string }) =>
+      deleteClassSchedule(grade, className, password),
+    onSuccess: (data) => {
+      toast({
+        type: 'success',
+        title: `تم حذف ${data.deleted_sessions_count} حصة من جدول الفصل`,
+        ...(data.preserved_attendance_count > 0 && {
+          description: `تم الاحتفاظ بـ ${data.preserved_attendance_count} سجل حضور`,
+        }),
+      })
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.classSessions.summary() })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'class-schedules'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر حذف جدول الفصل') })
+    },
+  })
+}
+
+export function useDeleteAllClassSchedulesMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (password: string) => deleteAllClassSchedules(password),
+    onSuccess: (data) => {
+      toast({
+        type: 'success',
+        title: `تم حذف ${data.deleted_sessions_count} حصة من ${data.deleted_classes_count} فصل`,
+        ...(data.preserved_attendance_count > 0 && {
+          description: `تم الاحتفاظ بـ ${data.preserved_attendance_count} سجل حضور`,
+        }),
+      })
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.classSessions.summary() })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'class-schedules'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر حذف جداول الفصول') })
     },
   })
 }
@@ -2592,6 +2641,62 @@ export function useDeleteTrackerActionMutation() {
     },
     onError: (error) => {
       toast({ type: 'error', title: getErrorMessage(error, 'تعذر حذف الإجراء') })
+    },
+  })
+}
+
+// ============================================
+// استيراد الجداول من TimeTable (aSc)
+// ============================================
+
+import { previewTimeTableImport, confirmTimeTableImport } from './api'
+import type {
+  TimeTableTeacherMapping,
+  TimeTableSubjectMapping,
+  TimeTableClassMapping,
+} from './types'
+
+/**
+ * Hook لمعاينة ملف TimeTable
+ */
+export function usePreviewTimeTableMutation() {
+  const toast = useToast()
+
+  return useMutation({
+    mutationFn: (file: File) => previewTimeTableImport(file),
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر قراءة ملف TimeTable') })
+    },
+  })
+}
+
+/**
+ * Hook لتأكيد استيراد TimeTable
+ */
+export function useConfirmTimeTableMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: {
+      file: File
+      teacher_mappings: TimeTableTeacherMapping[]
+      subject_mappings: TimeTableSubjectMapping[]
+      class_mappings: TimeTableClassMapping[]
+      replace_existing: boolean
+    }) => confirmTimeTableImport(payload),
+    onSuccess: (result) => {
+      toast({
+        type: 'success',
+        title: 'تم استيراد الجدول',
+        description: result.message,
+      })
+      // تحديث الجداول
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.classSessions.summary() })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'class-schedules'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر استيراد الجدول') })
     },
   })
 }

@@ -16,6 +16,7 @@ import {
   Edit2,
   Save,
   Trash2,
+  Printer,
 } from 'lucide-react'
 import {
   fetchDutyScheduleSemesters,
@@ -29,6 +30,7 @@ import {
   type DutyScheduleStaffCount,
 } from '@/modules/admin/api'
 import { useToast } from '@/shared/feedback/use-toast'
+import { printDutySignatureSheet } from '@/modules/admin/utils/print-duty-signature-sheet'
 
 interface DutyScheduleModalProps {
   open: boolean
@@ -61,6 +63,8 @@ export function DutyScheduleModal({ open, onClose }: DutyScheduleModalProps) {
   const [editingAssignment, setEditingAssignment] = useState<number | null>(null)
   const [editUserId, setEditUserId] = useState<number | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showPrintOptions, setShowPrintOptions] = useState(false)
+  const [printDutyType, setPrintDutyType] = useState<'morning' | 'afternoon' | 'all'>('all')
 
   // جلب الفصول الدراسية
   const semestersQuery = useQuery({
@@ -561,6 +565,14 @@ export function DutyScheduleModal({ open, onClose }: DutyScheduleModalProps) {
                 <div className="flex gap-2">
                   <button
                     type="button"
+                    onClick={() => setShowPrintOptions(true)}
+                    className="rounded-lg bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-200"
+                  >
+                    <Printer className="ml-1 inline h-3 w-3" />
+                    طباعة الكشف
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setViewMode('settings')}
                     className="rounded-lg bg-orange-100 px-3 py-1.5 text-xs font-semibold text-orange-700 hover:bg-orange-200"
                   >
@@ -835,6 +847,89 @@ export function DutyScheduleModal({ open, onClose }: DutyScheduleModalProps) {
                 ) : (
                   'نعم، احذف'
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* نافذة اختيار نوع الكشف للطباعة */}
+      {showPrintOptions && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
+          <div className="mx-4 w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex items-center gap-3">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">
+                <Printer className="h-6 w-6 text-emerald-600" />
+              </span>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">طباعة كشف التوقيع</h3>
+                <p className="text-sm text-slate-500">اختر نوع المناوبة للطباعة</p>
+              </div>
+            </div>
+
+            <div className="mb-6 space-y-2">
+              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-3 transition hover:bg-slate-50">
+                <input
+                  type="radio"
+                  name="printDutyType"
+                  value="morning"
+                  checked={printDutyType === 'morning'}
+                  onChange={() => setPrintDutyType('morning')}
+                  className="h-4 w-4 accent-emerald-600"
+                />
+                <Sun className="h-5 w-5 text-blue-500" />
+                <span className="font-medium text-slate-700">بداية الدوام</span>
+              </label>
+              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-3 transition hover:bg-slate-50">
+                <input
+                  type="radio"
+                  name="printDutyType"
+                  value="afternoon"
+                  checked={printDutyType === 'afternoon'}
+                  onChange={() => setPrintDutyType('afternoon')}
+                  className="h-4 w-4 accent-emerald-600"
+                />
+                <Sunset className="h-5 w-5 text-orange-500" />
+                <span className="font-medium text-slate-700">نهاية الدوام</span>
+              </label>
+              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-3 transition hover:bg-slate-50">
+                <input
+                  type="radio"
+                  name="printDutyType"
+                  value="all"
+                  checked={printDutyType === 'all'}
+                  onChange={() => setPrintDutyType('all')}
+                  className="h-4 w-4 accent-emerald-600"
+                />
+                <Calendar className="h-5 w-5 text-slate-500" />
+                <span className="font-medium text-slate-700">الكل</span>
+              </label>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowPrintOptions(false)}
+                className="flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (scheduleQuery.data?.assignments) {
+                    void printDutySignatureSheet({
+                      assignments: scheduleQuery.data.assignments,
+                      dutyType: printDutyType,
+                      semesterName: selectedSemester?.name ?? '',
+                    })
+                  }
+                  setShowPrintOptions(false)
+                }}
+                className="flex-1 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
+              >
+                <Printer className="ml-1 inline h-4 w-4" />
+                طباعة
               </button>
             </div>
           </div>
