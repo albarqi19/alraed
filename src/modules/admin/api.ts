@@ -1649,6 +1649,37 @@ export async function deleteClassScheduleSession(sessionId: number): Promise<voi
   unwrapResponse(data, 'تعذر حذف الحصة من جدول الفصل')
 }
 
+export interface DeleteClassScheduleResult {
+  deleted_sessions_count: number
+  preserved_attendance_count: number
+}
+
+export async function deleteClassSchedule(
+  grade: string,
+  className: string,
+  password: string
+): Promise<DeleteClassScheduleResult> {
+  const { data } = await apiClient.delete<ApiResponse<DeleteClassScheduleResult>>(
+    `/admin/class-schedules/${encodeURIComponent(grade)}/${encodeURIComponent(className)}`,
+    { data: { password } }
+  )
+  return unwrapResponse(data, 'تعذر حذف جدول الفصل')
+}
+
+export interface DeleteAllClassSchedulesResult {
+  deleted_sessions_count: number
+  deleted_classes_count: number
+  preserved_attendance_count: number
+}
+
+export async function deleteAllClassSchedules(password: string): Promise<DeleteAllClassSchedulesResult> {
+  const { data } = await apiClient.delete<ApiResponse<DeleteAllClassSchedulesResult>>(
+    '/admin/class-schedules/all',
+    { data: { password } }
+  )
+  return unwrapResponse(data, 'تعذر حذف جداول الفصول')
+}
+
 export async function fetchScheduleSessionData(): Promise<ClassScheduleSessionData> {
   const { data } = await apiClient.get<ApiResponse<ClassScheduleSessionData>>(
     '/admin/class-schedules/session-data',
@@ -3566,4 +3597,66 @@ export async function deleteTrackerAction(payload: DeleteActionPayload): Promise
   if (!data.success) {
     throw new Error(data.message || 'تعذر حذف الإجراء')
   }
+}
+
+// ============================================
+// استيراد الجداول من TimeTable (aSc)
+// ============================================
+
+import type {
+  TimeTablePreviewData,
+  TimeTableTeacherMapping,
+  TimeTableSubjectMapping,
+  TimeTableClassMapping,
+  TimeTableConfirmStats,
+} from './types'
+
+/**
+ * معاينة ملف TimeTable قبل الاستيراد
+ */
+export async function previewTimeTableImport(file: File): Promise<TimeTablePreviewData> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const { data } = await apiClient.post<ApiResponse<TimeTablePreviewData>>(
+    '/admin/timetable-import/preview',
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    },
+  )
+
+  return unwrapResponse(data, 'تعذر قراءة ملف TimeTable')
+}
+
+/**
+ * تأكيد وتنفيذ استيراد TimeTable
+ */
+export async function confirmTimeTableImport(payload: {
+  file: File
+  teacher_mappings: TimeTableTeacherMapping[]
+  subject_mappings: TimeTableSubjectMapping[]
+  class_mappings: TimeTableClassMapping[]
+  replace_existing: boolean
+}): Promise<{ message: string; stats: TimeTableConfirmStats }> {
+  const formData = new FormData()
+  formData.append('file', payload.file)
+  formData.append('teacher_mappings', JSON.stringify(payload.teacher_mappings))
+  formData.append('subject_mappings', JSON.stringify(payload.subject_mappings))
+  formData.append('class_mappings', JSON.stringify(payload.class_mappings))
+  formData.append('replace_existing', payload.replace_existing ? '1' : '0')
+
+  const { data } = await apiClient.post<ApiResponse<{ message: string; stats: TimeTableConfirmStats }>>(
+    '/admin/timetable-import/confirm',
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    },
+  )
+
+  return unwrapResponse(data, 'تعذر استيراد الجدول')
 }

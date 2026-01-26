@@ -4,6 +4,8 @@ import {
   useApplyScheduleToClassMutation,
   useClassScheduleQuery,
   useClassScheduleSummaryQuery,
+  useDeleteAllClassSchedulesMutation,
+  useDeleteClassScheduleMutation,
   useDeleteClassScheduleSessionMutation,
   useScheduleSessionDataQuery,
   useSubjectsQuery,
@@ -686,6 +688,18 @@ export function AdminClassSchedulesPage() {
   const [slotToQuickEdit, setSlotToQuickEdit] = useState<{ slot: ClassScheduleSlot; day: string } | null>(null)
   const [selectedDay, setSelectedDay] = useState<{ day: string; sessions: Record<number, ClassScheduleSlot> } | null>(null)
   const [showDaysPanel, setShowDaysPanel] = useState(false)
+  const [isDeleteScheduleOpen, setIsDeleteScheduleOpen] = useState(false)
+  const [deleteScheduleStep, setDeleteScheduleStep] = useState<1 | 2 | 3>(1)
+  const [deletePassword, setDeletePassword] = useState('')
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  // حالة حذف جداول جميع الفصول
+  const [isDeleteAllSchedulesOpen, setIsDeleteAllSchedulesOpen] = useState(false)
+  const [deleteAllStep, setDeleteAllStep] = useState<1 | 2 | 3>(1)
+  const [deleteAllPassword, setDeleteAllPassword] = useState('')
+  const [deleteAllConfirmText, setDeleteAllConfirmText] = useState('')
+  const [deleteAllError, setDeleteAllError] = useState<string | null>(null)
 
   // الاستماع لفتح قائمة الأيام
   React.useEffect(() => {
@@ -720,6 +734,8 @@ export function AdminClassSchedulesPage() {
   const addQuickSessionMutation = useAddQuickClassSessionMutation()
   const applyScheduleMutation = useApplyScheduleToClassMutation()
   const deleteSessionMutation = useDeleteClassScheduleSessionMutation()
+  const deleteScheduleMutation = useDeleteClassScheduleMutation()
+  const deleteAllSchedulesMutation = useDeleteAllClassSchedulesMutation()
   const updateSessionMutation = useUpdateClassSessionMutation()
   const { data: teachersData } = useTeachersQuery()
   const { data: subjectsData } = useSubjectsQuery()
@@ -891,13 +907,37 @@ export function AdminClassSchedulesPage() {
   const scheduleErrorMessage =
     scheduleQuery.error instanceof Error ? scheduleQuery.error.message : 'تعذر تحميل جدول الفصل'
 
+  // حساب إجمالي الحصص في جميع الفصول
+  const totalSessionsAllClasses = useMemo(() => {
+    return classSummariesQuery.data?.reduce((total, cls) => total + (cls.sessions_count ?? 0), 0) ?? 0
+  }, [classSummariesQuery.data])
+
   return (
     <section className="space-y-6">
-      <header className="space-y-2">
-        <h1 className="text-3xl font-bold text-slate-900">جداول الفصول</h1>
-        <p className="text-sm text-muted">
-          تحكم في الجداول الأسبوعية للفصول، أضف حصصًا بسرعة، وطبق التوقيتات المعتمدة عبر واجهات <code>/admin/class-schedules/*</code>.
-        </p>
+      <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold text-slate-900">جداول الفصول</h1>
+          <p className="text-sm text-muted">
+            تحكم في الجداول الأسبوعية للفصول، أضف حصصًا بسرعة، وطبق التوقيتات المعتمدة عبر واجهات <code>/admin/class-schedules/*</code>.
+          </p>
+        </div>
+        {totalSessionsAllClasses > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              setIsDeleteAllSchedulesOpen(true)
+              setDeleteAllStep(1)
+              setDeleteAllPassword('')
+              setDeleteAllConfirmText('')
+              setDeleteAllError(null)
+            }}
+            className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 transition hover:border-rose-300 hover:bg-rose-100 whitespace-nowrap"
+            disabled={deleteAllSchedulesMutation.isPending}
+          >
+            <i className="bi bi-trash ml-2" />
+            حذف جداول جميع الفصول ({totalSessionsAllClasses} حصة)
+          </button>
+        )}
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[300px,1fr]">
@@ -1079,6 +1119,22 @@ export function AdminClassSchedulesPage() {
                   >
                     {applyScheduleMutation.isPending ? 'جارٍ التطبيق...' : 'تطبيق توقيت'}
                   </button>
+                  {totalSessions > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsDeleteScheduleOpen(true)
+                        setDeleteScheduleStep(1)
+                        setDeletePassword('')
+                        setDeleteConfirmText('')
+                        setDeleteError(null)
+                      }}
+                      className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 transition hover:border-rose-300 hover:bg-rose-100"
+                      disabled={deleteScheduleMutation.isPending}
+                    >
+                      حذف الجدول
+                    </button>
+                  )}
                 </div>
               </header>
 
@@ -1368,6 +1424,365 @@ export function AdminClassSchedulesPage() {
         teacherOptions={teacherOptions}
         subjectOptions={subjectOptions}
       />
+
+      {/* Dialog حذف جدول الفصل - متعدد الخطوات */}
+      {isDeleteScheduleOpen && selectedClass && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" role="dialog" aria-modal>
+          <div className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
+            <button
+              type="button"
+              onClick={() => setIsDeleteScheduleOpen(false)}
+              className="absolute left-5 top-5 text-sm font-semibold text-slate-400 transition hover:text-slate-600"
+              disabled={deleteScheduleMutation.isPending}
+            >
+              إغلاق
+            </button>
+
+            <header className="mb-4 space-y-1 text-right">
+              <p className="text-xs font-semibold uppercase tracking-widest text-rose-600">حذف جدول الفصل</p>
+              <h2 className="text-xl font-bold text-slate-900">
+                {deleteScheduleStep === 1 && 'التحقق من الهوية'}
+                {deleteScheduleStep === 2 && 'تنبيه مهم'}
+                {deleteScheduleStep === 3 && 'التأكيد النهائي'}
+              </h2>
+            </header>
+
+            {/* الخطوة 1: إدخال الرقم السري */}
+            {deleteScheduleStep === 1 && (
+              <div className="space-y-4">
+                <p className="text-sm text-slate-600">
+                  أنت على وشك حذف جدول الفصل <strong>{selectedClass.name}</strong> الذي يحتوي على{' '}
+                  <strong>{totalSessions} حصة</strong>. للمتابعة، أدخل الرقم السري الخاص بك.
+                </p>
+                <div className="space-y-2">
+                  <label htmlFor="delete-password" className="block text-sm font-medium text-slate-700">
+                    الرقم السري
+                  </label>
+                  <input
+                    id="delete-password"
+                    type="password"
+                    value={deletePassword}
+                    onChange={(e) => {
+                      setDeletePassword(e.target.value)
+                      setDeleteError(null)
+                    }}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                    placeholder="أدخل الرقم السري"
+                    autoFocus
+                  />
+                  {deleteError && <p className="text-xs font-medium text-rose-600">{deleteError}</p>}
+                </div>
+                <div className="flex flex-col gap-2 md:flex-row md:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setIsDeleteScheduleOpen(false)}
+                    className="button-secondary sm:w-auto"
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!deletePassword.trim()) {
+                        setDeleteError('الرقم السري مطلوب')
+                        return
+                      }
+                      setDeleteScheduleStep(2)
+                    }}
+                    className="rounded-2xl bg-rose-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 sm:w-auto"
+                  >
+                    التالي
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* الخطوة 2: التنبيه */}
+            {deleteScheduleStep === 2 && (
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">⚠️</span>
+                    <div className="space-y-2 text-sm text-amber-800">
+                      <p className="font-semibold">هذا الإجراء يؤثر على سير الحصص!</p>
+                      <ul className="list-inside list-disc space-y-1 text-amber-700">
+                        <li>سيتم حذف جميع الحصص المسجلة للفصل ({totalSessions} حصة)</li>
+                        <li>سجلات الحضور المرتبطة بالحصص ستبقى محفوظة</li>
+                        <li>لا يمكن التراجع عن هذا الإجراء</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2 md:flex-row md:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteScheduleStep(1)}
+                    className="button-secondary sm:w-auto"
+                  >
+                    رجوع
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteScheduleStep(3)}
+                    className="rounded-2xl bg-rose-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 sm:w-auto"
+                  >
+                    فهمت، المتابعة
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* الخطوة 3: التأكيد النهائي */}
+            {deleteScheduleStep === 3 && (
+              <div className="space-y-4">
+                <p className="text-sm text-slate-600">
+                  للتأكيد النهائي، اكتب النص التالي بالضبط:
+                </p>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-center">
+                  <code className="text-sm font-semibold text-rose-600">حذف جميع الحصص</code>
+                </div>
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={deleteConfirmText}
+                    onChange={(e) => {
+                      setDeleteConfirmText(e.target.value)
+                      setDeleteError(null)
+                    }}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center text-sm shadow-sm focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                    placeholder="اكتب النص هنا"
+                    autoFocus
+                    dir="rtl"
+                  />
+                  {deleteError && <p className="text-xs font-medium text-rose-600 text-center">{deleteError}</p>}
+                </div>
+                <div className="flex flex-col gap-2 md:flex-row md:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteScheduleStep(2)}
+                    className="button-secondary sm:w-auto"
+                    disabled={deleteScheduleMutation.isPending}
+                  >
+                    رجوع
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (deleteConfirmText !== 'حذف جميع الحصص') {
+                        setDeleteError('النص غير مطابق')
+                        return
+                      }
+                      deleteScheduleMutation.mutate(
+                        {
+                          grade: selectedClass.grade,
+                          className: selectedClass.class_name,
+                          password: deletePassword,
+                        },
+                        {
+                          onSuccess: () => {
+                            setIsDeleteScheduleOpen(false)
+                            setDeleteScheduleStep(1)
+                            setDeletePassword('')
+                            setDeleteConfirmText('')
+                            setDeleteError(null)
+                          },
+                          onError: (error) => {
+                            const message = error instanceof Error ? error.message : 'حدث خطأ'
+                            if (message.includes('السري')) {
+                              setDeleteScheduleStep(1)
+                            }
+                            setDeleteError(message)
+                          },
+                        }
+                      )
+                    }}
+                    className="rounded-2xl bg-rose-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:opacity-50 sm:w-auto"
+                    disabled={deleteScheduleMutation.isPending || deleteConfirmText !== 'حذف جميع الحصص'}
+                  >
+                    {deleteScheduleMutation.isPending ? 'جارٍ الحذف...' : 'تأكيد الحذف'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Dialog حذف جداول جميع الفصول - متعدد الخطوات */}
+      {isDeleteAllSchedulesOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" role="dialog" aria-modal>
+          <div className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
+            <button
+              type="button"
+              onClick={() => setIsDeleteAllSchedulesOpen(false)}
+              className="absolute left-5 top-5 text-sm font-semibold text-slate-400 transition hover:text-slate-600"
+              disabled={deleteAllSchedulesMutation.isPending}
+            >
+              إغلاق
+            </button>
+
+            <header className="mb-4 space-y-1 text-right">
+              <p className="text-xs font-semibold uppercase tracking-widest text-rose-600">حذف جداول جميع الفصول</p>
+              <h2 className="text-xl font-bold text-slate-900">
+                {deleteAllStep === 1 && 'التحقق من الهوية'}
+                {deleteAllStep === 2 && 'تنبيه مهم'}
+                {deleteAllStep === 3 && 'التأكيد النهائي'}
+              </h2>
+            </header>
+
+            {/* الخطوة 1: إدخال الرقم السري */}
+            {deleteAllStep === 1 && (
+              <div className="space-y-4">
+                <p className="text-sm text-slate-600">
+                  أنت على وشك حذف جداول <strong>جميع الفصول</strong> في المدرسة ({totalSessionsAllClasses} حصة في {classSummariesQuery.data?.length ?? 0} فصل). للمتابعة، أدخل الرقم السري الخاص بك.
+                </p>
+                <div className="space-y-2">
+                  <label htmlFor="delete-all-password" className="block text-sm font-medium text-slate-700">
+                    الرقم السري
+                  </label>
+                  <input
+                    id="delete-all-password"
+                    type="password"
+                    value={deleteAllPassword}
+                    onChange={(e) => {
+                      setDeleteAllPassword(e.target.value)
+                      setDeleteAllError(null)
+                    }}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                    placeholder="أدخل الرقم السري"
+                    autoFocus
+                  />
+                  {deleteAllError && <p className="text-xs font-medium text-rose-600">{deleteAllError}</p>}
+                </div>
+                <div className="flex flex-col gap-2 md:flex-row md:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setIsDeleteAllSchedulesOpen(false)}
+                    className="button-secondary sm:w-auto"
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!deleteAllPassword.trim()) {
+                        setDeleteAllError('الرقم السري مطلوب')
+                        return
+                      }
+                      setDeleteAllStep(2)
+                    }}
+                    className="rounded-2xl bg-rose-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 sm:w-auto"
+                  >
+                    التالي
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* الخطوة 2: التنبيه */}
+            {deleteAllStep === 2 && (
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">⚠️</span>
+                    <div className="space-y-2 text-sm text-rose-800">
+                      <p className="font-semibold">تحذير: هذا الإجراء خطير!</p>
+                      <ul className="list-inside list-disc space-y-1 text-rose-700">
+                        <li>سيتم حذف جميع الحصص من <strong>جميع الفصول</strong> ({totalSessionsAllClasses} حصة)</li>
+                        <li>سيتم حذف جداول <strong>{classSummariesQuery.data?.length ?? 0} فصل</strong></li>
+                        <li>سجلات الحضور المرتبطة بالحصص ستبقى محفوظة</li>
+                        <li className="font-semibold">لا يمكن التراجع عن هذا الإجراء</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2 md:flex-row md:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteAllStep(1)}
+                    className="button-secondary sm:w-auto"
+                  >
+                    رجوع
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteAllStep(3)}
+                    className="rounded-2xl bg-rose-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 sm:w-auto"
+                  >
+                    فهمت، المتابعة
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* الخطوة 3: التأكيد النهائي */}
+            {deleteAllStep === 3 && (
+              <div className="space-y-4">
+                <p className="text-sm text-slate-600">
+                  للتأكيد النهائي، اكتب النص التالي بالضبط:
+                </p>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-center">
+                  <code className="text-sm font-semibold text-rose-600">حذف جميع الجداول</code>
+                </div>
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={deleteAllConfirmText}
+                    onChange={(e) => {
+                      setDeleteAllConfirmText(e.target.value)
+                      setDeleteAllError(null)
+                    }}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center text-sm shadow-sm focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                    placeholder="اكتب النص هنا"
+                    autoFocus
+                    dir="rtl"
+                  />
+                  {deleteAllError && <p className="text-xs font-medium text-rose-600 text-center">{deleteAllError}</p>}
+                </div>
+                <div className="flex flex-col gap-2 md:flex-row md:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteAllStep(2)}
+                    className="button-secondary sm:w-auto"
+                    disabled={deleteAllSchedulesMutation.isPending}
+                  >
+                    رجوع
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (deleteAllConfirmText !== 'حذف جميع الجداول') {
+                        setDeleteAllError('النص غير مطابق')
+                        return
+                      }
+                      deleteAllSchedulesMutation.mutate(deleteAllPassword, {
+                        onSuccess: () => {
+                          setIsDeleteAllSchedulesOpen(false)
+                          setDeleteAllStep(1)
+                          setDeleteAllPassword('')
+                          setDeleteAllConfirmText('')
+                          setDeleteAllError(null)
+                        },
+                        onError: (error) => {
+                          const message = error instanceof Error ? error.message : 'حدث خطأ'
+                          if (message.includes('السري')) {
+                            setDeleteAllStep(1)
+                          }
+                          setDeleteAllError(message)
+                        },
+                      })
+                    }}
+                    className="rounded-2xl bg-rose-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:opacity-50 sm:w-auto"
+                    disabled={deleteAllSchedulesMutation.isPending || deleteAllConfirmText !== 'حذف جميع الجداول'}
+                  >
+                    {deleteAllSchedulesMutation.isPending ? 'جارٍ الحذف...' : 'تأكيد حذف الكل'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </section>
   )
 }

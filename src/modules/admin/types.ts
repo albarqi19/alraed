@@ -1743,3 +1743,130 @@ export interface StandbyAdvancedStatsResponse {
   data: StandbyAdvancedStats | null
   message?: string
 }
+
+// ===== TimeTable Import Types =====
+
+export interface TimeTableDay {
+  id: string
+  name: string
+  short: string
+}
+
+export interface TimeTablePeriod {
+  id: string
+  period_number: number
+  start_time: string
+  end_time: string
+}
+
+export interface TimeTableTeacherMatch {
+  id: number
+  name: string
+  score: number
+}
+
+export interface TimeTableMatchedTeacher {
+  xml_id: string
+  xml_name: string
+  xml_short: string
+  match: TimeTableTeacherMatch | null
+  status: 'matched' | 'unmatched'
+}
+
+export interface TimeTableSubjectMatch {
+  id: number
+  name: string
+  score: number
+}
+
+export interface TimeTableMatchedSubject {
+  xml_id: string
+  xml_name: string
+  xml_short: string
+  match: TimeTableSubjectMatch | null
+  status: 'matched' | 'unmatched'
+}
+
+export interface TimeTableParsedClass {
+  xml_id: string
+  xml_name: string
+  xml_short: string
+  parsed_grade: string
+  parsed_class: string
+}
+
+export interface TimeTableAvailableTeacher {
+  id: number
+  name: string
+}
+
+export interface TimeTableAvailableSubject {
+  id: number
+  name: string
+}
+
+export interface TimeTablePreviewStats {
+  total_cards: number
+  total_teachers: number
+  matched_teachers: number
+  total_subjects: number
+  matched_subjects: number
+  total_classes: number
+  total_days: number
+  total_periods: number
+}
+
+export interface TimeTablePreviewData {
+  days: TimeTableDay[]
+  periods: TimeTablePeriod[]
+  teachers: TimeTableMatchedTeacher[]
+  subjects: TimeTableMatchedSubject[]
+  classes: TimeTableParsedClass[]
+  cards_count: number
+  available_teachers: TimeTableAvailableTeacher[]
+  available_subjects: TimeTableAvailableSubject[]
+  stats: TimeTablePreviewStats
+}
+
+export interface TimeTablePreviewResponse {
+  success: boolean
+  data: TimeTablePreviewData
+  message?: string
+}
+
+export interface TimeTableTeacherMapping {
+  xml_id: string
+  teacher_id: number | null
+}
+
+export interface TimeTableSubjectMapping {
+  xml_id: string
+  subject_id: number | null
+}
+
+export interface TimeTableClassMapping {
+  xml_id: string
+  grade: string
+  class_name: string
+}
+
+export interface TimeTableConfirmPayload {
+  file: File
+  teacher_mappings: TimeTableTeacherMapping[]
+  subject_mappings: TimeTableSubjectMapping[]
+  class_mappings: TimeTableClassMapping[]
+  replace_existing: boolean
+}
+
+export interface TimeTableConfirmStats {
+  sessions_created: number
+  sessions_replaced: number
+  classes_count: number
+  errors_count: number
+}
+
+export interface TimeTableConfirmResponse {
+  success: boolean
+  message: string
+  stats: TimeTableConfirmStats
+}

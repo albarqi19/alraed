@@ -8,6 +8,7 @@ import {
 } from '../hooks'
 import type { ImportStudentsPreview, ImportSummary, ImportTeachersSummary } from '../types'
 import { useToast } from '@/shared/feedback/use-toast'
+import { TimeTableImportDialog } from '../components/timetable-import-dialog'
 
 interface PlatformImportButtonProps {
   platform: 'noor' | 'madrasati'
@@ -486,6 +487,9 @@ export function AdminImportPage() {
   const [teacherSummary, setTeacherSummary] = useState<ImportTeachersSummary | null>(null)
   const [teacherError, setTeacherError] = useState<string | null>(null)
 
+  // TimeTable Import Dialog
+  const [isTimeTableDialogOpen, setIsTimeTableDialogOpen] = useState(false)
+
   const previewStudentsMutation = usePreviewImportStudentsMutation()
   const importStudentsMutation = useImportStudentsMutation()
   const importTeachersMutation = useImportTeachersMutation()
@@ -608,6 +612,55 @@ export function AdminImportPage() {
           />
         </div>
       </div>
+
+      {/* TimeTable Import Section */}
+      <div className="glass-card">
+        <header className="mb-6">
+          <p className="text-xs font-semibold uppercase tracking-widest text-emerald-600">جداول الحصص</p>
+          <h2 className="text-xl font-bold text-slate-900">استيراد من TimeTable</h2>
+          <p className="mt-1 text-sm text-muted">
+            استيراد جداول الحصص من برنامج aSc TimeTable مع مطابقة ذكية للمعلمين والمواد
+          </p>
+        </header>
+
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <div className="flex-1 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100">
+                <i className="bi bi-calendar3 text-xl text-emerald-600" />
+              </div>
+              <div className="text-right">
+                <p className="font-semibold text-slate-900">aSc TimeTable</p>
+                <p className="text-xs text-muted">ملفات XML من برنامج الجداول</p>
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsTimeTableDialogOpen(true)}
+            className="button-primary flex items-center gap-2 whitespace-nowrap"
+          >
+            <i className="bi bi-upload" />
+            استيراد جدول
+          </button>
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-white/70 p-4">
+          <h3 className="text-sm font-semibold text-slate-700 mb-2">مميزات الاستيراد:</h3>
+          <ul className="text-xs text-muted space-y-1 list-disc list-inside">
+            <li>دعم ملفات XML بترميز windows-1256 (العربية)</li>
+            <li>مطابقة ذكية للمعلمين والمواد مع النظام</li>
+            <li>تحويل أسماء الفصول تلقائياً (أول 1 → الصف الأول / 1)</li>
+            <li>إمكانية استبدال الحصص القديمة أو الإضافة عليها</li>
+          </ul>
+        </div>
+      </div>
+
+      {/* TimeTable Import Dialog */}
+      <TimeTableImportDialog
+        isOpen={isTimeTableDialogOpen}
+        onClose={() => setIsTimeTableDialogOpen(false)}
+      />
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Students Import Section */}
