@@ -23,6 +23,8 @@ import {
   deleteAllClassSchedules,
   deleteClassSchedule,
   deleteClassScheduleSession,
+  previewTimeTableImport,
+  confirmTimeTableImport,
   deleteClassSession,
   deleteLateArrival,
   deleteSchedule,
@@ -193,6 +195,9 @@ import type {
   TeacherScheduleDayLimits,
   TeacherScheduleDayLimitsResponse,
   NoorSyncRecord,
+  TimeTableTeacherMapping,
+  TimeTableSubjectMapping,
+  TimeTableClassMapping,
 } from './types'
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -2648,13 +2653,6 @@ export function useDeleteTrackerActionMutation() {
 // ============================================
 // استيراد الجداول من TimeTable (aSc)
 // ============================================
-
-import { previewTimeTableImport, confirmTimeTableImport } from './api'
-import type {
-  TimeTableTeacherMapping,
-  TimeTableSubjectMapping,
-  TimeTableClassMapping,
-} from './types'
 
 /**
  * Hook لمعاينة ملف TimeTable
