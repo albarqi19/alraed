@@ -47,6 +47,7 @@ import {
   Wand2, // أيقونة محاكي الجداول
   FileWarning, // أيقونة إجراءات التأخير
   HeartPulse, // أيقونة نبض الفريق
+  BarChart3, // أيقونة تقرير مدرستي
 } from 'lucide-react'
 
 export interface AdminNavItem {
@@ -77,6 +78,7 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
       { to: '/admin/duty-rosters', label: 'الإشراف اليومي', icon: Eye, permission: 'admin.duty-rosters' },
       { to: '/admin/teacher-standby', label: 'جدول الانتظار', icon: Clock, permission: 'admin.teacher-standby' },
       { to: '/admin/teacher-preparation', label: 'تحضير مدرستي', icon: ClipboardPen, permission: 'admin.teacher-preparation' },
+      { to: '/admin/madrasati-report', label: 'تقرير مدرستي', icon: BarChart3, permission: 'admin.madrasati-report' },
       { to: '/admin/students', label: 'إدارة الطلاب', icon: GraduationCap, permission: 'admin.students' },
       { to: '/admin/forms', label: 'النماذج الإلكترونية', icon: FileText, permission: 'admin.forms' },
       { to: '/admin/students/profile', label: 'ملف الطالب', icon: IdCard, permission: 'admin.students' },

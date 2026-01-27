@@ -111,6 +111,8 @@ import { AdminScheduleSimulatorPage } from '@/modules/admin/pages/admin-schedule
 import { AdminDelayActionsPage } from '@/modules/admin/delay-actions'
 import { AdminTeamPulsePage } from '@/modules/admin/pages/admin-team-pulse-page'
 import { LiveTrackerPage } from '@/modules/admin/pages/live-tracker-page'
+import { AdminMadrasatiReportPage } from '@/modules/admin/pages/admin-madrasati-report-page'
+import { AdminMadrasatiTeacherPage } from '@/modules/admin/pages/admin-madrasati-teacher-page'
 
 const appRoutes = [
   {
@@ -208,6 +210,8 @@ const appRoutes = [
           { path: 'teacher-attendance', element: <AdminTeacherAttendancePage /> },
           { path: 'live-tracker', element: <LiveTrackerPage /> },
           { path: 'team-pulse', element: <AdminTeamPulsePage /> },
+          { path: 'madrasati-report', element: <AdminMadrasatiReportPage /> },
+          { path: 'madrasati-report/:teacherId', element: <AdminMadrasatiTeacherPage /> },
           { path: 'teacher-preparation', element: <AdminTeacherPreparationPage /> },
           { path: 'approval', element: <AdminApprovalPage /> },
           { path: 'absence-messages', element: <AdminAbsenceMessagesPage /> },
