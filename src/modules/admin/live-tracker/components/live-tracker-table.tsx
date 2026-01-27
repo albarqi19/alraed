@@ -96,7 +96,7 @@ export function LiveTrackerTable({
       .filter((period: TrackerPeriod) => period.number !== 8)
       .map((period: TrackerPeriod) =>
       columnHelper.display({
-        id: `period_${period.number}`,
+        id: period.column_id,  // استخدام column_id بدلاً من period.number
         header: () => (
           <TimeColumnHeader
             period={period}
@@ -106,7 +106,7 @@ export function LiveTrackerTable({
         ),
         cell: ({ row }) => {
           const teacher = row.original
-          const slot: TrackerSlot | undefined = teacher.slots[String(period.number)]
+          const slot: TrackerSlot | undefined = teacher.slots[period.column_id]  // استخدام column_id
 
           // إذا لم تكن هناك خانة، أظهر خلية فارغة
           if (!slot) {

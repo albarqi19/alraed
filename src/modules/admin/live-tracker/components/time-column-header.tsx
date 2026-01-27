@@ -13,7 +13,47 @@ interface TimeColumnHeaderProps {
 }
 
 export function TimeColumnHeader({ period, schedules, isCurrentPeriod }: TimeColumnHeaderProps) {
-  // جلب أوقات الفترة من التوقيتات
+  // تحديد لون مؤشر التوقيت
+  const getLevelColor = (level: string | null | undefined) => {
+    if (level === 'upper') return 'bg-blue-500'
+    if (level === 'lower') return 'bg-green-500'
+    return 'bg-slate-400'
+  }
+
+  // للفترات المتداخلة: عرض التوقيت الخاص بها فقط
+  if (period.is_overlapping && period.start_time && period.end_time) {
+    return (
+      <div
+        className={cn(
+          'flex flex-col items-center justify-center gap-1 px-2 py-2',
+          isCurrentPeriod && 'bg-indigo-50'
+        )}
+      >
+        {/* اسم الفترة مع المرحلة */}
+        <span
+          className={cn(
+            'text-xs font-semibold text-center leading-tight',
+            isCurrentPeriod ? 'text-indigo-700' : 'text-slate-700'
+          )}
+        >
+          {period.name}
+        </span>
+
+        {/* الوقت مع مؤشر اللون */}
+        <div className="flex items-center gap-1">
+          <span
+            className={cn('h-2 w-2 rounded-full flex-shrink-0', getLevelColor(period.target_level))}
+            title={period.target_level === 'upper' ? 'العليا' : 'الأولية'}
+          />
+          <span className="text-[10px] text-slate-500">
+            {period.start_time} - {period.end_time}
+          </span>
+        </div>
+      </div>
+    )
+  }
+
+  // للفترات الموحدة: عرض الأوقات من كل التوقيتات
   const getScheduleTimes = () => {
     return schedules.map((schedule) => {
       const schedulePeriod = schedule.periods.find((p) => p.number === period.number)
@@ -29,13 +69,6 @@ export function TimeColumnHeader({ period, schedules, isCurrentPeriod }: TimeCol
 
   const scheduleTimes = getScheduleTimes()
   const hasMultipleSchedules = scheduleTimes.length > 1
-
-  // تحديد لون مؤشر التوقيت
-  const getLevelColor = (level: string | null | undefined) => {
-    if (level === 'upper') return 'bg-blue-500'
-    if (level === 'lower') return 'bg-green-500'
-    return 'bg-slate-400'
-  }
 
   return (
     <div

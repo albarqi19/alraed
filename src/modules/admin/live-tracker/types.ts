@@ -98,11 +98,19 @@ export interface TrackerTeacher {
 
 // فترة في الجدول
 export interface TrackerPeriod {
+  column_id: string              // معرف العمود الفريد
   number: number
   name: string
   type: TrackerPeriodType
   is_current?: boolean
   is_break?: boolean
+
+  // حقول جديدة للفترات المتداخلة
+  schedule_id?: number | null
+  target_level?: 'upper' | 'lower' | null
+  start_time?: string
+  end_time?: string
+  is_overlapping: boolean
 }
 
 // فترة مع أوقات (في التوقيت)
