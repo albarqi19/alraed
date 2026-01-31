@@ -48,7 +48,7 @@ export function CreateAdminExcuseModal({ open, onClose }: CreateAdminExcuseModal
   // البحث عن الطلاب مع debounce
   useEffect(() => {
     if (studentQuery.length < 2) {
-      setSearchResults([])
+      setSearchResults([] as StudentSearchResult[])
       return
     }
 
@@ -60,7 +60,7 @@ export function CreateAdminExcuseModal({ open, onClose }: CreateAdminExcuseModal
           setSearchResults(result.data)
         }
       } catch {
-        setSearchResults([])
+        setSearchResults([] as StudentSearchResult[])
       } finally {
         setIsSearching(false)
       }
@@ -73,7 +73,7 @@ export function CreateAdminExcuseModal({ open, onClose }: CreateAdminExcuseModal
   const handleSelectStudent = async (student: StudentSearchResult) => {
     setSelectedStudent(student)
     setStudentQuery('')
-    setSearchResults([])
+    setSearchResults([] as StudentSearchResult[])
 
     setLoadingAbsences(true)
     try {
@@ -150,7 +150,7 @@ export function CreateAdminExcuseModal({ open, onClose }: CreateAdminExcuseModal
   const handleClose = () => {
     setStep(1)
     setStudentQuery('')
-    setSearchResults([])
+    setSearchResults([] as StudentSearchResult[])
     setSelectedStudent(null)
     setUnexcusedAbsences([])
     setSelectedDates([])
@@ -290,27 +290,30 @@ export function CreateAdminExcuseModal({ open, onClose }: CreateAdminExcuseModal
 
                   {!isSearching && searchResults.length > 0 && (
                     <div className="rounded-xl border border-slate-200 divide-y divide-slate-100 max-h-64 overflow-y-auto">
-                      {searchResults.map((student: StudentSearchResult) => (
-                        <button
-                          key={student.id}
-                          onClick={() => handleSelectStudent(student)}
-                          disabled={loadingAbsences}
-                          className="w-full text-right p-4 hover:bg-slate-50 transition-colors disabled:opacity-50 flex items-center gap-3"
-                        >
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
-                            <User className="h-5 w-5 text-slate-500" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-slate-900">{student.name}</p>
-                            <p className="text-sm text-slate-500">
-                              {student.national_id} • {student.grade} - {student.class_name}
-                            </p>
-                          </div>
-                          {loadingAbsences && selectedStudent?.id === (student as StudentSearchResult).id && (
-                            <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
-                          )}
-                        </button>
-                      ))}
+                      {searchResults.map((student) => {
+                        const s = student as StudentSearchResult
+                        return (
+                          <button
+                            key={s.id}
+                            onClick={() => handleSelectStudent(s)}
+                            disabled={loadingAbsences}
+                            className="w-full text-right p-4 hover:bg-slate-50 transition-colors disabled:opacity-50 flex items-center gap-3"
+                          >
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
+                              <User className="h-5 w-5 text-slate-500" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-semibold text-slate-900">{s.name}</p>
+                              <p className="text-sm text-slate-500">
+                                {s.national_id} • {s.grade} - {s.class_name}
+                              </p>
+                            </div>
+                            {loadingAbsences && (selectedStudent as StudentSearchResult | null)?.id === s.id && (
+                              <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
+                            )}
+                          </button>
+                        )
+                      })}
                     </div>
                   )}
 
