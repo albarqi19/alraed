@@ -81,7 +81,7 @@ export async function cacheAudioFile(
       }
 
       // تجميع البيانات
-      const blob = new Blob(chunks, { type: response.headers.get('content-type') || 'audio/mpeg' })
+      const blob = new Blob(chunks as BlobPart[], { type: response.headers.get('content-type') || 'audio/mpeg' })
       const cachedResponse = new Response(blob, {
         headers: {
           'Content-Type': response.headers.get('content-type') || 'audio/mpeg',

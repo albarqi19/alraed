@@ -26,7 +26,7 @@ import {
   STORAGE_KEY,
 } from '../utils'
 import { getBellSettings, syncBellState } from '../api/bell-api'
-import { isAudioCached, listCachedAudios, type CacheStatus } from '../audio-cache'
+import { listCachedAudios, type CacheStatus } from '../audio-cache'
 
 interface BellManagerContextValue {
   state: BellManagerState

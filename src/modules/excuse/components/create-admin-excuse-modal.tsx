@@ -290,7 +290,7 @@ export function CreateAdminExcuseModal({ open, onClose }: CreateAdminExcuseModal
 
                   {!isSearching && searchResults.length > 0 && (
                     <div className="rounded-xl border border-slate-200 divide-y divide-slate-100 max-h-64 overflow-y-auto">
-                      {searchResults.map((student) => (
+                      {searchResults.map((student: StudentSearchResult) => (
                         <button
                           key={student.id}
                           onClick={() => handleSelectStudent(student)}
