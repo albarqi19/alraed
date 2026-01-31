@@ -306,7 +306,7 @@ export function CreateAdminExcuseModal({ open, onClose }: CreateAdminExcuseModal
                               {student.national_id} • {student.grade} - {student.class_name}
                             </p>
                           </div>
-                          {loadingAbsences && selectedStudent?.id === student.id && (
+                          {loadingAbsences && selectedStudent?.id === (student as StudentSearchResult).id && (
                             <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
                           )}
                         </button>
