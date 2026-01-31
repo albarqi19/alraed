@@ -99,5 +99,6 @@ export const adminQueryKeys = {
   subscription: {
     summary: () => ['admin', 'subscription', 'summary'] as const,
     invoices: (status?: string, page?: number) => ['admin', 'subscription', 'invoices', status ?? 'all', page ?? 1] as const,
+    paymentStatus: (invoiceId: number | null) => ['admin', 'subscription', 'payment-status', invoiceId] as const,
   },
 }

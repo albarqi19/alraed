@@ -19,63 +19,11 @@ export const WEEKDAYS: { value: Weekday; label: string; short: string }[] = [
   { value: 6, label: 'السبت', short: 'سبت' },
 ]
 
-export const DEFAULT_AUDIO_ASSETS: BellAudioAsset[] = [
-  // سيتم إضافة الأصوات لاحقاً
-]
+// لا توجد أصوات افتراضية - يتم تحميلها من الخادم
+export const DEFAULT_AUDIO_ASSETS: BellAudioAsset[] = []
 
-export const DEFAULT_TONE_PROFILES: ToneProfile[] = [
-  {
-    id: 'calm-voice-v1',
-    name: 'صوت هادئ ومتوازن',
-    description: 'من نبرة ذكورية لطيفة تناسب الحصص الصباحية الهادئة.',
-    voiceType: 'male-calm',
-    intensity: 'soft',
-    tags: ['هادئ', 'رسمي'],
-    previewAssetId: 'calm-start-v1',
-    mapping: {
-      lesson_start: 'calm-start-v1',
-      lesson_end: 'calm-end-v1',
-      break: 'calm-break-v1',
-      prayer: 'calm-prayer-v1',
-      custom: 'calm-generic-v1',
-      generic: 'calm-generic-v1',
-    },
-  },
-  {
-    id: 'grand-voice-v1',
-    name: 'صوت رسمي حيوي',
-    description: 'نبرة ذكورية فخمة وحماسية للحصص والفعاليات الكبيرة.',
-    voiceType: 'male-grand',
-    intensity: 'energetic',
-    tags: ['حماسي', 'رسمي'],
-    previewAssetId: 'grand-start-v1',
-    mapping: {
-      lesson_start: 'grand-start-v1',
-      lesson_end: 'grand-end-v1',
-      break: 'grand-break-v1',
-      prayer: 'grand-prayer-v1',
-      custom: 'grand-generic-v1',
-      generic: 'grand-generic-v1',
-    },
-  },
-  {
-    id: 'bright-voice-v1',
-    name: 'صوت بشوش وحيوي',
-    description: 'نبرة أنثوية مشرقة تناسب المدارس التي تفضل حيوية أكثر.',
-    voiceType: 'female-bright',
-    intensity: 'standard',
-    tags: ['مشرق', 'ودود'],
-    previewAssetId: 'bright-start-v1',
-    mapping: {
-      lesson_start: 'bright-start-v1',
-      lesson_end: 'bright-end-v1',
-      break: 'bright-break-v1',
-      prayer: 'bright-prayer-v1',
-      custom: 'bright-generic-v1',
-      generic: 'bright-generic-v1',
-    },
-  },
-]
+// لا توجد ملفات نغمات افتراضية - يتم تحميلها من الخادم
+export const DEFAULT_TONE_PROFILES: ToneProfile[] = []
 
 export function createId() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -84,50 +32,8 @@ export function createId() {
   return Math.random().toString(36).slice(2, 11)
 }
 
-export const DEFAULT_SCHEDULES: BellSchedule[] = [
-  {
-    id: createId(),
-    name: 'الجدول الشتوي',
-    description: 'مناسب للفترة الشتوية، يبدأ الدوام الساعة 6:45 صباحًا.',
-    isEnabled: false,
-    allowBackgroundExecution: false,  // معطّل افتراضياً
-    toneProfileId: 'calm-voice-v1',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    events: [
-      {
-        id: createId(),
-        title: 'الحصة الأولى - بداية',
-        time: '06:45',
-        category: 'lesson_start',
-        soundId: 'calm-start-v1',
-        repeatType: 'daily',
-        enabled: true,
-        notes: 'تشغيل قبل دخول الطلاب بقليل',
-      },
-      {
-        id: createId(),
-        title: 'الحصة الأولى - نهاية',
-        time: '07:35',
-        category: 'lesson_end',
-        soundId: 'calm-end-v1',
-        repeatType: 'daily',
-        enabled: true,
-      },
-      {
-        id: createId(),
-        title: 'الفسحة الصباحية',
-        time: '09:35',
-        category: 'break',
-        soundId: 'calm-break-v1',
-        repeatType: 'custom',
-        repeatDays: [0, 1, 2, 3, 4],
-        enabled: true,
-        notes: 'لا تشمل يومي الجمعة والسبت',
-      },
-    ],
-  },
-]
+// لا توجد جداول افتراضية - يتم تحميلها من الخادم
+export const DEFAULT_SCHEDULES: BellSchedule[] = []
 
 export function findToneProfile(profiles: ToneProfile[], toneProfileId?: string | null) {
   if (!profiles.length) return null

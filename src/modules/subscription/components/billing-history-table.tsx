@@ -1,5 +1,7 @@
 import type { SubscriptionInvoiceRecord } from '../types'
+import { useInitiatePaymentMutation } from '../hooks'
 import clsx from 'classnames'
+import { CreditCard, Loader2 } from 'lucide-react'
 
 const STATUS_BADGES: Record<SubscriptionInvoiceRecord['status'], { label: string; className: string }> = {
   draft: { label: 'مسودة', className: 'bg-slate-200 text-slate-600' },
@@ -37,6 +39,34 @@ interface BillingHistoryTableProps {
 }
 
 export function BillingHistoryTable({ invoices, isLoading, page, lastPage, onPageChange }: BillingHistoryTableProps) {
+  const initiatePayment = useInitiatePaymentMutation()
+
+  const canPay = (invoice: SubscriptionInvoiceRecord) => {
+    // Can pay if status is pending, draft, or failed
+    if (!['pending', 'draft', 'failed'].includes(invoice.status)) return false
+    // Check if there's a valid payment link that hasn't expired
+    if (invoice.payment_link_url && invoice.payment_expires_at) {
+      const expiresAt = new Date(invoice.payment_expires_at)
+      if (expiresAt > new Date()) {
+        return true // Has valid payment link
+      }
+    }
+    return true // Can create new payment link
+  }
+
+  const handlePay = (invoice: SubscriptionInvoiceRecord) => {
+    // If there's a valid payment link, redirect directly
+    if (invoice.payment_link_url && invoice.payment_expires_at) {
+      const expiresAt = new Date(invoice.payment_expires_at)
+      if (expiresAt > new Date()) {
+        window.location.href = invoice.payment_link_url
+        return
+      }
+    }
+    // Otherwise, create new payment link
+    initiatePayment.mutate(invoice.id)
+  }
+
   return (
     <div className="overflow-hidden rounded-2xl border border-white/40 bg-white/70 shadow-sm">
       <div className="overflow-x-auto">
@@ -48,18 +78,20 @@ export function BillingHistoryTable({ invoices, isLoading, page, lastPage, onPag
               <th className="px-4 py-3">الحالة</th>
               <th className="px-4 py-3">فترة الفوترة</th>
               <th className="px-4 py-3">تاريخ الاستحقاق</th>
+              <th className="px-4 py-3">الإجراءات</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100/60 text-sm text-slate-600">
             {invoices.length === 0 && !isLoading ? (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-slate-400">
+                <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
                   لا توجد فواتير حالياً
                 </td>
               </tr>
             ) : null}
             {invoices.map((invoice) => {
               const badge = STATUS_BADGES[invoice.status]
+              const showPayButton = canPay(invoice)
               return (
                 <tr key={invoice.id} className="transition hover:bg-emerald-50/30">
                   <td className="px-4 py-3 font-semibold text-slate-800">{invoice.invoice_number}</td>
@@ -73,12 +105,31 @@ export function BillingHistoryTable({ invoices, isLoading, page, lastPage, onPag
                     {formatDate(invoice.billing_period_start)} – {formatDate(invoice.billing_period_end)}
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-500">{formatDate(invoice.due_date)}</td>
+                  <td className="px-4 py-3">
+                    {showPayButton ? (
+                      <button
+                        type="button"
+                        onClick={() => handlePay(invoice)}
+                        disabled={initiatePayment.isPending}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-600 disabled:opacity-50"
+                      >
+                        {initiatePayment.isPending ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <CreditCard className="h-3.5 w-3.5" />
+                        )}
+                        ادفع الآن
+                      </button>
+                    ) : invoice.status === 'paid' ? (
+                      <span className="text-xs text-emerald-600">تم الدفع</span>
+                    ) : null}
+                  </td>
                 </tr>
               )
             })}
             {isLoading ? (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-slate-400">
+                <td colSpan={6} className="px-4 py-6 text-center text-slate-400">
                   جاري التحميل...
                 </td>
               </tr>

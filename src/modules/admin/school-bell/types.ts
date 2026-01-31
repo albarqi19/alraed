@@ -31,6 +31,10 @@ export interface BellAudioAsset {
   status: 'ready' | 'pending' | 'missing'
   sizeKb: number
   lastSyncedAt?: string
+  /** رابط الملف الصوتي من الخادم */
+  url?: string
+  /** حالة التحميل المحلي للعمل offline */
+  cacheStatus?: 'not-cached' | 'downloading' | 'cached' | 'error'
 }
 
 export interface ToneProfile {

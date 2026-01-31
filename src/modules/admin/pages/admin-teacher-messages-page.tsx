@@ -24,6 +24,7 @@ interface MessageSettings {
   allowed_end_hour: number
   enable_replies: boolean
   reply_expiry_days: number
+  allow_custom_messages: boolean
 }
 
 export function AdminTeacherMessagesPage() {
@@ -111,6 +112,7 @@ export function AdminTeacherMessagesPage() {
     allowed_end_hour: 11,
     enable_replies: false,
     reply_expiry_days: 3,
+    allow_custom_messages: false,
   }
   const statistics = statisticsData?.statistics || {
     total_sent_today: 0,
@@ -266,6 +268,7 @@ export function AdminTeacherMessagesPage() {
                 allowed_end_hour: Number(formData.get('end_hour')),
                 enable_replies: formData.get('enable_replies') === 'on',
                 reply_expiry_days: Number(formData.get('reply_expiry_days')),
+                allow_custom_messages: formData.get('allow_custom_messages') === 'on',
               })
             }}
             className="space-y-4"
@@ -355,6 +358,19 @@ export function AdminTeacherMessagesPage() {
                   className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-center"
                 />
               </div>
+
+              <label className="flex items-center gap-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4 sm:col-span-2">
+                <input
+                  type="checkbox"
+                  name="allow_custom_messages"
+                  defaultChecked={settings.allow_custom_messages}
+                  className="h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <div className="flex-1 text-right">
+                  <p className="font-semibold text-slate-900">السماح بالرسائل المخصصة</p>
+                  <p className="text-xs text-muted">يتيح للمعلمين كتابة رسائل خاصة بدلاً من القوالب الجاهزة</p>
+                </div>
+              </label>
             </div>
 
             <button
@@ -395,6 +411,11 @@ export function AdminTeacherMessagesPage() {
             <div className="rounded-xl border border-slate-200 bg-white p-4 text-center">
               <p className="text-2xl font-bold text-slate-900">{settings.reply_expiry_days} أيام</p>
               <p className="text-sm text-muted">صلاحية الرابط</p>
+            </div>
+
+            <div className={clsx('rounded-xl border p-4 text-center', settings.allow_custom_messages ? 'border-indigo-200 bg-indigo-50' : 'border-slate-200 bg-slate-50')}>
+              <p className="text-2xl font-bold">{settings.allow_custom_messages ? 'مفعّل' : 'معطّل'}</p>
+              <p className="text-sm text-muted">الرسائل المخصصة</p>
             </div>
           </div>
         )}

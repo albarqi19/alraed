@@ -151,8 +151,9 @@ export async function fetchSubmittedAttendance(
 
 interface SendTeacherMessagesPayload {
   class_id: number
-  template_key: string
+  template_key?: string
   student_ids: number[]
+  custom_message?: string
 }
 
 interface RawSendTeacherMessagesResponse {

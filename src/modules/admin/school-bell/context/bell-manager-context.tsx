@@ -25,6 +25,8 @@ import {
   loadInitialState,
   STORAGE_KEY,
 } from '../utils'
+import { getBellSettings, syncBellState } from '../api/bell-api'
+import { isAudioCached, listCachedAudios, type CacheStatus } from '../audio-cache'
 
 interface BellManagerContextValue {
   state: BellManagerState
@@ -39,6 +41,10 @@ interface BellManagerContextValue {
   schedulerEnabled: boolean
   playEvent: (event: BellEvent) => Promise<PlaybackOutcome>
   previewSound: (soundId: string) => Promise<PlaybackOutcome>
+  /** تحميل ملف صوتي وتخزينه للعمل offline */
+  downloadAudio: (soundId: string, onProgress?: (progress: number) => void) => Promise<boolean>
+  /** تحديث حالة التخزين المحلي لملف صوتي */
+  updateAudioCacheStatus: (soundId: string, status: CacheStatus) => void
   handleManualTrigger: (event: BellEvent) => Promise<void>
   toneProfileMap: Map<string, ToneProfile>
   audioAssetMap: Map<string, BellAudioAsset>
@@ -66,13 +72,65 @@ export function BellManagerProvider({ children, disabled = false }: BellManagerP
   const [state, setState] = useState<BellManagerState>(() => initialStateRef.current as BellManagerState)
   const [currentTime, setCurrentTime] = useState(new Date())
   const [runtimeLog, setRuntimeLog] = useState<RuntimeLogEntry[]>([])
+  const [isServerLoaded, setIsServerLoaded] = useState(false)
   const isMountedRef = useRef(true)
+  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // تحميل البيانات من الخادم عند البداية
+  useEffect(() => {
+    if (disabled || typeof window === 'undefined') return
+
+    async function loadFromServer() {
+      try {
+        const serverData = await getBellSettings()
+        if (!isMountedRef.current) return
+
+        setState((prev) => ({
+          ...prev,
+          ...serverData.settings,
+          schedules: serverData.schedules.length > 0 ? serverData.schedules : prev.schedules,
+          toneProfiles: serverData.toneProfiles.length > 0 ? serverData.toneProfiles : prev.toneProfiles,
+          audioAssets: serverData.audioAssets.length > 0 ? serverData.audioAssets : prev.audioAssets,
+        }))
+        setIsServerLoaded(true)
+        console.log('[BellManager] تم تحميل البيانات من الخادم بنجاح')
+      } catch (error) {
+        console.log('[BellManager] استخدام البيانات المحلية (الخادم غير متاح):', error)
+        setIsServerLoaded(true) // نعتبرها محملة حتى لو فشل الاتصال
+      }
+    }
+
+    loadFromServer()
+  }, [disabled])
+
+  // مزامنة مع الخادم (debounced)
+  const syncToServer = useCallback((newState: BellManagerState) => {
+    if (syncTimeoutRef.current) {
+      clearTimeout(syncTimeoutRef.current)
+    }
+
+    syncTimeoutRef.current = setTimeout(async () => {
+      try {
+        await syncBellState(newState)
+        console.log('[BellManager] تم مزامنة البيانات مع الخادم')
+      } catch (error) {
+        console.error('[BellManager] فشل مزامنة البيانات مع الخادم:', error)
+      }
+    }, 2000) // انتظار 2 ثانية قبل المزامنة
+  }, [])
 
   const updateState = useCallback(
     (updater: BellManagerContextValue['state'] | ((prev: BellManagerState) => BellManagerState)) => {
-      setState((prev) => (typeof updater === 'function' ? (updater as (prev: BellManagerState) => BellManagerState)(prev) : updater))
+      setState((prev) => {
+        const newState = typeof updater === 'function' ? (updater as (prev: BellManagerState) => BellManagerState)(prev) : updater
+        // مزامنة مع الخادم بعد التحديث
+        if (isServerLoaded) {
+          syncToServer(newState)
+        }
+        return newState
+      })
     },
-  []);
+  [isServerLoaded, syncToServer]);
 
   const setWidgetVisibility = useCallback(
     (show: boolean) => {
@@ -147,7 +205,53 @@ export function BellManagerProvider({ children, disabled = false }: BellManagerP
     return occurrences[0] ?? null
   }, [activeSchedule, currentTime])
 
-  const { playEvent, previewSound, readySoundIds, isAnyAudioReady, lastError } = useSchoolBellEngine(state.audioAssets)
+  const { playEvent, previewSound, downloadAudio: engineDownloadAudio, readySoundIds, isAnyAudioReady, lastError } = useSchoolBellEngine(state.audioAssets)
+
+  // تحديث حالة التخزين المحلي للملف الصوتي
+  const updateAudioCacheStatus = useCallback((soundId: string, status: CacheStatus) => {
+    setState((prev) => ({
+      ...prev,
+      audioAssets: prev.audioAssets.map((asset) =>
+        asset.id === soundId ? { ...asset, cacheStatus: status } : asset
+      ),
+    }))
+  }, [])
+
+  // تحميل ملف صوتي مع تتبع الحالة
+  const downloadAudio = useCallback(
+    async (soundId: string, onProgress?: (progress: number) => void): Promise<boolean> => {
+      updateAudioCacheStatus(soundId, 'downloading')
+      try {
+        const success = await engineDownloadAudio(soundId, onProgress)
+        updateAudioCacheStatus(soundId, success ? 'cached' : 'error')
+        return success
+      } catch {
+        updateAudioCacheStatus(soundId, 'error')
+        return false
+      }
+    },
+    [engineDownloadAudio, updateAudioCacheStatus],
+  )
+
+  // التحقق من حالة التخزين المحلي عند تحميل الصفحة
+  useEffect(() => {
+    if (disabled || typeof window === 'undefined' || state.audioAssets.length === 0) return
+
+    async function checkCacheStatus() {
+      const cachedList = await listCachedAudios()
+      const cachedIds = new Set(cachedList.map((entry) => entry.id))
+
+      setState((prev) => ({
+        ...prev,
+        audioAssets: prev.audioAssets.map((asset) => ({
+          ...asset,
+          cacheStatus: cachedIds.has(asset.id) ? 'cached' : 'not-cached',
+        })),
+      }))
+    }
+
+    checkCacheStatus()
+  }, [disabled, state.audioAssets.length])
 
   const appendRuntimeLog = useCallback((entry: RuntimeLogEntry) => {
     setRuntimeLog((prev) => [entry, ...prev].slice(0, 20))
@@ -245,6 +349,8 @@ export function BellManagerProvider({ children, disabled = false }: BellManagerP
       schedulerEnabled,
       playEvent,
       previewSound,
+      downloadAudio,
+      updateAudioCacheStatus,
       handleManualTrigger,
       toneProfileMap,
       audioAssetMap,
@@ -265,6 +371,8 @@ export function BellManagerProvider({ children, disabled = false }: BellManagerP
       schedulerEnabled,
       playEvent,
       previewSound,
+      downloadAudio,
+      updateAudioCacheStatus,
       handleManualTrigger,
       toneProfileMap,
       audioAssetMap,

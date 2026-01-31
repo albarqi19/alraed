@@ -62,8 +62,37 @@ export interface SubscriptionInvoiceRecord {
   billing_period_end?: string | null
   due_date?: string | null
   paid_at?: string | null
+  payment_reference?: string | null
+  payment_gateway?: string | null
+  payment_link_url?: string | null
+  payment_expires_at?: string | null
   created_at?: string | null
   updated_at?: string | null
+}
+
+export interface ChangePlanResponse {
+  subscription: SubscriptionRecord
+  invoice: SubscriptionInvoiceRecord | null
+  payment_url: string | null
+}
+
+export interface InitiatePaymentResponse {
+  payment_url: string
+  invoice_id: number
+  expires_at?: string | null
+}
+
+export interface PaymentStatusResponse {
+  invoice_id: number
+  invoice_number: string
+  status: SubscriptionInvoiceRecord['status']
+  total: number
+  currency: string
+  paid_at?: string | null
+  payment_reference?: string | null
+  payment_gateway?: string | null
+  has_payment_link: boolean
+  payment_link_expired: boolean
 }
 
 export interface PublicSubscriptionPlansPayload {

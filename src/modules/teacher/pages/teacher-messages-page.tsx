@@ -27,6 +27,7 @@ interface MessageSettings {
   allowed_end_hour: number
   school_name: string
   teacher_name: string
+  allow_custom_messages: boolean
 }
 
 interface TeacherClass {
@@ -54,6 +55,8 @@ export function TeacherMessagesPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null)
   const [showPreview, setShowPreview] = useState(false)
   const [isSending, setIsSending] = useState(false)
+  const [customMessage, setCustomMessage] = useState('')
+  const [useCustomMessage, setUseCustomMessage] = useState(false)
 
   // Fetch templates
   const { data: templatesData } = useQuery({
@@ -91,6 +94,7 @@ export function TeacherMessagesPage() {
     allowed_end_hour: 11,
     school_name: 'مدرسة النور الأهلية',
     teacher_name: 'المعلم',
+    allow_custom_messages: false,
   }
   const todayStats = statsData?.stats || { sent_today: 0, remaining: 10 }
 
@@ -333,26 +337,37 @@ export function TeacherMessagesPage() {
       return
     }
 
-    if (!selectedClass || !selectedTemplate || selectedStudents.length === 0) {
-      toast({ type: 'warning', title: 'يرجى اختيار الفصل والطلاب والقالب قبل الإرسال' })
+    const hasValidMessage = selectedTemplate || (useCustomMessage && customMessage.length >= 10)
+    if (!selectedClass || !hasValidMessage || selectedStudents.length === 0) {
+      toast({ type: 'warning', title: 'يرجى اختيار الفصل والطلاب ونوع الرسالة قبل الإرسال' })
       return
     }
 
     setIsSending(true)
 
     try {
-      const template = templates.find(t => t.id === selectedTemplate)
-      if (!template) {
-        toast({ type: 'error', title: 'القالب المختار غير موجود' })
-        setIsSending(false)
-        return
-      }
+      let result
 
-      const result = await sendTeacherMessages({
-        class_id: selectedClass.id,
-        template_key: template.template_key,
-        student_ids: selectedStudents,
-      })
+      if (useCustomMessage) {
+        result = await sendTeacherMessages({
+          class_id: selectedClass.id,
+          student_ids: selectedStudents,
+          custom_message: customMessage,
+        })
+      } else {
+        const template = templates.find(t => t.id === selectedTemplate)
+        if (!template) {
+          toast({ type: 'error', title: 'القالب المختار غير موجود' })
+          setIsSending(false)
+          return
+        }
+
+        result = await sendTeacherMessages({
+          class_id: selectedClass.id,
+          template_key: template.template_key,
+          student_ids: selectedStudents,
+        })
+      }
 
       toast({
         type: 'success',
@@ -369,6 +384,8 @@ export function TeacherMessagesPage() {
       setSelectedClass(null)
       setSelectedStudents([])
       setSelectedTemplate(null)
+      setCustomMessage('')
+      setUseCustomMessage(false)
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'تعذر إرسال الرسائل حالياً، يرجى المحاولة لاحقاً.'
@@ -378,12 +395,13 @@ export function TeacherMessagesPage() {
     }
   }
 
-  const canPreview = selectedClass && selectedStudents.length > 0 && selectedTemplate
+  const canPreview = selectedClass && selectedStudents.length > 0 &&
+    (selectedTemplate || (useCustomMessage && customMessage.length >= 10))
 
   return (
     <>
       {/* Modal للمعاينة */}
-      {showPreview && selectedTemplateData && selectedClass && (
+      {showPreview && (selectedTemplateData || useCustomMessage) && selectedClass && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200"
           onClick={() => setShowPreview(false)}
@@ -406,8 +424,10 @@ export function TeacherMessagesPage() {
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 space-y-4">
                 <div className="text-center">
-                  <div className="text-4xl mb-2">{selectedTemplateData.icon}</div>
-                  <h3 className="text-xl font-bold text-slate-900">{selectedTemplateData.title}</h3>
+                  <div className="text-4xl mb-2">{useCustomMessage ? '✍️' : selectedTemplateData?.icon}</div>
+                  <h3 className="text-xl font-bold text-slate-900">
+                    {useCustomMessage ? 'رسالة مخصصة' : selectedTemplateData?.title}
+                  </h3>
                 </div>
 
                 {/* محتوى الرسالة بالتنسيق المطلوب */}
@@ -425,7 +445,7 @@ export function TeacherMessagesPage() {
                   </p>
 
                   <p className="text-base leading-relaxed text-slate-800 pt-2">
-                    {selectedTemplateData.content}
+                    {useCustomMessage ? customMessage : selectedTemplateData?.content}
                   </p>
 
                   <p className="text-base leading-relaxed text-slate-900 pt-3">
@@ -738,27 +758,91 @@ export function TeacherMessagesPage() {
                 {messageHint}
               </p>
             ) : null}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {templates.filter(t => t.is_active).map((template) => (
+
+            {/* Toggle بين القوالب والرسالة المخصصة */}
+            {settings.allow_custom_messages && (
+              <div className="flex items-center justify-center gap-4">
                 <button
-                  key={template.id}
                   type="button"
-                  onClick={() => handleTemplateSelect(template.id)}
+                  onClick={() => {
+                    setUseCustomMessage(false)
+                    setCustomMessage('')
+                  }}
                   className={clsx(
-                    'rounded-2xl border-2 p-6 text-center transition hover:scale-105',
-                    selectedTemplate === template.id
-                      ? 'border-2 border-teal-300 bg-teal-50'
-                      : 'border-slate-200 bg-white hover:border-slate-300'
+                    'rounded-xl px-6 py-3 font-semibold transition',
+                    !useCustomMessage
+                      ? 'bg-teal-500 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   )}
                 >
-                  <div className="space-y-3">
-                    <div className="text-4xl">{template.icon}</div>
-                    <p className="font-bold text-slate-900">{template.title}</p>
-                    <p className="text-xs text-slate-600 line-clamp-2">{template.content}</p>
-                  </div>
+                  استخدام قالب جاهز
                 </button>
-              ))}
-            </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUseCustomMessage(true)
+                    setSelectedTemplate(null)
+                  }}
+                  className={clsx(
+                    'rounded-xl px-6 py-3 font-semibold transition',
+                    useCustomMessage
+                      ? 'bg-teal-500 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  )}
+                >
+                  كتابة رسالة مخصصة
+                </button>
+              </div>
+            )}
+
+            {/* عرض القوالب أو حقل الرسالة المخصصة */}
+            {useCustomMessage ? (
+              <div className="space-y-4">
+                <label className="block text-right">
+                  <span className="text-lg font-semibold text-slate-900">اكتب رسالتك</span>
+                  <span className="text-sm text-muted block mt-1">
+                    (10-500 حرف)
+                  </span>
+                </label>
+                <textarea
+                  value={customMessage}
+                  onChange={(e) => setCustomMessage(e.target.value)}
+                  placeholder="اكتب رسالتك هنا..."
+                  rows={5}
+                  maxLength={500}
+                  className="w-full rounded-xl border-2 border-slate-200 p-4 text-right focus:border-teal-500 focus:ring-2 focus:ring-teal-200 focus:outline-none"
+                  dir="rtl"
+                />
+                <div className="flex justify-between text-sm text-muted">
+                  <span className={customMessage.length < 10 ? 'text-amber-600' : 'text-emerald-600'}>
+                    {customMessage.length < 10 ? `أدخل ${10 - customMessage.length} أحرف إضافية على الأقل` : 'جاهز للإرسال'}
+                  </span>
+                  <span>{customMessage.length}/500</span>
+                </div>
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {templates.filter(t => t.is_active).map((template) => (
+                  <button
+                    key={template.id}
+                    type="button"
+                    onClick={() => handleTemplateSelect(template.id)}
+                    className={clsx(
+                      'rounded-2xl border-2 p-6 text-center transition hover:scale-105',
+                      selectedTemplate === template.id
+                        ? 'border-2 border-teal-300 bg-teal-50'
+                        : 'border-slate-200 bg-white hover:border-slate-300'
+                    )}
+                  >
+                    <div className="space-y-3">
+                      <div className="text-4xl">{template.icon}</div>
+                      <p className="font-bold text-slate-900">{template.title}</p>
+                      <p className="text-xs text-slate-600 line-clamp-2">{template.content}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

@@ -2,6 +2,9 @@ import { apiClient } from '@/services/api/client'
 import type { ApiResponse } from '@/services/api/types'
 import type {
   BillingCycle,
+  ChangePlanResponse,
+  InitiatePaymentResponse,
+  PaymentStatusResponse,
   PublicSubscriptionPlansPayload,
   RegisterSchoolPayload,
   RegisterSchoolResponse,
@@ -135,6 +138,10 @@ function normalizeInvoice(raw: unknown): SubscriptionInvoiceRecord | null {
     billing_period_end: typeof raw.billing_period_end === 'string' ? raw.billing_period_end : null,
     due_date: typeof raw.due_date === 'string' ? raw.due_date : null,
     paid_at: typeof raw.paid_at === 'string' ? raw.paid_at : null,
+    payment_reference: typeof raw.payment_reference === 'string' ? raw.payment_reference : null,
+    payment_gateway: typeof raw.payment_gateway === 'string' ? raw.payment_gateway : null,
+    payment_link_url: typeof raw.payment_link_url === 'string' ? raw.payment_link_url : null,
+    payment_expires_at: typeof raw.payment_expires_at === 'string' ? raw.payment_expires_at : null,
     created_at: typeof raw.created_at === 'string' ? raw.created_at : null,
     updated_at: typeof raw.updated_at === 'string' ? raw.updated_at : null,
   }
@@ -202,17 +209,30 @@ export async function fetchSubscriptionSummary() {
   }
 }
 
-export async function changeSubscriptionPlan(payload: { plan_code: string; billing_cycle: BillingCycle }) {
-  const { data } = await apiClient.post<ApiResponse<{ subscription: SubscriptionRecord }>>(
+export async function changeSubscriptionPlan(payload: { plan_code: string; billing_cycle: BillingCycle; auto_pay?: boolean }): Promise<ChangePlanResponse> {
+  const { data } = await apiClient.post<ApiResponse<{
+    subscription: unknown
+    invoice: unknown
+    payment_url: string | null
+  }>>(
     '/admin/subscription/change-plan',
-    payload,
+    { ...payload, auto_pay: payload.auto_pay ?? true },
   )
 
   if (!data.success) {
     throw new Error(data.message ?? 'تعذر تحديث الخطة')
   }
 
-  return normalizeSubscription(data.data.subscription) ?? null
+  const subscription = normalizeSubscription(data.data.subscription)
+  if (!subscription) {
+    throw new Error('استجابة غير صالحة من الخادم')
+  }
+
+  return {
+    subscription,
+    invoice: normalizeInvoice(data.data.invoice),
+    payment_url: data.data.payment_url ?? null,
+  }
 }
 
 export interface SubscriptionInvoicesResult {
@@ -274,4 +294,40 @@ export async function createSubscriptionInvoice(payload: {
   }
 
   return invoice
+}
+
+/**
+ * Initiate payment for a pending invoice
+ */
+export async function initiatePayment(invoiceId: number): Promise<InitiatePaymentResponse> {
+  const { data } = await apiClient.post<ApiResponse<{
+    payment_url: string
+    invoice_id: number
+    expires_at?: string | null
+  }>>(`/admin/subscription/invoices/${invoiceId}/pay`)
+
+  if (!data.success) {
+    throw new Error(data.message ?? 'تعذر إنشاء رابط الدفع')
+  }
+
+  return {
+    payment_url: data.data.payment_url,
+    invoice_id: data.data.invoice_id,
+    expires_at: data.data.expires_at ?? null,
+  }
+}
+
+/**
+ * Check payment status for an invoice
+ */
+export async function checkPaymentStatus(invoiceId: number): Promise<PaymentStatusResponse> {
+  const { data } = await apiClient.get<ApiResponse<PaymentStatusResponse>>(
+    `/admin/subscription/invoices/${invoiceId}/payment-status`
+  )
+
+  if (!data.success) {
+    throw new Error(data.message ?? 'تعذر التحقق من حالة الدفع')
+  }
+
+  return data.data
 }

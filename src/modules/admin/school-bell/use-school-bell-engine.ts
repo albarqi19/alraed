@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { BellAudioAsset, BellEvent } from './types'
+import { getCachedAudioUrl, isAudioCached, cacheAudioFile } from './audio-cache'
 
 export type PlaybackOutcome = 'played' | 'fallback-played' | 'failed'
 
 interface UseSchoolBellEngineOptions {
-  baseUrl?: string
   volume?: number
 }
 
 interface UseSchoolBellEngineResult {
   playEvent: (event: BellEvent) => Promise<PlaybackOutcome>
   previewSound: (soundId: string) => Promise<PlaybackOutcome>
+  downloadAudio: (soundId: string, onProgress?: (progress: number) => void) => Promise<boolean>
   resolveAssetUrl: (soundId: string) => string | null
   readySoundIds: string[]
   isAnyAudioReady: boolean
@@ -21,7 +22,7 @@ const FALLBACK_DURATION_MS = 5000
 
 export function useSchoolBellEngine(
   audioAssets: BellAudioAsset[],
-  { baseUrl = '/school-bell-audio', volume = 0.9 }: UseSchoolBellEngineOptions = {},
+  { volume = 0.9 }: UseSchoolBellEngineOptions = {},
 ): UseSchoolBellEngineResult {
   const audioElementsRef = useRef(new Map<string, HTMLAudioElement>())
   const loadPromisesRef = useRef(new Map<string, Promise<HTMLAudioElement | null>>())
@@ -41,14 +42,18 @@ export function useSchoolBellEngine(
     }
   }, [audioAssets])
 
+  /**
+   * الحصول على رابط الملف الصوتي (من الخادم أو مخزن محلياً)
+   */
   const resolveAssetUrl = useCallback(
     (soundId: string) => {
       const asset = audioAssets.find((item) => item.id === soundId)
       if (!asset) return null
       if (asset.status === 'missing') return null
-      return `${baseUrl}/${soundId}.mp3`
+      // استخدام URL من الخادم
+      return asset.url ?? null
     },
-    [audioAssets, baseUrl],
+    [audioAssets],
   )
 
   const ensureAudioContext = useCallback(async () => {
@@ -102,51 +107,92 @@ export function useSchoolBellEngine(
     }
   }, [ensureAudioContext])
 
+  /**
+   * تحميل وتخزين ملف صوتي للعمل offline
+   */
+  const downloadAudio = useCallback(
+    async (soundId: string, onProgress?: (progress: number) => void): Promise<boolean> => {
+      const asset = audioAssets.find((item) => item.id === soundId)
+      if (!asset?.url) {
+        setLastError(`لا يوجد رابط للملف: ${soundId}`)
+        return false
+      }
+
+      try {
+        const success = await cacheAudioFile(soundId, asset.url, onProgress)
+        if (!success) {
+          setLastError(`فشل تحميل الملف: ${soundId}`)
+        }
+        return success
+      } catch (error) {
+        console.error(`[BellEngine] فشل تحميل ${soundId}:`, error)
+        setLastError(`فشل تحميل الملف: ${soundId}`)
+        return false
+      }
+    },
+    [audioAssets],
+  )
+
   const loadAudioElement = useCallback(
-    (soundId: string) => {
+    async (soundId: string): Promise<HTMLAudioElement | null> => {
       if (loadPromisesRef.current.has(soundId)) {
         return loadPromisesRef.current.get(soundId) as Promise<HTMLAudioElement | null>
       }
 
-      const url = resolveAssetUrl(soundId)
-      if (!url) {
-        const promise = Promise.resolve(null)
-        loadPromisesRef.current.set(soundId, promise)
-        return promise
-      }
-
       const existing = audioElementsRef.current.get(soundId)
       if (existing) {
-        return Promise.resolve(existing)
+        return existing
       }
 
-      const promise = new Promise<HTMLAudioElement | null>((resolve) => {
-        const audio = new Audio(url)
-        audio.preload = 'auto'
-        audio.crossOrigin = 'anonymous'
-        audio.volume = volume
+      const promise = (async () => {
+        // 1. محاولة التحميل من الـ Cache أولاً
+        const isCached = await isAudioCached(soundId)
+        let audioUrl: string | null = null
 
-        const cleanup = () => {
-          audio.removeEventListener('canplaythrough', handleReady)
-          audio.removeEventListener('error', handleError)
+        if (isCached) {
+          audioUrl = await getCachedAudioUrl(soundId)
+          console.log(`[BellEngine] تحميل من الـ Cache: ${soundId}`)
         }
 
-        const handleReady = () => {
-          cleanup()
-          audioElementsRef.current.set(soundId, audio)
-          resolve(audio)
+        // 2. إذا لم يكن مخزناً، استخدام URL الخادم
+        if (!audioUrl) {
+          audioUrl = resolveAssetUrl(soundId)
+          console.log(`[BellEngine] تحميل من الخادم: ${soundId}`)
         }
 
-        const handleError = () => {
-          cleanup()
-          setLastError(`تعذر تحميل الصوت: ${soundId}`)
-          resolve(null)
+        if (!audioUrl) {
+          setLastError(`لا يوجد رابط للصوت: ${soundId}`)
+          return null
         }
 
-        audio.addEventListener('canplaythrough', handleReady)
-        audio.addEventListener('error', handleError)
-        audio.load()
-      })
+        return new Promise<HTMLAudioElement | null>((resolve) => {
+          const audio = new Audio(audioUrl)
+          audio.preload = 'auto'
+          audio.crossOrigin = 'anonymous'
+          audio.volume = volume
+
+          const cleanup = () => {
+            audio.removeEventListener('canplaythrough', handleReady)
+            audio.removeEventListener('error', handleError)
+          }
+
+          const handleReady = () => {
+            cleanup()
+            audioElementsRef.current.set(soundId, audio)
+            resolve(audio)
+          }
+
+          const handleError = () => {
+            cleanup()
+            setLastError(`تعذر تحميل الصوت: ${soundId}`)
+            resolve(null)
+          }
+
+          audio.addEventListener('canplaythrough', handleReady)
+          audio.addEventListener('error', handleError)
+          audio.load()
+        })
+      })()
 
       loadPromisesRef.current.set(soundId, promise)
       return promise
@@ -200,6 +246,7 @@ export function useSchoolBellEngine(
   return {
     playEvent,
     previewSound,
+    downloadAudio,
     resolveAssetUrl,
     readySoundIds,
     isAnyAudioReady: readySoundIds.length > 0,

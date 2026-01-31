@@ -12,7 +12,11 @@ import {
   Download,
   Loader2,
   AlertCircle,
+  Plus,
+  Settings,
 } from 'lucide-react'
+import { CreateAdminExcuseModal } from '../components/create-admin-excuse-modal'
+import { ExcuseSettingsModal } from '../components/excuse-settings-modal'
 import {
   getAbsenceExcuses,
   getExcuseDetails,
@@ -55,6 +59,12 @@ export function AdminAbsenceExcusesPage() {
   })
   const [isGradeDropdownOpen, setIsGradeDropdownOpen] = useState(false)
   const gradeDropdownRef = useRef<HTMLDivElement>(null)
+
+  // Create excuse modal
+  const [createModalOpen, setCreateModalOpen] = useState(false)
+
+  // Settings modal
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false)
 
   // View dialog
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
@@ -247,9 +257,28 @@ export function AdminAbsenceExcusesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <header className="space-y-2">
-        <h1 className="text-3xl font-bold text-slate-900">أعذار الغياب</h1>
-        <p className="text-sm text-muted">إدارة ومراجعة أعذار غياب الطلاب المقدمة من أولياء الأمور</p>
+      <header className="flex items-start justify-between">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold text-slate-900">أعذار الغياب</h1>
+          <p className="text-sm text-muted">إدارة ومراجعة أعذار غياب الطلاب المقدمة من أولياء الأمور</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSettingsModalOpen(true)}
+            className="button-secondary flex items-center gap-2"
+            title="إعدادات الأعذار"
+          >
+            <Settings className="h-4 w-4" />
+            الإعدادات
+          </button>
+          <button
+            onClick={() => setCreateModalOpen(true)}
+            className="button-primary flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            إضافة عذر
+          </button>
+        </div>
       </header>
 
       {/* Search & Filter */}
@@ -821,6 +850,18 @@ export function AdminAbsenceExcusesPage() {
           </div>
         </div>
       )}
+
+      {/* Create Admin Excuse Modal */}
+      <CreateAdminExcuseModal
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+      />
+
+      {/* Settings Modal */}
+      <ExcuseSettingsModal
+        open={settingsModalOpen}
+        onClose={() => setSettingsModalOpen(false)}
+      />
     </div>
   )
 }

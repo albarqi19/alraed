@@ -39,6 +39,48 @@ export interface SubmitExcuseResponse {
   errors?: Record<string, string[]>
 }
 
+// ==================== Types لإنشاء العذر من الإدارة ====================
+
+// نتيجة البحث عن طالب
+export interface StudentSearchResult {
+  id: number
+  name: string
+  national_id: string
+  grade: string
+  class_name: string
+  parent_phone: string | null
+}
+
+// يوم غياب بدون عذر
+export interface UnexcusedAbsence {
+  attendance_id: number
+  date: string
+  date_formatted: string
+}
+
+// بيانات إنشاء عذر من الإدارة
+export interface CreateAdminExcusePayload {
+  student_id: number
+  absence_dates: string[]
+  excuse_text: string
+  file?: File
+}
+
+// استجابة إنشاء عذر من الإدارة
+export interface CreateAdminExcuseResponse {
+  success: boolean
+  message: string
+  data?: {
+    count: number
+    excuse_ids: number[]
+    student_name: string
+  }
+  errors?: Record<string, string[]>
+  existing_dates?: string[]
+}
+
+// ==================== Admin types ====================
+
 // Admin types
 export interface AbsenceExcuseRecord {
   id: number
@@ -91,6 +133,13 @@ export interface AbsenceExcuseRecord {
     id: number
     name: string
   }
+  // حقول العذر من الإدارة
+  source?: 'parent' | 'admin'
+  created_by_user_id?: number | null
+  created_by_user?: {
+    id: number
+    name: string
+  } | null
 }
 
 export interface AbsenceExcuseStats {
@@ -143,3 +192,64 @@ export interface ApprovedNotSyncedResponse {
   }>
   total: number
 }
+
+// ==================== Types لإعدادات الأعذار ====================
+
+// المتغيرات المتاحة في الرسائل
+export interface MessageVariables {
+  common: Record<string, string>
+  approval: Record<string, string>
+  rejection: Record<string, string>
+  admin_excuse: Record<string, string>
+}
+
+// إعدادات الأعذار
+export interface ExcuseSettingsData {
+  // إعدادات الإشعارات
+  notify_on_approval: boolean
+  notify_on_rejection: boolean
+  notify_on_admin_excuse: boolean
+
+  // نصوص الرسائل
+  approval_message_template: string
+  rejection_message_template: string
+  admin_excuse_message_template: string
+
+  // هل يستخدم النص الافتراضي
+  using_default_approval: boolean
+  using_default_rejection: boolean
+  using_default_admin_excuse: boolean
+
+  // إعدادات عامة
+  link_validity_days: number
+  max_excuse_days: number
+  require_attachment: boolean
+}
+
+// استجابة جلب الإعدادات
+export interface ExcuseSettingsResponse {
+  success: boolean
+  data: ExcuseSettingsData
+  defaults: {
+    approval_message: string
+    rejection_message: string
+    admin_excuse_message: string
+  }
+  available_variables: MessageVariables
+}
+
+// بيانات تحديث الإعدادات
+export interface UpdateExcuseSettingsPayload {
+  notify_on_approval?: boolean
+  notify_on_rejection?: boolean
+  notify_on_admin_excuse?: boolean
+  approval_message_template?: string | null
+  rejection_message_template?: string | null
+  admin_excuse_message_template?: string | null
+  link_validity_days?: number
+  max_excuse_days?: number
+  require_attachment?: boolean
+}
+
+// نوع الرسالة لإعادة التعيين
+export type MessageType = 'approval' | 'rejection' | 'admin_excuse'

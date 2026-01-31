@@ -67,6 +67,9 @@ import { TeacherSessionAttendancePage } from '@/modules/teacher/pages/teacher-se
 import { SubscriptionPlansPage } from '@/modules/subscription/pages/subscription-plans-page'
 import { SchoolRegistrationPage } from '@/modules/subscription/pages/school-registration-page'
 import { AdminSubscriptionPage } from '@/modules/subscription/pages/admin-subscription-page'
+import { PaymentSuccessPage } from '@/modules/subscription/pages/payment-success-page'
+import { PaymentCancelPage } from '@/modules/subscription/pages/payment-cancel-page'
+import { PaymentFailedPage } from '@/modules/subscription/pages/payment-failed-page'
 import { SuperAdminLoginPage } from '@/modules/auth/pages/super-admin-login-page'
 import { SuperAdminShell } from '@/modules/super-admin/layouts/super-admin-shell'
 import { PlatformOverviewPage } from '@/modules/super-admin/pages/platform-overview-page'
@@ -122,6 +125,9 @@ const appRoutes = [
       { index: true, element: <LandingPage /> },
       { path: 'plans', element: <SubscriptionPlansPage /> },
       { path: 'register', element: <SchoolRegistrationPage /> },
+      { path: 'payment/success', element: <PaymentSuccessPage /> },
+      { path: 'payment/cancel', element: <PaymentCancelPage /> },
+      { path: 'payment/failed', element: <PaymentFailedPage /> },
       {
         path: 'auth/teacher',
         element: (

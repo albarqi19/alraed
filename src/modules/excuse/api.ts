@@ -7,6 +7,13 @@ import type {
   AbsenceExcuseRecord,
   AbsenceExcuseFilters,
   ApprovedNotSyncedResponse,
+  StudentSearchResult,
+  UnexcusedAbsence,
+  CreateAdminExcusePayload,
+  CreateAdminExcuseResponse,
+  ExcuseSettingsResponse,
+  UpdateExcuseSettingsPayload,
+  MessageType,
 } from './types'
 
 // استخدام نفس الـ base URL المستخدم في apiClient
@@ -183,4 +190,95 @@ export async function deleteExcuse(id: number): Promise<{ success: boolean; mess
  */
 export function getExcuseFileUrl(id: number): string {
   return `${API_BASE_URL}/admin/absence-excuses/${id}/file`
+}
+
+// ==================== APIs لإنشاء العذر من الإدارة ====================
+
+/**
+ * البحث عن طلاب لإنشاء عذر
+ */
+export async function searchStudentsForExcuse(query: string): Promise<{
+  success: boolean
+  data: StudentSearchResult[]
+}> {
+  const response = await apiClient.get<{ success: boolean; data: StudentSearchResult[] }>(
+    `/admin/absence-excuses/search-students?q=${encodeURIComponent(query)}`
+  )
+  return response.data
+}
+
+/**
+ * جلب أيام الغياب بدون عذر للطالب
+ */
+export async function getUnexcusedAbsences(studentId: number): Promise<{
+  success: boolean
+  data: UnexcusedAbsence[]
+  student: StudentSearchResult
+}> {
+  const response = await apiClient.get<{
+    success: boolean
+    data: UnexcusedAbsence[]
+    student: StudentSearchResult
+  }>(`/admin/absence-excuses/student/${studentId}/unexcused-absences`)
+  return response.data
+}
+
+/**
+ * إنشاء عذر من الإدارة
+ */
+export async function createAdminExcuse(payload: CreateAdminExcusePayload): Promise<CreateAdminExcuseResponse> {
+  const formData = new FormData()
+  formData.append('student_id', payload.student_id.toString())
+  payload.absence_dates.forEach((date, index) => {
+    formData.append(`absence_dates[${index}]`, date)
+  })
+  formData.append('excuse_text', payload.excuse_text)
+  if (payload.file) {
+    formData.append('file', payload.file)
+  }
+
+  const response = await apiClient.post<CreateAdminExcuseResponse>(
+    '/admin/absence-excuses/create-by-admin',
+    formData,
+    {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }
+  )
+  return response.data
+}
+
+// ==================== APIs لإعدادات الأعذار ====================
+
+/**
+ * جلب إعدادات الأعذار
+ */
+export async function getExcuseSettings(): Promise<ExcuseSettingsResponse> {
+  const response = await apiClient.get<ExcuseSettingsResponse>('/admin/absence-excuses/settings')
+  return response.data
+}
+
+/**
+ * تحديث إعدادات الأعذار
+ */
+export async function updateExcuseSettings(
+  payload: UpdateExcuseSettingsPayload
+): Promise<{ success: boolean; message: string }> {
+  const response = await apiClient.put<{ success: boolean; message: string }>(
+    '/admin/absence-excuses/settings',
+    payload
+  )
+  return response.data
+}
+
+/**
+ * إعادة تعيين نص رسالة للافتراضي
+ */
+export async function resetMessageToDefault(
+  messageType: MessageType
+): Promise<{ success: boolean; message: string }> {
+  const response = await apiClient.post<{ success: boolean; message: string }>(
+    '/admin/absence-excuses/settings/reset-message',
+    { message_type: messageType }
+  )
+  return response.data
 }
