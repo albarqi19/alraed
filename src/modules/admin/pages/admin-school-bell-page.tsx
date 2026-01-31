@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import clsx from 'classnames'
 import {
@@ -11,10 +11,7 @@ import {
   Clock3,
   Copy,
   Edit,
-  ExternalLink,
   Music,
-  Pause,
-  Play,
   Plus,
   RefreshCw,
   Settings,
@@ -1143,7 +1140,7 @@ function EventDialog({
   initialEvent,
   scheduleId,
   toneProfile,
-  audioAssetMap,
+  audioAssetMap: _audioAssetMap,
   onClose,
   onSuccess,
 }: {
