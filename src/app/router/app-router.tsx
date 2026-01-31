@@ -92,6 +92,7 @@ import { AdminActivitiesPage } from '@/modules/activities/pages/admin-activities
 import { TeacherActivitiesPage } from '@/modules/activities/pages/teacher-activities-page'
 import { TeacherReferralsPage } from '@/modules/teacher/pages/teacher-referrals-page'
 import { TeacherDelayExcusesPage } from '@/modules/teacher/pages/teacher-delay-excuses-page'
+import { TeacherMyServicesPage } from '@/modules/teacher/pages/teacher-my-services-page'
 import { NewReferralPage } from '@/modules/teacher/pages/new-referral-page'
 import { ReferralDetailPage } from '@/modules/teacher/pages/referral-detail-page'
 import { TeacherCoverageRequestPage } from '@/modules/teacher/pages/teacher-coverage-request-page'
@@ -180,6 +181,7 @@ const appRoutes = [
           { path: 'messages/replies', element: <TeacherRepliesPage /> },
           { path: 'points', element: <TeacherPointsPage /> },
           { path: 'services', element: <TeacherServicesPage /> },
+          { path: 'my-services', element: <TeacherMyServicesPage /> },
           { path: 'activities', element: <TeacherActivitiesPage /> },
           { path: 'referrals', element: <TeacherReferralsPage /> },
           { path: 'referrals/new', element: <NewReferralPage /> },

@@ -41,6 +41,7 @@ const SERVICES: ServiceCard[] = [
     iconColor: 'text-emerald-600',
     iconBg: 'bg-emerald-100/80',
     accentBar: 'from-emerald-400/50 via-emerald-200/40 to-transparent',
+    to: '/teacher/my-services',
   },
   {
     id: 'student-referral',
@@ -51,16 +52,6 @@ const SERVICES: ServiceCard[] = [
     iconBg: 'bg-sky-100/80',
     accentBar: 'from-sky-400/50 via-sky-200/40 to-transparent',
     to: '/teacher/referrals',
-  },
-  {
-    id: 'delay-excuses',
-    title: 'أعذار التأخير',
-    description: 'تقديم أعذار عن التأخير',
-    icon: 'bi-clock-history',
-    iconColor: 'text-teal-600',
-    iconBg: 'bg-teal-100/80',
-    accentBar: 'from-teal-400/50 via-teal-200/40 to-transparent',
-    to: '/teacher/delay-excuses',
   },
   {
     id: 'coverage-request',
