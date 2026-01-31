@@ -53,6 +53,16 @@ const SERVICES: ServiceCard[] = [
     to: '/teacher/referrals',
   },
   {
+    id: 'delay-excuses',
+    title: 'أعذار التأخير',
+    description: 'تقديم أعذار عن التأخير',
+    icon: 'bi-clock-history',
+    iconColor: 'text-teal-600',
+    iconBg: 'bg-teal-100/80',
+    accentBar: 'from-teal-400/50 via-teal-200/40 to-transparent',
+    to: '/teacher/delay-excuses',
+  },
+  {
     id: 'coverage-request',
     title: 'الاستئذان',
     description: 'تأمين الحصص المتبقية',

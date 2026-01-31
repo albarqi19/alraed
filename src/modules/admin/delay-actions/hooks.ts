@@ -15,6 +15,15 @@ import {
   markActionSigned,
   fetchDelayActionsSettings,
   updateDelayActionsSettings,
+  fetchDelayExcuses,
+  fetchDelayExcusesStatistics,
+  fetchDelayExcuseDetails,
+  approveExcuse,
+  rejectExcuse,
+  fetchDelayExcusesSettings,
+  updateDelayExcusesSettings,
+  fetchTeacherExcuseSettings,
+  updateTeacherExcuseSetting,
 } from './api'
 import type {
   DelayActionsFilters,
@@ -22,6 +31,10 @@ import type {
   RecordActionPayload,
   MarkSignedPayload,
   UpdateDelayActionsSettingsPayload,
+  DelayExcusesFilters,
+  ReviewExcusePayload,
+  UpdateDelayExcusesSettingsPayload,
+  UpdateTeacherExcuseSettingPayload,
 } from './types'
 
 /**
@@ -213,6 +226,192 @@ export function useUpdateDelayActionsSettingsMutation() {
       toast({
         type: 'error',
         title: 'تعذر حفظ الإعدادات',
+        description: error instanceof Error ? error.message : 'حدث خطأ غير متوقع',
+      })
+    },
+  })
+}
+
+// ==================== Hooks لأعذار التأخير ====================
+
+/**
+ * جلب قائمة أعذار التأخير
+ */
+export function useDelayExcusesQuery(
+  filters: DelayExcusesFilters = {},
+  options: { enabled?: boolean } = {},
+) {
+  const normalizedFilters = Object.fromEntries(
+    Object.entries(filters).filter(
+      ([, v]) => v !== undefined && v !== '' && v !== 'all',
+    ),
+  )
+
+  return useQuery({
+    queryKey: delayActionsQueryKeys.excusesList(normalizedFilters),
+    queryFn: () => fetchDelayExcuses(filters),
+    enabled: options.enabled ?? true,
+    staleTime: 30_000,
+  })
+}
+
+/**
+ * جلب إحصائيات أعذار التأخير
+ */
+export function useDelayExcusesStatisticsQuery(
+  fiscalYear?: number,
+  options: { enabled?: boolean } = {},
+) {
+  return useQuery({
+    queryKey: delayActionsQueryKeys.excusesStatistics(fiscalYear),
+    queryFn: () => fetchDelayExcusesStatistics(fiscalYear),
+    enabled: options.enabled ?? true,
+    staleTime: 30_000,
+  })
+}
+
+/**
+ * جلب تفاصيل عذر
+ */
+export function useDelayExcuseDetailsQuery(
+  id: number | null,
+  options: { enabled?: boolean } = {},
+) {
+  return useQuery({
+    queryKey: delayActionsQueryKeys.excuseDetails(id ?? 0),
+    queryFn: () => fetchDelayExcuseDetails(id!),
+    enabled: (options.enabled ?? true) && id !== null && id > 0,
+    staleTime: 30_000,
+  })
+}
+
+/**
+ * قبول عذر
+ */
+export function useApproveExcuseMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload?: ReviewExcusePayload }) =>
+      approveExcuse(id, payload),
+    onSuccess: () => {
+      toast({
+        type: 'success',
+        title: 'تم قبول العذر بنجاح',
+      })
+      void queryClient.invalidateQueries({ queryKey: delayActionsQueryKeys.excusesRoot })
+      void queryClient.invalidateQueries({ queryKey: delayActionsQueryKeys.root })
+    },
+    onError: (error) => {
+      toast({
+        type: 'error',
+        title: 'تعذر قبول العذر',
+        description: error instanceof Error ? error.message : 'حدث خطأ غير متوقع',
+      })
+    },
+  })
+}
+
+/**
+ * رفض عذر
+ */
+export function useRejectExcuseMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload?: ReviewExcusePayload }) =>
+      rejectExcuse(id, payload),
+    onSuccess: () => {
+      toast({
+        type: 'success',
+        title: 'تم رفض العذر',
+      })
+      void queryClient.invalidateQueries({ queryKey: delayActionsQueryKeys.excusesRoot })
+      void queryClient.invalidateQueries({ queryKey: delayActionsQueryKeys.root })
+    },
+    onError: (error) => {
+      toast({
+        type: 'error',
+        title: 'تعذر رفض العذر',
+        description: error instanceof Error ? error.message : 'حدث خطأ غير متوقع',
+      })
+    },
+  })
+}
+
+/**
+ * جلب إعدادات أعذار التأخير
+ */
+export function useDelayExcusesSettingsQuery(options: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: delayActionsQueryKeys.excusesSettings(),
+    queryFn: () => fetchDelayExcusesSettings(),
+    enabled: options.enabled ?? true,
+    staleTime: 60_000,
+  })
+}
+
+/**
+ * تحديث إعدادات أعذار التأخير
+ */
+export function useUpdateDelayExcusesSettingsMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: UpdateDelayExcusesSettingsPayload) => updateDelayExcusesSettings(payload),
+    onSuccess: () => {
+      toast({
+        type: 'success',
+        title: 'تم حفظ إعدادات الأعذار بنجاح',
+      })
+      void queryClient.invalidateQueries({ queryKey: delayActionsQueryKeys.excusesSettings() })
+    },
+    onError: (error) => {
+      toast({
+        type: 'error',
+        title: 'تعذر حفظ إعدادات الأعذار',
+        description: error instanceof Error ? error.message : 'حدث خطأ غير متوقع',
+      })
+    },
+  })
+}
+
+/**
+ * جلب إعدادات المعلمين الفردية
+ */
+export function useTeacherExcuseSettingsQuery(options: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: delayActionsQueryKeys.teacherExcuseSettings(),
+    queryFn: () => fetchTeacherExcuseSettings(),
+    enabled: options.enabled ?? true,
+    staleTime: 60_000,
+  })
+}
+
+/**
+ * تحديث إعدادات معلم فردي
+ */
+export function useUpdateTeacherExcuseSettingMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ userId, payload }: { userId: number; payload: UpdateTeacherExcuseSettingPayload }) =>
+      updateTeacherExcuseSetting(userId, payload),
+    onSuccess: () => {
+      toast({
+        type: 'success',
+        title: 'تم حفظ إعدادات المعلم بنجاح',
+      })
+      void queryClient.invalidateQueries({ queryKey: delayActionsQueryKeys.teacherExcuseSettings() })
+    },
+    onError: (error) => {
+      toast({
+        type: 'error',
+        title: 'تعذر حفظ إعدادات المعلم',
         description: error instanceof Error ? error.message : 'حدث خطأ غير متوقع',
       })
     },

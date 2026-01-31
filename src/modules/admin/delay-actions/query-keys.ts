@@ -32,4 +32,27 @@ export const delayActionsQueryKeys = {
 
   // الإعدادات
   settings: () => ['delay-actions', 'settings'] as const,
+
+  // ==================== مفاتيح أعذار التأخير ====================
+
+  // المفتاح الجذري للأعذار
+  excusesRoot: ['delay-excuses'] as const,
+
+  // قائمة الأعذار
+  excusesList: (filters: Record<string, unknown>) =>
+    ['delay-excuses', 'list', filters] as const,
+
+  // إحصائيات الأعذار
+  excusesStatistics: (fiscalYear?: number) =>
+    ['delay-excuses', 'statistics', fiscalYear ?? 'current'] as const,
+
+  // تفاصيل عذر
+  excuseDetails: (id: number) =>
+    ['delay-excuses', 'details', id] as const,
+
+  // إعدادات الأعذار
+  excusesSettings: () => ['delay-excuses', 'settings'] as const,
+
+  // إعدادات المعلمين الفردية
+  teacherExcuseSettings: () => ['delay-excuses', 'teacher-settings'] as const,
 }

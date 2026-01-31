@@ -20,9 +20,11 @@ import { ActionsHistoryTable } from '../components/actions-history-table'
 import { TeacherDelayDetailsSheet } from '../components/teacher-delay-details-sheet'
 import { ActionConfirmationDialog } from '../components/action-confirmation-dialog'
 import { DelayActionsSettingsDialog } from '../components/delay-actions-settings-dialog'
+import { DelayExcusesTab } from '../components/delay-excuses-tab'
+import { DelayExcusesSettingsDialog } from '../components/delay-excuses-settings-dialog'
 import type { DelayActionType, DelayActionsFilters, DelayActionsHistoryFilters } from '../types'
 
-type ActiveTab = 'pending' | 'history'
+type ActiveTab = 'pending' | 'history' | 'excuses'
 
 export function AdminDelayActionsPage() {
   const currentYear = new Date().getFullYear()
@@ -47,6 +49,7 @@ export function AdminDelayActionsPage() {
   const isReadOnly = selectedYear !== currentYear
   const [selectedTeacherId, setSelectedTeacherId] = useState<number | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [excusesSettingsOpen, setExcusesSettingsOpen] = useState(false)
   const [pendingAction, setPendingAction] = useState<{
     type: DelayActionType
     userId: number
@@ -255,6 +258,30 @@ export function AdminDelayActionsPage() {
               <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />
             )}
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('excuses')}
+            className={`relative px-4 py-3 text-sm font-semibold transition ${
+              activeTab === 'excuses'
+                ? 'text-indigo-600'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            أعذار التأخير
+            {activeTab === 'excuses' && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />
+            )}
+          </button>
+          {activeTab === 'excuses' && (
+            <button
+              type="button"
+              onClick={() => setExcusesSettingsOpen(true)}
+              className="mr-auto inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50"
+            >
+              <Settings className="h-3.5 w-3.5" />
+              إعدادات الأعذار
+            </button>
+          )}
         </div>
 
         {/* Filters */}
@@ -291,7 +318,7 @@ export function AdminDelayActionsPage() {
               </div>
             </div>
           </div>
-        ) : (
+        ) : activeTab === 'history' ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="space-y-2 text-right">
               <label className="text-xs font-semibold text-slate-600">نوع الإجراء</label>
@@ -311,7 +338,7 @@ export function AdminDelayActionsPage() {
               </div>
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* Tables */}
         {activeTab === 'pending' ? (
@@ -322,13 +349,18 @@ export function AdminDelayActionsPage() {
             onRecordAction={handleRecordAction}
             readOnly={isReadOnly}
           />
-        ) : (
+        ) : activeTab === 'history' ? (
           <ActionsHistoryTable
             data={historyList}
             meta={historyMeta}
             isLoading={historyQuery.isLoading}
             onPageChange={(page) => handleHistoryFilterChange('page', page)}
             onMarkSigned={handleMarkSigned}
+          />
+        ) : (
+          <DelayExcusesTab
+            fiscalYear={selectedYear}
+            readOnly={isReadOnly}
           />
         )}
       </div>
@@ -358,6 +390,12 @@ export function AdminDelayActionsPage() {
       <DelayActionsSettingsDialog
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
+      />
+
+      {/* Excuses Settings Dialog */}
+      <DelayExcusesSettingsDialog
+        open={excusesSettingsOpen}
+        onOpenChange={setExcusesSettingsOpen}
       />
     </section>
   )

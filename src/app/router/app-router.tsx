@@ -91,6 +91,7 @@ import { AdminSupportPage } from '@/modules/admin/pages/admin-support-page'
 import { AdminActivitiesPage } from '@/modules/activities/pages/admin-activities-page'
 import { TeacherActivitiesPage } from '@/modules/activities/pages/teacher-activities-page'
 import { TeacherReferralsPage } from '@/modules/teacher/pages/teacher-referrals-page'
+import { TeacherDelayExcusesPage } from '@/modules/teacher/pages/teacher-delay-excuses-page'
 import { NewReferralPage } from '@/modules/teacher/pages/new-referral-page'
 import { ReferralDetailPage } from '@/modules/teacher/pages/referral-detail-page'
 import { TeacherCoverageRequestPage } from '@/modules/teacher/pages/teacher-coverage-request-page'
@@ -183,6 +184,7 @@ const appRoutes = [
           { path: 'referrals', element: <TeacherReferralsPage /> },
           { path: 'referrals/new', element: <NewReferralPage /> },
           { path: 'referrals/:id', element: <ReferralDetailPage /> },
+          { path: 'delay-excuses', element: <TeacherDelayExcusesPage /> },
           { path: 'coverage-request', element: <TeacherCoverageRequestPage /> },
           { path: 'coverage-incoming', element: <TeacherCoverageIncomingPage /> },
           { path: 'sessions/:sessionId', element: <TeacherSessionAttendancePage /> },

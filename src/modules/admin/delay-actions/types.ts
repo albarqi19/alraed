@@ -193,3 +193,112 @@ export interface UpdateDelayActionsSettingsPayload {
   delay_warning_template_id?: number | null
   delay_deduction_template_id?: number | null
 }
+
+// ==================== أنواع أعذار التأخير ====================
+
+export type ExcuseStatus = 'pending' | 'approved' | 'rejected'
+
+// بيانات عذر تأخير
+export interface DelayExcuse {
+  id: number
+  user_id: number
+  teacher_name: string
+  teacher_phone: string | null
+  national_id: string | null
+  delay_date: string
+  delay_date_formatted: string
+  delay_minutes: number
+  excuse_text: string
+  status: ExcuseStatus
+  status_label: string
+  status_color: string
+  submitted_at: string
+  reviewed_at: string | null
+  review_notes: string | null
+  reviewer_name: string | null
+  fiscal_year: number
+  attendance?: {
+    check_in_time: string | null
+  }
+}
+
+// إحصائيات أعذار التأخير
+export interface DelayExcusesStatistics {
+  total_excuses: number
+  pending_excuses: number
+  approved_excuses: number
+  rejected_excuses: number
+  fiscal_year: number
+}
+
+// إعدادات أعذار التأخير
+export interface DelayExcusesSettings {
+  delay_excuses_enabled: boolean
+  excuse_submission_days: number
+  excuse_allowed_days: number[]
+  excuse_start_time: string
+  excuse_end_time: string
+}
+
+// إعدادات معلم فردية
+export interface TeacherExcuseSetting {
+  user_id: number
+  teacher_name: string
+  national_id: string | null
+  excuses_enabled: boolean
+  notes: string | null
+}
+
+// فلاتر قائمة الأعذار
+export interface DelayExcusesFilters {
+  fiscal_year?: number
+  status?: ExcuseStatus | 'all'
+  search?: string
+  page?: number
+  per_page?: number
+}
+
+// استجابة قائمة الأعذار
+export interface DelayExcusesListResponse {
+  success: boolean
+  data: DelayExcuse[]
+  meta: PaginationMeta
+}
+
+// استجابة إحصائيات الأعذار
+export interface DelayExcusesStatisticsResponse {
+  success: boolean
+  data: DelayExcusesStatistics
+}
+
+// استجابة إعدادات الأعذار
+export interface DelayExcusesSettingsResponse {
+  success: boolean
+  data: DelayExcusesSettings
+}
+
+// استجابة إعدادات المعلمين
+export interface TeacherExcuseSettingsResponse {
+  success: boolean
+  data: TeacherExcuseSetting[]
+}
+
+// بيانات مراجعة العذر
+export interface ReviewExcusePayload {
+  notes?: string | null
+}
+
+// بيانات تحديث إعدادات الأعذار
+export interface UpdateDelayExcusesSettingsPayload {
+  delay_excuses_enabled?: boolean
+  excuse_submission_days?: number
+  excuse_allowed_days?: number[]
+  excuse_start_time?: string
+  excuse_end_time?: string
+}
+
+// بيانات تحديث إعدادات معلم
+export interface UpdateTeacherExcuseSettingPayload {
+  excuses_enabled: boolean
+  notes?: string | null
+}
