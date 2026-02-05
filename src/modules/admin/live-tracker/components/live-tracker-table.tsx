@@ -91,9 +91,8 @@ export function LiveTrackerTable({
       },
     })
 
-    // أعمدة الفترات (استثناء الحصة 8 إن وجدت)
+    // أعمدة الفترات
     const periodColumns = data.periods
-      .filter((period: TrackerPeriod) => period.number !== 8)
       .map((period: TrackerPeriod) =>
       columnHelper.display({
         id: period.column_id,  // استخدام column_id بدلاً من period.number

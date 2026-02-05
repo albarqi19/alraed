@@ -12,7 +12,7 @@ interface TimeColumnHeaderProps {
   isCurrentPeriod?: boolean
 }
 
-export function TimeColumnHeader({ period, schedules, isCurrentPeriod }: TimeColumnHeaderProps) {
+export function TimeColumnHeader({ period, schedules: _schedules, isCurrentPeriod }: TimeColumnHeaderProps) {
   // تحديد لون مؤشر التوقيت
   const getLevelColor = (level: string | null | undefined) => {
     if (level === 'upper') return 'bg-blue-500'
@@ -20,7 +20,7 @@ export function TimeColumnHeader({ period, schedules, isCurrentPeriod }: TimeCol
     return 'bg-slate-400'
   }
 
-  // للفترات المتداخلة: عرض التوقيت الخاص بها فقط
+  // للفترات المتداخلة: عرض التوقيت الخاص بها مع مؤشر المرحلة
   if (period.is_overlapping && period.start_time && period.end_time) {
     return (
       <div
@@ -53,23 +53,7 @@ export function TimeColumnHeader({ period, schedules, isCurrentPeriod }: TimeCol
     )
   }
 
-  // للفترات الموحدة: عرض الأوقات من كل التوقيتات
-  const getScheduleTimes = () => {
-    return schedules.map((schedule) => {
-      const schedulePeriod = schedule.periods.find((p) => p.number === period.number)
-      return {
-        schedule_id: schedule.id,
-        schedule_name: schedule.name,
-        target_level: schedule.target_level,
-        start_time: schedulePeriod?.start_time || '',
-        end_time: schedulePeriod?.end_time || '',
-      }
-    })
-  }
-
-  const scheduleTimes = getScheduleTimes()
-  const hasMultipleSchedules = scheduleTimes.length > 1
-
+  // للفترات الموحدة: عرض الوقت مباشرة من بيانات الفترة
   return (
     <div
       className={cn(
@@ -87,23 +71,10 @@ export function TimeColumnHeader({ period, schedules, isCurrentPeriod }: TimeCol
         {period.name}
       </span>
 
-      {/* الأوقات */}
-      <div className="flex flex-col items-center gap-0.5">
-        {scheduleTimes.map((time) => (
-          <div key={time.schedule_id} className="flex items-center gap-1">
-            {/* مؤشر التوقيت إذا كان هناك أكثر من توقيت */}
-            {hasMultipleSchedules && (
-              <span
-                className={cn('h-2 w-2 rounded-full', getLevelColor(time.target_level))}
-                title={time.schedule_name}
-              />
-            )}
-            <span className="text-[10px] text-slate-500">
-              {time.start_time && time.end_time ? `${time.start_time} - ${time.end_time}` : '—'}
-            </span>
-          </div>
-        ))}
-      </div>
+      {/* الوقت */}
+      <span className="text-[10px] text-slate-500">
+        {period.start_time && period.end_time ? `${period.start_time} - ${period.end_time}` : '—'}
+      </span>
     </div>
   )
 }
