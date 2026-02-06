@@ -502,7 +502,7 @@ const DelayInquiryTemplate = ({ data }: { data: InquiryTemplateData }) => (
 
       <div className="signature-row">
         <div className="signature-block">
-          <p>قائد المدرسة :</p>
+          <p>مدير المدرسة :</p>
           <div className="signature-line" />
           <p>
             التاريخ :
@@ -514,7 +514,7 @@ const DelayInquiryTemplate = ({ data }: { data: InquiryTemplateData }) => (
     </section>
 
     <section className="inquiry-section">
-      <p>المكرم قائد المدرسة</p>
+      <p>المكرم مدير المدرسة</p>
       <p>السلام عليكم ورحمة الله وبركاته وبعد :</p>
       <p>أفيدكم أن أسباب ذلك ما يلي :</p>
       <div className="reason-lines">
@@ -540,7 +540,7 @@ const DelayInquiryTemplate = ({ data }: { data: InquiryTemplateData }) => (
     </section>
 
     <section className="inquiry-section">
-      <p>رأي قائد المدرسة :</p>
+      <p>رأي مدير المدرسة :</p>
       <div className="decision-row">
         <span className="inquiry-footer-line">
           <span className="inquiry-checkbox unchecked">☐</span>
@@ -553,7 +553,7 @@ const DelayInquiryTemplate = ({ data }: { data: InquiryTemplateData }) => (
       </div>
       <div className="signature-row">
         <div className="signature-block">
-          <p>قائد المدرسة :</p>
+          <p>مدير المدرسة :</p>
           <div className="signature-line" />
           <p>التاريخ : ____________</p>
         </div>
@@ -649,14 +649,14 @@ const AbsenceInquiryTemplate = ({ data }: { data: InquiryTemplateData }) => (
         </p>
       </div>
       <div className="absence-signature-block">
-        <p>اسم قائد المدرسة :</p>
+        <p>اسم مدير المدرسة :</p>
         <div className="absence-signature-line" />
         <p>التاريخ : ____________</p>
       </div>
     </section>
 
     <section className="absence-teacher-reply">
-      <p>المكرم قائد المدرسة</p>
+      <p>المكرم مدير المدرسة</p>
       <p>السلام عليكم ورحمة الله وبركاته وبعد :</p>
       <p>أفيدكم بأن سبب الغياب هو :</p>
       <div className="absence-notes" />
@@ -677,11 +677,11 @@ const AbsenceInquiryTemplate = ({ data }: { data: InquiryTemplateData }) => (
     </section>
 
     <section className="absence-leadership">
-      <p>رأي قائد المدرسة :</p>
+      <p>رأي مدير المدرسة :</p>
       <div className="absence-notes" />
       <div className="absence-signature-row">
         <div className="absence-signature-block">
-          <p>اسم قائد المدرسة :</p>
+          <p>اسم مدير المدرسة :</p>
           <div className="absence-signature-line" />
         </div>
         <div className="absence-signature-block">

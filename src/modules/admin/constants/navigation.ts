@@ -48,6 +48,8 @@ import {
   FileWarning, // أيقونة إجراءات التأخير
   HeartPulse, // أيقونة نبض الفريق
   BarChart3, // أيقونة تقرير مدرستي
+  ScanLine, // أيقونة حضور البوابة
+  Printer, // أيقونة طباعة الباركود
 } from 'lucide-react'
 
 export interface AdminNavItem {
@@ -83,6 +85,7 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
       { to: '/admin/forms', label: 'النماذج الإلكترونية', icon: FileText, permission: 'admin.forms' },
       { to: '/admin/students/profile', label: 'ملف الطالب', icon: IdCard, permission: 'admin.students' },
       { to: '/admin/subjects', label: 'إدارة المواد', icon: BookOpen, permission: 'admin.subjects' },
+      { to: '/admin/evaluation-settings', label: 'تقييم الطلاب', icon: ClipboardPen, permission: 'admin.evaluation-settings' },
       { to: '/admin/import', label: 'استيراد البيانات', icon: Upload, permission: 'admin.import' },
     ],
   },
@@ -104,10 +107,14 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
       { to: '/admin/attendance', label: 'تقارير الحضور', icon: ClipboardCheck, permission: 'admin.attendance' },
       { to: '/admin/attendance-report', label: 'كشف الغياب', icon: FileText, permission: 'admin.attendance-report' },
       { to: '/admin/approval', label: 'اعتماد التحضير', icon: UserCheck, permission: 'admin.approval' },
+      { to: '/admin/period-attendance', label: 'تحضير الحصص', icon: BookOpenCheck, permission: 'admin.period-attendance' },
       { to: '/admin/absence-messages', label: 'إدارة رسائل الغياب', icon: MessageCircle, permission: 'admin.absence-messages' },
       { to: '/admin/late-arrivals', label: 'إدارة التأخير', icon: Timer, permission: 'admin.late-arrivals' },
       { to: '/admin/absence-excuses', label: 'أعذار الغياب', icon: FileCheck, permission: 'admin.absence-excuses' },
       { to: '/admin/leave-requests', label: 'طلبات الاستئذان', icon: DoorOpen, permission: 'admin.leave-requests' },
+      { to: '/admin/barcode-attendance', label: 'حضور الباركود', icon: ScanLine, permission: 'admin.barcode-attendance' },
+      { to: '/admin/barcode-settings', label: 'إعدادات البوابة', icon: Settings, permission: 'admin.barcode-settings' },
+      { to: '/admin/barcode-print', label: 'طباعة الباركود', icon: Printer, permission: 'admin.barcode-print' },
     ],
   },
   {

@@ -81,7 +81,7 @@ export function TeacherDashboardPage() {
       setAlertModal({
         type: 'error',
         icon: '⏰',
-        text: 'هذه الحصة قد انتهت بالفعل. لا يمكن فتح صفحة التحضير للحصص المنتهية.'
+        text: 'هذه الحصة قد انتهت بالفعل. لا يمكن فتح الحصة المنتهية.'
       })
       return
     }
@@ -91,7 +91,7 @@ export function TeacherDashboardPage() {
       setAlertModal({
         type: 'warning',
         icon: '⏳',
-        text: 'لم يحن وقت هذه الحصة بعد. يمكنك فتح صفحة التحضير قبل بداية الحصة بـ 15 دقيقة.'
+        text: 'لم يحن وقت هذه الحصة بعد. يمكنك فتح الحصة قبل بدايتها بـ 15 دقيقة.'
       })
       return
     }
@@ -222,7 +222,7 @@ export function TeacherDashboardPage() {
                   'text-sm font-semibold',
                   actionableSession.is_standby ? 'text-orange-700' : 'text-emerald-700'
                 )}>
-                  {actionableSession.is_standby ? 'حصة انتظار متاحة للتحضير' : 'الحصة المتاحة للتحضير الآن'}
+                  {actionableSession.is_standby ? 'حصة انتظار متاحة الآن' : 'الحصة المتاحة الآن'}
                 </p>
                 {actionableSession.is_standby && (
                   <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700">
@@ -265,7 +265,7 @@ export function TeacherDashboardPage() {
               )}
               onClick={(e) => handleSessionClick(actionableSession, e)}
             >
-              {actionableSession.is_current ? 'ابدأ التحضير الآن' : 'فتح صفحة التحضير'}
+              {actionableSession.is_current ? 'فتح الحصة' : 'فتح الحصة'}
             </Link>
           </div>
         </article>
@@ -347,7 +347,7 @@ export function TeacherDashboardPage() {
                       )}
                       onClick={(e) => handleSessionClick(session, e)}
                     >
-                      فتح صفحة التحضير
+                      فتح الحصة
                     </Link>
                   ) : (
                     <Link
@@ -355,7 +355,7 @@ export function TeacherDashboardPage() {
                       className="button-secondary mt-auto w-full opacity-70"
                       onClick={(e) => handleSessionClick(session, e)}
                     >
-                      فتح صفحة التحضير
+                      فتح الحصة
                     </Link>
                   )}
                 </article>

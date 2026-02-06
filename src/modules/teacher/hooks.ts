@@ -42,7 +42,10 @@ export function useSubmitAttendanceMutation(sessionId: number) {
   return useMutation({
     mutationFn: (attendance: AttendanceFormState) => submitTeacherAttendance(sessionId, attendance),
     onSuccess: (response) => {
-      toast({ type: 'success', title: `تم حفظ التحضير (${response.saved_count}) طالب` })
+      const msg = response.attendance_type === 'period'
+        ? `تم حفظ تحضير الحصة (${response.saved_count}) طالب (التحضير اليومي مسجل مسبقاً)`
+        : `تم حفظ التحضير اليومي (${response.saved_count}) طالب`
+      toast({ type: 'success', title: msg })
       queryClient.invalidateQueries({
         queryKey: ['teacher', 'sessions', sessionId, 'submitted-attendance'],
       })

@@ -52,6 +52,7 @@ export type AttendanceFormState = Record<number, AttendanceStatus>
 
 export interface SubmitAttendanceResponse {
   saved_count: number
+  attendance_type?: 'daily' | 'period'
   errors?: string[]
 }
 

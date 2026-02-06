@@ -50,6 +50,7 @@ interface RawSubmitAttendanceResponse {
   success: boolean
   message?: string
   saved_count?: number
+  attendance_type?: 'daily' | 'period'
   errors?: string[]
 }
 
@@ -75,6 +76,7 @@ export async function submitTeacherAttendance(
 
     return {
       saved_count: data.saved_count ?? Object.keys(attendance).length,
+      attendance_type: data.attendance_type,
       errors: data.errors,
     }
   } catch (error) {

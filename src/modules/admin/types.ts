@@ -1876,3 +1876,80 @@ export interface TimeTableConfirmResponse {
   message: string
   stats: TimeTableConfirmStats
 }
+
+// ========== تحضير الحصص (Period Attendance) ==========
+
+export interface PeriodHeader {
+  period_number: number
+  name: string
+  start_time: string | null
+  end_time: string | null
+}
+
+export interface PeriodCell {
+  status: 'submitted' | 'not_submitted' | 'no_session'
+  attendance_type: 'daily' | 'period' | null
+  present: number
+  absent: number
+  late: number
+  alerts_count: number
+  teacher_name: string | null
+  subject_name: string | null
+  class_session_id?: number
+}
+
+export interface ClassPeriodRow {
+  grade: string
+  class_name: string
+  periods: Record<number, PeriodCell>
+}
+
+export interface PeriodAttendanceGrid {
+  classes: ClassPeriodRow[]
+  period_headers: PeriodHeader[]
+  date: string
+  day_name: string
+}
+
+export interface PeriodAttendanceStudent {
+  id: number
+  student_id: number
+  student_name: string
+  student_number: string | null
+  period_status: 'present' | 'absent' | 'late'
+  daily_status: 'present' | 'absent' | 'late' | null
+  attendance_type: 'daily' | 'period'
+  late_minutes: number | null
+  has_alert: boolean
+  alert_status: 'new' | 'seen' | 'resolved' | null
+}
+
+export interface PeriodAttendanceDetails {
+  students: PeriodAttendanceStudent[]
+  summary: {
+    total: number
+    present: number
+    absent: number
+    late: number
+  }
+  session_info: {
+    grade: string
+    class_name: string
+    period_number: number
+    subject_name: string | null
+    teacher_name: string | null
+  }
+}
+
+export interface PeriodAbsenceAlert {
+  id: number
+  student_id: number
+  student_name: string
+  period_number: number
+  subject_name: string | null
+  teacher_name: string | null
+  grade: string
+  class_name: string
+  alert_status: 'new' | 'seen' | 'resolved'
+  created_at: string | null
+}

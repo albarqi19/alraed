@@ -97,6 +97,7 @@ import { NewReferralPage } from '@/modules/teacher/pages/new-referral-page'
 import { ReferralDetailPage } from '@/modules/teacher/pages/referral-detail-page'
 import { TeacherCoverageRequestPage } from '@/modules/teacher/pages/teacher-coverage-request-page'
 import { TeacherCoverageIncomingPage } from '@/modules/teacher/pages/teacher-coverage-incoming-page'
+import { TeacherSkillsPage } from '@/modules/teacher/pages/teacher-skills-page'
 import { AdminReferralsPage } from '@/modules/admin/pages/admin-referrals-page'
 import { AdminReferralDetailPage } from '@/modules/admin/pages/admin-referral-detail-page'
 import { AdminParentRepliesPage } from '@/modules/admin/pages/admin-parent-replies-page'
@@ -113,11 +114,16 @@ import {
 } from '@/modules/guidance/pages'
 import AdminFCMTestPage from '@/modules/admin/pages/admin-fcm-test-page'
 import { AdminScheduleSimulatorPage } from '@/modules/admin/pages/admin-schedule-simulator-page'
+import { AdminEvaluationSettingsPage } from '@/modules/admin/pages/admin-evaluation-settings-page'
 import { AdminDelayActionsPage } from '@/modules/admin/delay-actions'
 import { AdminTeamPulsePage } from '@/modules/admin/pages/admin-team-pulse-page'
 import { LiveTrackerPage } from '@/modules/admin/pages/live-tracker-page'
 import { AdminMadrasatiReportPage } from '@/modules/admin/pages/admin-madrasati-report-page'
 import { AdminMadrasatiTeacherPage } from '@/modules/admin/pages/admin-madrasati-teacher-page'
+import { AdminBarcodeAttendancePage } from '@/modules/admin/pages/admin-barcode-attendance-page'
+import { AdminBarcodeSettingsPage } from '@/modules/admin/pages/admin-barcode-settings-page'
+import { AdminBarcodePrintPage } from '@/modules/admin/pages/admin-barcode-print-page'
+import { AdminPeriodAttendancePage } from '@/modules/admin/pages/admin-period-attendance-page'
 
 const appRoutes = [
   {
@@ -189,6 +195,7 @@ const appRoutes = [
           { path: 'delay-excuses', element: <TeacherDelayExcusesPage /> },
           { path: 'coverage-request', element: <TeacherCoverageRequestPage /> },
           { path: 'coverage-incoming', element: <TeacherCoverageIncomingPage /> },
+          { path: 'skills', element: <TeacherSkillsPage /> },
           { path: 'sessions/:sessionId', element: <TeacherSessionAttendancePage /> },
         ],
       },
@@ -230,6 +237,10 @@ const appRoutes = [
           { path: 'duty-rosters', element: <AdminDutyRostersPage /> },
           { path: 'teacher-standby', element: <AdminTeacherStandbyPage /> },
           { path: 'leave-requests', element: <AdminLeaveRequestsPage /> },
+          { path: 'barcode-attendance', element: <AdminBarcodeAttendancePage /> },
+          { path: 'barcode-settings', element: <AdminBarcodeSettingsPage /> },
+          { path: 'barcode-print', element: <AdminBarcodePrintPage /> },
+          { path: 'period-attendance', element: <AdminPeriodAttendancePage /> },
           { path: 'behavior', element: <AdminBehaviorPage /> },
           { path: 'behavior/:violationId', element: <AdminBehaviorDetailPage /> },
           { path: 'behavior/plans', element: <AdminBehaviorPlansPage /> },
@@ -268,6 +279,7 @@ const appRoutes = [
           { path: 'parent-replies', element: <AdminParentRepliesPage /> },
           { path: 'fcm-test', element: <AdminFCMTestPage /> },
           { path: 'schedule-simulator', element: <AdminScheduleSimulatorPage /> },
+          { path: 'evaluation-settings', element: <AdminEvaluationSettingsPage /> },
         ],
       },
       {
