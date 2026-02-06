@@ -1,13 +1,13 @@
 import { useState, useMemo, useCallback } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Plus, Loader2, Trash2, BookOpen, X } from 'lucide-react'
+import { Loader2, Trash2, BookOpen, ExternalLink } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import {
   useSessionEvaluationConfig,
   useStudentEvaluations,
   useSaveEvaluationMutation,
   useBulkEvaluationMutation,
   useRemoveEvaluationMutation,
-  useCreateSubjectSkillMutation,
 } from '../hooks'
 import type { BehaviorType, SubjectSkill, StudentEvaluation } from '../types'
 import { DESCRIPTIVE_GRADES } from '../types'
@@ -200,72 +200,22 @@ function SkillItem({
   )
 }
 
-/* ─────── AddSkillInline ─────── */
-function AddSkillInline({
-  subjectId,
-  onCreated,
-}: {
-  subjectId: number
-  onCreated: () => void
-}) {
-  const [isAdding, setIsAdding] = useState(false)
-  const [name, setName] = useState('')
-  const createMutation = useCreateSubjectSkillMutation(subjectId)
-
-  const handleSubmit = () => {
-    if (!name.trim()) return
-    createMutation.mutate(
-      { name: name.trim(), category: 'positive' },
-      {
-        onSuccess: () => {
-          setName('')
-          setIsAdding(false)
-          onCreated()
-        },
-      },
-    )
-  }
-
-  if (!isAdding) {
-    return (
-      <button
-        type="button"
-        onClick={() => setIsAdding(true)}
-        className="flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-200 py-2.5 text-xs text-slate-400 transition hover:border-teal-300 hover:text-teal-500"
-      >
-        <Plus className="h-3.5 w-3.5" />
-        إضافة مهارة جديدة
-      </button>
-    )
-  }
+/* ─────── AddSkillRedirect ─────── */
+function AddSkillRedirect({ onClose }: { onClose: () => void }) {
+  const navigate = useNavigate()
 
   return (
-    <div className="flex items-center gap-2 rounded-xl border border-teal-200 bg-teal-50/50 p-2">
-      <input
-        type="text"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-        className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm focus:border-teal-500 focus:outline-none"
-        placeholder="اسم المهارة..."
-        autoFocus
-      />
-      <button
-        type="button"
-        disabled={createMutation.isPending || !name.trim()}
-        onClick={handleSubmit}
-        className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-      >
-        {createMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'إضافة'}
-      </button>
-      <button
-        type="button"
-        onClick={() => { setIsAdding(false); setName('') }}
-        className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"
-      >
-        <X className="h-3.5 w-3.5" />
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={() => {
+        onClose()
+        navigate('/teacher/skills')
+      }}
+      className="flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-200 py-2.5 text-xs text-slate-400 transition hover:border-teal-300 hover:text-teal-500"
+    >
+      <ExternalLink className="h-3.5 w-3.5" />
+      إضافة مهارة من صفحة إدارة المهارات
+    </button>
   )
 }
 
@@ -620,16 +570,13 @@ export function StudentEvaluationSheet({
                           <div className="flex flex-col items-center gap-2 py-6 text-center">
                             <BookOpen className="h-8 w-8 text-slate-300" />
                             <p className="text-sm text-slate-500">لا توجد مهارات لهذه المادة</p>
-                            <p className="text-xs text-slate-400">أضف مهارات خاصة بك من الزر أدناه</p>
+                            <p className="text-xs text-slate-400">أضف مهارات من خدمات ← إدارة المهارات</p>
                           </div>
                         )}
 
-                        {/* إضافة مهارة جديدة */}
+                        {/* إضافة مهارة من صفحة إدارة المهارات */}
                         {subjectId && (
-                          <AddSkillInline
-                            subjectId={subjectId}
-                            onCreated={() => configQuery.refetch()}
-                          />
+                          <AddSkillRedirect onClose={onClose} />
                         )}
                       </motion.div>
                     )}

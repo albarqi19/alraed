@@ -12,6 +12,7 @@ import {
   StudentEvaluationSheet,
   EvaluationBadges,
 } from '../evaluation/components/student-evaluation-sheet'
+import { EvaluationOnboardingSheet } from '../evaluation/components/evaluation-onboarding-sheet'
 import type { AttendanceFormState, AttendanceStatus, TeacherSession, TeacherSessionStudent } from '../types'
 
 function buildDefaultAttendance(students: Array<{ id: number }>): AttendanceFormState {
@@ -347,17 +348,20 @@ export function TeacherSessionAttendancePage() {
 
       {/* ═══ Bottom Sheet التقييم (مخفي لمعلم الانتظار) ═══ */}
       {!isStandby && (
-        <StudentEvaluationSheet
-          isOpen={sheetOpen}
-          onClose={() => {
-            setSheetOpen(false)
-            setSheetStudents([])
-            if (selectionMode) cancelSelection()
-          }}
-          students={sheetStudents}
-          sessionId={numericSessionId}
-          subjectId={getSubjectId(session)}
-        />
+        <>
+          <StudentEvaluationSheet
+            isOpen={sheetOpen}
+            onClose={() => {
+              setSheetOpen(false)
+              setSheetStudents([])
+              if (selectionMode) cancelSelection()
+            }}
+            students={sheetStudents}
+            sessionId={numericSessionId}
+            subjectId={getSubjectId(session)}
+          />
+          <EvaluationOnboardingSheet />
+        </>
       )}
     </section>
   )
