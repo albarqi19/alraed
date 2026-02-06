@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import QRCode from 'qrcode'
 import {
+  useAdminSettingsQuery,
   useApproveLeaveRequestMutation,
   useCancelLeaveRequestMutation,
   useCreateLeaveRequestMutation,
@@ -8,7 +9,6 @@ import {
   useRejectLeaveRequestMutation,
   useStudentsQuery,
 } from '../hooks'
-import { useGuardianSettingsQuery } from '../../guardian/hooks'
 import type {
   LeaveRequestFilters,
   LeaveRequestRecord,
@@ -791,7 +791,7 @@ export function AdminLeaveRequestsPage() {
   const [actionDialog, setActionDialog] = useState<ActionDialogState>(null)
   const [selectedRequest, setSelectedRequest] = useState<LeaveRequestRecord | null>(null)
   const [isGeneratingPrintSheet, setIsGeneratingPrintSheet] = useState(false)
-  const guardianSettingsQuery = useGuardianSettingsQuery()
+  const adminSettingsQuery = useAdminSettingsQuery()
 
   useEffect(() => {
     setPage(1)
@@ -914,15 +914,15 @@ export function AdminLeaveRequestsPage() {
       setIsGeneratingPrintSheet(true)
       const guardianUrl = new URL('/guardian/leave-request', window.location.origin).toString()
 
-      let settings = guardianSettingsQuery.data
-      if (!settings) {
-        const result = await guardianSettingsQuery.refetch()
+      let adminSettings = adminSettingsQuery.data
+      if (!adminSettings) {
+        const result = await adminSettingsQuery.refetch()
         if (result.data) {
-          settings = result.data
+          adminSettings = result.data
         }
       }
 
-      const schoolName = settings?.school_name?.trim()?.length ? settings.school_name : 'المدرسة'
+      const schoolName = adminSettings?.school_name?.trim()?.length ? adminSettings.school_name : 'المدرسة'
 
       const qrDataUrl = await QRCode.toDataURL(guardianUrl, {
         margin: 2,
@@ -979,11 +979,11 @@ export function AdminLeaveRequestsPage() {
     <section>
       <h2>خطوات الاستخدام</h2>
       <ol>
-        <li>يقوم ولي الأمر بمسح رمز QR أدناه.</li>
-        <li>إدخال رقم هوية الطالب للتحقق من البيانات.</li>
-        <li>مراجعة بيانات الطالب والتأكد من صحتها قبل المتابعة.</li>
-        <li>تعبئة سبب الاستئذان ومعلومات الشخص الذي سيستلم الطالب مع وقت الانصراف المتوقع.</li>
-        <li>إرسال الطلب ومتابعة حالته من نفس الصفحة عند الحاجة.</li>
+        <li>يقوم ولي الأمر بمسح رمز QR أدناه بكاميرا الجوال.</li>
+        <li>إدخال رقم هوية الطالب وآخر 4 أرقام من جوال ولي الأمر المسجل لدى المدرسة.</li>
+        <li>مراجعة بيانات الطالب (الاسم، الصف، الفصل) والتأكد من صحتها، ثم اختيار "طلب الاستئذان".</li>
+        <li>تعبئة سبب الاستئذان، واسم الشخص الذي سيستلم الطالب، وموعد الانصراف المتوقع.</li>
+        <li>إرسال الطلب ومتابعة حالته (بانتظار المراجعة / موافقة / رفض) من نفس الصفحة.</li>
       </ol>
     </section>
     <div class="qr-container">
