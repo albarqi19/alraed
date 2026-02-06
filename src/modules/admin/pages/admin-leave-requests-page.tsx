@@ -193,7 +193,7 @@ function CreateLeaveRequestDialog({
     expected_pickup_time: '',
     guardian_name: '',
     guardian_phone: '',
-    status: 'pending',
+    status: 'approved',
     decision_notes: '',
   })
   const [errors, setErrors] = useState<Record<keyof CreateRequestFormValues, string | null>>({
@@ -209,6 +209,10 @@ function CreateLeaveRequestDialog({
     decision_notes: null,
   })
 
+  const [studentSearch, setStudentSearch] = useState('')
+  const [gradeFilter, setGradeFilter] = useState('')
+  const [classFilter, setClassFilter] = useState('')
+
   useEffect(() => {
     if (!open) return
     setValues({
@@ -220,7 +224,7 @@ function CreateLeaveRequestDialog({
       expected_pickup_time: '',
       guardian_name: '',
       guardian_phone: '',
-      status: 'pending',
+      status: 'approved',
       decision_notes: '',
     })
     setErrors({
@@ -235,6 +239,9 @@ function CreateLeaveRequestDialog({
       status: null,
       decision_notes: null,
     })
+    setStudentSearch('')
+    setGradeFilter('')
+    setClassFilter('')
   }, [open])
 
   useEffect(() => {
@@ -252,7 +259,24 @@ function CreateLeaveRequestDialog({
 
   if (!open) return null
 
-  const studentOptions = (students ?? []).slice().sort((a, b) => a.name.localeCompare(b.name, 'ar'))
+  const allStudents = (students ?? []).slice().sort((a, b) => a.name.localeCompare(b.name, 'ar'))
+
+  const grades = [...new Set(allStudents.map((s) => s.grade))].sort((a, b) => a.localeCompare(b, 'ar'))
+  const classes = [...new Set(
+    allStudents
+      .filter((s) => !gradeFilter || s.grade === gradeFilter)
+      .map((s) => s.class_name),
+  )].sort((a, b) => a.localeCompare(b, 'ar'))
+
+  const studentOptions = allStudents.filter((s) => {
+    if (gradeFilter && s.grade !== gradeFilter) return false
+    if (classFilter && s.class_name !== classFilter) return false
+    if (studentSearch) {
+      const q = studentSearch.trim().toLowerCase()
+      return s.name.toLowerCase().includes(q) || s.national_id?.includes(q)
+    }
+    return true
+  })
 
   const handleChange = <K extends keyof CreateRequestFormValues>(field: K, value: CreateRequestFormValues[K]) => {
     setValues((prev) => ({
@@ -332,6 +356,34 @@ function CreateLeaveRequestDialog({
           <section className="space-y-4">
             <div className="space-y-2">
               <label className="text-xs font-semibold text-slate-600">الطالب</label>
+              <div className="grid grid-cols-2 gap-2">
+                <select
+                  value={gradeFilter}
+                  onChange={(event) => { setGradeFilter(event.target.value); setClassFilter(''); handleChange('student_id', '') }}
+                  className="rounded-2xl border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  disabled={isSubmitting}
+                >
+                  <option value="">كل الصفوف</option>
+                  {grades.map((g) => <option key={g} value={g}>{g}</option>)}
+                </select>
+                <select
+                  value={classFilter}
+                  onChange={(event) => { setClassFilter(event.target.value); handleChange('student_id', '') }}
+                  className="rounded-2xl border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  disabled={isSubmitting}
+                >
+                  <option value="">كل الفصول</option>
+                  {classes.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <input
+                type="text"
+                value={studentSearch}
+                onChange={(event) => setStudentSearch(event.target.value)}
+                className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                placeholder="ابحث باسم الطالب أو رقم الهوية..."
+                disabled={isSubmitting}
+              />
               <div className="flex items-center gap-2">
                 <select
                   value={values.student_id}
@@ -339,10 +391,10 @@ function CreateLeaveRequestDialog({
                   className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${errors.student_id ? 'border-rose-300' : 'border-slate-200'}`}
                   disabled={isSubmitting || isLoadingStudents}
                 >
-                  <option value="">اختر الطالب</option>
+                  <option value="">اختر الطالب ({studentOptions.length})</option>
                   {studentOptions.map((student) => (
                     <option key={student.id} value={student.id}>
-                      {student.name} • {student.class_name}
+                      {student.name} • {student.grade} - {student.class_name}
                     </option>
                   ))}
                 </select>
@@ -863,6 +915,9 @@ export function AdminLeaveRequestsPage() {
   const isActionSubmitting = approveMutation.isPending || rejectMutation.isPending || cancelMutation.isPending
 
   const stats = useMemo(() => {
+    if (data?.stats) {
+      return data.stats
+    }
     const counts: Record<LeaveRequestStatus, number> = {
       pending: 0,
       approved: 0,
@@ -873,7 +928,7 @@ export function AdminLeaveRequestsPage() {
       counts[request.status] += 1
     }
     return counts
-  }, [requests])
+  }, [data?.stats, requests])
 
   const handlePrintGuardianSheet = async () => {
     if (typeof window === 'undefined' || isGeneratingPrintSheet) return

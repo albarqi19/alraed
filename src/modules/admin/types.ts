@@ -1204,6 +1204,12 @@ export interface LeaveRequestListResult {
     per_page: number
     total: number
   }
+  stats?: {
+    pending: number
+    approved: number
+    rejected: number
+    cancelled: number
+  }
 }
 
 export interface LeaveRequestCreatePayload {

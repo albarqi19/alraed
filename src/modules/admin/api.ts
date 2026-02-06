@@ -2117,9 +2117,18 @@ export async function fetchLeaveRequests(filters: LeaveRequestFilters = {}): Pro
     .map((item) => normalizeLeaveRequestRecord(item))
     .filter((item): item is LeaveRequestRecord => item !== null)
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rawStats = (data as any)?.stats as Record<string, number> | undefined
+
   return {
     items: normalized,
     meta,
+    stats: rawStats ? {
+      pending: rawStats.pending ?? 0,
+      approved: rawStats.approved ?? 0,
+      rejected: rawStats.rejected ?? 0,
+      cancelled: rawStats.cancelled ?? 0,
+    } : undefined,
   }
 }
 
