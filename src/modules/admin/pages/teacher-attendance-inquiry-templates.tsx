@@ -20,6 +20,10 @@ export type InquiryTemplateData = {
   absenceReasonLabel?: string | null
   absenceNotes?: string | null
   absenceDurationText?: string | null
+  attendanceEndDayName?: string | null
+  attendanceEndDateHijri?: string | null
+  attendanceEndDateGregorian?: string | null
+  isDateRange?: boolean
 }
 
 export type InquiryTemplateMetadata = {
@@ -614,11 +618,27 @@ const AbsenceInquiryTemplate = ({ data }: { data: InquiryTemplateData }) => (
       </p>
       <p>السلام عليكم ورحمة الله وبركاته وبعد :</p>
       <p>
-        نود إفادتكم بأن غيابكم يوم{' '}
-        <span className="absence-highlight">{data.attendanceDayName}</span>
-        {' '}الموافق{' '}
-        <span className="absence-highlight">{data.attendanceDateHijri}</span>
-        {' '}هـ، قد تم تسجيله ضمن سجلات المدرسة.
+        {data.isDateRange ? (
+          <>
+            نود إفادتكم بأن غيابكم من يوم{' '}
+            <span className="absence-highlight">{data.attendanceDayName}</span>
+            {' '}الموافق{' '}
+            <span className="absence-highlight">{data.attendanceDateHijri}</span>
+            {' '}هـ إلى يوم{' '}
+            <span className="absence-highlight">{data.attendanceEndDayName}</span>
+            {' '}الموافق{' '}
+            <span className="absence-highlight">{data.attendanceEndDateHijri}</span>
+            {' '}هـ، قد تم تسجيله ضمن سجلات المدرسة.
+          </>
+        ) : (
+          <>
+            نود إفادتكم بأن غيابكم يوم{' '}
+            <span className="absence-highlight">{data.attendanceDayName}</span>
+            {' '}الموافق{' '}
+            <span className="absence-highlight">{data.attendanceDateHijri}</span>
+            {' '}هـ، قد تم تسجيله ضمن سجلات المدرسة.
+          </>
+        )}
       </p>
       <div className="absence-reason-box">
         سبب الغياب المسجل: {data.absenceReasonLabel ?? '—'}

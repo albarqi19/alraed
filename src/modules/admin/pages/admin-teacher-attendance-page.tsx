@@ -234,6 +234,71 @@ function formatDayNameForTemplate(value?: string | Date | null) {
   }
 }
 
+function formatAbsenceDayCount(count: number): string {
+  if (count === 1) return 'يوم واحد'
+  if (count === 2) return 'يومان'
+  if (count >= 3 && count <= 10) return `${count} أيام`
+  return `${count} يوم`
+}
+
+function getTeacherKey(record: TeacherAttendanceDelayRecord): string {
+  if (record.teacher_id) return `t-${record.teacher_id}`
+  if (record.user?.id) return `u-${record.user.id}`
+  return `r-${record.id}`
+}
+
+function areConsecutiveSchoolDays(dateA: string, dateB: string): boolean {
+  const a = new Date(dateA)
+  const b = new Date(dateB)
+  const diffDays = Math.round((b.getTime() - a.getTime()) / 86_400_000)
+  if (diffDays === 1) return true
+  // خميس(4) → أحد(0): فرق 3 أيام مع عطلة الجمعة والسبت
+  if (diffDays === 3 && a.getDay() === 4) return true
+  return false
+}
+
+type ConsecutiveAbsenceGroup = {
+  records: TeacherAttendanceDelayRecord[]
+  startDate: string
+  endDate: string
+  dayCount: number
+}
+
+function findConsecutiveGroupForRecord(
+  record: TeacherAttendanceDelayRecord,
+  allDelays: TeacherAttendanceDelayRecord[],
+): ConsecutiveAbsenceGroup | null {
+  if (record.delay_status !== 'absent' || !record.attendance_date) return null
+
+  const teacherKey = getTeacherKey(record)
+
+  // تصفية سجلات الغياب لنفس المعلم
+  const sameTeacherAbsences = allDelays
+    .filter((r) => r.delay_status === 'absent' && r.attendance_date && getTeacherKey(r) === teacherKey)
+    .sort((a, b) => new Date(a.attendance_date!).getTime() - new Date(b.attendance_date!).getTime())
+
+  // بناء مجموعة الأيام المتصلة التي تحتوي على السجل المطلوب
+  let currentRun: TeacherAttendanceDelayRecord[] = [sameTeacherAbsences[0]]
+
+  for (let i = 1; i < sameTeacherAbsences.length; i++) {
+    if (areConsecutiveSchoolDays(sameTeacherAbsences[i - 1].attendance_date!, sameTeacherAbsences[i].attendance_date!)) {
+      currentRun.push(sameTeacherAbsences[i])
+    } else {
+      if (currentRun.some((r) => r.id === record.id)) break
+      currentRun = [sameTeacherAbsences[i]]
+    }
+  }
+
+  if (!currentRun.some((r) => r.id === record.id)) return null
+
+  return {
+    records: currentRun,
+    startDate: currentRun[0].attendance_date!,
+    endDate: currentRun[currentRun.length - 1].attendance_date!,
+    dayCount: currentRun.length,
+  }
+}
+
 function createInquiryTemplateData(
   record: TeacherAttendanceDelayRecord,
   options: { schoolName: string; workStartTime?: string | null; issueDate?: Date; absenceDurationText?: string | null },
@@ -729,13 +794,41 @@ export function AdminTeacherAttendancePage() {
     const schoolName = adminSettingsQuery.data?.school_name?.trim() || '—'
     const workStartTime = settingsQuery.data?.start_time ?? null
     const template: TeacherInquiryTemplateKind = record.delay_status === 'absent' ? 'absence' : 'delay'
-    const data = createInquiryTemplateData(record, {
-      schoolName,
-      workStartTime,
-      issueDate: new Date(),
-      absenceDurationText: template === 'absence' ? 'يوم واحد' : null,
-    })
-    setInquiryDialog({ record, data, template })
+
+    if (template === 'absence') {
+      const group = findConsecutiveGroupForRecord(record, delays)
+
+      if (group && group.dayCount > 1) {
+        const baseRecord = group.records[0]
+        const lastRecord = group.records[group.records.length - 1]
+        const data = createInquiryTemplateData(baseRecord, {
+          schoolName,
+          workStartTime,
+          issueDate: new Date(),
+          absenceDurationText: formatAbsenceDayCount(group.dayCount),
+        })
+        data.attendanceEndDayName = formatDayNameForTemplate(lastRecord.attendance_date)
+        data.attendanceEndDateHijri = formatHijriDateForTemplate(lastRecord.attendance_date)
+        data.attendanceEndDateGregorian = formatGregorianDateForTemplate(lastRecord.attendance_date)
+        data.isDateRange = true
+        setInquiryDialog({ record: baseRecord, data, template })
+      } else {
+        const data = createInquiryTemplateData(record, {
+          schoolName,
+          workStartTime,
+          issueDate: new Date(),
+          absenceDurationText: 'يوم واحد',
+        })
+        setInquiryDialog({ record, data, template })
+      }
+    } else {
+      const data = createInquiryTemplateData(record, {
+        schoolName,
+        workStartTime,
+        issueDate: new Date(),
+      })
+      setInquiryDialog({ record, data, template })
+    }
   }
 
   const handleInquiryClose = () => setInquiryDialog(null)
