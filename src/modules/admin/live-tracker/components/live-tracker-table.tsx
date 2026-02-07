@@ -20,7 +20,7 @@ import type {
   DeleteActionPayload,
 } from '../types'
 import { TrackerCellPopover } from './tracker-cell-popover'
-import { TimeColumnHeader, TeacherNameHeader } from './time-column-header'
+import { TimeColumnHeader, TeacherNameHeader, getLevelColor } from './time-column-header'
 import { cn } from '@/lib/utils'
 
 interface LiveTrackerTableProps {
@@ -52,20 +52,13 @@ export function LiveTrackerTable({
         const teacher = row.original
         const hasMultipleSchedules = data.schedules.length > 1
 
-        // تحديد لون مؤشر التوقيت
-        const getLevelColor = (level: string | null | undefined) => {
-          if (level === 'upper') return 'bg-blue-500'
-          if (level === 'lower') return 'bg-green-500'
-          return 'bg-slate-400'
-        }
-
         return (
           <div className="flex items-center gap-1.5 px-2 py-1">
             {/* مؤشر التوقيت */}
             {hasMultipleSchedules && teacher.schedule_level && (
               <span
-                className={cn('h-2 w-2 rounded-full flex-shrink-0', getLevelColor(teacher.schedule_level))}
-                title={teacher.schedule_level === 'upper' ? 'العليا' : 'الدنيا'}
+                className={cn('h-2 w-2 rounded-full flex-shrink-0', getLevelColor(teacher.schedule_level, data.schedules))}
+                title={teacher.schedule_level}
               />
             )}
 

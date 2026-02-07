@@ -6,19 +6,21 @@
 import { cn } from '@/lib/utils'
 import type { TrackerPeriod, TrackerSchedule } from '../types'
 
+const LEVEL_COLORS = ['bg-blue-500', 'bg-green-500', 'bg-amber-500', 'bg-purple-500']
+
+export function getLevelColor(level: string | null | undefined, schedules: TrackerSchedule[]) {
+  if (!level) return 'bg-slate-400'
+  const idx = schedules.findIndex(s => s.target_level === level)
+  return idx >= 0 ? LEVEL_COLORS[idx % LEVEL_COLORS.length] : 'bg-slate-400'
+}
+
 interface TimeColumnHeaderProps {
   period: TrackerPeriod
   schedules: TrackerSchedule[]
   isCurrentPeriod?: boolean
 }
 
-export function TimeColumnHeader({ period, schedules: _schedules, isCurrentPeriod }: TimeColumnHeaderProps) {
-  // تحديد لون مؤشر التوقيت
-  const getLevelColor = (level: string | null | undefined) => {
-    if (level === 'upper') return 'bg-blue-500'
-    if (level === 'lower') return 'bg-green-500'
-    return 'bg-slate-400'
-  }
+export function TimeColumnHeader({ period, schedules, isCurrentPeriod }: TimeColumnHeaderProps) {
 
   // للفترات المتداخلة: عرض التوقيت الخاص بها مع مؤشر المرحلة
   if (period.is_overlapping && period.start_time && period.end_time) {
@@ -42,8 +44,8 @@ export function TimeColumnHeader({ period, schedules: _schedules, isCurrentPerio
         {/* الوقت مع مؤشر اللون */}
         <div className="flex items-center gap-1">
           <span
-            className={cn('h-2 w-2 rounded-full flex-shrink-0', getLevelColor(period.target_level))}
-            title={period.target_level === 'upper' ? 'العليا' : 'الأولية'}
+            className={cn('h-2 w-2 rounded-full flex-shrink-0', getLevelColor(period.target_level, schedules))}
+            title={period.target_level || ''}
           />
           <span className="text-[10px] text-slate-500">
             {period.start_time} - {period.end_time}
@@ -99,7 +101,7 @@ export function TeacherNameHeader({ schedules }: TeacherNameHeaderProps) {
               <span
                 className={cn(
                   'h-2 w-2 rounded-full',
-                  schedule.target_level === 'upper' ? 'bg-blue-500' : 'bg-green-500'
+                  getLevelColor(schedule.target_level, schedules)
                 )}
               />
               <span className="text-[10px] text-slate-500">{schedule.name}</span>

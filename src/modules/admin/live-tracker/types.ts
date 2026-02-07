@@ -107,7 +107,7 @@ export interface TrackerPeriod {
 
   // حقول جديدة للفترات المتداخلة
   schedule_id?: number | null
-  target_level?: 'upper' | 'lower' | null
+  target_level?: string | null
   start_time?: string
   end_time?: string
   is_overlapping: boolean
