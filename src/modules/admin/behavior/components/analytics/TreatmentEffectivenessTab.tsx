@@ -47,8 +47,6 @@ const PRIORITY_COLORS: Record<string, string> = {
   critical: '#991b1b',
 }
 
-const PIE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#6366f1']
-
 const CORRELATION_CONFIG: Record<
   'strong' | 'moderate' | 'weak' | 'none',
   { label: string; badgeClass: string; description: string }

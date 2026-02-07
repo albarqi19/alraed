@@ -1,5 +1,4 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
-import { GlobalBellWidget } from '@/modules/admin/school-bell/components/global-bell-widget'
 import { GlobalWhatsappWidget } from '@/modules/admin/components/global-whatsapp-widget'
 
 const navLinks = [

@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { useLocation } from 'react-router-dom'
 import { getThemeById, themes, type Theme } from './theme-definitions'
 
 const defaultDensity = {
@@ -50,6 +51,7 @@ const ThemeContext = createContext<ThemeContextValue | undefined>(undefined)
 const THEME_STORAGE_KEY = 'app-theme-preference'
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
+  const location = useLocation()
   const [currentThemeId, setCurrentThemeId] = useState<string>(() => {
     const saved = localStorage.getItem(THEME_STORAGE_KEY)
     return saved || 'default'
@@ -58,12 +60,16 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const currentTheme = getThemeById(currentThemeId)
   const availableThemes = Object.values(themes)
 
+  // الثيم المختار يُطبق فقط على صفحات الأدمن، باقي الصفحات تستخدم الثيم الافتراضي
+  const isAdminRoute = location.pathname.startsWith('/admin')
+  const appliedTheme = isAdminRoute ? currentTheme : getThemeById('default')
+
   useEffect(() => {
     const root = document.documentElement
-    const colors = currentTheme.colors
-    const density = currentTheme.density || defaultDensity
+    const colors = appliedTheme.colors
+    const density = appliedTheme.density || defaultDensity
 
-    root.setAttribute('data-theme', currentTheme.id)
+    root.setAttribute('data-theme', appliedTheme.id)
 
     root.style.setProperty('--color-background', colors.background)
     root.style.setProperty('--color-surface', colors.surface)
@@ -126,7 +132,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (msTileColorMeta) {
       msTileColorMeta.setAttribute('content', colors.sidebar)
     }
-  }, [currentTheme])
+  }, [appliedTheme])
 
   const setTheme = (themeId: string) => {
     setCurrentThemeId(themeId)
