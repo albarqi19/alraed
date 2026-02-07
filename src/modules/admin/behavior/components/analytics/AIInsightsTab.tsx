@@ -300,17 +300,18 @@ export default function AIInsightsTab({ activeTab }: AIInsightsTabProps) {
 
   // ==================== AI Insights Query ====================
 
+  const [forceRefresh, setForceRefresh] = useState(false)
+
   const {
     data: insightsData,
     isLoading: insightsLoading,
     error: insightsError,
     isFetching: insightsFetching,
-    refetch: refetchInsights,
   } = useQuery({
-    queryKey: ['ai-insights', 'daily_summary'],
-    queryFn: () => fetchAIInsights('daily_summary'),
+    queryKey: ['ai-insights', 'daily_summary', forceRefresh],
+    queryFn: () => fetchAIInsights('daily_summary', undefined, forceRefresh),
     enabled: activeTab === 'ai',
-    staleTime: 1000 * 60 * 60, // 1 hour - don't re-fetch automatically
+    staleTime: 1000 * 60 * 60,
     retry: 1,
   })
 
@@ -402,9 +403,8 @@ export default function AIInsightsTab({ activeTab }: AIInsightsTabProps) {
   }
 
   const handleRefreshInsights = () => {
-    // Invalidate cache to force a fresh API call
-    queryClient.removeQueries({ queryKey: ['ai-insights', 'daily_summary'] })
-    refetchInsights()
+    setForceRefresh(true)
+    queryClient.invalidateQueries({ queryKey: ['ai-insights', 'daily_summary'] })
   }
 
   // ==================== Helpers ====================
@@ -556,7 +556,7 @@ export default function AIInsightsTab({ activeTab }: AIInsightsTabProps) {
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-900">المستشار الذكي</h2>
-              <p className="text-xs text-slate-500">محادثة تفاعلية مع الذكاء الاصطناعي</p>
+              <p className="text-xs text-slate-500">محادثة تفاعلية مع نظام الرائد</p>
             </div>
           </div>
           {messages.length > 0 && (

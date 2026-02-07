@@ -398,10 +398,12 @@ export interface AIInsightsData {
 export async function fetchAIInsights(
   insightType: 'daily_summary' | 'alerts' | 'student_profile',
   studentId?: number,
+  forceRefresh?: boolean,
 ): Promise<AIInsightsData> {
   const response = await apiClient.post<ApiResponse<AIInsightsData>>('/admin/behavior/analytics/ai/insights', {
     insight_type: insightType,
     student_id: studentId,
+    force_refresh: forceRefresh ?? false,
   })
   return response.data.data
 }
