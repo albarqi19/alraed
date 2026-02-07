@@ -25,9 +25,10 @@ export function AdminThemeSettingsPage() {
             <button
               key={theme.id}
               onClick={() => setTheme(theme.id)}
-              className="group relative overflow-hidden rounded-3xl border-2 bg-white p-6 text-right shadow-sm transition-all hover:shadow-lg"
+              className="group relative overflow-hidden rounded-3xl border-2 p-6 text-right shadow-sm transition-all hover:shadow-lg"
               style={{
                 borderColor: isActive ? 'var(--color-primary)' : 'var(--color-border)',
+                backgroundColor: 'var(--color-surface)',
               }}
             >
               {/* علامة الاختيار */}

@@ -8,10 +8,6 @@ import clsx from 'classnames'
 import { primaryAdminNavGroups, secondaryAdminNav, settingsAdminNav } from '../constants/navigation'
 import { getCurrentAcademicWeek } from '../constants/academic-calendar-data'
 
-const headerDateFormatter = new Intl.DateTimeFormat('ar-SA', { month: 'long', day: '2-digit' })
-
-const toDate = (iso: string) => new Date(`${iso}T00:00:00`)
-
 export function AdminShell() {
   const admin = useAuthStore((state) => state.user)
   const logoutMutation = useLogoutMutation()
@@ -20,13 +16,19 @@ export function AdminShell() {
   const { hasPermission } = usePermissions()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => {
+    // فتح المجموعة النشطة فقط (التي تحتوي الصفحة الحالية)
     const initial: Record<string, boolean> = {}
+    const path = window.location.pathname
 
     primaryAdminNavGroups.forEach((group) => {
-      initial[group.title] = true
+      initial[group.title] = group.items.some((item) =>
+        item.exact ? path === item.to : path.startsWith(item.to),
+      )
     })
-    
-    initial[settingsAdminNav.title] = true
+
+    initial[settingsAdminNav.title] = settingsAdminNav.items.some((item) =>
+      item.exact ? path === item.to : path.startsWith(item.to),
+    )
 
     return initial
   })
@@ -151,25 +153,10 @@ export function AdminShell() {
     }))
   }
 
-  const subscriptionPlan = admin?.school?.plan
-  const subscriptionStatus = admin?.school?.subscription_status
-
-  const statusLabelMap: Record<string, string> = {
-    trial: 'تجريبي',
-    active: 'نشط',
-    suspended: 'موقوف',
-    cancelled: 'ملغي',
-    expired: 'منتهي',
-  }
-
-  const planLabel = subscriptionPlan ? subscriptionPlan.toUpperCase() : null
-  const statusLabel = subscriptionStatus ? statusLabelMap[subscriptionStatus] ?? subscriptionStatus : null
+  const planLabel = admin?.school?.plan?.toUpperCase() ?? null
   const currentAcademicWeek = getCurrentAcademicWeek(new Date())
   const weekLabel = currentAcademicWeek
     ? `الأسبوع ${currentAcademicWeek.week} • ${currentAcademicWeek.semester === 'first' ? 'الفصل الأول' : 'الفصل الثاني'}`
-    : null
-  const weekRangeLabel = currentAcademicWeek
-    ? `${headerDateFormatter.format(toDate(currentAcademicWeek.startIso))} - ${headerDateFormatter.format(toDate(currentAcademicWeek.endIso))}`
     : null
 
   return (
@@ -184,7 +171,7 @@ export function AdminShell() {
       
       {/* Sidebar */}
       <aside className={clsx(
-        "admin-sidebar fixed right-0 top-0 z-50 h-screen w-72 flex-col overflow-y-auto border-l border-slate-700/20 text-right shadow-md transition-transform duration-300 lg:flex",
+        "admin-sidebar fixed right-0 top-0 z-50 h-screen w-64 flex-col overflow-y-auto border-l border-slate-700/20 text-right shadow-md transition-transform duration-300 lg:flex",
         isSidebarOpen ? "flex translate-x-0" : "hidden lg:flex lg:translate-x-0 translate-x-full"
       )} style={{ backgroundColor: 'var(--color-sidebar)' }}>
         {/* زر إغلاق للجوال */}
@@ -246,7 +233,7 @@ export function AdminShell() {
                           end={link.exact}
                           className={({ isActive }) =>
                             clsx(
-                              'group flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 pr-5 text-sm transition-all',
+                              'group flex items-center justify-between gap-3 rounded-lg px-3 py-2 pr-5 text-[13px] transition-all',
                               isActive
                                 ? 'font-medium shadow-sm'
                                 : 'hover:bg-white/10',
@@ -381,7 +368,7 @@ export function AdminShell() {
                             end={link.exact}
                             className={({ isActive }) =>
                               clsx(
-                                'group flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 pr-5 text-sm transition-all',
+                                'group flex items-center justify-between gap-3 rounded-lg px-3 py-2 pr-5 text-[13px] transition-all',
                                 isActive
                                   ? 'font-medium shadow-sm'
                                   : 'hover:bg-white/10',
@@ -426,81 +413,45 @@ export function AdminShell() {
         </div>
       </aside>
 
-      <div className="flex min-h-screen w-full flex-1 flex-col lg:mr-72">
+      <div className="flex min-h-screen w-full flex-1 flex-col lg:mr-64">
         <header className="sticky top-0 z-20 border-b shadow-sm" style={{ backgroundColor: 'var(--color-header)', borderColor: 'rgba(0, 0, 0, 0.1)' }}>
-          <div className="flex w-full items-center justify-between px-6 py-4 lg:px-10">
+          <div className="flex w-full items-center justify-between gap-3 px-4 py-2.5 lg:px-8">
             {/* زر القائمة للجوال */}
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className="rounded-lg p-2 text-white hover:bg-white/10 lg:hidden"
               aria-label="فتح القائمة"
             >
-              <Menu className="h-6 w-6" />
+              <Menu className="h-5 w-5" />
             </button>
 
-            <div>
-              <p className="text-xs font-semibold" style={{ color: 'var(--color-sidebar-text)', opacity: 0.8 }}>مدير النظام</p>
-              <h1 className="text-lg font-bold" style={{ color: 'var(--color-sidebar-text)' }}>{admin?.name ?? 'الإدارة'}</h1>
-              {planLabel ? (
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                  <span className="rounded-full bg-emerald-100 px-3 py-1 font-semibold text-emerald-700">
-                    خطة {planLabel}
-                  </span>
-                  {statusLabel ? (
-                    <span className="rounded-full bg-white/20 px-3 py-1 font-medium text-white">
-                      حالة الاشتراك: {statusLabel}
-                    </span>
-                  ) : null}
-                </div>
-              ) : null}
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-sm font-bold" style={{ color: 'var(--color-sidebar-text)' }}>{admin?.name ?? 'الإدارة'}</h1>
+              {planLabel && (
+                <span className="hidden rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 sm:inline">
+                  {planLabel}
+                </span>
+              )}
             </div>
-            <div className="flex items-center gap-3">
-              {weekLabel ? (
-                <div className="hidden text-right sm:flex sm:flex-col">
-                  <span
-                    className="text-[11px] font-semibold uppercase tracking-widest"
-                    style={{ color: 'var(--color-sidebar-text)', opacity: 0.6 }}
-                  >
-                    الأسبوع الحالي
-                  </span>
-                  <div
-                    className="mt-1 flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold"
-                    style={{
-                      borderColor: 'rgba(255, 255, 255, 0.25)',
-                      color: 'var(--color-sidebar-text)',
-                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                    }}
-                  >
-                    <CalendarClock className="h-3.5 w-3.5" style={{ color: 'var(--color-sidebar-text)', opacity: 0.75 }} />
-                    <span>{weekLabel}</span>
-                  </div>
-                  {weekRangeLabel ? (
-                    <span className="mt-1 text-[11px]" style={{ color: 'var(--color-sidebar-text)', opacity: 0.6 }}>
-                      {weekRangeLabel}
-                    </span>
-                  ) : null}
+            <div className="flex items-center gap-2.5">
+              {weekLabel && (
+                <div
+                  className="hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold sm:flex"
+                  style={{
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                    color: 'var(--color-sidebar-text)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                  }}
+                >
+                  <CalendarClock className="h-3.5 w-3.5 opacity-75" />
+                  <span>{weekLabel}</span>
                 </div>
-              ) : null}
+              )}
 
               <button
                 type="button"
                 onClick={() => logoutMutation.mutate()}
-                className="rounded-full border px-4 py-2 text-sm font-semibold transition shadow-sm hover:shadow-md"
-                style={{ 
-                  borderColor: 'rgba(255, 255, 255, 0.3)', 
-                  color: 'var(--color-sidebar-text)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--color-danger)'
-                  e.currentTarget.style.color = 'var(--color-danger)'
-                  e.currentTarget.style.backgroundColor = '#FFFFFF'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)'
-                  e.currentTarget.style.color = 'var(--color-sidebar-text)'
-                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'
-                }}
+                className="admin-logout-btn rounded-full border px-3 py-1.5 text-xs font-semibold transition"
               >
                 تسجيل الخروج
               </button>

@@ -83,6 +83,7 @@ export const adminQueryKeys = {
     orders: (filters: Record<string, unknown>) => ['admin', 'store', 'orders', filters] as const,
   },
   whatsapp: {
+    instances: () => ['admin', 'whatsapp', 'instances'] as const,
     statistics: () => ['admin', 'whatsapp', 'statistics'] as const,
     queue: () => ['admin', 'whatsapp', 'queue'] as const,
     history: (filters?: Record<string, unknown>) => 

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { CalendarClock, CalendarDays, Flag, Sparkles, Timer } from 'lucide-react'
 import { academicCalendarApi, type AcademicWeek } from '@/services/api/academic-calendar'
@@ -152,7 +152,7 @@ const getSemesterLabel = (semester?: 'first' | 'second') => {
 }
 
 export function AdminAcademicCalendarPage() {
-  const [selectedTab, setSelectedTab] = useState<CalendarTab>('first')
+  const [selectedTab, setSelectedTab] = useState<CalendarTab | null>(null)
   const [showPreviousWeeks, setShowPreviousWeeks] = useState(false)
 
   const today = new Date()
@@ -166,10 +166,18 @@ export function AdminAcademicCalendarPage() {
     staleTime: 60 * 60 * 1000,
   })
 
+  // تحديد الفصل الحالي تلقائياً
+  useEffect(() => {
+    if (selectedTab !== null || !semestersData?.length) return
+    const current = semestersData.find((s) => s.is_current)
+    setSelectedTab((current?.code as CalendarTab) ?? 'first')
+  }, [semestersData, selectedTab])
+
   // جلب الأسابيع
   const { data: weeksData, isLoading: loadingWeeks } = useQuery({
-    queryKey: ['academic-calendar', 'weeks', selectedTab === 'all' ? undefined : selectedTab],
-    queryFn: () => academicCalendarApi.getWeeks(selectedTab === 'all' ? undefined : selectedTab),
+    queryKey: ['academic-calendar', 'weeks', selectedTab === 'all' ? undefined : selectedTab ?? undefined],
+    queryFn: () => academicCalendarApi.getWeeks(selectedTab === 'all' ? undefined : selectedTab ?? undefined),
+    enabled: selectedTab !== null,
     staleTime: 60 * 60 * 1000,
   })
 

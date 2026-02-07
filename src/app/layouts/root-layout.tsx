@@ -1,5 +1,6 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { GlobalBellWidget } from '@/modules/admin/school-bell/components/global-bell-widget'
+import { GlobalWhatsappWidget } from '@/modules/admin/components/global-whatsapp-widget'
 
 const navLinks = [
   { to: '/', label: 'الرئيسية' },
@@ -96,7 +97,8 @@ export function RootLayout() {
         </footer>
       )}
 
-      <GlobalBellWidget />
+      {/* <GlobalBellWidget /> */}
+      <GlobalWhatsappWidget />
     </div>
   )
 }
