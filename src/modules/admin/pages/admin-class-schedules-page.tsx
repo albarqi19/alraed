@@ -12,6 +12,9 @@ import {
   useTeachersQuery,
   useUpdateClassSessionMutation,
 } from '../hooks'
+import { fetchClassSchedule } from '../api'
+import { useAuthStore } from '@/modules/auth/store/auth-store'
+import { printClassSchedule, printAllClassSchedules } from '../utils/print-class-schedule'
 import type {
   ClassScheduleGrid,
   ClassScheduleSessionData,
@@ -694,6 +697,9 @@ export function AdminClassSchedulesPage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
+  // حالة طباعة جداول جميع الفصول
+  const [isPrintingAll, setIsPrintingAll] = useState(false)
+
   // حالة حذف جداول جميع الفصول
   const [isDeleteAllSchedulesOpen, setIsDeleteAllSchedulesOpen] = useState(false)
   const [deleteAllStep, setDeleteAllStep] = useState<1 | 2 | 3>(1)
@@ -921,23 +927,61 @@ export function AdminClassSchedulesPage() {
             تحكم في الجداول الأسبوعية للفصول، أضف حصصًا بسرعة، وطبق التوقيتات المعتمدة عبر واجهات <code>/admin/class-schedules/*</code>.
           </p>
         </div>
-        {totalSessionsAllClasses > 0 && (
-          <button
-            type="button"
-            onClick={() => {
-              setIsDeleteAllSchedulesOpen(true)
-              setDeleteAllStep(1)
-              setDeleteAllPassword('')
-              setDeleteAllConfirmText('')
-              setDeleteAllError(null)
-            }}
-            className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 transition hover:border-rose-300 hover:bg-rose-100 whitespace-nowrap"
-            disabled={deleteAllSchedulesMutation.isPending}
-          >
-            <i className="bi bi-trash ml-2" />
-            حذف جداول جميع الفصول ({totalSessionsAllClasses} حصة)
-          </button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {totalSessionsAllClasses > 0 && (
+            <button
+              type="button"
+              onClick={async () => {
+                if (!classSummariesQuery.data || classSummariesQuery.data.length === 0) return
+                setIsPrintingAll(true)
+                try {
+                  const schoolName = useAuthStore.getState().user?.school?.name || 'المدرسة'
+                  const results = await Promise.all(
+                    classSummariesQuery.data.map((cls) =>
+                      fetchClassSchedule(cls.grade, cls.class_name).then((res) => ({
+                        grade: cls.grade,
+                        className: cls.class_name,
+                        displayName: cls.name || `${cls.grade} / ${cls.class_name}`,
+                        schedule: res.schedule,
+                        appliedScheduleName: res.applied_schedule?.name,
+                      })),
+                    ),
+                  )
+                  const withSessions = results.filter(
+                    (r) => Object.values(r.schedule).some((day) => Object.values(day).some(Boolean)),
+                  )
+                  printAllClassSchedules(withSessions, schoolName)
+                } catch {
+                  alert('حدث خطأ أثناء تحميل الجداول للطباعة')
+                } finally {
+                  setIsPrintingAll(false)
+                }
+              }}
+              className="button-secondary whitespace-nowrap"
+              disabled={isPrintingAll}
+            >
+              <i className="bi bi-printer ml-2" />
+              {isPrintingAll ? 'جارٍ التحميل...' : 'طباعة جميع الجداول'}
+            </button>
+          )}
+          {totalSessionsAllClasses > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsDeleteAllSchedulesOpen(true)
+                setDeleteAllStep(1)
+                setDeleteAllPassword('')
+                setDeleteAllConfirmText('')
+                setDeleteAllError(null)
+              }}
+              className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 transition hover:border-rose-300 hover:bg-rose-100 whitespace-nowrap"
+              disabled={deleteAllSchedulesMutation.isPending}
+            >
+              <i className="bi bi-trash ml-2" />
+              حذف جداول جميع الفصول ({totalSessionsAllClasses} حصة)
+            </button>
+          )}
+        </div>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[300px,1fr]">
@@ -1095,6 +1139,29 @@ export function AdminClassSchedulesPage() {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-2">
+                  {totalSessions > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!scheduleQuery.data?.schedule || !selectedClass) return
+                        const schoolName = useAuthStore.getState().user?.school?.name || 'المدرسة'
+                        printClassSchedule(
+                          scheduleQuery.data.schedule,
+                          {
+                            grade: selectedClass.grade,
+                            class_name: selectedClass.class_name,
+                            name: selectedClass.name,
+                          },
+                          schoolName,
+                          scheduleQuery.data.applied_schedule?.name,
+                        )
+                      }}
+                      className="button-secondary"
+                    >
+                      <i className="bi bi-printer ml-1" />
+                      طباعة الجدول
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => scheduleQuery.refetch()}
