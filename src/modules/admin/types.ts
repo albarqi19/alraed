@@ -211,6 +211,19 @@ export interface TeacherScheduleResult {
   }
 }
 
+export interface MasterScheduleTeacher {
+  id: number
+  name: string
+  schedule: Record<string, Record<number, string | null>>
+  standby: Record<string, Record<number, number>>
+}
+
+export interface MasterScheduleResult {
+  teachers: MasterScheduleTeacher[]
+  max_period: number
+  days: string[]
+}
+
 export type TeacherScheduleDayLimits = Record<string, number>
 
 export interface TeacherScheduleDayLimitsResponse {
@@ -1540,6 +1553,13 @@ export interface DutyRosterSettingsRecord {
   reminder_repeat_interval_minutes: number | null
   reminder_repeat_count: number
   settings?: Record<string, unknown> | null
+  // إعدادات تذكيرات المناوبة الفصلية
+  duty_schedule_reminder_enabled: boolean
+  duty_schedule_morning_reminder_time: string | null
+  duty_schedule_afternoon_reminder_time: string | null
+  duty_schedule_day_before_reminder: boolean
+  duty_schedule_day_before_reminder_time: string | null
+  duty_schedule_reminder_channels: string[]
   created_at?: string | null
   updated_at?: string | null
 }
@@ -1553,6 +1573,13 @@ export interface DutyRosterSettingsUpdatePayload {
   reminder_repeat_interval_minutes?: number | null
   reminder_repeat_count?: number
   settings?: Record<string, unknown> | null
+  // إعدادات تذكيرات المناوبة الفصلية
+  duty_schedule_reminder_enabled?: boolean
+  duty_schedule_morning_reminder_time?: string | null
+  duty_schedule_afternoon_reminder_time?: string | null
+  duty_schedule_day_before_reminder?: boolean
+  duty_schedule_day_before_reminder_time?: string | null
+  duty_schedule_reminder_channels?: string[]
 }
 
 export interface DutyRosterTemplatePayload {

@@ -93,6 +93,7 @@ import {
   updateWhatsappSettings,
   updateWhatsappTemplate,
   updateDutyRosterSettings,
+  sendDutyScheduleReminders,
   recalculateTeacherAttendanceDelay,
   notifyTeacherAttendanceDelay,
   updateTeacherAttendanceDelayStatus,
@@ -487,6 +488,25 @@ export function useUpdateDutyRosterSettingsMutation() {
     },
     onError: (error) => {
       toast({ type: 'error', title: getErrorMessage(error, 'تعذر حفظ إعدادات المناوبات') })
+    },
+  })
+}
+
+export function useSendDutyScheduleRemindersMutation() {
+  const toast = useToast()
+
+  return useMutation({
+    mutationFn: (params: { date?: string; duty_type?: 'morning' | 'afternoon' }) =>
+      sendDutyScheduleReminders(params),
+    onSuccess: (result) => {
+      toast({
+        type: 'success',
+        title: `تم إرسال ${result.sent} تذكير بنجاح`,
+        description: result.failed > 0 ? `فشل ${result.failed} رسالة` : undefined,
+      })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر إرسال التذكيرات') })
     },
   })
 }

@@ -32,9 +32,13 @@ type PeriodInfo = {
     class: string
     subject: string
     session_id: number
-    standby1: StandbyTeacher | null
-    standby2: StandbyTeacher | null
-    standby3: StandbyTeacher | null
+    standby1?: StandbyTeacher | null
+    standby2?: StandbyTeacher | null
+    standby3?: StandbyTeacher | null
+    standby4?: StandbyTeacher | null
+    standby5?: StandbyTeacher | null
+    standby6?: StandbyTeacher | null
+    standby7?: StandbyTeacher | null
     selectedStandby?: StandbyTeacher | null
     availableTeachers?: StandbyTeacher[]
 }
@@ -203,7 +207,7 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
                     ...t,
                     periods: t.periods.map(p => ({
                         ...p,
-                        selectedStandby: p.selectedStandby || p.standby1 || p.standby2 || p.standby3 || null,
+                        selectedStandby: p.selectedStandby || p.standby1 || p.standby2 || p.standby3 || p.standby4 || p.standby5 || p.standby6 || p.standby7 || null,
                     })),
                 }))
                 setAbsentTeachers(teachers)
@@ -681,15 +685,10 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
                                                                 onBlur={() => setEditingPeriod(null)}
                                                             >
                                                                 <option value="">-- اختر بديل --</option>
-                                                                {period.standby1 && (
-                                                                    <option value={period.standby1.id}>⭐ {period.standby1.name} (منتظر 1)</option>
-                                                                )}
-                                                                {period.standby2 && (
-                                                                    <option value={period.standby2.id}>⭐ {period.standby2.name} (منتظر 2)</option>
-                                                                )}
-                                                                {period.standby3 && (
-                                                                    <option value={period.standby3.id}>⭐ {period.standby3.name} (منتظر 3)</option>
-                                                                )}
+                                                                {([1,2,3,4,5,6,7] as const).map(i => {
+                                                                    const s = period[`standby${i}` as keyof PeriodInfo] as StandbyTeacher | null | undefined
+                                                                    return s ? <option key={i} value={s.id}>⭐ {s.name} (منتظر {i})</option> : null
+                                                                })}
                                                                 {period.availableTeachers && period.availableTeachers.length > 0 && (
                                                                     <optgroup label="معلمين متاحين ✅">
                                                                         {period.availableTeachers.map(t => (

@@ -39,9 +39,17 @@ type PeriodInfo = {
   standby1?: string | null
   standby2?: string | null
   standby3?: string | null
+  standby4?: string | null
+  standby5?: string | null
+  standby6?: string | null
+  standby7?: string | null
   standby1_id?: number | null
   standby2_id?: number | null
   standby3_id?: number | null
+  standby4_id?: number | null
+  standby5_id?: number | null
+  standby6_id?: number | null
+  standby7_id?: number | null
   selectedStandby?: StandbyTeacher | null
 }
 
@@ -289,13 +297,17 @@ export function LeaveRequestModal({ isOpen, onClose, date }: LeaveRequestModalPr
           // اختيار أول منتظر متاح لم يُعيَّن اليوم
           let selectedStandby: StandbyTeacher | null = null
 
-          if (session.standby1_id && !assignedIds.includes(session.standby1_id)) {
-            selectedStandby = { id: session.standby1_id, name: session.standby1 || '' }
-          } else if (session.standby2_id && !assignedIds.includes(session.standby2_id)) {
-            selectedStandby = { id: session.standby2_id, name: session.standby2 || '' }
-          } else if (session.standby3_id && !assignedIds.includes(session.standby3_id)) {
-            selectedStandby = { id: session.standby3_id, name: session.standby3 || '' }
-          } else if (session.standby1_id) {
+          for (let i = 1; i <= 7; i++) {
+            const idKey = `standby${i}_id` as keyof typeof session
+            const nameKey = `standby${i}` as keyof typeof session
+            const sId = session[idKey] as number | null | undefined
+            const sName = session[nameKey] as string | null | undefined
+            if (sId && !assignedIds.includes(sId)) {
+              selectedStandby = { id: sId, name: sName || '' }
+              break
+            }
+          }
+          if (!selectedStandby && session.standby1_id) {
             // إذا كل المنتظرين معينين، اختر الأول
             selectedStandby = { id: session.standby1_id, name: session.standby1 || '' }
           }
@@ -548,21 +560,16 @@ export function LeaveRequestModal({ isOpen, onClose, date }: LeaveRequestModalPr
                                   onBlur={() => setEditingPeriod(null)}
                                 >
                                   <option value="">-- اختر بديل --</option>
-                                  {period.standby1_id && (
-                                    <option value={period.standby1_id}>
-                                      {todayAssignmentsQuery.data?.data?.assigned_teacher_ids?.includes(period.standby1_id) ? '⚠️' : '⭐'} {period.standby1} (منتظر 1)
-                                    </option>
-                                  )}
-                                  {period.standby2_id && (
-                                    <option value={period.standby2_id}>
-                                      {todayAssignmentsQuery.data?.data?.assigned_teacher_ids?.includes(period.standby2_id) ? '⚠️' : '⭐'} {period.standby2} (منتظر 2)
-                                    </option>
-                                  )}
-                                  {period.standby3_id && (
-                                    <option value={period.standby3_id}>
-                                      {todayAssignmentsQuery.data?.data?.assigned_teacher_ids?.includes(period.standby3_id) ? '⚠️' : '⭐'} {period.standby3} (منتظر 3)
-                                    </option>
-                                  )}
+                                  {([1,2,3,4,5,6,7] as const).map(i => {
+                                    const sId = period[`standby${i}_id` as keyof PeriodInfo] as number | null | undefined
+                                    const sName = period[`standby${i}` as keyof PeriodInfo] as string | null | undefined
+                                    if (!sId) return null
+                                    return (
+                                      <option key={i} value={sId}>
+                                        {todayAssignmentsQuery.data?.data?.assigned_teacher_ids?.includes(sId) ? '⚠️' : '⭐'} {sName} (منتظر {i})
+                                      </option>
+                                    )
+                                  })}
                                   <optgroup label="جميع المعلمين">
                                     {staffQuery.data?.data.map(s => (
                                       <option key={s.id} value={s.id}>{s.name}</option>

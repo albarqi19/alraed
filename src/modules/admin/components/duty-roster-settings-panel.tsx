@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BellRing, Loader2, Settings, X } from 'lucide-react'
+import { BellRing, Calendar, Loader2, Settings, X } from 'lucide-react'
 
 import {
   useDutyRosterSettingsQuery,
@@ -14,12 +14,20 @@ const REMINDER_CHANNEL_OPTIONS: Array<{ value: string; label: string }> = [
 ]
 
 type SettingsFormState = {
+  // إعدادات الإشراف اليومي
   reminderNotificationsEnabled: boolean
   reminderLeadMinutes: string
   reminderChannels: string[]
   reminderRepeatIntervalMinutes: string
   reminderRepeatCount: string
   sendTime: string
+  // إعدادات المناوبة الفصلية
+  dutyScheduleReminderEnabled: boolean
+  dutyScheduleMorningReminderTime: string
+  dutyScheduleAfternoonReminderTime: string
+  dutyScheduleDayBeforeReminder: boolean
+  dutyScheduleDayBeforeReminderTime: string
+  dutyScheduleReminderChannels: string[]
 }
 
 const DEFAULT_FORM: SettingsFormState = {
@@ -29,6 +37,12 @@ const DEFAULT_FORM: SettingsFormState = {
   reminderRepeatIntervalMinutes: '',
   reminderRepeatCount: '0',
   sendTime: '06:00',
+  dutyScheduleReminderEnabled: false,
+  dutyScheduleMorningReminderTime: '06:00',
+  dutyScheduleAfternoonReminderTime: '13:00',
+  dutyScheduleDayBeforeReminder: false,
+  dutyScheduleDayBeforeReminderTime: '20:00',
+  dutyScheduleReminderChannels: ['whatsapp'],
 }
 
 function mapRecordToForm(record: DutyRosterSettingsRecord | undefined): SettingsFormState {
@@ -45,6 +59,20 @@ function mapRecordToForm(record: DutyRosterSettingsRecord | undefined): Settings
       : '',
     reminderRepeatCount: record.reminder_repeat_count ? String(record.reminder_repeat_count) : '0',
     sendTime: record.auto_generate_time ? record.auto_generate_time.slice(0, 5) : '06:00',
+    dutyScheduleReminderEnabled: Boolean(record.duty_schedule_reminder_enabled),
+    dutyScheduleMorningReminderTime: record.duty_schedule_morning_reminder_time
+      ? record.duty_schedule_morning_reminder_time.slice(0, 5)
+      : '06:00',
+    dutyScheduleAfternoonReminderTime: record.duty_schedule_afternoon_reminder_time
+      ? record.duty_schedule_afternoon_reminder_time.slice(0, 5)
+      : '13:00',
+    dutyScheduleDayBeforeReminder: Boolean(record.duty_schedule_day_before_reminder),
+    dutyScheduleDayBeforeReminderTime: record.duty_schedule_day_before_reminder_time
+      ? record.duty_schedule_day_before_reminder_time.slice(0, 5)
+      : '20:00',
+    dutyScheduleReminderChannels: Array.isArray(record.duty_schedule_reminder_channels) && record.duty_schedule_reminder_channels.length > 0
+      ? record.duty_schedule_reminder_channels.map((c) => String(c))
+      : ['whatsapp'],
   }
 }
 
@@ -82,6 +110,7 @@ export function DutyRosterSettingsModal({ open, onClose }: DutyRosterSettingsMod
   const isLoading = settingsQuery.isLoading
   const isSaving = updateSettingsMutation.isPending
   const isReminderControlsDisabled = !form.reminderNotificationsEnabled
+  const isDutyScheduleControlsDisabled = !form.dutyScheduleReminderEnabled
 
   const handleInputChange = (field: keyof SettingsFormState, value: string) => {
     setForm((current) => ({
@@ -113,11 +142,27 @@ export function DutyRosterSettingsModal({ open, onClose }: DutyRosterSettingsMod
     })
   }
 
+  const handleDutyScheduleChannelToggle = (value: string, checked: boolean) => {
+    setForm((current) => {
+      const set = new Set(current.dutyScheduleReminderChannels)
+      if (checked) {
+        set.add(value)
+      } else {
+        set.delete(value)
+      }
+      const nextValues = Array.from(set)
+      return {
+        ...current,
+        dutyScheduleReminderChannels: nextValues.length > 0 ? nextValues : ['whatsapp'],
+      }
+    })
+  }
+
   const handleSubmit: React.FormEventHandler<HTMLFormElement> = (event) => {
     event.preventDefault()
 
     const payload: DutyRosterSettingsUpdatePayload = {
-      auto_generate_enabled: false, // لم نعد نستخدم الإنشاء التلقائي
+      auto_generate_enabled: false,
       auto_generate_time: form.sendTime || '06:00',
       reminder_notifications_enabled: form.reminderNotificationsEnabled,
       reminder_lead_minutes: form.reminderLeadMinutes ? Number(form.reminderLeadMinutes) : 45,
@@ -126,6 +171,13 @@ export function DutyRosterSettingsModal({ open, onClose }: DutyRosterSettingsMod
         ? Number(form.reminderRepeatIntervalMinutes)
         : null,
       reminder_repeat_count: form.reminderRepeatCount ? Number(form.reminderRepeatCount) : 0,
+      // إعدادات المناوبة الفصلية
+      duty_schedule_reminder_enabled: form.dutyScheduleReminderEnabled,
+      duty_schedule_morning_reminder_time: form.dutyScheduleMorningReminderTime || null,
+      duty_schedule_afternoon_reminder_time: form.dutyScheduleAfternoonReminderTime || null,
+      duty_schedule_day_before_reminder: form.dutyScheduleDayBeforeReminder,
+      duty_schedule_day_before_reminder_time: form.dutyScheduleDayBeforeReminderTime || null,
+      duty_schedule_reminder_channels: form.dutyScheduleReminderChannels,
     }
 
     updateSettingsMutation.mutate(payload, {
@@ -164,7 +216,13 @@ export function DutyRosterSettingsModal({ open, onClose }: DutyRosterSettingsMod
             جارٍ تحميل الإعدادات...
           </div>
         ) : (
-          <form className="space-y-5 p-6" onSubmit={handleSubmit}>
+          <form className="max-h-[70vh] space-y-5 overflow-y-auto p-6" onSubmit={handleSubmit}>
+            {/* ═══════════════ إعدادات الإشراف اليومي ═══════════════ */}
+            <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
+              <BellRing className="h-4 w-4 text-indigo-500" />
+              إعدادات تذكيرات الإشراف اليومي
+            </div>
+
             {/* تفعيل التذكيرات */}
             <div className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
               <input
@@ -176,8 +234,7 @@ export function DutyRosterSettingsModal({ open, onClose }: DutyRosterSettingsMod
                 disabled={isSaving}
               />
               <label htmlFor="reminder-notifications-enabled" className="space-y-1">
-                <span className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                  <BellRing className="h-4 w-4 text-indigo-500" />
+                <span className="text-sm font-semibold text-slate-800">
                   تفعيل رسائل التذكير
                 </span>
                 <span className="block text-xs text-slate-500">
@@ -266,6 +323,129 @@ export function DutyRosterSettingsModal({ open, onClose }: DutyRosterSettingsMod
                 />
               </div>
             </div>
+
+            {/* ═══════════════ فاصل ═══════════════ */}
+            <hr className="border-slate-200" />
+
+            {/* ═══════════════ إعدادات المناوبة الفصلية ═══════════════ */}
+            <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
+              <Calendar className="h-4 w-4 text-emerald-500" />
+              إعدادات تذكيرات المناوبة الفصلية
+            </div>
+
+            {/* تفعيل تذكيرات المناوبة */}
+            <div className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+              <input
+                id="duty-schedule-reminder-enabled"
+                type="checkbox"
+                className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                checked={form.dutyScheduleReminderEnabled}
+                onChange={(event) => handleCheckboxChange('dutyScheduleReminderEnabled', event.target.checked)}
+                disabled={isSaving}
+              />
+              <label htmlFor="duty-schedule-reminder-enabled" className="space-y-1">
+                <span className="text-sm font-semibold text-slate-800">
+                  تفعيل تذكيرات المناوبة الفصلية
+                </span>
+                <span className="block text-xs text-slate-500">
+                  إرسال رسائل واتساب تلقائية للمعلمين المكلفين بالمناوبة.
+                </span>
+              </label>
+            </div>
+
+            {/* وقت تذكير بداية الدوام */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <label htmlFor="duty-morning-time" className="text-sm font-semibold text-slate-700">
+                  تذكير بداية الدوام
+                </label>
+                <input
+                  id="duty-morning-time"
+                  type="time"
+                  value={form.dutyScheduleMorningReminderTime}
+                  onChange={(event) => handleInputChange('dutyScheduleMorningReminderTime', event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                  disabled={isSaving || isDutyScheduleControlsDisabled}
+                />
+                <p className="text-xs text-muted">وقت إرسال تذكير مناوبة الصباح</p>
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="duty-afternoon-time" className="text-sm font-semibold text-slate-700">
+                  تذكير نهاية الدوام
+                </label>
+                <input
+                  id="duty-afternoon-time"
+                  type="time"
+                  value={form.dutyScheduleAfternoonReminderTime}
+                  onChange={(event) => handleInputChange('dutyScheduleAfternoonReminderTime', event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                  disabled={isSaving || isDutyScheduleControlsDisabled}
+                />
+                <p className="text-xs text-muted">وقت إرسال تذكير مناوبة المساء</p>
+              </div>
+            </div>
+
+            {/* تذكير اليوم السابق */}
+            <div className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+              <input
+                id="duty-day-before-reminder"
+                type="checkbox"
+                className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                checked={form.dutyScheduleDayBeforeReminder}
+                onChange={(event) => handleCheckboxChange('dutyScheduleDayBeforeReminder', event.target.checked)}
+                disabled={isSaving || isDutyScheduleControlsDisabled}
+              />
+              <label htmlFor="duty-day-before-reminder" className="space-y-1">
+                <span className="text-sm font-semibold text-slate-800">
+                  تذكير مسبق (اليوم السابق)
+                </span>
+                <span className="block text-xs text-slate-500">
+                  إرسال تذكير للمعلمين في المساء السابق بمناوبة الغد.
+                </span>
+              </label>
+            </div>
+
+            {form.dutyScheduleDayBeforeReminder && (
+              <div className="space-y-2">
+                <label htmlFor="duty-day-before-time" className="text-sm font-semibold text-slate-700">
+                  وقت تذكير اليوم السابق
+                </label>
+                <input
+                  id="duty-day-before-time"
+                  type="time"
+                  value={form.dutyScheduleDayBeforeReminderTime}
+                  onChange={(event) => handleInputChange('dutyScheduleDayBeforeReminderTime', event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                  disabled={isSaving || isDutyScheduleControlsDisabled}
+                />
+                <p className="text-xs text-muted">مثال: 20:00 لإرسال التذكير الساعة 8 مساءً</p>
+              </div>
+            )}
+
+            {/* قنوات تذكير المناوبة */}
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-semibold text-slate-700">قنوات تذكير المناوبة</legend>
+              <div className="flex flex-wrap gap-3">
+                {REMINDER_CHANNEL_OPTIONS.map((option) => {
+                  const checked = form.dutyScheduleReminderChannels.includes(option.value)
+                  return (
+                    <label
+                      key={`ds-${option.value}`}
+                      className="flex items-center gap-2 rounded-2xl border border-slate-200 px-3 py-2 text-sm shadow-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(event) => handleDutyScheduleChannelToggle(option.value, event.target.checked)}
+                        className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                        disabled={isSaving || isDutyScheduleControlsDisabled}
+                      />
+                      <span>{option.label}</span>
+                    </label>
+                  )
+                })}
+              </div>
+            </fieldset>
 
             {/* أزرار */}
             <footer className="flex justify-end gap-3 pt-2">

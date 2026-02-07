@@ -17,6 +17,7 @@ import type {
   ClassSessionRecord,
   TeacherScheduleSummary,
   TeacherScheduleResult,
+  MasterScheduleResult,
   TeacherScheduleMovePreviewPayload,
   TeacherScheduleMovePreviewResult,
   TeacherScheduleMoveConfirmPayload,
@@ -1568,6 +1569,11 @@ export async function fetchClassScheduleSummary(): Promise<ClassScheduleSummary[
 export async function fetchTeacherScheduleSummary(): Promise<TeacherScheduleSummary[]> {
   const { data } = await apiClient.get<ApiResponse<TeacherScheduleSummary[]>>('/admin/teacher-schedules/teachers')
   return unwrapResponse(data, 'تعذر تحميل قائمة المعلمين')
+}
+
+export async function fetchMasterSchedule(): Promise<MasterScheduleResult> {
+  const { data } = await apiClient.get<ApiResponse<MasterScheduleResult>>('/admin/teacher-schedules/master')
+  return unwrapResponse(data, 'تعذر تحميل الجدول العام')
 }
 
 export async function fetchClassSchedule(grade: string, className: string): Promise<ClassScheduleResult> {
@@ -3389,6 +3395,26 @@ export async function fetchTeacherFullStats(userId: number): Promise<TeacherFull
     `/admin/duty-schedules/teacher/${userId}/stats`
   )
   return unwrapResponse(data, 'تعذر تحميل إحصائيات المعلم')
+}
+
+/**
+ * إرسال تذكيرات المناوبة الفصلية يدوياً
+ */
+export interface SendDutyScheduleRemindersResult {
+  sent: number
+  failed: number
+  skipped: number
+}
+
+export async function sendDutyScheduleReminders(params: {
+  date?: string
+  duty_type?: 'morning' | 'afternoon'
+}): Promise<SendDutyScheduleRemindersResult> {
+  const { data } = await apiClient.post<ApiResponse<SendDutyScheduleRemindersResult>>(
+    '/admin/duty-schedules/send-reminders',
+    params
+  )
+  return unwrapResponse(data, 'تعذر إرسال التذكيرات')
 }
 
 // =====================================================

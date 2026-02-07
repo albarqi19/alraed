@@ -16,7 +16,7 @@ import {
   type DutyScheduleTodayItem,
 } from '@/modules/admin/api'
 import { useToast } from '@/shared/feedback/use-toast'
-import { useTeachersQuery } from '@/modules/admin/hooks'
+import { useTeachersQuery, useSendDutyScheduleRemindersMutation } from '@/modules/admin/hooks'
 import { openDailySupervisionReport } from '@/modules/admin/utils/open-daily-supervision-report'
 
 const WEEKDAY_LABELS: Record<string, string> = {
@@ -42,6 +42,7 @@ export function AdminDutyRostersPage() {
     teacher: TodaySupervisionTeacher
   } | null>(null)
 
+  const sendRemindersMutation = useSendDutyScheduleRemindersMutation()
   const teachersQuery = useTeachersQuery()
   const allTeachers = teachersQuery.data ?? []
 
@@ -207,7 +208,13 @@ export function AdminDutyRostersPage() {
   }
 
   const handleSendReminders = () => {
-    toast({ type: 'info', title: 'جارٍ إرسال التذكيرات...', description: 'سيتم إرسال رسائل واتساب للمعلمين المكلفين' })
+    if (sendRemindersMutation.isPending) return
+
+    if (!window.confirm('هل تريد إرسال تذكيرات واتساب لجميع المعلمين المكلفين بالمناوبة في هذا التاريخ؟')) {
+      return
+    }
+
+    sendRemindersMutation.mutate({ date: selectedDate })
   }
 
   const handleExportPDF = () => {
@@ -647,10 +654,15 @@ export function AdminDutyRostersPage() {
                 <button
                   type="button"
                   onClick={handleSendReminders}
-                  className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-100 px-4 py-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-200 transition"
+                  disabled={sendRemindersMutation.isPending}
+                  className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-100 px-4 py-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-200 transition disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <Send className="h-4 w-4" />
-                  إرسال التذكيرات الآن
+                  {sendRemindersMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                  {sendRemindersMutation.isPending ? 'جارٍ الإرسال...' : 'إرسال التذكيرات الآن'}
                 </button>
                 <div className="flex gap-2">
                   <button

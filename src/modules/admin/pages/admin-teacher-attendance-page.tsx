@@ -332,7 +332,7 @@ function getDelayTone(status: TeacherDelayStatus) {
     case 'delayed':
       return 'bg-rose-50 text-rose-700 border border-rose-200'
     case 'excused':
-      return 'bg-amber-50 text-amber-700 border border-amber-200'
+      return 'bg-emerald-50 text-emerald-700 border border-emerald-200'
     case 'on_time':
       return 'bg-emerald-50 text-emerald-700 border border-emerald-200'
     case 'absent':
@@ -378,9 +378,10 @@ function MatchBadge({ record }: { record: TeacherHudoriAttendanceRecord }) {
 }
 
 function DelayStatusBadge({ status, label }: { status: TeacherDelayStatus; label?: string | null }) {
+  const icon = status === 'excused' ? 'bi bi-check-circle-fill' : 'bi bi-clock-history'
   return (
     <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold ${getDelayTone(status)}`}>
-      <i className="bi bi-clock-history" />
+      <i className={icon} />
       {label && label.trim() ? label : delayStatusLabels[status]}
     </span>
   )
@@ -1466,9 +1467,19 @@ export function AdminTeacherAttendancePage() {
                               <DelayStatusBadge status={delay.delay_status} label={delay.delay_status_label} />
                               {isAbsent ? (
                                 <>
-                                  <p className="text-[11px] text-muted">سبب الغياب: {absenceActionLabel}</p>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[10px] text-muted">سبب الغياب:</span>
+                                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                      hasCustomAbsenceReason
+                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                        : 'bg-red-50 text-red-600 border border-red-200'
+                                    }`}>
+                                      {hasCustomAbsenceReason && <i className="bi bi-check-circle-fill text-[9px]" />}
+                                      {absenceActionLabel}
+                                    </span>
+                                  </div>
                                   {delay.absence_notes ? (
-                                    <p className="text-[11px] text-muted">ملاحظات: {delay.absence_notes}</p>
+                                    <p className={`text-[11px] ${hasCustomAbsenceReason ? 'text-emerald-500' : 'text-muted'}`}>ملاحظات: {delay.absence_notes}</p>
                                   ) : null}
                                 </>
                               ) : (
@@ -1613,9 +1624,9 @@ export function AdminTeacherAttendancePage() {
                     {delayAnalytics.delayedCount.toLocaleString('ar-SA')}
                   </p>
                 </article>
-                <article className="rounded-2xl border border-amber-200 bg-white/90 px-4 py-3 shadow-sm">
-                  <p className="text-xs font-semibold text-amber-600">حالات بعذر</p>
-                  <p className="mt-1 text-xl font-bold text-amber-700">
+                <article className="rounded-2xl border border-emerald-200 bg-white/90 px-4 py-3 shadow-sm">
+                  <p className="text-xs font-semibold text-emerald-600">حالات بعذر</p>
+                  <p className="mt-1 text-xl font-bold text-emerald-700">
                     {delayAnalytics.excusedCount.toLocaleString('ar-SA')}
                   </p>
                 </article>

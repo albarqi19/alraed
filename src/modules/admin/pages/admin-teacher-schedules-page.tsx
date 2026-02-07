@@ -10,7 +10,8 @@ import {
 import { TeacherScheduleMoveDialog } from '../components/teacher-schedule-move-dialog'
 import { TeacherDayLimitsDialog } from '../components/teacher-day-limits-dialog'
 import { ScheduleMatchingDialog } from '../components/schedule-matching-dialog'
-import { previewTeacherScheduleMove } from '../api'
+import { previewTeacherScheduleMove, fetchMasterSchedule } from '../api'
+import { printMasterSchedule } from '../utils/print-master-schedule'
 import type {
   TeacherScheduleGrid,
   TeacherScheduleSlot,
@@ -128,6 +129,7 @@ export function AdminTeacherSchedulesPage() {
   const [pendingMovePayload, setPendingMovePayload] = useState<TeacherScheduleMovePreviewPayload | null>(null)
   const [dayLimitsDialogOpen, setDayLimitsDialogOpen] = useState(false)
   const [matchingDialogOpen, setMatchingDialogOpen] = useState(false)
+  const [isPrintingMaster, setIsPrintingMaster] = useState(false)
   const [hoverPreviewState, setHoverPreviewState] = useState<HoverPreviewState | null>(null)
   const [dragPointerPosition, setDragPointerPosition] = useState<{ x: number; y: number } | null>(null)
   const [tooltipSize, setTooltipSize] = useState<{ width: number; height: number }>({ width: 240, height: 160 })
@@ -481,22 +483,47 @@ export function AdminTeacherSchedulesPage() {
     )
   }
 
+  const handlePrintMasterSchedule = async () => {
+    setIsPrintingMaster(true)
+    try {
+      const data = await fetchMasterSchedule()
+      printMasterSchedule(data)
+    } catch (err) {
+      console.error('خطأ في طباعة الجدول العام:', err)
+    } finally {
+      setIsPrintingMaster(false)
+    }
+  }
+
   return (
     <>
       <section className="space-y-6">
       <header className="space-y-2">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold text-slate-900">جداول المعلمين</h1>
-          <button
-            type="button"
-            onClick={() => setMatchingDialogOpen(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
-              <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm1.23-3.723a.75.75 0 00.219-.53V2.929a.75.75 0 00-1.5 0V5.36l-.31-.31A7 7 0 003.239 8.188a.75.75 0 101.448.389A5.5 5.5 0 0113.89 6.11l.311.31h-2.432a.75.75 0 000 1.5h4.243a.75.75 0 00.53-.219z" clipRule="evenodd" />
-            </svg>
-            المطابقة اليدوية
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handlePrintMasterSchedule}
+              disabled={isPrintingMaster}
+              className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-50"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+                <path fillRule="evenodd" d="M5 2.75C5 1.784 5.784 1 6.75 1h6.5c.966 0 1.75.784 1.75 1.75v3.552c.377.338.75.753.75 1.248v4.2a.75.75 0 01-.75.75h-1.5v2.75c0 .966-.784 1.75-1.75 1.75h-3.5A1.75 1.75 0 017.5 15.25V12.5H6a.75.75 0 01-.75-.75v-4.2c0-.495.373-.91.75-1.248V2.75zm8.5.75a.25.25 0 00-.25-.25h-6.5a.25.25 0 00-.25.25V5h7V3.5zM9 15.25v-4h2v4a.25.25 0 01-.25.25h-1.5a.25.25 0 01-.25-.25z" clipRule="evenodd" />
+              </svg>
+              {isPrintingMaster ? 'جارٍ التحضير...' : 'طباعة الجدول العام'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMatchingDialogOpen(true)}
+              className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+                <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm1.23-3.723a.75.75 0 00.219-.53V2.929a.75.75 0 00-1.5 0V5.36l-.31-.31A7 7 0 003.239 8.188a.75.75 0 101.448.389A5.5 5.5 0 0113.89 6.11l.311.31h-2.432a.75.75 0 000 1.5h4.243a.75.75 0 00.53-.219z" clipRule="evenodd" />
+              </svg>
+              المطابقة اليدوية
+            </button>
+          </div>
         </div>
         <p className="text-sm text-muted">
           استعرض توزيع حصص كل معلم عبر الأسبوع، وتحقق من التوازن بين الحصص والفصول من خلال واجهات <code>/admin/teacher-schedules/*</code>.

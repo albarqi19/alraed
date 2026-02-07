@@ -14,6 +14,10 @@ interface TeacherQuota {
     priority_1_count: number
     priority_2_count: number
     priority_3_count: number
+    priority_4_count?: number
+    priority_5_count?: number
+    priority_6_count?: number
+    priority_7_count?: number
     used_quota: number
 }
 
@@ -21,12 +25,8 @@ interface WeeklySlot {
     id: number
     day: string
     period_number: number
-    standby_1_id: number | null
-    standby_2_id: number | null
-    standby_3_id: number | null
-    standby1: { id: number; name: string } | null
-    standby2: { id: number; name: string } | null
-    standby3: { id: number; name: string } | null
+    [key: `standby_${number}_id`]: number | null
+    [key: `standby${number}`]: { id: number; name: string } | null
 }
 
 interface WeeklyScheduleData {
@@ -36,8 +36,20 @@ interface WeeklyScheduleData {
         max_periods_per_week: number
         standard_weekly_load: number
         periods_per_day: number
+        max_standby_count: number
     }
 }
+
+// ألوان المنتظرين
+const STANDBY_COLORS = [
+    'bg-emerald-100 text-emerald-700 font-medium', // م1
+    'bg-blue-100 text-blue-700',                     // م2
+    'bg-slate-100 text-slate-600',                   // م3
+    'bg-violet-100 text-violet-700',                 // م4
+    'bg-amber-100 text-amber-700',                   // م5
+    'bg-rose-100 text-rose-700',                     // م6
+    'bg-cyan-100 text-cyan-700',                     // م7
+]
 
 // ========== API Functions ==========
 async function fetchWeeklySchedule(): Promise<WeeklyScheduleData> {
@@ -108,6 +120,7 @@ export function AdminTeacherStandbyPage() {
     const schedule = data?.schedule ?? {}
     const quotas = data?.quotas ?? []
     const settings = data?.settings
+    const maxStandbyCount = settings?.max_standby_count ?? 3
 
     const hasQuotas = quotas.length > 0
 
@@ -282,19 +295,20 @@ export function AdminTeacherStandbyPage() {
                         <div className="h-10 w-10 animate-spin rounded-full border-4 border-teal-500/30 border-t-teal-500" />
                     </div>
                 ) : activeTab === 'quotas' ? (
-                    <QuotasTab quotas={quotas} />
+                    <QuotasTab quotas={quotas} maxStandbyCount={maxStandbyCount} />
                 ) : activeTab === 'weekly' ? (
-                    <WeeklyTab schedule={schedule} periodsPerDay={settings?.periods_per_day ?? 7} />
+                    <WeeklyTab schedule={schedule} periodsPerDay={settings?.periods_per_day ?? 7} maxStandbyCount={maxStandbyCount} />
                 ) : activeTab === 'simulation' ? (
-                    <SimulationTab schedule={schedule} periodsPerDay={settings?.periods_per_day ?? 7} quotas={quotas} />
+                    <SimulationTab schedule={schedule} periodsPerDay={settings?.periods_per_day ?? 7} quotas={quotas} maxStandbyCount={maxStandbyCount} />
                 ) : (
-                    <PreferencesTab quotas={quotas} />
+                    <PreferencesTab quotas={quotas} maxStandbyCount={maxStandbyCount} />
                 )}
             </section>
 
             {/* Settings Modal */}
             {showSettingsModal && (
                 <StandbySettingsModal
+                    currentMaxCount={maxStandbyCount}
                     onClose={() => setShowSettingsModal(false)}
                     onSave={() => {
                         queryClient.invalidateQueries({ queryKey: ['teacher-standby-weekly'] })
@@ -340,7 +354,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
     )
 }
 
-function QuotasTab({ quotas }: { quotas: TeacherQuota[] }) {
+function QuotasTab({ quotas, maxStandbyCount }: { quotas: TeacherQuota[]; maxStandbyCount: number }) {
     if (quotas.length === 0) {
         return (
             <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 text-sm text-muted rounded-3xl border border-slate-200 bg-white shadow-sm">
@@ -365,9 +379,9 @@ function QuotasTab({ quotas }: { quotas: TeacherQuota[] }) {
                             <th className="px-4 py-3 text-right font-semibold">المعلم</th>
                             <th className="px-4 py-3 text-center font-semibold">نصابه</th>
                             <th className="px-4 py-3 text-center font-semibold">إسناده</th>
-                            <th className="px-4 py-3 text-center font-semibold">م1</th>
-                            <th className="px-4 py-3 text-center font-semibold">م2</th>
-                            <th className="px-4 py-3 text-center font-semibold">م3</th>
+                            {Array.from({ length: maxStandbyCount }, (_, i) => (
+                                <th key={i} className="px-4 py-3 text-center font-semibold">م{i + 1}</th>
+                            ))}
                         </tr>
                     </thead>
                     <tbody>
@@ -394,9 +408,11 @@ function QuotasTab({ quotas }: { quotas: TeacherQuota[] }) {
                                         {quota.standby_quota} حصص
                                     </span>
                                 </td>
-                                <td className="px-4 py-3 text-center text-teal-600 font-semibold">{quota.priority_1_count}</td>
-                                <td className="px-4 py-3 text-center text-blue-600 font-medium">{quota.priority_2_count}</td>
-                                <td className="px-4 py-3 text-center text-slate-600">{quota.priority_3_count}</td>
+                                {Array.from({ length: maxStandbyCount }, (_, i) => {
+                                    const count = (quota as unknown as Record<string, number>)[`priority_${i + 1}_count`] ?? 0
+                                    const colors = ['text-teal-600 font-semibold', 'text-blue-600 font-medium', 'text-slate-600', 'text-violet-600', 'text-amber-600', 'text-rose-600', 'text-cyan-600']
+                                    return <td key={i} className={`px-4 py-3 text-center ${colors[i] ?? 'text-slate-600'}`}>{count}</td>
+                                })}
                             </tr>
                         ))}
                     </tbody>
@@ -406,15 +422,15 @@ function QuotasTab({ quotas }: { quotas: TeacherQuota[] }) {
     )
 }
 
-function WeeklyTab({ schedule, periodsPerDay }: { schedule: Record<string, WeeklySlot[]>; periodsPerDay: number }) {
+function WeeklyTab({ schedule, periodsPerDay, maxStandbyCount }: { schedule: Record<string, WeeklySlot[]>; periodsPerDay: number; maxStandbyCount: number }) {
     const toast = useToast()
     const queryClient = useQueryClient()
     const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday']
     const [hoveredTeacherId, setHoveredTeacherId] = useState<number | null>(null)
 
     // حالة التعديل اليدوي
-    const [editingSlot, setEditingSlot] = useState<{ slotId: number; position: 1 | 2 | 3; day: string; period: number } | null>(null)
-    const [pendingChanges, setPendingChanges] = useState<Map<string, { slotId: number; position: 1 | 2 | 3; teacherId: number; teacherName: string }>>(new Map())
+    const [editingSlot, setEditingSlot] = useState<{ slotId: number; position: number; day: string; period: number } | null>(null)
+    const [pendingChanges, setPendingChanges] = useState<Map<string, { slotId: number; position: number; teacherId: number; teacherName: string }>>(new Map())
     const [staffForSlot, setStaffForSlot] = useState<Array<{ id: number; name: string; status: string; status_label: string }>>([])
     const [loadingStaff, setLoadingStaff] = useState(false)
 
@@ -458,7 +474,7 @@ function WeeklyTab({ schedule, periodsPerDay }: { schedule: Record<string, Weekl
     })
 
     // عند النقر على خانة لتعديلها
-    const handleSlotClick = (slotId: number, position: 1 | 2 | 3, day: string, period: number) => {
+    const handleSlotClick = (slotId: number, position: number, day: string, period: number) => {
         setEditingSlot({ slotId, position, day, period })
         fetchStaffForSlot(day, period)
     }
@@ -482,19 +498,15 @@ function WeeklyTab({ schedule, periodsPerDay }: { schedule: Record<string, Weekl
     }
 
     // الحصول على الاسم المعدل إذا وجد
-    const getDisplayName = (slot: WeeklySlot, position: 1 | 2 | 3): string | null => {
+    const getDisplayName = (slot: WeeklySlot, position: number): string | null => {
         const key = `${slot.id}-${position}`
         const pending = pendingChanges.get(key)
         if (pending) return pending.teacherName
-
-        if (position === 1) return slot.standby1?.name ?? null
-        if (position === 2) return slot.standby2?.name ?? null
-        if (position === 3) return slot.standby3?.name ?? null
-        return null
+        return (slot as unknown as Record<string, { id: number; name: string } | null>)[`standby${position}`]?.name ?? null
     }
 
     // التحقق إذا الخانة معدلة
-    const isModified = (slotId: number, position: 1 | 2 | 3) => {
+    const isModified = (slotId: number, position: number) => {
         return pendingChanges.has(`${slotId}-${position}`)
     }
 
@@ -513,10 +525,10 @@ function WeeklyTab({ schedule, periodsPerDay }: { schedule: Record<string, Weekl
     }
 
     // مكون عرض خانة المعلم
-    const TeacherSlot = ({ slot, position, colorClass }: { slot: WeeklySlot; position: 1 | 2 | 3; colorClass: string }) => {
+    const TeacherSlot = ({ slot, position, colorClass }: { slot: WeeklySlot; position: number; colorClass: string }) => {
         const name = getDisplayName(slot, position)
         const modified = isModified(slot.id, position)
-        const teacherId = position === 1 ? slot.standby1?.id : position === 2 ? slot.standby2?.id : slot.standby3?.id
+        const teacherId = (slot as unknown as Record<string, { id: number; name: string } | null>)[`standby${position}`]?.id ?? null
 
         if (!name && !modified) return null
 
@@ -577,7 +589,7 @@ function WeeklyTab({ schedule, periodsPerDay }: { schedule: Record<string, Weekl
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
                 <p className="text-sm text-muted">
-                    جدول الانتظار الأسبوعي - 3 منتظرين لكل حصة (اضغط على الاسم للتعديل)
+                    جدول الانتظار الأسبوعي - {maxStandbyCount} منتظرين لكل حصة (اضغط على الاسم للتعديل)
                 </p>
                 {pendingChanges.size > 0 && (
                     <button
@@ -620,9 +632,9 @@ function WeeklyTab({ schedule, periodsPerDay }: { schedule: Record<string, Weekl
                                     return (
                                         <td key={day} className="px-2 py-2">
                                             <div className="flex flex-col gap-1 text-xs">
-                                                <TeacherSlot slot={slot} position={1} colorClass="bg-emerald-100 text-emerald-700 font-medium" />
-                                                <TeacherSlot slot={slot} position={2} colorClass="bg-blue-100 text-blue-700" />
-                                                <TeacherSlot slot={slot} position={3} colorClass="bg-slate-100 text-slate-600" />
+                                                {Array.from({ length: maxStandbyCount }, (_, i) => (
+                                                    <TeacherSlot key={i} slot={slot} position={i + 1} colorClass={STANDBY_COLORS[i] ?? 'bg-slate-100 text-slate-600'} />
+                                                ))}
                                             </div>
                                         </td>
                                     )
@@ -637,11 +649,13 @@ function WeeklyTab({ schedule, periodsPerDay }: { schedule: Record<string, Weekl
 }
 
 function SimulationTab({
-    quotas
+    quotas,
+    maxStandbyCount,
 }: {
     schedule: Record<string, WeeklySlot[]>
     periodsPerDay: number
     quotas: TeacherQuota[]
+    maxStandbyCount: number
 }) {
     const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday']
     const [selectedTeacherIds, setSelectedTeacherIds] = useState<number[]>([])
@@ -700,43 +714,46 @@ function SimulationTab({
         priority: number
         conflict: boolean
         allBusy: boolean
-        standby1: string | null
-        standby2: string | null
-        standby3: string | null
+        standbys: Record<string, string | null>
     }
 
     const allAssignments: AssignmentResult[] = []
 
     // معالجة كل نتيجة محاكاة
-    simulationResults.forEach((result: { teacher: { id: number; name: string }; sessions: Array<{ period: number; class: string; subject: string; standby1: string | null; standby2: string | null; standby3: string | null; standby1_id: number | null; standby2_id: number | null; standby3_id: number | null }> }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    simulationResults.forEach((result: any) => {
         if (!result?.sessions) return
 
-        result.sessions.forEach((session) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        result.sessions.forEach((session: any) => {
             const period = session.period
             if (!usedStandbyPerPeriod.has(period)) {
                 usedStandbyPerPeriod.set(period, new Set())
             }
             const usedInThisPeriod = usedStandbyPerPeriod.get(period)!
 
-            // البحث عن بديل متاح
-            const standbys = [
-                { id: session.standby1_id, name: session.standby1, priority: 1 },
-                { id: session.standby2_id, name: session.standby2, priority: 2 },
-                { id: session.standby3_id, name: session.standby3, priority: 3 },
-            ]
+            // البحث عن بديل متاح ديناميكياً
+            const standbys: Array<{ id: number | null; name: string | null; priority: number }> = []
+            for (let i = 1; i <= maxStandbyCount; i++) {
+                standbys.push({ id: session[`standby${i}_id`], name: session[`standby${i}`], priority: i })
+            }
 
             let assigned: { id: number; name: string; priority: number } | null = null
 
             for (const s of standbys) {
                 if (!s.id || !s.name) continue
-                // البديل لا يكون هو نفسه الغائب
                 if (selectedTeacherIds.includes(s.id)) continue
-                // البديل لا يكون مستخدم بالفعل في نفس الحصة
                 if (usedInThisPeriod.has(s.id)) continue
 
                 assigned = { id: s.id, name: s.name, priority: s.priority }
                 usedInThisPeriod.add(s.id)
                 break
+            }
+
+            // جمع أسماء المنتظرين
+            const standbyNames: Record<string, string | null> = {}
+            for (let i = 1; i <= maxStandbyCount; i++) {
+                standbyNames[`standby${i}`] = session[`standby${i}`] ?? null
             }
 
             allAssignments.push({
@@ -750,9 +767,7 @@ function SimulationTab({
                 priority: assigned?.priority ?? 0,
                 conflict: assigned ? assigned.priority !== 1 : false,
                 allBusy: !assigned,
-                standby1: session.standby1,
-                standby2: session.standby2,
-                standby3: session.standby3,
+                standbys: standbyNames,
             })
         })
     })
@@ -920,9 +935,10 @@ function SimulationTab({
                                                         </span>
                                                     )}
                                                     <div className="text-[10px] text-muted">
-                                                        {a.standby1 && <span className="mr-2">م1: {a.standby1}</span>}
-                                                        {a.standby2 && <span className="mr-2">م2: {a.standby2}</span>}
-                                                        {a.standby3 && <span>م3: {a.standby3}</span>}
+                                                        {Array.from({ length: maxStandbyCount }, (_, i) => {
+                                                            const name = a.standbys[`standby${i + 1}`]
+                                                            return name ? <span key={i} className="mr-2">م{i + 1}: {name}</span> : null
+                                                        })}
                                                     </div>
                                                 </div>
                                             </div>
@@ -951,7 +967,7 @@ interface TeacherPreference {
     notes: string | null
 }
 
-function PreferencesTab({ quotas }: { quotas: TeacherQuota[] }) {
+function PreferencesTab({ quotas, maxStandbyCount }: { quotas: TeacherQuota[]; maxStandbyCount: number }) {
     const toast = useToast()
     const queryClient = useQueryClient()
     const [selectedTeacherId, setSelectedTeacherId] = useState<number | null>(null)
@@ -1133,9 +1149,9 @@ function PreferencesTab({ quotas }: { quotas: TeacherQuota[] }) {
                                     style={{ borderColor: 'var(--color-border)' }}
                                 >
                                     <option value="">تلقائي (الكل)</option>
-                                    <option value="1">م1 فقط</option>
-                                    <option value="2">م2 فقط</option>
-                                    <option value="3">م3 فقط</option>
+                                    {Array.from({ length: maxStandbyCount }, (_, i) => (
+                                        <option key={i} value={i + 1}>م{i + 1} فقط</option>
+                                    ))}
                                 </select>
                             </div>
 
@@ -1185,9 +1201,27 @@ interface StaffMember {
     is_teacher: boolean
 }
 
-function StandbySettingsModal({ onClose, onSave }: { onClose: () => void; onSave: () => void }) {
+function StandbySettingsModal({ onClose, onSave, currentMaxCount }: { onClose: () => void; onSave: () => void; currentMaxCount: number }) {
     const toast = useToast()
+    const queryClient = useQueryClient()
     const [searchTerm, setSearchTerm] = useState('')
+    const [maxCount, setMaxCount] = useState(currentMaxCount)
+
+    // حفظ عدد المنتظرين
+    const saveCountMutation = useMutation({
+        mutationFn: async (count: number) => {
+            const { data } = await apiClient.put('/admin/teacher-standby/settings', { max_standby_count: count })
+            if (!data.success) throw new Error(data.message)
+            return data
+        },
+        onSuccess: () => {
+            toast({ type: 'success', title: 'تم تحديث عدد المنتظرين' })
+            queryClient.invalidateQueries({ queryKey: ['teacher-standby-weekly'] })
+        },
+        onError: (error: Error) => {
+            toast({ type: 'error', title: error.message })
+        },
+    })
 
     // جلب قائمة الموظفين
     const { data: staffData, isLoading, refetch } = useQuery({
@@ -1248,6 +1282,36 @@ function StandbySettingsModal({ onClose, onSave }: { onClose: () => void; onSave
 
                 {/* Content */}
                 <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+                    {/* عدد المنتظرين */}
+                    <div className="rounded-xl border border-slate-200 p-4 bg-slate-50">
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                            عدد المنتظرين لكل حصة
+                        </label>
+                        <div className="flex items-center gap-3">
+                            <select
+                                value={maxCount}
+                                onChange={(e) => setMaxCount(Number(e.target.value))}
+                                className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                                {[1, 2, 3, 4, 5, 6, 7].map(n => (
+                                    <option key={n} value={n}>{n} منتظر{n > 2 ? 'ين' : ''}</option>
+                                ))}
+                            </select>
+                            {maxCount !== currentMaxCount && (
+                                <button
+                                    onClick={() => saveCountMutation.mutate(maxCount)}
+                                    disabled={saveCountMutation.isPending}
+                                    className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50"
+                                >
+                                    {saveCountMutation.isPending ? '...' : 'حفظ'}
+                                </button>
+                            )}
+                        </div>
+                        <p className="text-xs text-muted mt-2">
+                            بعد تغيير العدد، أعد حساب الإسناد وتوليد الجدول الأسبوعي
+                        </p>
+                    </div>
+
                     {/* Enabled Staff */}
                     {enabledStaff.length > 0 && (
                         <div className="mb-4">
