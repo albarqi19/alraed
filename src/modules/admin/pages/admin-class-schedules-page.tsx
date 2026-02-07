@@ -920,17 +920,13 @@ export function AdminClassSchedulesPage() {
 
   return (
     <section className="space-y-6">
-      <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-slate-900">جداول الفصول</h1>
-          <p className="text-sm text-muted">
-            تحكم في الجداول الأسبوعية للفصول، أضف حصصًا بسرعة، وطبق التوقيتات المعتمدة عبر واجهات <code>/admin/class-schedules/*</code>.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {totalSessionsAllClasses > 0 && (
+      <header className="flex items-center justify-between gap-4">
+        <h1 className="text-xl font-bold text-slate-900">جداول الفصول</h1>
+        {totalSessionsAllClasses > 0 && (
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
+              title="طباعة جداول جميع الفصول"
               onClick={async () => {
                 if (!classSummariesQuery.data || classSummariesQuery.data.length === 0) return
                 setIsPrintingAll(true)
@@ -957,16 +953,15 @@ export function AdminClassSchedulesPage() {
                   setIsPrintingAll(false)
                 }
               }}
-              className="button-secondary whitespace-nowrap"
+              className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
               disabled={isPrintingAll}
             >
-              <i className="bi bi-printer ml-2" />
-              {isPrintingAll ? 'جارٍ التحميل...' : 'طباعة جميع الجداول'}
+              <i className="bi bi-printer ml-1" />
+              {isPrintingAll ? 'جارٍ التحميل...' : 'طباعة الكل'}
             </button>
-          )}
-          {totalSessionsAllClasses > 0 && (
             <button
               type="button"
+              title="حذف جداول جميع الفصول"
               onClick={() => {
                 setIsDeleteAllSchedulesOpen(true)
                 setDeleteAllStep(1)
@@ -974,14 +969,14 @@ export function AdminClassSchedulesPage() {
                 setDeleteAllConfirmText('')
                 setDeleteAllError(null)
               }}
-              className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 transition hover:border-rose-300 hover:bg-rose-100 whitespace-nowrap"
+              className="rounded-xl border border-rose-200 px-3 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-50"
               disabled={deleteAllSchedulesMutation.isPending}
             >
-              <i className="bi bi-trash ml-2" />
-              حذف جداول جميع الفصول ({totalSessionsAllClasses} حصة)
+              <i className="bi bi-trash ml-1" />
+              حذف الكل
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[300px,1fr]">
@@ -1108,100 +1103,94 @@ export function AdminClassSchedulesPage() {
         <div className="glass-card space-y-6">
           {selectedClass ? (
             <>
-              <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div className="space-y-1 text-right">
-                  <h2 className="text-2xl font-bold text-slate-900">{selectedClass.name}</h2>
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-muted md:justify-end">
-                    <span className="inline-flex items-center gap-1">
-                      <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                      {selectedClass.students_count} طالب
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <span className="h-2 w-2 rounded-full bg-sky-400" />
-                      {totalSessions} حصة مسجلة
-                    </span>
-                    {scheduleQuery.data?.applied_schedule ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-3 py-1 font-semibold text-teal-700">
-                        التوقيت المطبق: {scheduleQuery.data.applied_schedule.name}
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-amber-600">
-                        <span className="h-2 w-2 rounded-full bg-amber-400" />
-                        لم يتم تطبيق توقيت بعد
-                      </span>
-                    )}
-                    {scheduleQuery.isFetching ? (
-                      <span className="inline-flex items-center gap-1 text-slate-500">
+              <header className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-lg font-bold text-slate-900">{selectedClass.name}</h2>
+                    <div className="flex items-center gap-2 text-[11px] text-muted">
+                      <span>{selectedClass.students_count} طالب</span>
+                      <span>•</span>
+                      <span>{totalSessions} حصة</span>
+                      {scheduleQuery.data?.applied_schedule ? (
+                        <>
+                          <span>•</span>
+                          <span className="font-semibold text-teal-700">{scheduleQuery.data.applied_schedule.name}</span>
+                        </>
+                      ) : null}
+                      {scheduleQuery.isFetching ? (
                         <span className="h-2 w-2 animate-ping rounded-full bg-teal-500" />
-                        يتم تحديث البيانات...
-                      </span>
-                    ) : null}
+                      ) : null}
+                    </div>
                   </div>
-                </div>
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  {totalSessions > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    {totalSessions > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!scheduleQuery.data?.schedule || !selectedClass) return
+                          const schoolName = useAuthStore.getState().user?.school?.name || 'المدرسة'
+                          printClassSchedule(
+                            scheduleQuery.data.schedule,
+                            {
+                              grade: selectedClass.grade,
+                              class_name: selectedClass.class_name,
+                              name: selectedClass.name,
+                            },
+                            schoolName,
+                            scheduleQuery.data.applied_schedule?.name,
+                          )
+                        }}
+                        className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
+                      >
+                        <i className="bi bi-printer ml-1" />
+                        طباعة
+                      </button>
+                    )}
                     <button
                       type="button"
-                      onClick={() => {
-                        if (!scheduleQuery.data?.schedule || !selectedClass) return
-                        const schoolName = useAuthStore.getState().user?.school?.name || 'المدرسة'
-                        printClassSchedule(
-                          scheduleQuery.data.schedule,
-                          {
-                            grade: selectedClass.grade,
-                            class_name: selectedClass.class_name,
-                            name: selectedClass.name,
-                          },
-                          schoolName,
-                          scheduleQuery.data.applied_schedule?.name,
-                        )
-                      }}
-                      className="button-secondary"
+                      onClick={() => scheduleQuery.refetch()}
+                      className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
+                      disabled={scheduleQuery.isFetching}
                     >
-                      <i className="bi bi-printer ml-1" />
-                      طباعة الجدول
+                      <i className={`bi bi-arrow-clockwise ml-1 ${scheduleQuery.isFetching ? 'animate-spin' : ''}`} />
+                      تحديث
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => scheduleQuery.refetch()}
-                    className="button-secondary"
-                    disabled={scheduleQuery.isFetching}
-                  >
-                    {scheduleQuery.isFetching ? 'جارٍ التحديث...' : 'تحديث الجدول'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenQuickSession()}
-                    className="button-primary"
-                    disabled={addQuickSessionMutation.isPending}
-                  >
-                    إضافة حصة سريعة
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsApplyScheduleOpen(true)}
-                    className="button-secondary"
-                    disabled={applyScheduleMutation.isPending}
-                  >
-                    {applyScheduleMutation.isPending ? 'جارٍ التطبيق...' : 'تطبيق توقيت'}
-                  </button>
-                  {totalSessions > 0 && (
                     <button
                       type="button"
-                      onClick={() => {
-                        setIsDeleteScheduleOpen(true)
-                        setDeleteScheduleStep(1)
-                        setDeletePassword('')
-                        setDeleteConfirmText('')
-                        setDeleteError(null)
-                      }}
-                      className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 transition hover:border-rose-300 hover:bg-rose-100"
-                      disabled={deleteScheduleMutation.isPending}
+                      onClick={() => setIsApplyScheduleOpen(true)}
+                      className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
+                      disabled={applyScheduleMutation.isPending}
                     >
-                      حذف الجدول
+                      <i className="bi bi-clock ml-1" />
+                      توقيت
                     </button>
-                  )}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenQuickSession()}
+                      className="rounded-xl bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-teal-700"
+                      disabled={addQuickSessionMutation.isPending}
+                    >
+                      <i className="bi bi-plus-lg ml-1" />
+                      إضافة حصة
+                    </button>
+                    {totalSessions > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsDeleteScheduleOpen(true)
+                          setDeleteScheduleStep(1)
+                          setDeletePassword('')
+                          setDeleteConfirmText('')
+                          setDeleteError(null)
+                        }}
+                        className="rounded-xl border border-rose-200 px-3 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-50"
+                        disabled={deleteScheduleMutation.isPending}
+                      >
+                        <i className="bi bi-trash ml-1" />
+                        حذف
+                      </button>
+                    )}
+                  </div>
                 </div>
               </header>
 
