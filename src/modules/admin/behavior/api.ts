@@ -495,6 +495,53 @@ export interface AIStudentProfile {
   generated_at: string
 }
 
+export interface AssistantAction {
+  action_id: string
+  type: string
+  label: string
+  description?: string
+  params: Record<string, unknown>
+  variant: 'success' | 'danger' | 'warning' | 'info'
+}
+
+export interface AssistantChatResponse {
+  response: string
+  session_id: string
+  actions?: AssistantAction[]
+}
+
+export async function sendAssistantChat(
+  message: string,
+  sessionId?: string,
+): Promise<AssistantChatResponse> {
+  const response = await apiClient.post<ApiResponse<AssistantChatResponse>>(
+    '/admin/behavior/analytics/ai/assistant-chat',
+    {
+      message,
+      session_id: sessionId,
+    },
+  )
+  return response.data.data
+}
+
+export interface ExecuteActionResponse {
+  success: boolean
+  message: string
+}
+
+export async function executeAssistantAction(request: {
+  action_id: string
+  action_type: string
+  params: Record<string, unknown>
+  session_id: string
+}): Promise<ExecuteActionResponse> {
+  const response = await apiClient.post<ApiResponse<ExecuteActionResponse>>(
+    '/admin/behavior/analytics/ai/execute-action',
+    request,
+  )
+  return response.data.data
+}
+
 export async function fetchAIStudentProfile(studentId: number): Promise<AIStudentProfile> {
   const response = await apiClient.get<ApiResponse<AIStudentProfile>>(`/admin/behavior/analytics/ai/student-profile/${studentId}`)
   return response.data.data

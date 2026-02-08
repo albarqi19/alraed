@@ -10,8 +10,10 @@ import {
 import { TeacherScheduleMoveDialog } from '../components/teacher-schedule-move-dialog'
 import { TeacherDayLimitsDialog } from '../components/teacher-day-limits-dialog'
 import { ScheduleMatchingDialog } from '../components/schedule-matching-dialog'
-import { previewTeacherScheduleMove, fetchMasterSchedule } from '../api'
+import { previewTeacherScheduleMove, fetchMasterSchedule, fetchTeacherSchedule } from '../api'
 import { printMasterSchedule } from '../utils/print-master-schedule'
+import { printTeacherSchedule, printAllTeacherSchedules } from '../utils/print-teacher-schedule'
+import { useAuthStore } from '@/modules/auth/store/auth-store'
 import type {
   TeacherScheduleGrid,
   TeacherScheduleSlot,
@@ -130,6 +132,7 @@ export function AdminTeacherSchedulesPage() {
   const [dayLimitsDialogOpen, setDayLimitsDialogOpen] = useState(false)
   const [matchingDialogOpen, setMatchingDialogOpen] = useState(false)
   const [isPrintingMaster, setIsPrintingMaster] = useState(false)
+  const [isPrintingAll, setIsPrintingAll] = useState(false)
   const [hoverPreviewState, setHoverPreviewState] = useState<HoverPreviewState | null>(null)
   const [dragPointerPosition, setDragPointerPosition] = useState<{ x: number; y: number } | null>(null)
   const [tooltipSize, setTooltipSize] = useState<{ width: number; height: number }>({ width: 240, height: 160 })
@@ -495,39 +498,73 @@ export function AdminTeacherSchedulesPage() {
     }
   }
 
+  const handlePrintTeacher = () => {
+    if (!scheduleQuery.data?.schedule || !selectedTeacher) return
+    const schoolName = useAuthStore.getState().user?.school?.name ?? ''
+    printTeacherSchedule(scheduleQuery.data.schedule, selectedTeacher.name, schoolName)
+  }
+
+  const handlePrintAllTeachers = async () => {
+    if (!summariesQuery.data || summariesQuery.data.length === 0) return
+    setIsPrintingAll(true)
+    try {
+      const schoolName = useAuthStore.getState().user?.school?.name ?? ''
+      const results = await Promise.all(
+        summariesQuery.data.map((t) => fetchTeacherSchedule(t.id)),
+      )
+      const teacherData = results
+        .filter((r) => r.schedule && Object.keys(r.schedule).length > 0)
+        .map((r) => ({
+          teacherName: r.teacher_info.name,
+          schedule: r.schedule,
+        }))
+      printAllTeacherSchedules(teacherData, schoolName)
+    } catch (err) {
+      console.error('خطأ في طباعة جداول المعلمين:', err)
+    } finally {
+      setIsPrintingAll(false)
+    }
+  }
+
   return (
     <>
       <section className="space-y-6">
-      <header className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-slate-900">جداول المعلمين</h1>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handlePrintMasterSchedule}
-              disabled={isPrintingMaster}
-              className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-50"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
-                <path fillRule="evenodd" d="M5 2.75C5 1.784 5.784 1 6.75 1h6.5c.966 0 1.75.784 1.75 1.75v3.552c.377.338.75.753.75 1.248v4.2a.75.75 0 01-.75.75h-1.5v2.75c0 .966-.784 1.75-1.75 1.75h-3.5A1.75 1.75 0 017.5 15.25V12.5H6a.75.75 0 01-.75-.75v-4.2c0-.495.373-.91.75-1.248V2.75zm8.5.75a.25.25 0 00-.25-.25h-6.5a.25.25 0 00-.25.25V5h7V3.5zM9 15.25v-4h2v4a.25.25 0 01-.25.25h-1.5a.25.25 0 01-.25-.25z" clipRule="evenodd" />
-              </svg>
-              {isPrintingMaster ? 'جارٍ التحضير...' : 'طباعة الجدول العام'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setMatchingDialogOpen(true)}
-              className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
-                <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm1.23-3.723a.75.75 0 00.219-.53V2.929a.75.75 0 00-1.5 0V5.36l-.31-.31A7 7 0 003.239 8.188a.75.75 0 101.448.389A5.5 5.5 0 0113.89 6.11l.311.31h-2.432a.75.75 0 000 1.5h4.243a.75.75 0 00.53-.219z" clipRule="evenodd" />
-              </svg>
-              المطابقة اليدوية
-            </button>
-          </div>
+      <header className="flex items-center justify-between">
+        <h1 className="text-xl font-bold text-slate-900">جداول المعلمين</h1>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handlePrintAllTeachers}
+            disabled={isPrintingAll || summariesQuery.isLoading}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+              <path fillRule="evenodd" d="M5 2.75C5 1.784 5.784 1 6.75 1h6.5c.966 0 1.75.784 1.75 1.75v3.552c.377.338.75.753.75 1.248v4.2a.75.75 0 01-.75.75h-1.5v2.75c0 .966-.784 1.75-1.75 1.75h-3.5A1.75 1.75 0 017.5 15.25V12.5H6a.75.75 0 01-.75-.75v-4.2c0-.495.373-.91.75-1.248V2.75zm8.5.75a.25.25 0 00-.25-.25h-6.5a.25.25 0 00-.25.25V5h7V3.5zM9 15.25v-4h2v4a.25.25 0 01-.25.25h-1.5a.25.25 0 01-.25-.25z" clipRule="evenodd" />
+            </svg>
+            {isPrintingAll ? 'جارٍ التحضير...' : 'طباعة الكل'}
+          </button>
+          <button
+            type="button"
+            onClick={handlePrintMasterSchedule}
+            disabled={isPrintingMaster}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+              <path fillRule="evenodd" d="M1 2.75A.75.75 0 011.75 2h16.5a.75.75 0 010 1.5H1.75A.75.75 0 011 2.75zm0 5A.75.75 0 011.75 7h16.5a.75.75 0 010 1.5H1.75A.75.75 0 011 7.75zM1.75 12a.75.75 0 000 1.5h16.5a.75.75 0 000-1.5H1.75z" clipRule="evenodd" />
+            </svg>
+            {isPrintingMaster ? 'جارٍ التحضير...' : 'الجدول العام'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setMatchingDialogOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+              <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm1.23-3.723a.75.75 0 00.219-.53V2.929a.75.75 0 00-1.5 0V5.36l-.31-.31A7 7 0 003.239 8.188a.75.75 0 101.448.389A5.5 5.5 0 0113.89 6.11l.311.31h-2.432a.75.75 0 000 1.5h4.243a.75.75 0 00.53-.219z" clipRule="evenodd" />
+            </svg>
+            المطابقة اليدوية
+          </button>
         </div>
-        <p className="text-sm text-muted">
-          استعرض توزيع حصص كل معلم عبر الأسبوع، وتحقق من التوازن بين الحصص والفصول من خلال واجهات <code>/admin/teacher-schedules/*</code>.
-        </p>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[300px,1fr]">
@@ -648,51 +685,50 @@ export function AdminTeacherSchedulesPage() {
         <div className="glass-card space-y-6">
           {selectedTeacher ? (
             <>
-              <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="space-y-1 text-right">
-                  <h2 className="text-2xl font-bold text-slate-900">{selectedTeacher.name}</h2>
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-muted md:justify-end">
-                    <span className="inline-flex items-center gap-1">
-                      <span className={`h-2 w-2 rounded-full ${selectedTeacher.status === 'active' ? 'bg-emerald-400' : 'bg-slate-400'}`} />
-                      {selectedTeacher.status === 'active' ? 'متاح للتدريس' : 'غير متاح حالياً'}
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <span className="h-2 w-2 rounded-full bg-sky-400" />
-                      {selectedTeacher.classes_count} فصول مختلفة
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <span className="h-2 w-2 rounded-full bg-indigo-400" />
-                      {selectedTeacher.sessions_count} حصص أسبوعية
-                    </span>
-                    {scheduleQuery.data?.teacher_info?.subjects_count ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700">
-                        {scheduleQuery.data.teacher_info.subjects_count} مواد مسندة
-                      </span>
-                    ) : null}
-                    {scheduleQuery.isFetching ? (
-                      <span className="inline-flex items-center gap-1 text-slate-500">
-                        <span className="h-2 w-2 animate-ping rounded-full bg-teal-500" />
-                        يتم تحديث البيانات...
-                      </span>
-                    ) : null}
-                  </div>
+                  <h2 className="text-lg font-bold text-slate-900">{selectedTeacher.name}</h2>
+                  <p className="text-xs text-muted">
+                    {selectedTeacher.status === 'active' ? 'نشط' : 'موقوف'}
+                    {' • '}{selectedTeacher.sessions_count} حصة
+                    {' • '}{selectedTeacher.classes_count} فصل
+                    {scheduleQuery.data?.teacher_info?.subjects_count ? ` • ${scheduleQuery.data.teacher_info.subjects_count} مادة` : ''}
+                    {scheduleQuery.isFetching ? ' • جارٍ التحديث...' : ''}
+                  </p>
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-2">
                   <button
                     type="button"
-                    onClick={() => setDayLimitsDialogOpen(true)}
-                    className="button-primary"
-                    disabled={updateDayLimitsMutation.isPending}
+                    onClick={handlePrintTeacher}
+                    disabled={!scheduleQuery.data?.schedule || totalSessions === 0}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
                   >
-                    الحصص
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                      <path fillRule="evenodd" d="M5 2.75C5 1.784 5.784 1 6.75 1h6.5c.966 0 1.75.784 1.75 1.75v3.552c.377.338.75.753.75 1.248v4.2a.75.75 0 01-.75.75h-1.5v2.75c0 .966-.784 1.75-1.75 1.75h-3.5A1.75 1.75 0 017.5 15.25V12.5H6a.75.75 0 01-.75-.75v-4.2c0-.495.373-.91.75-1.248V2.75zm8.5.75a.25.25 0 00-.25-.25h-6.5a.25.25 0 00-.25.25V5h7V3.5zM9 15.25v-4h2v4a.25.25 0 01-.25.25h-1.5a.25.25 0 01-.25-.25z" clipRule="evenodd" />
+                    </svg>
+                    طباعة
                   </button>
                   <button
                     type="button"
                     onClick={() => scheduleQuery.refetch()}
-                    className="button-secondary"
                     disabled={scheduleQuery.isFetching}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
                   >
-                    {scheduleQuery.isFetching ? 'جارٍ التحديث...' : 'تحديث الجدول'}
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                      <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm1.23-3.723a.75.75 0 00.219-.53V2.929a.75.75 0 00-1.5 0V5.36l-.31-.31A7 7 0 003.239 8.188a.75.75 0 101.448.389A5.5 5.5 0 0113.89 6.11l.311.31h-2.432a.75.75 0 000 1.5h4.243a.75.75 0 00.53-.219z" clipRule="evenodd" />
+                    </svg>
+                    تحديث
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDayLimitsDialogOpen(true)}
+                    disabled={updateDayLimitsMutation.isPending}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-teal-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-teal-700 disabled:opacity-50"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                      <path d="M10 3.75a2 2 0 10-4 0 2 2 0 004 0zM17.25 4.5a.75.75 0 000-1.5h-5.5a.75.75 0 000 1.5h5.5zM5 3.75a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5a.75.75 0 01.75.75zM4.25 17a.75.75 0 000-1.5h-1.5a.75.75 0 000 1.5h1.5zM17.25 17a.75.75 0 000-1.5h-5.5a.75.75 0 000 1.5h5.5zM9 10a.75.75 0 01-.75.75h-5.5a.75.75 0 010-1.5h5.5A.75.75 0 019 10zM17.25 10.75a.75.75 0 000-1.5h-1.5a.75.75 0 000 1.5h1.5zM14 10a2 2 0 10-4 0 2 2 0 004 0zM10 16.25a2 2 0 10-4 0 2 2 0 004 0z" />
+                    </svg>
+                    الحصص
                   </button>
                 </div>
               </header>

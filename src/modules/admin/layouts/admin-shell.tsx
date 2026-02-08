@@ -7,6 +7,7 @@ import { CalendarClock, ChevronDown, Menu, X } from 'lucide-react'
 import clsx from 'classnames'
 import { primaryAdminNavGroups, secondaryAdminNav, settingsAdminNav } from '../constants/navigation'
 import { getCurrentAcademicWeek } from '../constants/academic-calendar-data'
+import { AIAssistantWidget } from '../components/ai-assistant-widget'
 
 export function AdminShell() {
   const admin = useAuthStore((state) => state.user)
@@ -473,6 +474,7 @@ export function AdminShell() {
           )}
         </main>
       </div>
+      <AIAssistantWidget />
     </div>
   )
 }
