@@ -1,11 +1,13 @@
-import { CalendarClock, ShieldCheck } from 'lucide-react'
+import { CalendarClock, ShieldCheck, Timer } from 'lucide-react'
 import clsx from 'classnames'
+import { differenceInDays, parseISO } from 'date-fns'
 
 interface SubscriptionStatusIndicatorProps {
   plan: string
   status: string
   nextBillingAt?: string | null
   trialEndsAt?: string | null
+  endsAt?: string | null
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -35,11 +37,22 @@ function formatDate(date?: string | null) {
   })
 }
 
-export function SubscriptionStatusIndicator({ plan, status, nextBillingAt, trialEndsAt }: SubscriptionStatusIndicatorProps) {
+export function SubscriptionStatusIndicator({ plan, status, nextBillingAt, trialEndsAt, endsAt }: SubscriptionStatusIndicatorProps) {
   const statusLabel = STATUS_LABELS[status] ?? status
   const statusStyle = STATUS_STYLES[status] ?? 'bg-slate-200 text-slate-600'
   const nextBilling = formatDate(nextBillingAt)
   const trialEnds = formatDate(trialEndsAt)
+
+  // حساب الأيام المتبقية
+  let daysRemaining: number | null = null
+  if (endsAt) {
+    try {
+      daysRemaining = differenceInDays(parseISO(endsAt), new Date())
+      if (daysRemaining < 0) daysRemaining = null
+    } catch {
+      daysRemaining = null
+    }
+  }
 
   return (
     <div className="rounded-2xl border border-white/40 bg-white/60 p-4 shadow-sm">
@@ -74,6 +87,17 @@ export function SubscriptionStatusIndicator({ plan, status, nextBillingAt, trial
             <span>
               نهاية الفترة التجريبية:
               <strong className="mr-2 text-slate-800">{trialEnds}</strong>
+            </span>
+          </div>
+        ) : null}
+        {daysRemaining !== null ? (
+          <div className="flex items-center gap-2">
+            <Timer className={clsx('h-4 w-4', daysRemaining <= 7 ? 'text-amber-500' : 'text-emerald-500')} />
+            <span>
+              باقي على الاشتراك:
+              <strong className={clsx('mr-2', daysRemaining <= 7 ? 'text-amber-700' : 'text-slate-800')}>
+                {daysRemaining} {daysRemaining === 1 ? 'يوم' : 'يوم'}
+              </strong>
             </span>
           </div>
         ) : null}

@@ -1,5 +1,5 @@
 import { Check, Crown, Sparkles, X, Eye } from 'lucide-react'
-import type { SubscriptionPlanRecord } from '../types'
+import type { BillingCycle, SubscriptionPlanRecord } from '../types'
 import clsx from 'classnames'
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
@@ -22,6 +22,7 @@ function formatCurrency(value: number) {
 
 interface PlanCardProps {
   plan: SubscriptionPlanRecord
+  billingCycle?: BillingCycle
   highlight?: boolean
   current?: boolean
   onAction?: (plan: SubscriptionPlanRecord) => void
@@ -30,7 +31,7 @@ interface PlanCardProps {
   badge?: string
 }
 
-export function PlanCard({ plan, highlight = false, current = false, onAction, actionLabel, disabled, badge }: PlanCardProps) {
+export function PlanCard({ plan, billingCycle = 'monthly', highlight = false, current = false, onAction, actionLabel, disabled, badge }: PlanCardProps) {
   const [showAllFeatures, setShowAllFeatures] = useState(false)
   const rawFeatures = plan.features ?? {}
   
@@ -84,10 +85,19 @@ export function PlanCard({ plan, highlight = false, current = false, onAction, a
       </div>
 
       <div className="mt-4 space-y-1">
-        <p className="text-2xl font-bold text-slate-900">{formatCurrency(monthlyPrice)}<span className="text-sm font-medium text-slate-500"> / شهرياً</span></p>
-        {yearlyPrice ? (
-          <p className="text-xs text-emerald-700">{formatCurrency(yearlyPrice)} <span className="font-medium">/ سنوياً</span></p>
-        ) : null}
+        {billingCycle === 'yearly' && yearlyPrice ? (
+          <>
+            <p className="text-2xl font-bold text-slate-900">{formatCurrency(yearlyPrice)}<span className="text-sm font-medium text-slate-500"> / سنوياً</span></p>
+            <p className="text-xs text-emerald-700">{formatCurrency(monthlyPrice)} <span className="font-medium">/ شهرياً</span></p>
+          </>
+        ) : (
+          <>
+            <p className="text-2xl font-bold text-slate-900">{formatCurrency(monthlyPrice)}<span className="text-sm font-medium text-slate-500"> / شهرياً</span></p>
+            {yearlyPrice ? (
+              <p className="text-xs text-emerald-700">{formatCurrency(yearlyPrice)} <span className="font-medium">/ سنوياً</span></p>
+            ) : null}
+          </>
+        )}
       </div>
 
       <ul className="mt-4 space-y-2 text-sm">

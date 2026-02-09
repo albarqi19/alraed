@@ -10,7 +10,7 @@ export type UserRole =
   | 'learning_resources_admin'
   | 'health_counselor'
 
-export type SubscriptionPlan = 'trial' | 'basic' | 'premium' | 'enterprise'
+export type SubscriptionPlan = 'trial' | 'basic' | 'premium' | 'enterprise' | (string & {})
 export type SubscriptionStatus = 'trial' | 'active' | 'suspended' | 'cancelled' | 'expired'
 export type SchoolStatus = 'active' | 'inactive' | 'suspended'
 

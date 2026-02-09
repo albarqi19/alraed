@@ -16,11 +16,9 @@ import { useAuthStore } from '@/modules/auth/store/auth-store'
 import { adminQueryKeys } from '@/modules/admin/query-keys'
 import type { SubscriptionPlan as AuthSubscriptionPlan } from '@/modules/auth/types'
 
-const KNOWN_PLAN_CODES: AuthSubscriptionPlan[] = ['trial', 'basic', 'premium', 'enterprise']
-
 function normalizePlanCode(planCode: string | null | undefined): AuthSubscriptionPlan | undefined {
   if (!planCode) return undefined
-  return KNOWN_PLAN_CODES.includes(planCode as AuthSubscriptionPlan) ? (planCode as AuthSubscriptionPlan) : undefined
+  return planCode as AuthSubscriptionPlan
 }
 
 export function usePublicSubscriptionPlansQuery() {
@@ -158,6 +156,12 @@ export function usePaymentStatusQuery(invoiceId: number | null, options?: { enab
     queryKey: adminQueryKeys.subscription.paymentStatus(invoiceId),
     queryFn: () => (invoiceId ? checkPaymentStatus(invoiceId) : Promise.reject('No invoice ID')),
     enabled: options?.enabled !== false && invoiceId !== null,
-    refetchInterval: 5000, // Poll every 5 seconds
+    refetchInterval: (query) => {
+      const status = query.state.data?.status
+      if (status === 'paid' || status === 'failed' || status === 'refunded') return false
+      const startedAt = query.state.dataUpdatedAt || Date.now()
+      if (Date.now() - startedAt > 5 * 60 * 1000) return false
+      return 5000
+    },
   })
 }

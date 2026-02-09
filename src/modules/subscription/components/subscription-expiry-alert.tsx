@@ -22,6 +22,61 @@ export function SubscriptionExpiryAlert({
   const endDate = parseISO(endsAt);
   const daysUntilExpiry = differenceInDays(endDate, new Date());
 
+  // --- حالة نشط أو تجريبي ---
+  // لا نعرض "منتهي" أبداً لأن البيانات المحلية قد تكون قديمة.
+  // لكن نعرض تذكير "باقي X يوم" عندما يقترب الانتهاء.
+  if (status === 'active' || status === 'trial') {
+    // إذا التاريخ في الماضي أو بعيد (أكثر من 7 أيام) → لا نعرض شيء
+    if (daysUntilExpiry <= 0 || daysUntilExpiry > 7) return null;
+
+    const label = status === 'trial' ? 'الفترة التجريبية' : 'اشتراكك';
+
+    // 1-3 أيام
+    if (daysUntilExpiry <= 3) {
+      return (
+        <Alert variant="destructive" className="mb-4">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>{label} ينتهي قريباً!</AlertTitle>
+          <AlertDescription className="flex items-center justify-between">
+            <span>
+              متبقي <strong>{daysUntilExpiry} {daysUntilExpiry === 1 ? 'يوم' : 'أيام'}</strong> على انتهاء {label}.
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/admin/subscription')}
+            >
+              تجديد الاشتراك
+            </Button>
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
+    // 4-7 أيام
+    return (
+      <Alert className="mb-4 border-yellow-500 bg-yellow-50 text-yellow-800">
+        <Clock className="h-4 w-4 text-yellow-600" />
+        <AlertTitle className="text-yellow-800">تذكير</AlertTitle>
+        <AlertDescription className="flex items-center justify-between text-yellow-700">
+          <span>
+            باقي على {label} <strong>{daysUntilExpiry} أيام</strong>. ننصحك بالتجديد مبكراً.
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-yellow-600 text-yellow-700 hover:bg-yellow-100"
+            onClick={() => navigate('/admin/subscription')}
+          >
+            عرض الاشتراك
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  // --- حالات غير نشطة (expired, past_due, suspended, cancelled) ---
+
   // Don't show alert if more than 7 days remaining
   if (daysUntilExpiry > 7 && status !== 'past_due') return null;
 

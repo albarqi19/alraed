@@ -7,6 +7,7 @@ import type {
   BulkEvaluationPayload,
   SubjectSkill,
   SubjectSkillFormPayload,
+  StudentReport,
 } from './types'
 
 function unwrapResponse<T>(data: ApiResponse<T>, errorMessage: string): T {
@@ -71,10 +72,24 @@ export async function fetchSessionEvaluationsSummary(
 
 // ═══════════ مواد المعلم ═══════════
 
+// ═══════════ كشف الطالب ═══════════
+
+export async function fetchStudentReport(studentId: number, subjectId?: number): Promise<StudentReport> {
+  const params = subjectId ? { subject_id: subjectId } : {}
+  const { data } = await apiClient.get<ApiResponse<StudentReport>>(
+    `/teacher/students/${studentId}/report`,
+    { params },
+  )
+  return unwrapResponse(data, 'تعذر تحميل كشف الطالب')
+}
+
+// ═══════════ مواد المعلم ═══════════
+
 export interface TeacherSubject {
   id: number
   name: string
   skills_count: number
+  grades: string[]
 }
 
 export async function fetchTeacherSubjects(): Promise<TeacherSubject[]> {

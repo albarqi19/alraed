@@ -7,6 +7,7 @@ import {
   saveBulkEvaluation,
   removeEvaluation,
   fetchSessionEvaluationsSummary,
+  fetchStudentReport,
   fetchTeacherSubjects,
   fetchTeacherSubjectSkills,
   createSubjectSkill,
@@ -124,6 +125,17 @@ export function useRemoveEvaluationMutation(sessionId: number) {
     onError: (error) => {
       toast({ type: 'error', title: getErrorMessage(error, 'تعذر حذف التقييم') })
     },
+  })
+}
+
+// ═══════════ كشف الطالب ═══════════
+
+export function useStudentReport(studentId: number | null, subjectId?: number) {
+  return useQuery({
+    queryKey: ['teacher', 'student-report', studentId, subjectId],
+    queryFn: () => fetchStudentReport(studentId!, subjectId),
+    enabled: !!studentId,
+    staleTime: 2 * 60 * 1000, // دقيقتان
   })
 }
 

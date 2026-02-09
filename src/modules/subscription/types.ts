@@ -70,10 +70,19 @@ export interface SubscriptionInvoiceRecord {
   updated_at?: string | null
 }
 
+export interface PricingBreakdown {
+  original_price: number
+  credit: number
+  final_price: number
+  tax: number
+  total: number
+}
+
 export interface ChangePlanResponse {
   subscription: SubscriptionRecord
   invoice: SubscriptionInvoiceRecord | null
   payment_url: string | null
+  pricing: PricingBreakdown | null
 }
 
 export interface InitiatePaymentResponse {

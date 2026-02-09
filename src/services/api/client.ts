@@ -88,6 +88,10 @@ export function getActivityReportPrintUrl(
   return token ? `${url}?token=${token}` : url
 }
 
+// debounce للتوجيه لصفحة الاشتراك عند 402 (10 ثواني)
+let _lastSubscriptionRedirect = 0
+const _SUBSCRIPTION_REDIRECT_DEBOUNCE = 10_000
+
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -118,14 +122,18 @@ apiClient.interceptors.response.use(
     // معالجة خطأ 402 - انتهاء الاشتراك
     if (error.response?.status === 402) {
       const message = error.response?.data?.message || 'انتهى اشتراكك في النظام'
-      
-      // إظهار رسالة واضحة للمستخدم
-      if (window.confirm(`⚠️ ${message}\n\nهل تريد الانتقال إلى صفحة الاشتراكات لتجديد اشتراكك؟`)) {
-        window.location.href = '/admin/subscription'
-      }
-      
-      // تعديل رسالة الخطأ لتكون واضحة
       error.message = message
+
+      const isOnSubscriptionPage = window.location.pathname.includes('/admin/subscription')
+
+      // إذا المستخدم بالفعل في صفحة الاشتراك، لا نزعجه
+      if (!isOnSubscriptionPage) {
+        const now = Date.now()
+        if (now - _lastSubscriptionRedirect > _SUBSCRIPTION_REDIRECT_DEBOUNCE) {
+          _lastSubscriptionRedirect = now
+          window.location.href = '/admin/subscription'
+        }
+      }
     }
     
     return Promise.reject(error)

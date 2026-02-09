@@ -11,7 +11,7 @@ import {
 import type { SubjectSkill, SubjectSkillFormPayload, DescriptiveGrade } from '../evaluation/types'
 import { DESCRIPTIVE_GRADES } from '../evaluation/types'
 
-type TeacherSubject = { id: number; name: string; skills_count: number }
+type TeacherSubject = { id: number; name: string; skills_count: number; grades: string[] }
 
 /* ═══════════ الصفحة الرئيسية ═══════════ */
 
@@ -42,7 +42,7 @@ export function TeacherSkillsPage() {
       </header>
 
       {selectedSubject ? (
-        <SkillsList subjectId={selectedSubject.id} />
+        <SkillsList subjectId={selectedSubject.id} grades={selectedSubject.grades ?? []} />
       ) : (
         <SubjectsList onSelect={setSelectedSubject} />
       )}
@@ -113,7 +113,7 @@ function SubjectsList({ onSelect }: { onSelect: (s: TeacherSubject) => void }) {
 
 /* ═══════════ قائمة المهارات ═══════════ */
 
-function SkillsList({ subjectId }: { subjectId: number }) {
+function SkillsList({ subjectId, grades }: { subjectId: number; grades: string[] }) {
   const { data: skills, isLoading } = useTeacherSubjectSkills(subjectId)
   const [showForm, setShowForm] = useState(false)
   const [editingSkill, setEditingSkill] = useState<SubjectSkill | null>(null)
@@ -157,6 +157,7 @@ function SkillsList({ subjectId }: { subjectId: number }) {
         <SkillForm
           subjectId={subjectId}
           skill={editingSkill}
+          grades={grades}
           onClose={() => {
             setShowForm(false)
             setEditingSkill(null)
@@ -188,13 +189,22 @@ function SkillsList({ subjectId }: { subjectId: number }) {
                       {skill.category === 'positive' ? 'إيجابي' : 'سلبي'}
                     </span>
                   </div>
-                  {skill.requires_grade && (
-                    <p className="mt-0.5 text-xs text-muted">
-                      {skill.grade_type === 'descriptive'
-                        ? 'تقييم وصفي'
-                        : `درجة رقمية (الحد الأقصى: ${skill.max_grade ?? '—'})`}
-                    </p>
-                  )}
+                  <div className="mt-0.5 flex flex-wrap items-center gap-1">
+                    {skill.grade && (
+                      <span className="rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-medium text-sky-600">
+                        {skill.grade}
+                      </span>
+                    )}
+                    {skill.requires_grade && (
+                      <span className="text-xs text-muted">
+                        {skill.grade_type === 'mastery'
+                          ? 'اتقن / لم يتقن'
+                          : skill.grade_type === 'descriptive'
+                            ? 'تقييم وصفي'
+                            : `درجة رقمية (${skill.max_grade ?? '—'})`}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -265,18 +275,21 @@ function SkillsList({ subjectId }: { subjectId: number }) {
 function SkillForm({
   subjectId,
   skill,
+  grades,
   onClose,
 }: {
   subjectId: number
   skill: SubjectSkill | null
+  grades: string[]
   onClose: () => void
 }) {
   const isEditing = !!skill
 
   const [name, setName] = useState(skill?.name ?? '')
+  const [selectedGrade, setSelectedGrade] = useState<string | null>(skill?.grade ?? null)
   const [category, setCategory] = useState<'positive' | 'negative'>(skill?.category ?? 'positive')
   const [requiresGrade, setRequiresGrade] = useState(skill?.requires_grade ?? false)
-  const [gradeType, setGradeType] = useState<'numeric' | 'descriptive' | null>(skill?.grade_type ?? null)
+  const [gradeType, setGradeType] = useState<'numeric' | 'descriptive' | 'mastery' | null>(skill?.grade_type ?? null)
   const [maxGrade, setMaxGrade] = useState<string>(skill?.max_grade?.toString() ?? '')
 
   const createMutation = useCreateSubjectSkillMutation(subjectId)
@@ -289,6 +302,7 @@ function SkillForm({
     const isPositiveWithGrade = category === 'positive' && requiresGrade
     const payload: SubjectSkillFormPayload = {
       name: name.trim(),
+      grade: selectedGrade,
       category,
       requires_grade: isPositiveWithGrade,
       grade_type: isPositiveWithGrade ? gradeType : null,
@@ -327,6 +341,42 @@ function SkillForm({
           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20"
         />
       </div>
+
+      {/* الصف الدراسي */}
+      {grades.length > 0 && (
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-700">الصف الدراسي</label>
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() => setSelectedGrade(null)}
+              className={clsx(
+                'rounded-lg px-2.5 py-1.5 text-xs font-medium transition',
+                selectedGrade === null
+                  ? 'bg-teal-600 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
+              )}
+            >
+              كل الصفوف
+            </button>
+            {grades.map((g) => (
+              <button
+                key={g}
+                type="button"
+                onClick={() => setSelectedGrade(g)}
+                className={clsx(
+                  'rounded-lg px-2.5 py-1.5 text-xs font-medium transition',
+                  selectedGrade === g
+                    ? 'bg-teal-600 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
+                )}
+              >
+                {g}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* التصنيف */}
       <div>
@@ -405,7 +455,7 @@ function SkillForm({
                     : 'border-slate-200 bg-white text-slate-500 hover:border-violet-200',
                 )}
               >
-                وصفي (ممتاز، جيد...)
+                وصفي
               </button>
               <button
                 type="button"
@@ -417,7 +467,19 @@ function SkillForm({
                     : 'border-slate-200 bg-white text-slate-500 hover:border-blue-200',
                 )}
               >
-                رقمي (درجة)
+                رقمي
+              </button>
+              <button
+                type="button"
+                onClick={() => setGradeType('mastery')}
+                className={clsx(
+                  'flex-1 rounded-xl border px-3 py-2 text-xs font-semibold transition',
+                  gradeType === 'mastery'
+                    ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
+                    : 'border-slate-200 bg-white text-slate-500 hover:border-emerald-200',
+                )}
+              >
+                إتقان
               </button>
             </div>
           </div>
@@ -435,6 +497,21 @@ function SkillForm({
                     {g}
                   </span>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* معاينة تقييم الإتقان */}
+          {gradeType === 'mastery' && (
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-700">خيارات التقييم</label>
+              <div className="flex gap-2">
+                <span className="flex-1 rounded-xl bg-emerald-100 py-2 text-center text-xs font-bold text-emerald-700">
+                  ✓ اتقن
+                </span>
+                <span className="flex-1 rounded-xl bg-red-100 py-2 text-center text-xs font-bold text-red-700">
+                  ✗ لم يتقن
+                </span>
               </div>
             </div>
           )}

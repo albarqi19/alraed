@@ -214,6 +214,7 @@ export async function changeSubscriptionPlan(payload: { plan_code: string; billi
     subscription: unknown
     invoice: unknown
     payment_url: string | null
+    pricing?: unknown
   }>>(
     '/admin/subscription/change-plan',
     { ...payload, auto_pay: payload.auto_pay ?? true },
@@ -228,10 +229,21 @@ export async function changeSubscriptionPlan(payload: { plan_code: string; billi
     throw new Error('استجابة غير صالحة من الخادم')
   }
 
+  // تحليل بيانات التسعير
+  const rawPricing = isRecord(data.data.pricing) ? data.data.pricing : null
+  const pricing = rawPricing ? {
+    original_price: coerceNumber(rawPricing.original_price, 0),
+    credit: coerceNumber(rawPricing.credit, 0),
+    final_price: coerceNumber(rawPricing.final_price, 0),
+    tax: coerceNumber(rawPricing.tax, 0),
+    total: coerceNumber(rawPricing.total, 0),
+  } : null
+
   return {
     subscription,
     invoice: normalizeInvoice(data.data.invoice),
     payment_url: data.data.payment_url ?? null,
+    pricing,
   }
 }
 

@@ -6,7 +6,7 @@ export interface BehaviorType {
   category: 'positive' | 'negative'
   requires_grade: boolean
   max_grade: number | null
-  grade_type: 'numeric' | 'descriptive' | null
+  grade_type: 'numeric' | 'descriptive' | 'mastery' | null
   is_active: boolean
   display_order: number
   is_default?: boolean
@@ -15,12 +15,13 @@ export interface BehaviorType {
 export interface SubjectSkill {
   id: number
   subject_id: number
+  grade: string | null
   teacher_id: number
   name: string
   category: 'positive' | 'negative'
   requires_grade: boolean
   max_grade: number | null
-  grade_type: 'numeric' | 'descriptive' | null
+  grade_type: 'numeric' | 'descriptive' | 'mastery' | null
   is_active: boolean
   display_order: number
 }
@@ -73,8 +74,39 @@ export interface BulkEvaluationPayload {
 export interface SubjectSkillFormPayload {
   name: string
   category: 'positive' | 'negative'
+  grade?: string | null
   requires_grade?: boolean
   max_grade?: number | null
-  grade_type?: 'numeric' | 'descriptive' | null
+  grade_type?: 'numeric' | 'descriptive' | 'mastery' | null
   display_order?: number
+}
+
+// ═══════════ كشف الطالب ═══════════
+
+export interface BehaviorSummaryItem {
+  type_id: number
+  name: string
+  icon: string | null
+  color: string | null
+  category: 'positive' | 'negative'
+  count: number
+}
+
+export interface SkillSummaryItem {
+  skill_id: number
+  name: string
+  category: 'positive' | 'negative'
+  grade_type: 'numeric' | 'descriptive' | 'mastery' | null
+  count: number
+  avg_grade: number | null
+  max_grade: number | null
+  last_descriptive: string | null
+  last_mastery: boolean | null
+}
+
+export interface StudentReport {
+  behavior_summary: BehaviorSummaryItem[]
+  total_positive: number
+  total_negative: number
+  skills_summary: SkillSummaryItem[]
 }

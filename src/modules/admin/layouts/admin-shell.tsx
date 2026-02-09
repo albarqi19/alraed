@@ -8,6 +8,7 @@ import clsx from 'classnames'
 import { primaryAdminNavGroups, secondaryAdminNav, settingsAdminNav } from '../constants/navigation'
 import { getCurrentAcademicWeek } from '../constants/academic-calendar-data'
 import { AIAssistantWidget } from '../components/ai-assistant-widget'
+import { SubscriptionExpiryAlert } from '@/modules/subscription/components/subscription-expiry-alert'
 
 export function AdminShell() {
   const admin = useAuthStore((state) => state.user)
@@ -153,6 +154,10 @@ export function AdminShell() {
       [title]: !(prev[title] ?? true),
     }))
   }
+
+  const isOnSubscriptionPage = location.pathname.includes('/admin/subscription')
+  const subscriptionEndsAt = admin?.school?.subscription_ends_at ?? null
+  const subscriptionStatus = admin?.school?.subscription_status ?? null
 
   const planLabel = admin?.school?.plan?.toUpperCase() ?? null
   const currentAcademicWeek = getCurrentAcademicWeek(new Date())
@@ -468,6 +473,12 @@ export function AdminShell() {
           ) : (
             <div className="w-full flex-1 px-6 py-8 lg:px-10 xl:px-14 2xl:px-18">
               <div className="mx-auto w-full max-w-7xl space-y-8">
+                {!isOnSubscriptionPage && subscriptionEndsAt && (
+                  <SubscriptionExpiryAlert
+                    endsAt={subscriptionEndsAt}
+                    status={subscriptionStatus ?? undefined}
+                  />
+                )}
                 <Outlet />
               </div>
             </div>
