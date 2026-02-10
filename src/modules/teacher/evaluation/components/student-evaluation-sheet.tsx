@@ -683,11 +683,12 @@ export function StudentEvaluationSheet({
   const isPending = saveMutation.isPending || bulkMutation.isPending
 
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence>
       {isOpen && (
         <>
           {/* Backdrop */}
           <motion.div
+            key="eval-backdrop"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -698,11 +699,12 @@ export function StudentEvaluationSheet({
 
           {/* Bottom Sheet */}
           <motion.div
+            key="eval-sheet"
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={springConfig}
-            className={`fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-3xl bg-white shadow-2xl transition-all ${showReport ? 'max-h-[92vh]' : 'max-h-[85vh]'}`}
+            className={`fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-3xl bg-white shadow-2xl transition-[max-height] duration-300 ${showReport ? 'max-h-[92vh]' : 'max-h-[85vh]'}`}
           >
             {/* Handle bar */}
             <div className="flex justify-center pt-3">
@@ -732,10 +734,7 @@ export function StudentEvaluationSheet({
                 </div>
                 {/* زر كشف الطالب */}
                 {!isBulk && (
-                  <motion.button
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.2 }}
+                  <button
                     type="button"
                     onClick={() => setShowReport((p) => !p)}
                     className={`flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-medium transition ${
@@ -747,7 +746,7 @@ export function StudentEvaluationSheet({
                     <BarChart3 className="h-3.5 w-3.5" />
                     كشف
                     <ChevronDown className={`h-3 w-3 transition ${showReport ? 'rotate-180' : ''}`} />
-                  </motion.button>
+                  </button>
                 )}
               </div>
             </div>
