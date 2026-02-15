@@ -41,6 +41,7 @@ type PeriodInfo = {
     standby7?: StandbyTeacher | null
     selectedStandby?: StandbyTeacher | null
     availableTeachers?: StandbyTeacher[]
+    assignment_status?: 'standby' | 'assigned' | 'completed' | 'cancelled'
 }
 
 type AbsentTeacher = {
@@ -49,6 +50,9 @@ type AbsentTeacher = {
     absence_reason: string
     periods: PeriodInfo[]
     selected: boolean
+    distribution_status?: 'not_distributed' | 'distributed' | 'arrived'
+    distribution_info?: string
+    current_delay_status?: string
 }
 
 type DailyAbsencesResponse = {
@@ -57,6 +61,7 @@ type DailyAbsencesResponse = {
         date: string
         day: string
         has_published?: boolean
+        has_new_absences?: boolean
         schedule_id?: number
         schedule_status?: string
         absent_teachers: AbsentTeacher[]
@@ -604,22 +609,27 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
                                             <th className="px-4 py-3 text-right font-semibold text-slate-700">المعلم</th>
                                             <th className="px-4 py-3 text-right font-semibold text-slate-700">سبب الغياب</th>
                                             <th className="px-4 py-3 text-center font-semibold text-slate-700">الحصص</th>
+                                            <th className="px-4 py-3 text-center font-semibold text-slate-700">الحالة</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {absentTeachers.map((teacher) => (
                                             <tr
                                                 key={teacher.teacher_id}
-                                                className={`cursor-pointer border-t transition hover:bg-slate-50 ${teacher.selected ? 'bg-indigo-50' : ''}`}
-                                                onClick={() => toggleTeacherSelection(teacher.teacher_id)}
+                                                className={`cursor-pointer border-t transition hover:bg-slate-50 ${
+                                                    teacher.distribution_status === 'arrived' ? 'bg-orange-50/50 opacity-70' :
+                                                    teacher.selected ? 'bg-indigo-50' : ''
+                                                }`}
+                                                onClick={() => teacher.distribution_status !== 'arrived' && toggleTeacherSelection(teacher.teacher_id)}
                                             >
                                                 <td className="px-4 py-3 text-center">
                                                     <input
                                                         type="checkbox"
                                                         checked={teacher.selected}
+                                                        disabled={teacher.distribution_status === 'arrived'}
                                                         onChange={() => toggleTeacherSelection(teacher.teacher_id)}
                                                         onClick={(e) => e.stopPropagation()}
-                                                        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                                        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-50"
                                                     />
                                                 </td>
                                                 <td className="px-4 py-3 text-right font-medium text-slate-900">{teacher.teacher_name}</td>
@@ -628,6 +638,28 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
                                                     <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700">
                                                         {teacher.periods.length} حصة
                                                     </span>
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                    {teacher.distribution_status === 'distributed' ? (
+                                                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700" title={teacher.distribution_info}>
+                                                            <Check className="h-3 w-3" />
+                                                            تم التوزيع
+                                                        </span>
+                                                    ) : teacher.distribution_status === 'arrived' ? (
+                                                        <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-medium text-orange-700" title={teacher.distribution_info}>
+                                                            <UserCheck className="h-3 w-3" />
+                                                            حضر متأخراً
+                                                        </span>
+                                                    ) : teacher.distribution_status === 'not_distributed' ? (
+                                                        <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">
+                                                            <AlertCircle className="h-3 w-3" />
+                                                            لم يتم التوزيع
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">
+                                                            جديد
+                                                        </span>
+                                                    )}
                                                 </td>
                                             </tr>
                                         ))}
@@ -641,13 +673,25 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
                             <h3 className="text-lg font-semibold text-slate-900">مراجعة وتعديل البدلاء</h3>
                             {selectedTeachers.map((teacher) => (
                                 <div key={teacher.teacher_id} className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
-                                    <div className="bg-slate-100 px-4 py-3 flex items-center gap-2">
-                                        <Users className="h-5 w-5 text-rose-500" />
-                                        <span className="font-semibold text-slate-900">{teacher.teacher_name}</span>
-                                        <span className="text-sm text-muted">({teacher.absence_reason})</span>
-                                        <span className="mr-auto rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-medium text-rose-700">
-                                            {teacher.periods.length} حصة
-                                        </span>
+                                    <div className="bg-slate-100 px-4 py-3 flex flex-col gap-1">
+                                        <div className="flex items-center gap-2">
+                                            <Users className="h-5 w-5 text-rose-500" />
+                                            <span className="font-semibold text-slate-900">{teacher.teacher_name}</span>
+                                            <span className="text-sm text-muted">({teacher.absence_reason})</span>
+                                            <span className="mr-auto rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-medium text-rose-700">
+                                                {teacher.periods.length} حصة
+                                            </span>
+                                        </div>
+                                        {teacher.distribution_info && (
+                                            <p className={`text-xs mr-7 ${
+                                                teacher.distribution_status === 'distributed' ? 'text-emerald-600' :
+                                                teacher.distribution_status === 'arrived' ? 'text-orange-600' :
+                                                teacher.distribution_status === 'not_distributed' ? 'text-red-600' :
+                                                'text-slate-500'
+                                            }`}>
+                                                {teacher.distribution_info}
+                                            </p>
+                                        )}
                                     </div>
                                     <table className="w-full text-sm">
                                         <thead>
@@ -659,13 +703,15 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {teacher.periods.map((period) => (
-                                                <tr key={period.period_number} className="border-b last:border-b-0 hover:bg-slate-50">
-                                                    <td className="px-4 py-3 text-right font-medium text-slate-700">
+                                            {teacher.periods.map((period) => {
+                                                const isCancelled = period.assignment_status === 'cancelled'
+                                                return (
+                                                <tr key={period.period_number} className={`border-b last:border-b-0 hover:bg-slate-50 ${isCancelled ? 'opacity-50 bg-slate-50' : ''}`}>
+                                                    <td className={`px-4 py-3 text-right font-medium text-slate-700 ${isCancelled ? 'line-through' : ''}`}>
                                                         {PERIOD_NAMES[period.period_number] || period.period_number}
                                                     </td>
-                                                    <td className="px-4 py-3 text-right text-slate-600">{period.class}</td>
-                                                    <td className="px-4 py-3 text-right text-slate-600">{period.subject}</td>
+                                                    <td className={`px-4 py-3 text-right text-slate-600 ${isCancelled ? 'line-through' : ''}`}>{period.class}</td>
+                                                    <td className={`px-4 py-3 text-right text-slate-600 ${isCancelled ? 'line-through' : ''}`}>{period.subject}</td>
                                                     <td className="px-4 py-3">
                                                         {editingPeriod?.teacherId === teacher.teacher_id &&
                                                             editingPeriod?.periodNumber === period.period_number ? (
@@ -715,7 +761,8 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
                                                         )}
                                                     </td>
                                                 </tr>
-                                            ))}
+                                                )
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>
