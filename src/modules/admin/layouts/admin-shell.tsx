@@ -39,7 +39,7 @@ export function AdminShell() {
   const filteredPrimaryGroups = primaryAdminNavGroups.map(group => ({
     ...group,
     items: group.items.filter(item => !item.permission || hasPermission(item.permission))
-  })).filter(group => group.items.length > 0)
+  }))
 
   const filteredSecondaryNav = secondaryAdminNav.filter(item => !item.permission || hasPermission(item.permission))
   
@@ -465,8 +465,8 @@ export function AdminShell() {
           </div>
         </header>
         <main className="flex flex-1 flex-col">
-          {/* صفحة المتابعة المباشرة بدون فراغات لعرض أكبر قدر من البيانات */}
-          {location.pathname === '/admin/live-tracker' ? (
+          {/* صفحات بدون فراغات لعرض أكبر قدر من البيانات */}
+          {location.pathname === '/admin/live-tracker' || location.pathname === '/admin/notebook' || location.pathname.startsWith('/admin/guides/') ? (
             <div className="w-full flex-1">
               <Outlet />
             </div>

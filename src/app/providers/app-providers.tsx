@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useMemo, type ReactNode } from 'react'
 import { BrowserRouter, useLocation } from 'react-router-dom'
 import { DirectionProvider } from './direction-provider'
-import { ToastProvider } from '@/shared/feedback/toast-provider'
+import { Toaster } from 'sileo'
 import { AuthBootstrap } from './auth-bootstrap'
 import { ThemeProvider } from '@/shared/themes'
 import { BellManagerProvider } from '@/modules/admin/school-bell/context/bell-manager-context'
@@ -70,13 +70,19 @@ export function AppProviders({ children }: AppProvidersProps) {
       <BrowserRouter>
         <DirectionProvider>
           <ThemeProvider>
-            <ToastProvider>
+            <Toaster
+              position="bottom-center"
+              options={{
+                fill: 'rgba(255, 255, 255, 0.85)',
+                roundness: 16,
+                autopilot: true,
+              }}
+            />
               <AuthBootstrap>
                 <IdleTimeoutProvider>
                   <ProvidersWrapper>{children}</ProvidersWrapper>
                 </IdleTimeoutProvider>
               </AuthBootstrap>
-            </ToastProvider>
           </ThemeProvider>
         </DirectionProvider>
       </BrowserRouter>

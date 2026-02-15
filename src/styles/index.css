@@ -1145,6 +1145,7 @@
 }
 
 @layer components {
+
   /* Glass card & soft card */
   [data-theme='dark-green'] .glass-card,
   [data-theme='dark-green'] .soft-card {
@@ -1198,6 +1199,7 @@
 }
 
 @layer utilities {
+
   /* ===== Background Overrides ===== */
   [data-theme='dark-green'] .bg-white {
     background-color: #152A1E !important;
@@ -1332,13 +1334,13 @@
   }
 
   /* ===== Divide Overrides ===== */
-  [data-theme='dark-green'] .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
-  [data-theme='dark-green'] .divide-gray-100 > :not([hidden]) ~ :not([hidden]) {
+  [data-theme='dark-green'] .divide-slate-100> :not([hidden])~ :not([hidden]),
+  [data-theme='dark-green'] .divide-gray-100> :not([hidden])~ :not([hidden]) {
     border-color: #1E3527 !important;
   }
 
-  [data-theme='dark-green'] .divide-slate-200 > :not([hidden]) ~ :not([hidden]),
-  [data-theme='dark-green'] .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+  [data-theme='dark-green'] .divide-slate-200> :not([hidden])~ :not([hidden]),
+  [data-theme='dark-green'] .divide-gray-200> :not([hidden])~ :not([hidden]) {
     border-color: #243D2C !important;
   }
 
@@ -1349,16 +1351,19 @@
   [data-theme='dark-green'] .bg-green-50 {
     background-color: #0A1F14 !important;
   }
+
   [data-theme='dark-green'] .bg-emerald-100,
   [data-theme='dark-green'] .bg-green-100 {
     background-color: #0D2818 !important;
   }
+
   [data-theme='dark-green'] .text-emerald-600,
   [data-theme='dark-green'] .text-emerald-700,
   [data-theme='dark-green'] .text-green-600,
   [data-theme='dark-green'] .text-green-700 {
     color: #66BB6A !important;
   }
+
   [data-theme='dark-green'] .border-emerald-200,
   [data-theme='dark-green'] .border-green-200 {
     border-color: #1A4028 !important;
@@ -1369,16 +1374,19 @@
   [data-theme='dark-green'] .bg-red-50 {
     background-color: #2D0F0F !important;
   }
+
   [data-theme='dark-green'] .bg-rose-100,
   [data-theme='dark-green'] .bg-red-100 {
     background-color: #3D1414 !important;
   }
+
   [data-theme='dark-green'] .text-rose-600,
   [data-theme='dark-green'] .text-rose-700,
   [data-theme='dark-green'] .text-red-600,
   [data-theme='dark-green'] .text-red-700 {
     color: #EF5350 !important;
   }
+
   [data-theme='dark-green'] .border-rose-200,
   [data-theme='dark-green'] .border-red-200 {
     border-color: #4D1A1A !important;
@@ -1390,11 +1398,13 @@
   [data-theme='dark-green'] .bg-orange-50 {
     background-color: #2D1F00 !important;
   }
+
   [data-theme='dark-green'] .bg-amber-100,
   [data-theme='dark-green'] .bg-yellow-100,
   [data-theme='dark-green'] .bg-orange-100 {
     background-color: #3D2A00 !important;
   }
+
   [data-theme='dark-green'] .text-amber-600,
   [data-theme='dark-green'] .text-amber-700,
   [data-theme='dark-green'] .text-yellow-600,
@@ -1403,6 +1413,7 @@
   [data-theme='dark-green'] .text-orange-700 {
     color: #FFB300 !important;
   }
+
   [data-theme='dark-green'] .border-amber-200,
   [data-theme='dark-green'] .border-yellow-200 {
     border-color: #4D3600 !important;
@@ -1412,16 +1423,20 @@
   [data-theme='dark-green'] .bg-blue-50 {
     background-color: #0D1A2D !important;
   }
+
   [data-theme='dark-green'] .bg-blue-100 {
     background-color: #102240 !important;
   }
+
   [data-theme='dark-green'] .text-blue-600,
   [data-theme='dark-green'] .text-blue-700 {
     color: #60A5FA !important;
   }
+
   [data-theme='dark-green'] .border-blue-200 {
     border-color: #1A3050 !important;
   }
+
   [data-theme='dark-green'] .bg-blue-600 {
     background-color: #2563EB !important;
   }
@@ -1430,9 +1445,11 @@
   [data-theme='dark-green'] .bg-sky-50 {
     background-color: #0D1E2D !important;
   }
+
   [data-theme='dark-green'] .bg-sky-100 {
     background-color: #102540 !important;
   }
+
   [data-theme='dark-green'] .text-sky-600,
   [data-theme='dark-green'] .text-sky-700 {
     color: #38BDF8 !important;
@@ -1443,10 +1460,12 @@
   [data-theme='dark-green'] .bg-purple-50 {
     background-color: #1A0F2D !important;
   }
+
   [data-theme='dark-green'] .bg-violet-100,
   [data-theme='dark-green'] .bg-purple-100 {
     background-color: #221540 !important;
   }
+
   [data-theme='dark-green'] .text-violet-600,
   [data-theme='dark-green'] .text-violet-700,
   [data-theme='dark-green'] .text-purple-600,
@@ -1458,9 +1477,11 @@
   [data-theme='dark-green'] .bg-indigo-50 {
     background-color: #0F0D2D !important;
   }
+
   [data-theme='dark-green'] .bg-indigo-100 {
     background-color: #151040 !important;
   }
+
   [data-theme='dark-green'] .text-indigo-600,
   [data-theme='dark-green'] .text-indigo-700 {
     color: #818CF8 !important;
@@ -1471,10 +1492,12 @@
   [data-theme='dark-green'] .bg-cyan-50 {
     background-color: #0A1F1A !important;
   }
+
   [data-theme='dark-green'] .bg-teal-100,
   [data-theme='dark-green'] .bg-cyan-100 {
     background-color: #0D2822 !important;
   }
+
   [data-theme='dark-green'] .text-teal-600,
   [data-theme='dark-green'] .text-teal-700 {
     color: #2DD4BF !important;
@@ -1623,7 +1646,7 @@
   [data-theme='dark-green'] [data-radix-popper-content-wrapper] [role="listbox"],
   [data-theme='dark-green'] [data-radix-popper-content-wrapper] [role="menu"],
   [data-theme='dark-green'] [cmdk-root],
-  [data-theme='dark-green'] [data-radix-popper-content-wrapper] > div {
+  [data-theme='dark-green'] [data-radix-popper-content-wrapper]>div {
     background-color: #152A1E !important;
     border-color: #243D2C !important;
     color: #E2EDE5 !important;
@@ -1706,13 +1729,16 @@
   [data-theme='dark-green'] .bg-emerald-500 {
     background-color: #4CAF50 !important;
   }
+
   [data-theme='dark-green'] .bg-rose-500,
   [data-theme='dark-green'] .bg-red-500 {
     background-color: #EF5350 !important;
   }
+
   [data-theme='dark-green'] .bg-amber-500 {
     background-color: #FFB300 !important;
   }
+
   [data-theme='dark-green'] .bg-slate-400 {
     background-color: #4D7A5E !important;
   }

@@ -124,6 +124,8 @@ import { AdminBarcodeAttendancePage } from '@/modules/admin/pages/admin-barcode-
 import { AdminBarcodeSettingsPage } from '@/modules/admin/pages/admin-barcode-settings-page'
 import { AdminBarcodePrintPage } from '@/modules/admin/pages/admin-barcode-print-page'
 import { AdminPeriodAttendancePage } from '@/modules/admin/pages/admin-period-attendance-page'
+import { NotebookWorkspacePage } from '@/modules/notebook/pages/notebook-workspace-page'
+import { GuideViewerPage } from '@/modules/notebook/pages/guide-viewer-page'
 
 const appRoutes = [
   {
@@ -280,6 +282,8 @@ const appRoutes = [
           { path: 'fcm-test', element: <AdminFCMTestPage /> },
           { path: 'schedule-simulator', element: <AdminScheduleSimulatorPage /> },
           { path: 'evaluation-settings', element: <AdminEvaluationSettingsPage /> },
+          { path: 'notebook', element: <NotebookWorkspacePage /> },
+          { path: 'guides/:type', element: <GuideViewerPage /> },
         ],
       },
       {

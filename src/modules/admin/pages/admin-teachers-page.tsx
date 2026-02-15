@@ -362,15 +362,15 @@ function TeacherCredentialsPanel({
     <>
       {/* للجوال: مكون منبثق من الأسفل */}
       {selectedTeacher && (
-        <div 
+        <div
           className="fixed inset-0 z-50 lg:hidden"
           onClick={handleClose}
         >
           {/* خلفية شفافة */}
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          
+
           {/* المحتوى المنبثق */}
-          <div 
+          <div
             className="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto rounded-t-3xl bg-white shadow-2xl"
             style={{
               transform: `translateY(${currentY}px)`,
@@ -385,7 +385,7 @@ function TeacherCredentialsPanel({
             <div className="sticky top-0 z-10 flex justify-center bg-white pt-3 pb-2 border-b border-slate-100 cursor-grab active:cursor-grabbing">
               <div className="h-1.5 w-12 rounded-full bg-slate-300" />
             </div>
-            
+
             <div className="p-4 space-y-4">
               {/* معلومات المعلم */}
               <div className="space-y-3">
@@ -468,128 +468,128 @@ function TeacherCredentialsPanel({
 
       {/* للشاشات الكبيرة: الشريط الجانبي الثابت */}
       <aside className="hidden lg:flex sticky top-20 self-start glass-card flex-col gap-4 max-h-[calc(100vh-6rem)] overflow-y-auto">
-      {/* Teacher Details Section */}
-      {selectedTeacher && (
-        <div className="space-y-3">
-          <header className="flex items-center justify-between border-b border-slate-200 pb-3">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">تفاصيل المعلم</h2>
-              <p className="text-xs text-muted">معلومات المعلم المحدد والفصول التي يدرسها</p>
-            </div>
-          </header>
-
+        {/* Teacher Details Section */}
+        {selectedTeacher && (
           <div className="space-y-3">
-            {/* Teacher Info Card */}
-            <div className="rounded-2xl border border-slate-100 bg-white/80 p-4 shadow-sm">
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm font-semibold text-slate-600">الاسم</p>
-                  <p className="text-base font-bold text-slate-900">{selectedTeacher.name}</p>
-                </div>
-                <div className="grid gap-2 text-xs">
-                  <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-                    <span className="text-slate-600">رقم الهوية</span>
-                    <span className="font-mono font-semibold text-slate-900">{selectedTeacher.national_id}</span>
+            <header className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">تفاصيل المعلم</h2>
+                <p className="text-xs text-muted">معلومات المعلم المحدد والفصول التي يدرسها</p>
+              </div>
+            </header>
+
+            <div className="space-y-3">
+              {/* Teacher Info Card */}
+              <div className="rounded-2xl border border-slate-100 bg-white/80 p-4 shadow-sm">
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-600">الاسم</p>
+                    <p className="text-base font-bold text-slate-900">{selectedTeacher.name}</p>
                   </div>
-                  <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-                    <span className="text-slate-600">الدور الوظيفي</span>
-                    <span className="font-semibold text-slate-900">{getRoleLabel(selectedTeacher.role)}</span>
-                  </div>
-                  {selectedTeacher.secondary_role && (
-                    <div className="flex items-center justify-between rounded-xl bg-teal-50 px-3 py-2 border border-teal-200">
-                      <span className="text-teal-700">الدور الثانوي</span>
-                      <span className="font-semibold text-teal-900">{getRoleLabel(selectedTeacher.secondary_role)}</span>
+                  <div className="grid gap-2 text-xs">
+                    <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+                      <span className="text-slate-600">رقم الهوية</span>
+                      <span className="font-mono font-semibold text-slate-900">{selectedTeacher.national_id}</span>
                     </div>
-                  )}
-                  <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-                    <span className="text-slate-600">رقم الجوال</span>
-                    <span className="font-semibold text-slate-900">{selectedTeacher.phone ?? '—'}</span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-                    <span className="text-slate-600">الحالة</span>
-                    <TeacherStatusBadge status={selectedTeacher.status} />
-                  </div>
-                  {selectedTeacher.generated_password && (
-                    <div className="flex items-center justify-between rounded-xl bg-amber-50 px-3 py-2 border border-amber-200">
-                      <span className="text-amber-700">كلمة المرور الأساسية</span>
-                      <span className="font-mono font-semibold text-amber-900">{selectedTeacher.generated_password}</span>
+                    <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+                      <span className="text-slate-600">الدور الوظيفي</span>
+                      <span className="font-semibold text-slate-900">{getRoleLabel(selectedTeacher.role)}</span>
                     </div>
-                  )}
-                  {selectedTeacher.secondary_generated_password && (
-                    <div className="flex items-center justify-between rounded-xl bg-teal-50 px-3 py-2 border border-teal-200">
-                      <span className="text-teal-700">كلمة المرور الثانوية</span>
-                      <span className="font-mono font-semibold text-teal-900">{selectedTeacher.secondary_generated_password}</span>
+                    {selectedTeacher.secondary_role && (
+                      <div className="flex items-center justify-between rounded-xl bg-teal-50 px-3 py-2 border border-teal-200">
+                        <span className="text-teal-700">الدور الثانوي</span>
+                        <span className="font-semibold text-teal-900">{getRoleLabel(selectedTeacher.secondary_role)}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+                      <span className="text-slate-600">رقم الجوال</span>
+                      <span className="font-semibold text-slate-900">{selectedTeacher.phone ?? '—'}</span>
                     </div>
-                  )}
+                    <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+                      <span className="text-slate-600">الحالة</span>
+                      <TeacherStatusBadge status={selectedTeacher.status} />
+                    </div>
+                    {selectedTeacher.generated_password && (
+                      <div className="flex items-center justify-between rounded-xl bg-amber-50 px-3 py-2 border border-amber-200">
+                        <span className="text-amber-700">كلمة المرور الأساسية</span>
+                        <span className="font-mono font-semibold text-amber-900">{selectedTeacher.generated_password}</span>
+                      </div>
+                    )}
+                    {selectedTeacher.secondary_generated_password && (
+                      <div className="flex items-center justify-between rounded-xl bg-teal-50 px-3 py-2 border border-teal-200">
+                        <span className="text-teal-700">كلمة المرور الثانوية</span>
+                        <span className="font-mono font-semibold text-teal-900">{selectedTeacher.secondary_generated_password}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Classes Section - Placeholder for future API */}
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4">
-              <p className="text-xs font-semibold text-slate-600">الفصول والمواد</p>
-              <p className="mt-1 text-xs text-muted">
-                سيتم عرض الفصول والمواد التي يدرسها المعلم هنا قريباً.
-              </p>
+              {/* Classes Section - Placeholder for future API */}
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold text-slate-600">الفصول والمواد</p>
+                <p className="mt-1 text-xs text-muted">
+                  سيتم عرض الفصول والمواد التي يدرسها المعلم هنا قريباً.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Credentials Log Section */}
-      <header className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-slate-900">كلمات المرور الحديثة</h2>
-          <p className="text-xs text-muted">يتم حفظ أحدث كلمات المرور التي تم إنشاؤها لإعادة استخدامها.</p>
-        </div>
-        <button
-          type="button"
-          onClick={onClear}
-          className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500 transition hover:border-rose-200 hover:text-rose-600"
-          disabled={entries.length === 0}
-        >
-          مسح
-        </button>
-      </header>
+        {/* Credentials Log Section */}
+        <header className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">كلمات المرور الحديثة</h2>
+            <p className="text-xs text-muted">يتم حفظ أحدث كلمات المرور التي تم إنشاؤها لإعادة استخدامها.</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClear}
+            className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500 transition hover:border-rose-200 hover:text-rose-600"
+            disabled={entries.length === 0}
+          >
+            مسح
+          </button>
+        </header>
 
-      {entries.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center text-xs text-muted">
-          ستظهر هنا كلمات المرور المولدة حديثًا بعد إضافة المعلمين أو إعادة تعيين كلمات المرور.
-        </div>
-      ) : (
-        <ul className="space-y-3">
-          {entries.map((entry) => (
-            <li key={entry.id} className="rounded-2xl border border-slate-100 bg-white/80 p-4 shadow-sm">
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">{entry.teacherName}</p>
-                  <p className="text-xs text-muted">
-                    {formatDate(entry.issuedAt)} — الهوية: {entry.credentials.national_id}
-                  </p>
+        {entries.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center text-xs text-muted">
+            ستظهر هنا كلمات المرور المولدة حديثًا بعد إضافة المعلمين أو إعادة تعيين كلمات المرور.
+          </div>
+        ) : (
+          <ul className="space-y-3">
+            {entries.map((entry) => (
+              <li key={entry.id} className="rounded-2xl border border-slate-100 bg-white/80 p-4 shadow-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">{entry.teacherName}</p>
+                    <p className="text-xs text-muted">
+                      {formatDate(entry.issuedAt)} — الهوية: {entry.credentials.national_id}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onCopy(entry)}
+                    className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-teal-600 transition hover:border-teal-200 hover:bg-teal-50"
+                  >
+                    نسخ
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => onCopy(entry)}
-                  className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-teal-600 transition hover:border-teal-200 hover:bg-teal-50"
-                >
-                  نسخ
-                </button>
-              </div>
-              <div className="mt-3 grid gap-2 text-xs">
-                <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 font-mono text-slate-700">
-                  <span>المعرف</span>
-                  <span>{entry.credentials.national_id}</span>
+                <div className="mt-3 grid gap-2 text-xs">
+                  <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 font-mono text-slate-700">
+                    <span>المعرف</span>
+                    <span>{entry.credentials.national_id}</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 font-mono text-slate-700">
+                    <span>كلمة المرور</span>
+                    <span>{entry.credentials.password}</span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 font-mono text-slate-700">
-                  <span>كلمة المرور</span>
-                  <span>{entry.credentials.password}</span>
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </aside>
+              </li>
+            ))}
+          </ul>
+        )}
+      </aside>
     </>
   )
 }
@@ -647,8 +647,8 @@ export function AdminTeachersPage() {
       const matchesQuery = !query
         ? true
         : [teacher.name, teacher.national_id, teacher.phone ?? '']
-            .map((value) => value?.toLowerCase?.() ?? '')
-            .some((value) => value.includes(query))
+          .map((value) => value?.toLowerCase?.() ?? '')
+          .some((value) => value.includes(query))
       const matchesStatus = statusFilter === 'all' ? true : teacher.status === statusFilter
       return matchesQuery && matchesStatus
     })
@@ -680,7 +680,7 @@ export function AdminTeachersPage() {
     console.log('🔍 Form values on submit:', values)
     console.log('🔍 Secondary role value:', values.secondary_role)
     console.log('🔍 Secondary role type:', typeof values.secondary_role)
-    
+
     if (editingTeacher) {
       updateTeacherMutation.mutate(
         {
@@ -867,103 +867,103 @@ export function AdminTeachersPage() {
               <div className="overflow-hidden rounded-3xl border border-slate-100">
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-slate-200 text-sm">
-                  <thead className="bg-slate-50/80 text-xs font-semibold uppercase text-slate-500">
-                    <tr>
-                      <th scope="col" className="px-4 py-2 text-right tracking-wider">المعلم</th>
-                      <th scope="col" className="px-4 py-2 text-right tracking-wider">رقم الهوية</th>
-                      <th scope="col" className="px-4 py-2 text-right tracking-wider">الدور الوظيفي</th>
-                      <th scope="col" className="px-4 py-2 text-right tracking-wider">رقم الجوال</th>
-                      <th scope="col" className="px-4 py-2 text-right tracking-wider">الحالة</th>
-                      <th scope="col" className="px-4 py-2 text-right tracking-wider">آخر تحديث</th>
-                      <th scope="col" className="px-4 py-2 text-right">إجراءات</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 bg-white">
-                    {filteredTeachers.map((teacher) => {
-                      const isDeleting = deleteTeacherMutation.isPending && deleteTeacherMutation.variables === teacher.id
-                      const isToggling =
-                        updateTeacherMutation.isPending &&
-                        (updateTeacherMutation.variables as { id: number } | undefined)?.id === teacher.id
-                      const isResetting =
-                        resetPasswordMutation.isPending && resetPasswordMutation.variables === teacher.id
+                    <thead className="bg-slate-50/80 text-xs font-semibold uppercase text-slate-500">
+                      <tr>
+                        <th scope="col" className="px-4 py-2 text-right tracking-wider">المعلم</th>
+                        <th scope="col" className="px-4 py-2 text-right tracking-wider">رقم الهوية</th>
+                        <th scope="col" className="px-4 py-2 text-right tracking-wider">الدور الوظيفي</th>
+                        <th scope="col" className="px-4 py-2 text-right tracking-wider">رقم الجوال</th>
+                        <th scope="col" className="px-4 py-2 text-right tracking-wider">الحالة</th>
+                        <th scope="col" className="px-4 py-2 text-right tracking-wider">آخر تحديث</th>
+                        <th scope="col" className="px-4 py-2 text-right">إجراءات</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                      {filteredTeachers.map((teacher) => {
+                        const isDeleting = deleteTeacherMutation.isPending && deleteTeacherMutation.variables === teacher.id
+                        const isToggling =
+                          updateTeacherMutation.isPending &&
+                          (updateTeacherMutation.variables as { id: number } | undefined)?.id === teacher.id
+                        const isResetting =
+                          resetPasswordMutation.isPending && resetPasswordMutation.variables === teacher.id
 
-                      return (
-                        <tr 
-                          key={teacher.id} 
-                          onClick={(e) => {
-                            // على الشاشات الكبيرة فقط
-                            if (window.innerWidth >= 1024) {
-                              setSelectedTeacher(teacher)
-                            } else {
-                              // على الجوال: فتح مكون منبثق من الأسفل
-                              if (!(e.target as HTMLElement).closest('button')) {
+                        return (
+                          <tr
+                            key={teacher.id}
+                            onClick={(e) => {
+                              // على الشاشات الكبيرة فقط
+                              if (window.innerWidth >= 1024) {
                                 setSelectedTeacher(teacher)
+                              } else {
+                                // على الجوال: فتح مكون منبثق من الأسفل
+                                if (!(e.target as HTMLElement).closest('button')) {
+                                  setSelectedTeacher(teacher)
+                                }
                               }
-                            }
-                          }}
-                          className="transition hover:bg-teal-50/50 lg:cursor-pointer"
-                        >
-                          <td className="px-4 py-2.5">
-                            <div className="flex flex-col gap-0.5">
-                              <span className="font-semibold text-slate-900">{teacher.name}</span>
-                              {teacher.needs_password_change ? (
-                                <span className="inline-flex items-center gap-1 text-xs text-amber-700">
-                                  يحتاج لتغيير كلمة المرور
-                                </span>
-                              ) : null}
-                            </div>
-                          </td>
-                          <td className="px-4 py-2.5 font-mono text-sm text-slate-700">{teacher.national_id}</td>
-                          <td className="px-4 py-2.5 text-sm">
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
-                              {getRoleLabel(teacher.role)}
-                            </span>
-                          </td>
-                          <td className="px-4 py-2.5 text-sm text-slate-600">{teacher.phone ?? '—'}</td>
-                          <td className="px-4 py-2.5">
-                            <TeacherStatusBadge status={teacher.status} />
-                          </td>
-                          <td className="px-4 py-2.5 text-xs text-muted">{formatDate(teacher.updated_at ?? teacher.created_at)}</td>
-                          <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => handleEdit(teacher)}
-                                className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:border-teal-200 hover:bg-teal-50 hover:text-teal-600"
-                              >
-                                تعديل
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleResetPassword(teacher)}
-                                className="rounded-full border border-teal-200 bg-white px-2.5 py-1 text-xs font-semibold text-teal-600 transition hover:bg-teal-50"
-                                disabled={isResetting}
-                              >
-                                {isResetting ? 'جاري...' : 'إعادة كلمة المرور'}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleToggleStatus(teacher)}
-                                className="rounded-full border border-amber-200 bg-white px-2.5 py-1 text-xs font-semibold text-amber-600 transition hover:bg-amber-50"
-                                disabled={isToggling}
-                              >
-                                {teacher.status === 'active' ? 'إيقاف' : 'تفعيل'}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDelete(teacher)}
-                                className="rounded-full border border-rose-200 bg-white px-2.5 py-1 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
-                                disabled={isDeleting}
-                              >
-                                {isDeleting ? 'جاري...' : 'حذف'}
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                            }}
+                            className="transition hover:bg-teal-50/50 lg:cursor-pointer"
+                          >
+                            <td className="px-4 py-2.5">
+                              <div className="flex flex-col gap-0.5">
+                                <span className="font-semibold text-slate-900">{teacher.name}</span>
+                                {teacher.needs_password_change ? (
+                                  <span className="inline-flex items-center gap-1 text-xs text-amber-700">
+                                    يحتاج لتغيير كلمة المرور
+                                  </span>
+                                ) : null}
+                              </div>
+                            </td>
+                            <td className="px-4 py-2.5 font-mono text-sm text-slate-700">{teacher.national_id}</td>
+                            <td className="px-4 py-2.5 text-sm">
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
+                                {getRoleLabel(teacher.role)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5 text-sm text-slate-600">{teacher.phone ?? '—'}</td>
+                            <td className="px-4 py-2.5">
+                              <TeacherStatusBadge status={teacher.status} />
+                            </td>
+                            <td className="px-4 py-2.5 text-xs text-muted">{formatDate(teacher.updated_at ?? teacher.created_at)}</td>
+                            <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleEdit(teacher)}
+                                  className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:border-teal-200 hover:bg-teal-50 hover:text-teal-600"
+                                >
+                                  تعديل
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleResetPassword(teacher)}
+                                  className="rounded-full border border-teal-200 bg-white px-2.5 py-1 text-xs font-semibold text-teal-600 transition hover:bg-teal-50"
+                                  disabled={isResetting}
+                                >
+                                  {isResetting ? 'جاري...' : 'إعادة كلمة المرور'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleStatus(teacher)}
+                                  className="rounded-full border border-amber-200 bg-white px-2.5 py-1 text-xs font-semibold text-amber-600 transition hover:bg-amber-50"
+                                  disabled={isToggling}
+                                >
+                                  {teacher.status === 'active' ? 'إيقاف' : 'تفعيل'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDelete(teacher)}
+                                  className="rounded-full border border-rose-200 bg-white px-2.5 py-1 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
+                                  disabled={isDeleting}
+                                >
+                                  {isDeleting ? 'جاري...' : 'حذف'}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}

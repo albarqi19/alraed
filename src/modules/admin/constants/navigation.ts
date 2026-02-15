@@ -159,6 +159,11 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
       { to: '/admin/school-tools/academic-calendar', label: 'التقويم الدراسي', icon: CalendarDays, permission: 'admin.school-tools.academic-calendar' },
     ],
   },
+  {
+    title: 'المفكرة والأدلة',
+    icon: BookOpen,
+    items: [],
+  },
 ]
 
 export const secondaryAdminNav: AdminNavItem[] = [

@@ -509,6 +509,7 @@ export function AdminTeacherAttendancePage() {
     | null
   >(null)
   const [absenceDialog, setAbsenceDialog] = useState<AbsenceDialogState | null>(null)
+  const [isAttendanceExpanded, setIsAttendanceExpanded] = useState(false)
   const [recalculateDialog, setRecalculateDialog] = useState<
     | {
       record: TeacherAttendanceDelayRecord
@@ -1061,11 +1062,11 @@ export function AdminTeacherAttendancePage() {
             <button
               type="button"
               onClick={() => document
-                .getElementById('teacher-delay-header')
+                .getElementById('attendance-records-section')
                 ?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
               className="button-secondary"
             >
-              المتأخرين
+              <i className="bi bi-list-ul ml-1" /> السجلات
             </button>
             <button
               type="button"
@@ -1109,7 +1110,7 @@ export function AdminTeacherAttendancePage() {
         ) : null}
       </header>
 
-      <section className="glass-card space-y-6">
+      <section className="glass-card">
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
           <article className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-4 text-right shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">إجمالي السجلات</p>
@@ -1131,244 +1132,6 @@ export function AdminTeacherAttendancePage() {
             <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">آخر تحديث</p>
             <p className="mt-2 text-sm font-semibold text-slate-700">{refreshedAtLabel ?? '—'}</p>
           </article>
-        </div>
-
-        <div className="grid gap-4 lg:grid-cols-5">
-          <div className="space-y-2 text-right">
-            <label className="text-xs font-semibold text-slate-600" htmlFor="teacher-attendance-date">
-              تاريخ المتابعة
-            </label>
-            <input
-              id="teacher-attendance-date"
-              type="date"
-              value={filters.date}
-              onChange={(event) => updateFilters('date', event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            />
-          </div>
-          <div className="space-y-2 text-right">
-            <label className="text-xs font-semibold text-slate-600" htmlFor="teacher-attendance-status">
-              حالة السجل
-            </label>
-            <select
-              id="teacher-attendance-status"
-              value={filters.status}
-              onChange={(event) => updateFilters('status', event.target.value as FilterState['status'])}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            >
-              {statusOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-2 text-right">
-            <label className="text-xs font-semibold text-slate-600" htmlFor="teacher-attendance-match">
-              حالة المطابقة
-            </label>
-            <select
-              id="teacher-attendance-match"
-              value={filters.matched}
-              onChange={(event) => updateFilters('matched', event.target.value as FilterState['matched'])}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            >
-              {matchedOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-2 text-right">
-            <label className="text-xs font-semibold text-slate-600" htmlFor="teacher-attendance-login-method">
-              طريقة تسجيل الدخول
-            </label>
-            <select
-              id="teacher-attendance-login-method"
-              value={filters.login_method}
-              onChange={(event) => updateFilters('login_method', event.target.value as FilterState['login_method'])}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            >
-              {loginMethodOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-2 text-right">
-            <label className="text-xs font-semibold text-slate-600" htmlFor="teacher-attendance-search">
-              بحث بالاسم أو الهوية
-            </label>
-            <input
-              id="teacher-attendance-search"
-              type="search"
-              value={filters.search}
-              onChange={(event) => updateFilters('search', event.target.value)}
-              placeholder="مثال: أحمد / 1010"
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            />
-          </div>
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
-          <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white/85 shadow-sm">
-            {attendanceQuery.isLoading ? (
-              <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-sm text-muted">
-                <span className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
-                جاري تحميل بيانات الحضور...
-              </div>
-            ) : records.length === 0 ? (
-              <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-sm text-muted">
-                <i className="bi bi-inboxes text-3xl text-slate-300" />
-                لا توجد سجلات للمعايير الحالية.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full table-auto text-right text-sm">
-                  <thead className="bg-slate-50/80 text-[11px] uppercase tracking-wide text-slate-500">
-                    <tr>
-                      <th className="px-3 py-2.5 font-semibold lg:px-4">المعلم</th>
-                      <th className="px-3 py-2.5 font-semibold lg:px-4">حالة السجل</th>
-                      <th className="px-3 py-2.5 font-semibold lg:px-4">وقت العملية</th>
-                      <th className="px-3 py-2.5 font-semibold lg:px-4">الدخول / الانصراف</th>
-                      <th className="px-3 py-2.5 font-semibold lg:px-4">التأخير</th>
-                      <th className="px-3 py-2.5 font-semibold lg:px-4">البوابة والمصدر</th>
-                      <th className="px-3 py-2.5 font-semibold lg:px-4">المطابقة</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {records.map((record) => (
-                      <tr key={record.id} className="border-t border-slate-100 text-[13px] transition hover:bg-slate-50/70">
-                        <td className="px-3 py-3 align-top lg:px-4">
-                          <div className="space-y-1">
-                            <p className="font-semibold text-slate-900">{record.employee_name}</p>
-                            <p className="text-[11px] text-muted">الهوية: {record.national_id}</p>
-                            {record.job_number ? (
-                              <p className="text-[11px] text-muted">الرقم الوظيفي: {record.job_number}</p>
-                            ) : null}
-                          </div>
-                        </td>
-                        <td className="px-3 py-3 align-top lg:px-4">
-                          <div className="space-y-2">
-                            <StatusBadge record={record} />
-                            <LoginMethodBadge record={record} />
-                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-600">
-                              <i className="bi bi-arrow-left-right" />
-                              {record.transaction_type === 'check_in' ? 'تسجيل حضور' : 'تسجيل انصراف'}
-                            </span>
-                            {record.result ? (
-                              <p className="text-[11px] text-muted">النتيجة: {record.result}</p>
-                            ) : null}
-                          </div>
-                        </td>
-                        <td className="px-3 py-3 align-top lg:px-4">
-                          <div className="space-y-1 text-[12px] text-slate-600">
-                            <p>
-                              <span className="font-semibold text-slate-700">وقت العملية:</span> {formatTime(record.transaction_time)}
-                            </p>
-                            <p className="text-[11px] text-muted">{formatDate(record.attendance_date)}</p>
-                            {record.page_number ? (
-                              <p className="text-[11px] text-muted">رقم الصفحة: {record.page_number}</p>
-                            ) : null}
-                          </div>
-                        </td>
-                        <td className="px-3 py-3 align-top lg:px-4">
-                          <div className="space-y-1 text-[12px] text-slate-600">
-                            <p>
-                              <span className="font-semibold text-slate-700">حضور:</span> {formatTime(record.check_in_time)}
-                            </p>
-                            <p>
-                              <span className="font-semibold text-slate-700">انصراف:</span> {formatTime(record.check_out_time)}
-                            </p>
-                          </div>
-                        </td>
-                        <td className="px-3 py-3 align-top lg:px-4">
-                          {record.delay_status ? (
-                            <div className="space-y-2">
-                              <DelayStatusBadge status={record.delay_status} label={record.delay_status_label} />
-                              {typeof record.delay_minutes === 'number' ? (
-                                <p className="text-[11px] text-muted">
-                                  دقائق التأخير: {record.delay_minutes.toLocaleString('ar-SA')}
-                                </p>
-                              ) : null}
-                              {record.delay_notified_at ? (
-                                <p className="text-[11px] text-muted">
-                                  آخر إشعار: {formatTime(record.delay_notified_at)} — {formatDate(record.delay_notified_at)}
-                                </p>
-                              ) : null}
-                              {record.delay_notes ? (
-                                <p className="text-[11px] text-muted">ملاحظة: {record.delay_notes}</p>
-                              ) : null}
-                            </div>
-                          ) : (
-                            <span className="text-[11px] text-muted">لا توجد بيانات تأخير</span>
-                          )}
-                        </td>
-                        <td className="px-3 py-3 align-top lg:px-4">
-                          <div className="space-y-1 text-[12px] text-slate-600">
-                            <p>
-                              <span className="font-semibold text-slate-700">البوابة:</span> {record.gate_name ?? '—'}
-                            </p>
-                            <p>
-                              <span className="font-semibold text-slate-700">الموقع:</span> {record.location ?? '—'}
-                            </p>
-                            <p>
-                              <span className="font-semibold text-slate-700">المصدر:</span> {record.source ?? '—'}
-                            </p>
-                          </div>
-                        </td>
-                        <td className="px-3 py-3 align-top lg:px-4">
-                          <div className="space-y-2">
-                            <MatchBadge record={record} />
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-          <aside className="space-y-4 rounded-3xl border border-rose-100 bg-rose-50/70 p-5 shadow-sm">
-            <header className="space-y-1 text-right">
-              <p className="text-xs font-semibold uppercase tracking-widest text-rose-500">حالات غير مرتبطة</p>
-              <h3 className="text-lg font-semibold text-rose-700">{unmatchedRecords.length.toLocaleString('ar-SA')} معلم بحاجة للربط</h3>
-              <p className="text-xs text-rose-600">
-                استخدم الرقم الوظيفي أو الهوية للبحث عن المعلم وربطه في النظام لضمان ظهور حضوره في لوحة الأداء.
-              </p>
-            </header>
-
-            {unmatchedRecords.length === 0 ? (
-              <div className="flex min-h-[120px] flex-col items-center justify-center gap-3 text-sm text-rose-600">
-                <i className="bi bi-check-circle text-2xl" />
-                جميع السجلات مرتبطة بمعلمين.
-              </div>
-            ) : (
-              <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
-                {unmatchedRecords.map((record) => (
-                  <article
-                    key={`unmatched-${record.id}`}
-                    className="space-y-1 rounded-2xl border border-rose-200 bg-white/70 p-3 text-right shadow-sm"
-                  >
-                    <p className="text-sm font-semibold text-rose-700">{record.employee_name}</p>
-                    <p className="text-[11px] text-muted">الهوية: {record.national_id}</p>
-                    {record.job_number ? (
-                      <p className="text-[11px] text-muted">الرقم الوظيفي: {record.job_number}</p>
-                    ) : null}
-                    <p className="text-[11px] text-muted">
-                      آخر ظهور: {formatTime(record.transaction_time)} — {formatDate(record.attendance_date)}
-                    </p>
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-rose-500">
-                      {record.login_method_label} • {record.status_label}
-                    </p>
-                  </article>
-                ))}
-              </div>
-            )}
-          </aside>
         </div>
       </section>
 
@@ -1562,11 +1325,10 @@ export function AdminTeacherAttendancePage() {
                                 <>
                                   <div className="flex items-center gap-1.5">
                                     <span className="text-[10px] text-muted">سبب الغياب:</span>
-                                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                                      hasCustomAbsenceReason
-                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                        : 'bg-red-50 text-red-600 border border-red-200'
-                                    }`}>
+                                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${hasCustomAbsenceReason
+                                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                      : 'bg-red-50 text-red-600 border border-red-200'
+                                      }`}>
                                       {hasCustomAbsenceReason && <i className="bi bi-check-circle-fill text-[9px]" />}
                                       {absenceActionLabel}
                                     </span>
@@ -1766,6 +1528,276 @@ export function AdminTeacherAttendancePage() {
             </button>
           </div>
         </footer>
+      </section>
+
+      <section id="attendance-records-section" className="glass-card space-y-6 scroll-mt-16">
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <div className="space-y-1 text-right">
+            <h2 className="text-2xl font-bold text-slate-900">سجلات الحضور التفصيلية</h2>
+            <p className="text-sm text-muted">جميع سجلات الحضور من جهاز البصمة وموقع حضوري</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsAttendanceExpanded((prev) => !prev)}
+            className="button-secondary"
+          >
+            {isAttendanceExpanded ? (
+              <><i className="bi bi-chevron-up ml-1" /> عرض أقل</>
+            ) : (
+              <><i className="bi bi-chevron-down ml-1" /> عرض الكل ({records.length.toLocaleString('ar-SA')} سجل)</>
+            )}
+          </button>
+        </header>
+
+        <div className="grid gap-4 lg:grid-cols-5">
+          <div className="space-y-2 text-right">
+            <label className="text-xs font-semibold text-slate-600" htmlFor="teacher-attendance-date">
+              تاريخ المتابعة
+            </label>
+            <input
+              id="teacher-attendance-date"
+              type="date"
+              value={filters.date}
+              onChange={(event) => updateFilters('date', event.target.value)}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            />
+          </div>
+          <div className="space-y-2 text-right">
+            <label className="text-xs font-semibold text-slate-600" htmlFor="teacher-attendance-status">
+              حالة السجل
+            </label>
+            <select
+              id="teacher-attendance-status"
+              value={filters.status}
+              onChange={(event) => updateFilters('status', event.target.value as FilterState['status'])}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            >
+              {statusOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2 text-right">
+            <label className="text-xs font-semibold text-slate-600" htmlFor="teacher-attendance-match">
+              حالة المطابقة
+            </label>
+            <select
+              id="teacher-attendance-match"
+              value={filters.matched}
+              onChange={(event) => updateFilters('matched', event.target.value as FilterState['matched'])}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            >
+              {matchedOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2 text-right">
+            <label className="text-xs font-semibold text-slate-600" htmlFor="teacher-attendance-login-method">
+              طريقة تسجيل الدخول
+            </label>
+            <select
+              id="teacher-attendance-login-method"
+              value={filters.login_method}
+              onChange={(event) => updateFilters('login_method', event.target.value as FilterState['login_method'])}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            >
+              {loginMethodOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2 text-right">
+            <label className="text-xs font-semibold text-slate-600" htmlFor="teacher-attendance-search">
+              بحث بالاسم أو الهوية
+            </label>
+            <input
+              id="teacher-attendance-search"
+              type="search"
+              value={filters.search}
+              onChange={(event) => updateFilters('search', event.target.value)}
+              placeholder="مثال: أحمد / 1010"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            />
+          </div>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
+          <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white/85 shadow-sm">
+            {attendanceQuery.isLoading ? (
+              <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-sm text-muted">
+                <span className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+                جاري تحميل بيانات الحضور...
+              </div>
+            ) : records.length === 0 ? (
+              <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-sm text-muted">
+                <i className="bi bi-inboxes text-3xl text-slate-300" />
+                لا توجد سجلات للمعايير الحالية.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full table-auto text-right text-sm">
+                  <thead className="bg-slate-50/80 text-[11px] uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="px-3 py-2.5 font-semibold lg:px-4">المعلم</th>
+                      <th className="px-3 py-2.5 font-semibold lg:px-4">حالة السجل</th>
+                      <th className="px-3 py-2.5 font-semibold lg:px-4">وقت العملية</th>
+                      <th className="px-3 py-2.5 font-semibold lg:px-4">الدخول / الانصراف</th>
+                      <th className="px-3 py-2.5 font-semibold lg:px-4">التأخير</th>
+                      <th className="px-3 py-2.5 font-semibold lg:px-4">البوابة والمصدر</th>
+                      <th className="px-3 py-2.5 font-semibold lg:px-4">المطابقة</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(isAttendanceExpanded ? records : records.slice(0, 5)).map((record) => (
+                      <tr key={record.id} className="border-t border-slate-100 text-[13px] transition hover:bg-slate-50/70">
+                        <td className="px-3 py-3 align-top lg:px-4">
+                          <div className="space-y-1">
+                            <p className="font-semibold text-slate-900">{record.employee_name}</p>
+                            <p className="text-[11px] text-muted">الهوية: {record.national_id}</p>
+                            {record.job_number ? (
+                              <p className="text-[11px] text-muted">الرقم الوظيفي: {record.job_number}</p>
+                            ) : null}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 align-top lg:px-4">
+                          <div className="space-y-2">
+                            <StatusBadge record={record} />
+                            <LoginMethodBadge record={record} />
+                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-600">
+                              <i className="bi bi-arrow-left-right" />
+                              {record.transaction_type === 'check_in' ? 'تسجيل حضور' : 'تسجيل انصراف'}
+                            </span>
+                            {record.result ? (
+                              <p className="text-[11px] text-muted">النتيجة: {record.result}</p>
+                            ) : null}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 align-top lg:px-4">
+                          <div className="space-y-1 text-[12px] text-slate-600">
+                            <p>
+                              <span className="font-semibold text-slate-700">وقت العملية:</span> {formatTime(record.transaction_time)}
+                            </p>
+                            <p className="text-[11px] text-muted">{formatDate(record.attendance_date)}</p>
+                            {record.page_number ? (
+                              <p className="text-[11px] text-muted">رقم الصفحة: {record.page_number}</p>
+                            ) : null}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 align-top lg:px-4">
+                          <div className="space-y-1 text-[12px] text-slate-600">
+                            <p>
+                              <span className="font-semibold text-slate-700">حضور:</span> {formatTime(record.check_in_time)}
+                            </p>
+                            <p>
+                              <span className="font-semibold text-slate-700">انصراف:</span> {formatTime(record.check_out_time)}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 align-top lg:px-4">
+                          {record.delay_status ? (
+                            <div className="space-y-2">
+                              <DelayStatusBadge status={record.delay_status} label={record.delay_status_label} />
+                              {typeof record.delay_minutes === 'number' ? (
+                                <p className="text-[11px] text-muted">
+                                  دقائق التأخير: {record.delay_minutes.toLocaleString('ar-SA')}
+                                </p>
+                              ) : null}
+                              {record.delay_notified_at ? (
+                                <p className="text-[11px] text-muted">
+                                  آخر إشعار: {formatTime(record.delay_notified_at)} — {formatDate(record.delay_notified_at)}
+                                </p>
+                              ) : null}
+                              {record.delay_notes ? (
+                                <p className="text-[11px] text-muted">ملاحظة: {record.delay_notes}</p>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <span className="text-[11px] text-muted">لا توجد بيانات تأخير</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 align-top lg:px-4">
+                          <div className="space-y-1 text-[12px] text-slate-600">
+                            <p>
+                              <span className="font-semibold text-slate-700">البوابة:</span> {record.gate_name ?? '—'}
+                            </p>
+                            <p>
+                              <span className="font-semibold text-slate-700">الموقع:</span> {record.location ?? '—'}
+                            </p>
+                            <p>
+                              <span className="font-semibold text-slate-700">المصدر:</span> {record.source ?? '—'}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 align-top lg:px-4">
+                          <div className="space-y-2">
+                            <MatchBadge record={record} />
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <aside className="space-y-4 rounded-3xl border border-rose-100 bg-rose-50/70 p-5 shadow-sm">
+            <header className="space-y-1 text-right">
+              <p className="text-xs font-semibold uppercase tracking-widest text-rose-500">حالات غير مرتبطة</p>
+              <h3 className="text-lg font-semibold text-rose-700">{unmatchedRecords.length.toLocaleString('ar-SA')} معلم بحاجة للربط</h3>
+              <p className="text-xs text-rose-600">
+                استخدم الرقم الوظيفي أو الهوية للبحث عن المعلم وربطه في النظام لضمان ظهور حضوره في لوحة الأداء.
+              </p>
+            </header>
+
+            {unmatchedRecords.length === 0 ? (
+              <div className="flex min-h-[120px] flex-col items-center justify-center gap-3 text-sm text-rose-600">
+                <i className="bi bi-check-circle text-2xl" />
+                جميع السجلات مرتبطة بمعلمين.
+              </div>
+            ) : (
+              <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
+                {unmatchedRecords.map((record) => (
+                  <article
+                    key={`unmatched-${record.id}`}
+                    className="space-y-1 rounded-2xl border border-rose-200 bg-white/70 p-3 text-right shadow-sm"
+                  >
+                    <p className="text-sm font-semibold text-rose-700">{record.employee_name}</p>
+                    <p className="text-[11px] text-muted">الهوية: {record.national_id}</p>
+                    {record.job_number ? (
+                      <p className="text-[11px] text-muted">الرقم الوظيفي: {record.job_number}</p>
+                    ) : null}
+                    <p className="text-[11px] text-muted">
+                      آخر ظهور: {formatTime(record.transaction_time)} — {formatDate(record.attendance_date)}
+                    </p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-rose-500">
+                      {record.login_method_label} • {record.status_label}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            )}
+          </aside>
+        </div>
+
+        {!isAttendanceExpanded && records.length > 5 && (
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/50 px-4 py-3 text-center">
+            <button
+              type="button"
+              onClick={() => setIsAttendanceExpanded(true)}
+              className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition"
+            >
+              عرض جميع السجلات ({records.length.toLocaleString('ar-SA')}) <i className="bi bi-chevron-down mr-1" />
+            </button>
+          </div>
+        )}
       </section>
 
       {absenceDialog ? (
@@ -2339,3 +2371,4 @@ export function AdminTeacherAttendancePage() {
     </section>
   )
 }
+
