@@ -4,6 +4,8 @@ import { apiClient } from '@/services/api/client'
 import { useToast } from '@/shared/feedback/use-toast'
 import {
     AlertCircle,
+    ArrowDown,
+    ArrowUp,
     Check,
     ChevronLeft,
     ChevronRight,
@@ -25,6 +27,7 @@ type StandbyTeacher = {
     id: number
     name: string
     phone?: string | null
+    weekly_standby_count?: number
 }
 
 type PeriodInfo = {
@@ -105,8 +108,12 @@ async function distributeStandby(payload: DistributePayload): Promise<{ success:
     return data
 }
 
-async function approveAndNotify(scheduleId: number): Promise<{ success: boolean; data: { schedule_id: number; status: string; messages_queued: number; estimated_time_minutes: number } }> {
-    const { data } = await apiClient.post('/admin/teacher-standby/approve-notify', { schedule_id: scheduleId })
+async function approveAndNotify(scheduleId: number, notifyTeacherIds?: number[]): Promise<{ success: boolean; data: { schedule_id: number; status: string; messages_queued: number; estimated_time_minutes: number } }> {
+    const payload: Record<string, unknown> = { schedule_id: scheduleId }
+    if (notifyTeacherIds?.length) {
+        payload.notify_teacher_ids = notifyTeacherIds
+    }
+    const { data } = await apiClient.post('/admin/teacher-standby/approve-notify', payload)
     return data
 }
 
@@ -174,7 +181,7 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
     })
 
     const approveMutation = useMutation({
-        mutationFn: (id: number) => approveAndNotify(id),
+        mutationFn: ({ id, notifyTeacherIds }: { id: number; notifyTeacherIds?: number[] }) => approveAndNotify(id, notifyTeacherIds),
         onSuccess: (result) => {
             const queued = result.data.messages_queued || 0
             const estimatedTime = result.data.estimated_time_minutes || 0
@@ -254,7 +261,43 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
         return distributions
     }, [selectedTeachers])
 
+    // إعادة حساب التوزيع التلقائي بناءً على ترتيب المعلمين الغائبين
+    const redistributeStandbys = (teachers: AbsentTeacher[]): AbsentTeacher[] => {
+        const assignedToday: number[] = []
+        return teachers.map(teacher => ({
+            ...teacher,
+            periods: teacher.periods.map(period => {
+                // البحث عن أفضل بديل متاح من جدول الانتظار الأسبوعي
+                let selectedStandby: StandbyTeacher | null = null
+                for (let i = 1; i <= 7; i++) {
+                    const key = `standby${i}` as keyof PeriodInfo
+                    const standby = period[key] as StandbyTeacher | null | undefined
+                    if (standby && !assignedToday.includes(standby.id)) {
+                        selectedStandby = standby
+                        break
+                    }
+                }
+                if (selectedStandby) {
+                    assignedToday.push(selectedStandby.id)
+                }
+                return { ...period, selectedStandby }
+            }),
+        }))
+    }
+
     // Handlers
+    const moveTeacher = (teacherId: number, direction: 'up' | 'down') => {
+        setAbsentTeachers(prev => {
+            const idx = prev.findIndex(t => t.teacher_id === teacherId)
+            if (idx < 0) return prev
+            const targetIdx = direction === 'up' ? idx - 1 : idx + 1
+            if (targetIdx < 0 || targetIdx >= prev.length) return prev
+            const next = [...prev]
+            ;[next[idx], next[targetIdx]] = [next[targetIdx], next[idx]]
+            return redistributeStandbys(next)
+        })
+    }
+
     const toggleTeacherSelection = (teacherId: number) => {
         setAbsentTeachers(prev => prev.map(t =>
             t.teacher_id === teacherId ? { ...t, selected: !t.selected } : t
@@ -292,7 +335,11 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
 
     const handleApprove = () => {
         if (!scheduleId) return
-        approveMutation.mutate(scheduleId)
+        // لو الجدول سبق اعتماده، نرسل فقط IDs البدلاء الجدد
+        const notifyIds = hasPublished
+            ? [...new Set(allDistributions.map(d => d.standby_teacher_id))]
+            : undefined
+        approveMutation.mutate({ id: scheduleId, notifyTeacherIds: notifyIds })
     }
 
     // بناء HTML للتصدير - تصميم سادة مثل النموذج الرسمي
@@ -606,6 +653,7 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
                                                     className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                                                 />
                                             </th>
+                                            <th className="w-16 px-2 py-3 text-center font-semibold text-slate-700">الأولوية</th>
                                             <th className="px-4 py-3 text-right font-semibold text-slate-700">المعلم</th>
                                             <th className="px-4 py-3 text-right font-semibold text-slate-700">سبب الغياب</th>
                                             <th className="px-4 py-3 text-center font-semibold text-slate-700">الحصص</th>
@@ -631,6 +679,27 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
                                                         onClick={(e) => e.stopPropagation()}
                                                         className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-50"
                                                     />
+                                                </td>
+                                                <td className="px-2 py-1 text-center" onClick={(e) => e.stopPropagation()}>
+                                                    <div className="flex flex-col items-center gap-0.5">
+                                                        <button
+                                                            onClick={() => moveTeacher(teacher.teacher_id, 'up')}
+                                                            disabled={absentTeachers.indexOf(teacher) === 0}
+                                                            className="rounded p-0.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700 disabled:opacity-30 disabled:hover:bg-transparent"
+                                                            title="رفع الأولوية"
+                                                        >
+                                                            <ArrowUp className="h-3.5 w-3.5" />
+                                                        </button>
+                                                        <span className="text-[10px] font-bold text-slate-400">{absentTeachers.indexOf(teacher) + 1}</span>
+                                                        <button
+                                                            onClick={() => moveTeacher(teacher.teacher_id, 'down')}
+                                                            disabled={absentTeachers.indexOf(teacher) === absentTeachers.length - 1}
+                                                            className="rounded p-0.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700 disabled:opacity-30 disabled:hover:bg-transparent"
+                                                            title="خفض الأولوية"
+                                                        >
+                                                            <ArrowDown className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                                 <td className="px-4 py-3 text-right font-medium text-slate-900">{teacher.teacher_name}</td>
                                                 <td className="px-4 py-3 text-right text-muted">{teacher.absence_reason}</td>
@@ -733,13 +802,16 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
                                                                 <option value="">-- اختر بديل --</option>
                                                                 {([1,2,3,4,5,6,7] as const).map(i => {
                                                                     const s = period[`standby${i}` as keyof PeriodInfo] as StandbyTeacher | null | undefined
-                                                                    return s ? <option key={i} value={s.id}>⭐ {s.name} (منتظر {i})</option> : null
+                                                                    if (!s) return null
+                                                                    const wc = s.weekly_standby_count || 0
+                                                                    return <option key={i} value={s.id}>⭐ {s.name} (منتظر {i}){wc > 0 ? ` [${wc}]` : ''}</option>
                                                                 })}
                                                                 {period.availableTeachers && period.availableTeachers.length > 0 && (
                                                                     <optgroup label="معلمين متاحين ✅">
-                                                                        {period.availableTeachers.map(t => (
-                                                                            <option key={t.id} value={t.id}>✅ {t.name} (متاح)</option>
-                                                                        ))}
+                                                                        {period.availableTeachers.map(t => {
+                                                                            const wc = t.weekly_standby_count || 0
+                                                                            return <option key={t.id} value={t.id}>✅ {t.name}{wc > 0 ? ` [${wc}]` : ''}</option>
+                                                                        })}
                                                                     </optgroup>
                                                                 )}
                                                                 <optgroup label="جميع المعلمين والإداريين">
@@ -756,7 +828,9 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
                                                                     : 'border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100'
                                                                     }`}
                                                             >
-                                                                {period.selectedStandby?.name ?? 'لا يوجد بديل'}
+                                                                {period.selectedStandby
+                                                                    ? `${period.selectedStandby.name}${(period.selectedStandby.weekly_standby_count || 0) > 0 ? ` [${period.selectedStandby.weekly_standby_count}]` : ''}`
+                                                                    : 'لا يوجد بديل'}
                                                             </button>
                                                         )}
                                                     </td>
