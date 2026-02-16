@@ -74,6 +74,40 @@ const COLOR_OPTIONS = [
 
 const DESCRIPTIVE_GRADES = ['ممتاز', 'جيد جدا', 'جيد', 'مقبول', 'ضعيف']
 
+/* ─────── ألوان تقييم المهارات (نفس منطق صفحة المعلم) ─────── */
+function getSkillEvalColor(
+  gradeType: 'numeric' | 'descriptive' | 'mastery' | null,
+  numericGrade?: number | null,
+  maxGrade?: number | null,
+  descriptiveGrade?: string | null,
+  category?: 'positive' | 'negative' | null,
+): { bg: string; text: string } {
+  if (gradeType === 'mastery') {
+    return descriptiveGrade === 'اتقن'
+      ? { bg: 'bg-emerald-50', text: 'text-emerald-600' }
+      : { bg: 'bg-red-50', text: 'text-red-600' }
+  }
+  if (gradeType === 'numeric' && numericGrade != null) {
+    const pct = (numericGrade / (maxGrade || 100)) * 100
+    if (pct >= 67) return { bg: 'bg-emerald-50', text: 'text-emerald-600' }
+    if (pct >= 34) return { bg: 'bg-amber-50', text: 'text-amber-600' }
+    return { bg: 'bg-red-50', text: 'text-red-600' }
+  }
+  if (gradeType === 'descriptive' && descriptiveGrade) {
+    const map: Record<string, { bg: string; text: string }> = {
+      'ممتاز': { bg: 'bg-emerald-50', text: 'text-emerald-600' },
+      'جيد جدا': { bg: 'bg-green-50', text: 'text-green-600' },
+      'جيد': { bg: 'bg-amber-50', text: 'text-amber-600' },
+      'مقبول': { bg: 'bg-orange-50', text: 'text-orange-600' },
+      'ضعيف': { bg: 'bg-red-50', text: 'text-red-600' },
+    }
+    if (map[descriptiveGrade]) return map[descriptiveGrade]
+  }
+  return category === 'positive'
+    ? { bg: 'bg-emerald-50', text: 'text-emerald-600' }
+    : { bg: 'bg-rose-50', text: 'text-rose-600' }
+}
+
 const STAT_CARD_COLORS: Record<string, { bg: string; border: string; text: string; ring: string }> = {
   amber: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', ring: 'ring-amber-100' },
   sky: { bg: 'bg-sky-50', border: 'border-sky-200', text: 'text-sky-700', ring: 'ring-sky-100' },
@@ -913,16 +947,32 @@ export function AdminEvaluationSettingsPage() {
                   <tbody className="divide-y divide-slate-50">
                     {recentEvaluations.map((ev) => {
                       const emoji = ICON_EMOJI_MAP[ev.behavior_type_icon ?? ''] ?? (ev.evaluation_type === 'skill' ? '📐' : '📌')
-                      const isPositive = ev.behavior_type_category === 'positive'
                       const time = new Date(ev.created_at).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
+
+                      // تحديد اللون حسب نوع التقييم
+                      let badgeBg: string, badgeText: string
+                      if (ev.evaluation_type === 'skill' && ev.subject_skill_grade_type) {
+                        // مهارة مع درجة → لون حسب الدرجة
+                        const ec = getSkillEvalColor(ev.subject_skill_grade_type, ev.numeric_grade, ev.subject_skill_max_grade, ev.descriptive_grade, ev.subject_skill_category)
+                        badgeBg = ec.bg
+                        badgeText = ec.text
+                      } else if (ev.evaluation_type === 'skill') {
+                        // مهارة بدون درجة → لون حسب التصنيف
+                        badgeBg = ev.subject_skill_category === 'positive' ? 'bg-emerald-50' : 'bg-rose-50'
+                        badgeText = ev.subject_skill_category === 'positive' ? 'text-emerald-600' : 'text-rose-600'
+                      } else {
+                        // سلوك → لون حسب التصنيف
+                        const isPositive = ev.behavior_type_category === 'positive'
+                        badgeBg = isPositive ? 'bg-emerald-50' : 'bg-rose-50'
+                        badgeText = isPositive ? 'text-emerald-600' : 'text-rose-600'
+                      }
+
                       return (
                         <tr key={ev.id} className="transition hover:bg-slate-50/50">
                           <td className="px-3 py-2.5 font-medium text-slate-800">{ev.student_name}</td>
                           <td className="px-3 py-2.5 text-slate-600">{ev.grade_name} / {ev.class_name}</td>
                           <td className="px-3 py-2.5">
-                            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${
-                              isPositive ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
-                            }`}>
+                            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${badgeBg} ${badgeText}`}>
                               <span>{emoji}</span>
                               {ev.behavior_type_name ?? ev.subject_skill_name ?? '-'}
                             </span>

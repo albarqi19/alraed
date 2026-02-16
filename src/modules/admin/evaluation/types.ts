@@ -38,6 +38,11 @@ export interface RecentEvaluation {
   behavior_type_color: string | null
   behavior_type_category: 'positive' | 'negative' | null
   subject_skill_name: string | null
+  subject_skill_category: 'positive' | 'negative' | null
+  subject_skill_grade_type: 'numeric' | 'descriptive' | 'mastery' | null
+  subject_skill_max_grade: number | null
+  numeric_grade: number | null
+  descriptive_grade: string | null
   created_at: string
 }
 
