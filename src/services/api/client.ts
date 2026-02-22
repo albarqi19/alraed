@@ -121,17 +121,30 @@ apiClient.interceptors.response.use(
     
     // معالجة خطأ 402 - انتهاء الاشتراك
     if (error.response?.status === 402) {
-      const message = error.response?.data?.message || 'انتهى اشتراكك في النظام'
-      error.message = message
+      const { user } = useAuthStore.getState()
+      const isAdmin = user?.role === 'admin'
 
-      const isOnSubscriptionPage = window.location.pathname.includes('/admin/subscription')
-
-      // إذا المستخدم بالفعل في صفحة الاشتراك، لا نزعجه
-      if (!isOnSubscriptionPage) {
-        const now = Date.now()
-        if (now - _lastSubscriptionRedirect > _SUBSCRIPTION_REDIRECT_DEBOUNCE) {
-          _lastSubscriptionRedirect = now
-          window.location.href = '/admin/subscription'
+      if (isAdmin) {
+        // الأدمن: يوجه لصفحة الاشتراك لتجديده
+        error.message = error.response?.data?.message || 'انتهى اشتراكك في النظام'
+        const isOnSubscriptionPage = window.location.pathname.includes('/admin/subscription')
+        if (!isOnSubscriptionPage) {
+          const now = Date.now()
+          if (now - _lastSubscriptionRedirect > _SUBSCRIPTION_REDIRECT_DEBOUNCE) {
+            _lastSubscriptionRedirect = now
+            window.location.href = '/admin/subscription'
+          }
+        }
+      } else {
+        // المعلمين والموظفين: صفحة توقف الحساب
+        error.message = 'حسابك متوقف حالياً. يرجى التواصل مع إدارة المدرسة.'
+        const isOnSuspendedPage = window.location.pathname.includes('/account-suspended')
+        if (!isOnSuspendedPage) {
+          const now = Date.now()
+          if (now - _lastSubscriptionRedirect > _SUBSCRIPTION_REDIRECT_DEBOUNCE) {
+            _lastSubscriptionRedirect = now
+            window.location.href = '/account-suspended'
+          }
         }
       }
     }

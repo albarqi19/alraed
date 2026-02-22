@@ -10,7 +10,7 @@ const navLinks = [
 
 const APP_SHELL_PREFIXES = ['/admin', '/teacher']
 const FULLSCREEN_ROUTES = ['/display/auto-call']
-const FULLSCREEN_PREFIXES = ['/excuse', '/reply', '/payment']
+const FULLSCREEN_PREFIXES = ['/excuse', '/reply', '/payment', '/account-suspended']
 const GUARDIAN_PORTAL_PREFIXES = ['/guardian']
 const NO_HEADER_ROUTES = ['/register']
 

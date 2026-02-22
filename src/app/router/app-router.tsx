@@ -59,6 +59,7 @@ import { GuardianServicesPage } from '@/modules/guardian/pages/guardian-services
 import { GuardianFormsPage } from '@/modules/guardian/pages/guardian-forms-page'
 import { GuardianMessagesPage } from '@/modules/guardian/pages/guardian-messages-page'
 import { NotFoundPage } from '@/modules/core/pages/not-found-page'
+import { AccountSuspendedPage } from '@/modules/core/pages/account-suspended-page'
 import { RequireAuth, RedirectIfAuthenticated, RequireOnboarding } from '@/modules/auth/components/route-guards'
 import { TeacherShell } from '@/modules/teacher/layouts/teacher-shell'
 import { TeacherSchedulePage } from '@/modules/teacher/pages/teacher-schedule-page'
@@ -342,6 +343,10 @@ const appRoutes = [
           { path: 'referrals', element: <GuidanceReferralsPage /> },
           { path: 'referrals/:id', element: <GuidanceReferralDetailsPage /> },
         ],
+      },
+      {
+        path: 'account-suspended',
+        element: <AccountSuspendedPage />,
       },
       { path: '*', element: <NotFoundPage /> },
     ],
