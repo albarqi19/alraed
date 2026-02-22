@@ -54,16 +54,17 @@ export function BillingHistoryTable({ invoices, isLoading, page, lastPage, onPag
   const initiatePayment = useInitiatePaymentMutation()
 
   const canPay = (invoice: SubscriptionInvoiceRecord) => {
-    // Can pay if status is pending, draft, or failed (not expired)
+    // Cannot pay expired, paid, or refunded invoices
+    if (['expired', 'paid', 'refunded'].includes(invoice.status)) return false
+    // Can pay if status is pending, draft, or failed
     if (!['pending', 'draft', 'failed'].includes(invoice.status)) return false
-    // Check if there's a valid payment link that hasn't expired
-    if (invoice.payment_link_url && invoice.payment_expires_at) {
-      const expiresAt = new Date(invoice.payment_expires_at)
-      if (expiresAt > new Date()) {
-        return true // Has valid payment link
-      }
+    // Check if invoice is older than 7 days (will be expired by backend soon)
+    if (invoice.created_at) {
+      const created = new Date(invoice.created_at)
+      const daysSinceCreation = (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24)
+      if (daysSinceCreation > 7) return false
     }
-    return true // Can create new payment link
+    return true
   }
 
   const handlePay = (invoice: SubscriptionInvoiceRecord) => {
