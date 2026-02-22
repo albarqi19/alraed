@@ -57,7 +57,7 @@ export interface SubscriptionInvoiceRecord {
   tax: number
   total: number
   currency: string
-  status: 'draft' | 'pending' | 'paid' | 'failed' | 'refunded'
+  status: 'draft' | 'pending' | 'paid' | 'failed' | 'refunded' | 'expired'
   billing_period_start?: string | null
   billing_period_end?: string | null
   due_date?: string | null

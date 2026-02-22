@@ -1,7 +1,7 @@
 import type { SubscriptionInvoiceRecord } from '../types'
 import { useInitiatePaymentMutation } from '../hooks'
 import clsx from 'classnames'
-import { CreditCard, Loader2 } from 'lucide-react'
+import { CreditCard, Loader2, Clock, AlertTriangle } from 'lucide-react'
 
 const STATUS_BADGES: Record<SubscriptionInvoiceRecord['status'], { label: string; className: string }> = {
   draft: { label: 'مسودة', className: 'bg-slate-200 text-slate-600' },
@@ -9,6 +9,7 @@ const STATUS_BADGES: Record<SubscriptionInvoiceRecord['status'], { label: string
   paid: { label: 'مدفوعة', className: 'bg-emerald-100 text-emerald-700' },
   failed: { label: 'فشل الدفع', className: 'bg-rose-100 text-rose-700' },
   refunded: { label: 'مستردة', className: 'bg-indigo-100 text-indigo-700' },
+  expired: { label: 'منتهية', className: 'bg-slate-200 text-slate-500' },
 }
 
 function formatCurrency(value: number, currency = 'SAR') {
@@ -30,6 +31,17 @@ function formatDate(value?: string | null) {
   })
 }
 
+/** حساب الأيام المتبقية للدفع (7 أيام من إنشاء الفاتورة) */
+function getRemainingDays(createdAt?: string | null): number | null {
+  if (!createdAt) return null
+  const created = new Date(createdAt)
+  if (Number.isNaN(created.getTime())) return null
+  const expiryDate = new Date(created.getTime() + 7 * 24 * 60 * 60 * 1000)
+  const now = new Date()
+  const diff = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+  return diff
+}
+
 interface BillingHistoryTableProps {
   invoices: SubscriptionInvoiceRecord[]
   isLoading?: boolean
@@ -42,7 +54,7 @@ export function BillingHistoryTable({ invoices, isLoading, page, lastPage, onPag
   const initiatePayment = useInitiatePaymentMutation()
 
   const canPay = (invoice: SubscriptionInvoiceRecord) => {
-    // Can pay if status is pending, draft, or failed
+    // Can pay if status is pending, draft, or failed (not expired)
     if (!['pending', 'draft', 'failed'].includes(invoice.status)) return false
     // Check if there's a valid payment link that hasn't expired
     if (invoice.payment_link_url && invoice.payment_expires_at) {
@@ -76,7 +88,7 @@ export function BillingHistoryTable({ invoices, isLoading, page, lastPage, onPag
               <th className="px-4 py-3">رقم الفاتورة</th>
               <th className="px-4 py-3">القيمة</th>
               <th className="px-4 py-3">الحالة</th>
-              <th className="px-4 py-3">فترة الفوترة</th>
+              <th className="px-4 py-3">تاريخ الدفع</th>
               <th className="px-4 py-3">تاريخ الاستحقاق</th>
               <th className="px-4 py-3">الإجراءات</th>
             </tr>
@@ -90,8 +102,11 @@ export function BillingHistoryTable({ invoices, isLoading, page, lastPage, onPag
               </tr>
             ) : null}
             {invoices.map((invoice) => {
-              const badge = STATUS_BADGES[invoice.status]
+              const badge = STATUS_BADGES[invoice.status] ?? STATUS_BADGES.draft
               const showPayButton = canPay(invoice)
+              const remainingDays = invoice.status === 'pending' ? getRemainingDays(invoice.created_at) : null
+              const isUrgent = remainingDays !== null && remainingDays <= 2
+
               return (
                 <tr key={invoice.id} className="transition hover:bg-emerald-50/30">
                   <td className="px-4 py-3 font-semibold text-slate-800">{invoice.invoice_number}</td>
@@ -99,10 +114,37 @@ export function BillingHistoryTable({ invoices, isLoading, page, lastPage, onPag
                     {formatCurrency(invoice.total, invoice.currency)}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={clsx('rounded-full px-3 py-1 text-xs font-semibold', badge.className)}>{badge.label}</span>
+                    <div className="flex flex-col gap-1">
+                      <span className={clsx('inline-block w-fit rounded-full px-3 py-1 text-xs font-semibold', badge.className)}>
+                        {badge.label}
+                      </span>
+                      {/* تحذير المدة المتبقية للدفع */}
+                      {remainingDays !== null && remainingDays > 0 && (
+                        <span className={clsx(
+                          'inline-flex items-center gap-1 text-[10px]',
+                          isUrgent ? 'text-rose-600 font-semibold' : 'text-amber-600'
+                        )}>
+                          {isUrgent ? <AlertTriangle className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                          متبقي {remainingDays} {remainingDays === 1 ? 'يوم' : 'أيام'} للدفع
+                        </span>
+                      )}
+                      {remainingDays !== null && remainingDays <= 0 && (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-rose-600 font-semibold">
+                          <AlertTriangle className="h-3 w-3" />
+                          تجاوزت مهلة الدفع
+                        </span>
+                      )}
+                      {invoice.status === 'expired' && (
+                        <span className="text-[10px] text-slate-400">لم يتم الدفع في المهلة المحددة</span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-500">
-                    {formatDate(invoice.billing_period_start)} – {formatDate(invoice.billing_period_end)}
+                    {invoice.paid_at ? (
+                      <span className="text-emerald-600 font-medium">{formatDate(invoice.paid_at)}</span>
+                    ) : (
+                      <span className="text-slate-400">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-500">{formatDate(invoice.due_date)}</td>
                   <td className="px-4 py-3">
@@ -121,7 +163,9 @@ export function BillingHistoryTable({ invoices, isLoading, page, lastPage, onPag
                         ادفع الآن
                       </button>
                     ) : invoice.status === 'paid' ? (
-                      <span className="text-xs text-emerald-600">تم الدفع</span>
+                      <span className="text-xs text-emerald-600">✓ تم الدفع</span>
+                    ) : invoice.status === 'expired' ? (
+                      <span className="text-xs text-slate-400">انتهت المهلة</span>
                     ) : null}
                   </td>
                 </tr>
