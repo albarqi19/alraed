@@ -172,12 +172,11 @@ export function AdminAcademicCalendarPage() {
     const current = semestersData.find((s) => s.is_current)
     setSelectedTab((current?.code as CalendarTab) ?? 'first')
   }, [semestersData, selectedTab])
-
+  
   // جلب الأسابيع
   const { data: weeksData, isLoading: loadingWeeks } = useQuery({
-    queryKey: ['academic-calendar', 'weeks', selectedTab === 'all' ? undefined : selectedTab ?? undefined],
-    queryFn: () => academicCalendarApi.getWeeks(selectedTab === 'all' ? undefined : selectedTab ?? undefined),
-    enabled: selectedTab !== null,
+    queryKey: ['academic-calendar', 'weeks', selectedTab === 'all' ? undefined : selectedTab],
+    queryFn: () => academicCalendarApi.getWeeks(selectedTab === 'all' ? undefined : (selectedTab ?? undefined)),
     staleTime: 60 * 60 * 1000,
   })
 

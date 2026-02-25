@@ -2640,6 +2640,8 @@ export function useRecordTrackerActionMutation() {
       })
       // تحديث البيانات
       queryClient.invalidateQueries({ queryKey: ['admin', 'live-tracker'] })
+      // مزامنة مع صفحة الإشراف (في حالة duty_absent)
+      queryClient.invalidateQueries({ queryKey: ['admin', 'duty-rosters', 'today'] })
     },
     onError: (error) => {
       toast({ type: 'error', title: getErrorMessage(error, 'تعذر تسجيل الإجراء') })

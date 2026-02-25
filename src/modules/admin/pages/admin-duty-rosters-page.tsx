@@ -64,6 +64,8 @@ export function AdminDutyRostersPage() {
     onSuccess: () => {
       toast({ type: 'success', title: 'تم تسجيل عدم الحضور بنجاح' })
       void queryClient.invalidateQueries({ queryKey: ['admin', 'duty-rosters', 'today'] })
+      // مزامنة مع المتابعة المباشرة
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'live-tracker'] })
     },
     onError: (error) => {
       toast({

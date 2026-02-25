@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   fetchWhatsappInstances,
@@ -10,11 +10,15 @@ import type { WhatsappInstance } from '@/modules/admin/types'
 import { useToast } from '@/shared/feedback/use-toast'
 import type { StepComponentProps } from '../../types'
 
+const QR_LIFETIME = 55 // ثانية - صلاحية QR قبل التجديد
+
 export function WhatsappSetupStep({ onComplete, onSkip, stats, isCompleting, isSkipping }: StepComponentProps) {
   const queryClient = useQueryClient()
   const toast = useToast()
   const [qrCode, setQrCode] = useState<string | null>(null)
   const [pollingId, setPollingId] = useState<number | null>(null)
+  const [qrCountdown, setQrCountdown] = useState(QR_LIFETIME)
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // جلب Instances
   const { data: instances = [], isLoading } = useQuery({
@@ -35,6 +39,7 @@ export function WhatsappSetupStep({ onComplete, onSkip, stats, isCompleting, isS
 
       if (newInstance.qr_code) {
         setQrCode(newInstance.qr_code)
+        startCountdown()
       }
 
       if (newInstance.status === 'connecting') {
@@ -46,14 +51,47 @@ export function WhatsappSetupStep({ onComplete, onSkip, stats, isCompleting, isS
     },
   })
 
+  // بدء العد التنازلي عند ظهور QR
+  const startCountdown = useCallback(() => {
+    setQrCountdown(QR_LIFETIME)
+    if (countdownRef.current) clearInterval(countdownRef.current)
+    countdownRef.current = setInterval(() => {
+      setQrCountdown((prev) => {
+        if (prev <= 1) return 0
+        return prev - 1
+      })
+    }, 1000)
+  }, [])
+
   // جلب QR Code
   const qrMutation = useMutation({
     mutationFn: getWhatsappInstanceQrCode,
     onSuccess: (data) => {
       setQrCode(data.qr_code)
+      startCountdown()
       queryClient.invalidateQueries({ queryKey: ['admin', 'whatsapp', 'instances'] })
     },
   })
+
+  // تجديد QR تلقائياً عند انتهاء العد
+  useEffect(() => {
+    if (qrCountdown === 0 && pollingId && !connectedInstance && !qrMutation.isPending) {
+      qrMutation.mutate(pollingId)
+    }
+  }, [qrCountdown, pollingId, connectedInstance, qrMutation.isPending])
+
+  // تنظيف العداد عند الاتصال أو إلغاء التركيب
+  useEffect(() => {
+    if (connectedInstance || !qrCode) {
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current)
+        countdownRef.current = null
+      }
+    }
+    return () => {
+      if (countdownRef.current) clearInterval(countdownRef.current)
+    }
+  }, [connectedInstance, qrCode])
 
   // Polling للحالة
   useEffect(() => {
@@ -145,12 +183,28 @@ export function WhatsappSetupStep({ onComplete, onSkip, stats, isCompleting, isS
         <div className="space-y-4 text-center">
           <div className="rounded-2xl border border-slate-200 bg-white p-6">
             <p className="mb-4 text-sm text-slate-600">امسح الرمز باستخدام تطبيق واتساب على هاتفك</p>
-            <div className="mx-auto w-fit rounded-xl border-4 border-slate-100 bg-white p-4">
-              <img src={qrCode} alt="QR Code" className="h-64 w-64" />
+            <div className="relative mx-auto w-fit rounded-xl border-4 border-slate-100 bg-white p-4">
+              <img
+                src={qrCode}
+                alt="QR Code"
+                className={`h-64 w-64 transition-opacity ${qrCountdown <= 5 ? 'opacity-40' : ''}`}
+              />
+              {qrMutation.isPending && (
+                <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/80">
+                  <span className="h-8 w-8 animate-spin rounded-full border-4 border-teal-500 border-t-transparent" />
+                </div>
+              )}
             </div>
-            <div className="mt-4 flex items-center justify-center gap-2 text-sm text-amber-600">
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
-              في انتظار المسح...
+            <div className="mt-4 flex items-center justify-center gap-3 text-sm">
+              <div className="flex items-center gap-2 text-amber-600">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
+                في انتظار المسح...
+              </div>
+              <div className={`font-mono text-xs ${qrCountdown <= 10 ? 'text-red-500' : 'text-slate-400'}`}>
+                {qrCountdown > 0
+                  ? `تجديد تلقائي خلال ${qrCountdown} ث`
+                  : 'جاري التجديد...'}
+              </div>
             </div>
           </div>
           <p className="text-xs text-slate-500">

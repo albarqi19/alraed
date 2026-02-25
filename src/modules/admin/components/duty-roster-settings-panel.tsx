@@ -28,6 +28,8 @@ type SettingsFormState = {
   dutyScheduleDayBeforeReminder: boolean
   dutyScheduleDayBeforeReminderTime: string
   dutyScheduleReminderChannels: string[]
+  // إعدادات إشعارات غياب الإشراف
+  sendWhatsappForSupervisionAbsence: boolean
 }
 
 const DEFAULT_FORM: SettingsFormState = {
@@ -43,6 +45,7 @@ const DEFAULT_FORM: SettingsFormState = {
   dutyScheduleDayBeforeReminder: false,
   dutyScheduleDayBeforeReminderTime: '20:00',
   dutyScheduleReminderChannels: ['whatsapp'],
+  sendWhatsappForSupervisionAbsence: false,
 }
 
 function mapRecordToForm(record: DutyRosterSettingsRecord | undefined): SettingsFormState {
@@ -73,6 +76,7 @@ function mapRecordToForm(record: DutyRosterSettingsRecord | undefined): Settings
     dutyScheduleReminderChannels: Array.isArray(record.duty_schedule_reminder_channels) && record.duty_schedule_reminder_channels.length > 0
       ? record.duty_schedule_reminder_channels.map((c) => String(c))
       : ['whatsapp'],
+    sendWhatsappForSupervisionAbsence: Boolean(record.send_whatsapp_for_supervision_absence),
   }
 }
 
@@ -178,6 +182,8 @@ export function DutyRosterSettingsModal({ open, onClose }: DutyRosterSettingsMod
       duty_schedule_day_before_reminder: form.dutyScheduleDayBeforeReminder,
       duty_schedule_day_before_reminder_time: form.dutyScheduleDayBeforeReminderTime || null,
       duty_schedule_reminder_channels: form.dutyScheduleReminderChannels,
+      // إعدادات إشعارات غياب الإشراف
+      send_whatsapp_for_supervision_absence: form.sendWhatsappForSupervisionAbsence,
     }
 
     updateSettingsMutation.mutate(payload, {
@@ -446,6 +452,34 @@ export function DutyRosterSettingsModal({ open, onClose }: DutyRosterSettingsMod
                 })}
               </div>
             </fieldset>
+
+            {/* === قسم إشعارات غياب الإشراف === */}
+            <hr className="border-slate-200" />
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <BellRing className="h-4 w-4 text-red-500" />
+                <h3 className="text-sm font-semibold text-slate-800">إشعارات غياب الإشراف</h3>
+              </div>
+
+              <div className="flex items-start gap-3 rounded-2xl border border-slate-200 px-4 py-3">
+                <input
+                  id="supervision-absence-notification"
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  checked={form.sendWhatsappForSupervisionAbsence}
+                  onChange={(event) => handleCheckboxChange('sendWhatsappForSupervisionAbsence', event.target.checked)}
+                  disabled={isSaving}
+                />
+                <label htmlFor="supervision-absence-notification" className="space-y-1">
+                  <span className="text-sm font-semibold text-slate-800">
+                    إرسال واتساب عند غياب الإشراف
+                  </span>
+                  <span className="block text-xs text-slate-500">
+                    إرسال رسالة واتساب تلقائية للمعلم عند تسجيل عدم حضوره للإشراف.
+                  </span>
+                </label>
+              </div>
+            </div>
 
             {/* أزرار */}
             <footer className="flex justify-end gap-3 pt-2">

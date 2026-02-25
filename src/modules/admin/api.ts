@@ -632,6 +632,10 @@ function normalizeTeacherAttendanceSettingsRecord(raw: unknown): TeacherAttendan
     delay_notification_template_id: delayTemplateId,
     additional_settings: additionalSettings,
     available_templates,
+    send_whatsapp_for_period_absence: coerceBoolean(record.send_whatsapp_for_period_absence, false),
+    send_whatsapp_for_period_late: coerceBoolean(record.send_whatsapp_for_period_late, false),
+    send_whatsapp_for_assembly_absence: coerceBoolean(record.send_whatsapp_for_assembly_absence, false),
+    period_absence_template_id: coerceNumber(record.period_absence_template_id, 0) > 0 ? Math.trunc(coerceNumber(record.period_absence_template_id, 0)) : null,
   }
 }
 

@@ -4,13 +4,13 @@
 // =============================================
 
 import { useState, useEffect } from 'react'
-import { Activity, Calendar, Clock, RefreshCw, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
+import { Activity, Calendar, Clock, RefreshCw, ChevronDown, ChevronUp, Loader2, Settings } from 'lucide-react'
 import {
   useLiveTrackerQuery,
   useRecordTrackerActionMutation,
   useDeleteTrackerActionMutation,
 } from '../hooks'
-import { LiveTrackerTable, TrackerLegend } from '../live-tracker/components'
+import { LiveTrackerTable, TrackerLegend, LiveTrackerSettingsModal } from '../live-tracker/components'
 import type { RecordActionPayload, DeleteActionPayload } from '../live-tracker/types'
 import { cn } from '@/lib/utils'
 
@@ -18,6 +18,7 @@ export function LiveTrackerPage() {
   const [selectedDate, setSelectedDate] = useState<string>('')
   const [showLegend, setShowLegend] = useState(false)
   const [currentTime, setCurrentTime] = useState<string>('')
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   // جلب البيانات
   const {
@@ -179,6 +180,16 @@ export function LiveTrackerPage() {
             <RefreshCw className={cn('h-4 w-4', isFetching && 'animate-spin')} />
             <span>تحديث</span>
           </button>
+
+          {/* زر الإعدادات */}
+          <button
+            type="button"
+            onClick={() => setIsSettingsOpen(true)}
+            className="flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-1.5 text-sm text-slate-700 transition-colors hover:bg-slate-200"
+          >
+            <Settings className="h-4 w-4" />
+            <span>الإعدادات</span>
+          </button>
         </div>
       </header>
 
@@ -223,6 +234,9 @@ export function LiveTrackerPage() {
         <RefreshCw className="h-3 w-3" />
         <span>يتم التحديث تلقائياً كل 30 ثانية</span>
       </div>
+
+      {/* نافذة الإعدادات */}
+      <LiveTrackerSettingsModal open={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
   )
 }

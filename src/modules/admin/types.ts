@@ -605,6 +605,11 @@ export interface TeacherAttendanceSettingsRecord {
   delay_notification_template_id?: number | null
   additional_settings: Record<string, unknown>
   available_templates: TeacherAttendanceTemplateOption[]
+  // إعدادات إشعارات المتابعة المباشرة
+  send_whatsapp_for_period_absence: boolean
+  send_whatsapp_for_period_late: boolean
+  send_whatsapp_for_assembly_absence: boolean
+  period_absence_template_id?: number | null
 }
 
 export interface TeacherAttendanceSettingsPayload {
@@ -619,6 +624,11 @@ export interface TeacherAttendanceSettingsPayload {
   remind_check_out?: boolean
   delay_notification_template_id?: number | null
   additional_settings?: Record<string, unknown>
+  // إعدادات إشعارات المتابعة المباشرة
+  send_whatsapp_for_period_absence?: boolean
+  send_whatsapp_for_period_late?: boolean
+  send_whatsapp_for_assembly_absence?: boolean
+  period_absence_template_id?: number | null
 }
 
 export interface TeacherAttendanceDelayRecord {
@@ -1560,6 +1570,9 @@ export interface DutyRosterSettingsRecord {
   duty_schedule_day_before_reminder: boolean
   duty_schedule_day_before_reminder_time: string | null
   duty_schedule_reminder_channels: string[]
+  // إعدادات إشعارات غياب الإشراف
+  send_whatsapp_for_supervision_absence: boolean
+  supervision_absence_template_id?: number | null
   created_at?: string | null
   updated_at?: string | null
 }
@@ -1580,6 +1593,9 @@ export interface DutyRosterSettingsUpdatePayload {
   duty_schedule_day_before_reminder?: boolean
   duty_schedule_day_before_reminder_time?: string | null
   duty_schedule_reminder_channels?: string[]
+  // إعدادات إشعارات غياب الإشراف
+  send_whatsapp_for_supervision_absence?: boolean
+  supervision_absence_template_id?: number | null
 }
 
 export interface DutyRosterTemplatePayload {
