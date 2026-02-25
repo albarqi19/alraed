@@ -117,6 +117,7 @@ import AdminFCMTestPage from '@/modules/admin/pages/admin-fcm-test-page'
 import { AdminScheduleSimulatorPage } from '@/modules/admin/pages/admin-schedule-simulator-page'
 import { AdminEvaluationSettingsPage } from '@/modules/admin/pages/admin-evaluation-settings-page'
 import { AdminDelayActionsPage } from '@/modules/admin/delay-actions'
+import { AdminTeacherProfilePage } from '@/modules/admin/pages/admin-teacher-profile-page'
 import { AdminTeamPulsePage } from '@/modules/admin/pages/admin-team-pulse-page'
 import { LiveTrackerPage } from '@/modules/admin/pages/live-tracker-page'
 import { AdminMadrasatiReportPage } from '@/modules/admin/pages/admin-madrasati-report-page'
@@ -213,6 +214,8 @@ const appRoutes = [
           { index: true, element: <Navigate to="/admin/dashboard" replace /> },
           { path: 'dashboard', element: <AdminDashboardPage /> },
           { path: 'teachers', element: <AdminTeachersPage /> },
+          { path: 'teacher-profile', element: <AdminTeacherProfilePage /> },
+          { path: 'teacher-profile/:teacherId', element: <AdminTeacherProfilePage /> },
           { path: 'students', element: <AdminStudentsPage /> },
           { path: 'students/profile', element: <AdminStudentProfilePage /> },
           { path: 'forms', element: <AdminFormsPage /> },

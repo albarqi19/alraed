@@ -48,6 +48,7 @@ import {
   FileWarning, // أيقونة إجراءات التأخير
   HeartPulse, // أيقونة نبض الفريق
   BarChart3, // أيقونة تقرير مدرستي
+  UserCircle, // أيقونة ملف المعلم
   ScanLine, // أيقونة حضور البوابة
   Printer, // أيقونة طباعة الباركود
 } from 'lucide-react'
@@ -85,6 +86,7 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
     icon: Users,
     items: [
       { to: '/admin/teachers', label: 'إدارة المعلمين', icon: Users, permission: 'admin.teachers' },
+      { to: '/admin/teacher-profile', label: 'ملف المعلم', icon: UserCircle, permission: 'admin.teacher-profile' },
       { to: '/admin/teacher-attendance', label: 'حضور المعلمين', icon: Fingerprint, permission: 'admin.teacher-attendance' },
       { to: '/admin/delay-actions', label: 'إجراءات التأخير', icon: FileWarning, permission: 'admin.delay-actions' },
       { to: '/admin/duty-rosters', label: 'الإشراف اليومي', icon: Eye, permission: 'admin.duty-rosters' },
