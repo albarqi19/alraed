@@ -19,8 +19,8 @@ export function DelaysSection({ delays, actions }: DelaysSectionProps) {
     return (
       <EmptyState
         icon={ShieldCheck}
-        title="لا توجد تأخرات مسجلة"
-        description="أداء ممتاز! لا يوجد أي تأخر في الفترة المحددة"
+        title="التزام كامل بالمواعيد"
+        description="لم يُسجَّل أي تأخر في الفترة المحددة"
       />
     )
   }
@@ -46,7 +46,7 @@ export function DelaysSection({ delays, actions }: DelaysSectionProps) {
           <p className="text-xs text-slate-500">أعذار معلقة</p>
         </div>
         {actions && (
-          <div className="rounded-xl border border-rose-100 bg-rose-50/50 p-3 text-center">
+          <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-center">
             <p className="text-xl font-bold text-slate-900">
               {actions.summary.warnings} / {actions.summary.deductions}
             </p>
@@ -123,7 +123,7 @@ export function DelaysSection({ delays, actions }: DelaysSectionProps) {
         <div>
           <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700">
             <AlertTriangle className="h-4 w-4" />
-            التنبيهات والحسميات
+            الإجراءات الإدارية
           </h4>
           <div className="space-y-2">
             {actions.actions.map((action) => (

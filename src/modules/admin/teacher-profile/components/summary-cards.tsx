@@ -1,7 +1,7 @@
 import {
-  CheckCircle, XCircle, Clock, AlertTriangle, BookOpen,
-  MessageCircle, ClipboardCheck, FileText, TrendingUp, TrendingDown,
-  AlertCircle, Flag,
+  CheckCircle, XCircle, Clock, BookOpen,
+  MessageCircle, ClipboardCheck, FileText, TrendingUp,
+  Minus, Award, Percent, Timer,
 } from 'lucide-react'
 import type { TeacherProfileSummary, BenchmarkValues } from '../types'
 
@@ -19,24 +19,18 @@ interface StatCardProps {
 function StatCard({ title, value, subtitle, icon: Icon, color, benchmark, higherIsBetter = true }: StatCardProps) {
   const colorMap: Record<string, string> = {
     emerald: 'border-emerald-100 bg-emerald-50/50',
-    rose: 'border-rose-100 bg-rose-50/50',
-    amber: 'border-amber-100 bg-amber-50/50',
     sky: 'border-sky-100 bg-sky-50/50',
     violet: 'border-violet-100 bg-violet-50/50',
     blue: 'border-blue-100 bg-blue-50/50',
     slate: 'border-slate-100 bg-slate-50/50',
-    orange: 'border-orange-100 bg-orange-50/50',
   }
 
   const iconColorMap: Record<string, string> = {
     emerald: 'text-emerald-600',
-    rose: 'text-rose-600',
-    amber: 'text-amber-600',
     sky: 'text-sky-600',
     violet: 'text-violet-600',
     blue: 'text-blue-600',
     slate: 'text-slate-600',
-    orange: 'text-orange-600',
   }
 
   const numValue = typeof value === 'number' ? value : parseFloat(String(value)) || 0
@@ -60,10 +54,10 @@ function StatCard({ title, value, subtitle, icon: Icon, color, benchmark, higher
         {benchmark !== undefined && (
           <span
             className={`flex items-center gap-1 font-medium ${
-              isBetter ? 'text-emerald-600' : 'text-rose-600'
+              isBetter ? 'text-emerald-600' : 'text-amber-600'
             }`}
           >
-            {isBetter ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+            {isBetter ? <TrendingUp className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
             م: {benchmark}
           </span>
         )}
@@ -78,8 +72,63 @@ interface SummaryCardsProps {
 }
 
 export function SummaryCards({ data, benchmarks }: SummaryCardsProps) {
+  const attendanceRate = data.attendance.attendance_rate ?? 0
+  const onTimeRate = data.attendance.on_time_rate ?? 0
+  const rewardsCount = data.rewards?.rewards_count ?? 0
+
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+      {/* === إيجابي أولاً === */}
+      <StatCard
+        title="نسبة الانضباط"
+        value={`${attendanceRate}%`}
+        subtitle={`${data.attendance.present_days} يوم حضور`}
+        icon={Percent}
+        color="emerald"
+      />
+      <StatCard
+        title="الالتزام بالمواعيد"
+        value={`${onTimeRate}%`}
+        subtitle={`${data.attendance.on_time_days} يوم في الموعد`}
+        icon={Timer}
+        color="blue"
+      />
+      <StatCard
+        title="نسبة التحضير"
+        value={data.preparation.is_linked ? `${data.preparation.rate}%` : 'غير مرتبط'}
+        subtitle={data.preparation.is_linked ? `${data.preparation.prepared}/${data.preparation.total}` : undefined}
+        icon={ClipboardCheck}
+        color="violet"
+        benchmark={data.preparation.is_linked ? benchmarks?.school_preparation_rate : undefined}
+        higherIsBetter={true}
+      />
+      <StatCard
+        title="الرسائل المرسلة"
+        value={data.messages.total_sent}
+        subtitle={`${data.messages.replies_count} رد`}
+        icon={MessageCircle}
+        color="sky"
+        benchmark={benchmarks?.avg_messages_per_teacher}
+        higherIsBetter={true}
+      />
+      <StatCard
+        title="الحصص"
+        value={data.schedule.total_sessions}
+        subtitle={`${data.schedule.subjects_count} مادة · ${data.schedule.classes_count} فصل`}
+        icon={BookOpen}
+        color="blue"
+      />
+      {/* المكافآت - تظهر فقط إذا > 0 */}
+      {rewardsCount > 0 && (
+        <StatCard
+          title="المكافآت الممنوحة"
+          value={rewardsCount}
+          subtitle={`${data.rewards.total_rewards} نقطة`}
+          icon={Award}
+          color="emerald"
+        />
+      )}
+      {/* === البقية بألوان هادئة === */}
       <StatCard
         title="أيام الحضور"
         value={data.attendance.present_days}
@@ -93,7 +142,7 @@ export function SummaryCards({ data, benchmarks }: SummaryCardsProps) {
         title="أيام الغياب"
         value={data.attendance.absent_days}
         icon={XCircle}
-        color="rose"
+        color="slate"
         benchmark={benchmarks?.avg_absent_days}
         higherIsBetter={false}
       />
@@ -101,64 +150,8 @@ export function SummaryCards({ data, benchmarks }: SummaryCardsProps) {
         title="أيام التأخر"
         value={data.attendance.delayed_days}
         icon={Clock}
-        color="amber"
+        color="slate"
         benchmark={benchmarks?.avg_delayed_days}
-        higherIsBetter={false}
-      />
-      <StatCard
-        title="ساعات التأخر"
-        value={data.attendance.total_delay_hours}
-        subtitle={`${data.attendance.total_delay_minutes} دقيقة`}
-        icon={Clock}
-        color="orange"
-        benchmark={benchmarks ? Math.round(benchmarks.avg_delay_minutes / 60 * 10) / 10 : undefined}
-        higherIsBetter={false}
-      />
-      <StatCard
-        title="التنبيهات"
-        value={data.delay_actions.warnings_count}
-        subtitle={`${data.delay_actions.deductions_count} حسم`}
-        icon={AlertTriangle}
-        color="rose"
-      />
-      <StatCard
-        title="الحصص"
-        value={data.schedule.total_sessions}
-        subtitle={`${data.schedule.subjects_count} مادة · ${data.schedule.classes_count} فصل`}
-        icon={BookOpen}
-        color="blue"
-      />
-      <StatCard
-        title="الرسائل المرسلة"
-        value={data.messages.total_sent}
-        subtitle={`${data.messages.replies_count} رد`}
-        icon={MessageCircle}
-        color="sky"
-        benchmark={benchmarks?.avg_messages_per_teacher}
-        higherIsBetter={true}
-      />
-      <StatCard
-        title="نسبة التحضير"
-        value={data.preparation.is_linked ? `${data.preparation.rate}%` : 'غير مرتبط'}
-        subtitle={data.preparation.is_linked ? `${data.preparation.prepared}/${data.preparation.total}` : undefined}
-        icon={ClipboardCheck}
-        color="violet"
-        benchmark={data.preparation.is_linked ? benchmarks?.school_preparation_rate : undefined}
-        higherIsBetter={true}
-      />
-      <StatCard
-        title="غياب عن الحصص"
-        value={data.period_actions.class_absences}
-        subtitle={`${data.period_actions.class_late_count} تأخر`}
-        icon={AlertCircle}
-        color="rose"
-        higherIsBetter={false}
-      />
-      <StatCard
-        title="غياب عن الطابور"
-        value={data.period_actions.assembly_absences}
-        icon={Flag}
-        color="amber"
         higherIsBetter={false}
       />
       <StatCard

@@ -2,7 +2,7 @@
  * React Query hooks لملف المعلم
  */
 
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { teacherProfileKeys } from './query-keys'
 import {
   fetchTeacherProfileSummary,
@@ -19,6 +19,10 @@ import {
   fetchTeacherStudentAttendanceStats,
   fetchTeacherPeriodActions,
   fetchTeacherBenchmarks,
+  fetchTeacherBadges,
+  fetchTeacherAIAnalysis,
+  fetchAppreciationTemplates,
+  sendTeacherAppreciation,
 } from './api'
 import type { DateRangeFilter, ProfileTabKey } from './types'
 import { useCallback } from 'react'
@@ -205,6 +209,59 @@ export function useTeacherBenchmarks(
     queryKey: teacherProfileKeys.benchmarks(teacherId!, filters),
     queryFn: () => fetchTeacherBenchmarks(teacherId!, filters),
     enabled: Boolean(teacherId) && (opts.enabled ?? true),
+  })
+}
+
+/** الأوسمة */
+export function useTeacherBadges(
+  teacherId: number | null,
+  filters: DateRangeFilter = {},
+  opts: QueryOptions = {},
+) {
+  return useQuery({
+    queryKey: teacherProfileKeys.badges(teacherId!, filters),
+    queryFn: () => fetchTeacherBadges(teacherId!, filters),
+    enabled: Boolean(teacherId) && (opts.enabled ?? true),
+  })
+}
+
+/** تحليل AI */
+export function useTeacherAIAnalysis(
+  teacherId: number | null,
+  filters: DateRangeFilter = {},
+  opts: QueryOptions = {},
+) {
+  return useQuery({
+    queryKey: teacherProfileKeys.aiAnalysis(teacherId!, filters),
+    queryFn: () => fetchTeacherAIAnalysis(teacherId!, filters),
+    enabled: Boolean(teacherId) && (opts.enabled ?? true),
+    staleTime: 1000 * 60 * 60, // ساعة واحدة
+  })
+}
+
+/** قوالب التقدير */
+export function useAppreciationTemplates(
+  teacherId: number | null,
+  opts: QueryOptions = {},
+) {
+  return useQuery({
+    queryKey: teacherProfileKeys.appreciationTemplates(teacherId!),
+    queryFn: () => fetchAppreciationTemplates(teacherId!),
+    enabled: Boolean(teacherId) && (opts.enabled ?? true),
+  })
+}
+
+/** إرسال تقدير */
+export function useSendAppreciation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ teacherId, message }: { teacherId: number; message: string }) =>
+      sendTeacherAppreciation(teacherId, message),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: teacherProfileKeys.appreciationTemplates(variables.teacherId),
+      })
+    },
   })
 }
 

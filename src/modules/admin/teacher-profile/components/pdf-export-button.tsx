@@ -68,8 +68,10 @@ export function PdfExportButton({ summary, printRef }: PdfExportButtonProps) {
         </div>
 
         <div class="section">
-          <h2>إحصائيات الحضور والغياب</h2>
+          <h2>إحصائيات الانضباط</h2>
           <div class="stats-grid">
+            <div class="stat-box"><div class="stat-value">${att.attendance_rate ?? 0}%</div><div class="stat-label">نسبة الانضباط</div></div>
+            <div class="stat-box"><div class="stat-value">${att.on_time_rate ?? 0}%</div><div class="stat-label">الالتزام بالمواعيد</div></div>
             <div class="stat-box"><div class="stat-value">${att.present_days}</div><div class="stat-label">أيام الحضور</div></div>
             <div class="stat-box"><div class="stat-value">${att.absent_days}</div><div class="stat-label">أيام الغياب</div></div>
             <div class="stat-box"><div class="stat-value">${att.delayed_days}</div><div class="stat-label">أيام التأخر</div></div>
@@ -78,7 +80,7 @@ export function PdfExportButton({ summary, printRef }: PdfExportButtonProps) {
         </div>
 
         <div class="section">
-          <h2>التنبيهات والحسميات</h2>
+          <h2>الإجراءات الإدارية</h2>
           <div class="stats-grid">
             <div class="stat-box"><div class="stat-value">${actions.warnings_count}</div><div class="stat-label">تنبيهات</div></div>
             <div class="stat-box"><div class="stat-value">${actions.deductions_count}</div><div class="stat-label">حسميات</div></div>
@@ -110,6 +112,16 @@ export function PdfExportButton({ summary, printRef }: PdfExportButtonProps) {
             <div class="stat-box"><div class="stat-value">${prep.unprepared}</div><div class="stat-label">غير محضّرة</div></div>
           </div>
         </div>
+
+        ${summary.rewards && summary.rewards.rewards_count > 0 ? `
+        <div class="section">
+          <h2>المكافآت</h2>
+          <div class="stats-grid">
+            <div class="stat-box"><div class="stat-value">${summary.rewards.total_rewards}</div><div class="stat-label">إجمالي النقاط</div></div>
+            <div class="stat-box"><div class="stat-value">${summary.rewards.rewards_count}</div><div class="stat-label">عدد المكافآت</div></div>
+          </div>
+        </div>
+        ` : ''}
 
         <div class="section">
           <h2>الإحالات</h2>

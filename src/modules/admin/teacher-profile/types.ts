@@ -26,6 +26,8 @@ export interface TeacherProfileSummary {
     total_delay_minutes: number
     total_delay_hours: number
     avg_delay_minutes: number
+    attendance_rate: number
+    on_time_rate: number
   }
   delay_actions: {
     warnings_count: number
@@ -55,6 +57,10 @@ export interface TeacherProfileSummary {
     class_late_minutes: number
     class_early_leaves: number
     assembly_absences: number
+  }
+  rewards: {
+    total_rewards: number
+    rewards_count: number
   }
   referrals_count: number
   period: {
@@ -410,6 +416,60 @@ export interface TeacherPeriodActionsResponse {
 export interface DateRangeFilter {
   from?: string
   to?: string
+}
+
+// ========== الأوسمة (Badges) ==========
+export interface TeacherBadge {
+  id: string
+  title: string
+  description: string
+  icon: string
+  earned: boolean
+  progress: number
+  newly_earned?: boolean
+}
+
+export interface TeacherBadgesResponse {
+  badges: TeacherBadge[]
+  earned_count: number
+  total_count: number
+}
+
+// ========== تحليل AI ==========
+export interface AIStrength {
+  title: string
+  description: string
+  icon: string
+}
+
+export interface AIRecommendation {
+  title: string
+  suggestion: string
+}
+
+export interface TeacherAIAnalysis {
+  strengths: AIStrength[]
+  recommendations: AIRecommendation[]
+  overall_rating: string
+  motivational_message: string
+  cached: boolean
+  generated_at: string
+}
+
+// ========== رسائل التقدير ==========
+export interface AppreciationTemplatesResponse {
+  templates: string[]
+  teacher_name: string
+  teacher_phone: string | null
+  last_appreciation: {
+    sent_at: string
+    message: string
+  } | null
+}
+
+export interface SendAppreciationResponse {
+  message_id: number
+  sent_at: string
 }
 
 // ========== أقسام التبويبات ==========

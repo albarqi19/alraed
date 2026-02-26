@@ -19,6 +19,10 @@ import type {
   TeacherStudentAttendanceStats,
   TeacherBenchmarksResponse,
   TeacherPeriodActionsResponse,
+  TeacherBadgesResponse,
+  TeacherAIAnalysis,
+  AppreciationTemplatesResponse,
+  SendAppreciationResponse,
   DateRangeFilter,
 } from './types'
 
@@ -204,4 +208,53 @@ export async function fetchTeacherBenchmarks(
     { params: buildParams(filters) },
   )
   return unwrapResponse(data, 'تعذر تحميل المقارنات')
+}
+
+/** الأوسمة */
+export async function fetchTeacherBadges(
+  teacherId: number,
+  filters: DateRangeFilter = {},
+): Promise<TeacherBadgesResponse> {
+  const { data } = await apiClient.get<ApiResponse<TeacherBadgesResponse>>(
+    `${BASE}/${teacherId}/badges`,
+    { params: buildParams(filters) },
+  )
+  return unwrapResponse(data, 'تعذر تحميل الأوسمة')
+}
+
+/** تحليل AI */
+export async function fetchTeacherAIAnalysis(
+  teacherId: number,
+  filters: DateRangeFilter = {},
+  forceRefresh = false,
+): Promise<TeacherAIAnalysis> {
+  const params: Record<string, string> = buildParams(filters)
+  if (forceRefresh) params.force_refresh = '1'
+  const { data } = await apiClient.get<ApiResponse<TeacherAIAnalysis>>(
+    `${BASE}/${teacherId}/ai-analysis`,
+    { params },
+  )
+  return unwrapResponse(data, 'تعذر تحميل التحليل الذكي')
+}
+
+/** قوالب التقدير */
+export async function fetchAppreciationTemplates(
+  teacherId: number,
+): Promise<AppreciationTemplatesResponse> {
+  const { data } = await apiClient.get<ApiResponse<AppreciationTemplatesResponse>>(
+    `${BASE}/${teacherId}/appreciation-templates`,
+  )
+  return unwrapResponse(data, 'تعذر تحميل قوالب التقدير')
+}
+
+/** إرسال رسالة تقدير */
+export async function sendTeacherAppreciation(
+  teacherId: number,
+  message: string,
+): Promise<SendAppreciationResponse> {
+  const { data } = await apiClient.post<ApiResponse<SendAppreciationResponse>>(
+    `${BASE}/${teacherId}/send-appreciation`,
+    { message },
+  )
+  return unwrapResponse(data, 'فشل إرسال رسالة التقدير')
 }

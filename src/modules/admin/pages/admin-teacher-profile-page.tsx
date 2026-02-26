@@ -9,6 +9,8 @@ import {
 import { TeacherSelector } from '../teacher-profile/components/teacher-selector'
 import { ProfileHeader } from '../teacher-profile/components/profile-header'
 import { SummaryCards } from '../teacher-profile/components/summary-cards'
+import { BadgesSection } from '../teacher-profile/components/badges-section'
+import { AIInsightsCard } from '../teacher-profile/components/ai-insights-card'
 import { AttendanceSection } from '../teacher-profile/components/attendance-section'
 import { DelaysSection } from '../teacher-profile/components/delays-section'
 import { ScheduleSection } from '../teacher-profile/components/schedule-section'
@@ -35,6 +37,7 @@ import {
   useTeacherStudentAttendanceStats,
   useTeacherPeriodActions,
   useTeacherBenchmarks,
+  useTeacherBadges,
   useTeacherProfilePrefetch,
 } from '../teacher-profile/hooks'
 import type { ProfileTabKey, DateRangeFilter } from '../teacher-profile/types'
@@ -44,13 +47,13 @@ type PeriodKey = 'semester' | '7d' | '30d' | '90d' | 'custom'
 const TABS: { key: ProfileTabKey; label: string; icon: React.ElementType }[] = [
   { key: 'overview', label: 'نظرة عامة', icon: Eye },
   { key: 'attendance', label: 'الحضور', icon: CalendarCheck },
-  { key: 'delays', label: 'التأخرات', icon: Clock },
+  { key: 'delays', label: 'المواعيد', icon: Clock },
   { key: 'period-actions', label: 'الحصص والطابور', icon: AlertCircle },
   { key: 'teaching', label: 'التدريس', icon: BookOpen },
   { key: 'duties', label: 'الإشراف', icon: Shield },
   { key: 'messages', label: 'التواصل', icon: MessageCircle },
   { key: 'preparation', label: 'التحضير', icon: ClipboardCheck },
-  { key: 'referrals-reports', label: 'الإحالات والتقارير', icon: FileText },
+  { key: 'referrals-reports', label: 'المتابعة والتقارير', icon: FileText },
 ]
 
 export function AdminTeacherProfilePage() {
@@ -104,6 +107,7 @@ export function AdminTeacherProfilePage() {
   // ========== Queries ==========
   const summaryQuery = useTeacherProfileSummary(selectedTeacherId, dateFilter)
   const benchmarksQuery = useTeacherBenchmarks(selectedTeacherId, dateFilter)
+  const badgesQuery = useTeacherBadges(selectedTeacherId, dateFilter)
 
   // Lazy loading - فقط عند تفعيل التبويب
   const attendanceQuery = useTeacherProfileAttendance(selectedTeacherId, dateFilter, {
@@ -200,7 +204,15 @@ export function AdminTeacherProfilePage() {
             </div>
           ) : summaryQuery.data ? (
             <div className="space-y-4">
-              <ProfileHeader teacher={summaryQuery.data.teacher} />
+              <ProfileHeader
+                teacher={summaryQuery.data.teacher}
+                attendanceRate={summaryQuery.data.attendance.attendance_rate}
+                teacherId={selectedTeacherId}
+              />
+              <BadgesSection
+                badges={badgesQuery.data?.badges ?? []}
+                isLoading={badgesQuery.isLoading}
+              />
               <SummaryCards
                 data={summaryQuery.data}
                 benchmarks={benchmarksQuery.data?.benchmarks ?? null}
@@ -283,13 +295,20 @@ export function AdminTeacherProfilePage() {
             ) : (
               <>
                 {activeTab === 'overview' && summaryQuery.data && (
-                  <div className="rounded-xl border border-slate-200 bg-white p-5">
-                    <p className="text-sm text-slate-500">
-                      الفترة: من {summaryQuery.data.period.from} إلى {summaryQuery.data.period.to}
-                    </p>
-                    <p className="mt-2 text-sm text-slate-600">
-                      اختر أحد الأقسام أعلاه لعرض التفاصيل الكاملة.
-                    </p>
+                  <div className="space-y-4">
+                    <AIInsightsCard
+                      teacherId={selectedTeacherId}
+                      filters={dateFilter}
+                      enabled={activeTab === 'overview'}
+                    />
+                    <div className="rounded-xl border border-slate-200 bg-white p-5">
+                      <p className="text-sm text-slate-500">
+                        الفترة: من {summaryQuery.data.period.from} إلى {summaryQuery.data.period.to}
+                      </p>
+                      <p className="mt-2 text-sm text-slate-600">
+                        اختر أحد الأقسام أعلاه لعرض التفاصيل الكاملة.
+                      </p>
+                    </div>
                   </div>
                 )}
 

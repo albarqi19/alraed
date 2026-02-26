@@ -4,9 +4,9 @@ import { FileText, Award, AlertOctagon } from 'lucide-react'
 import type { TeacherReferralsResponse, TeacherPointsResponse } from '../types'
 
 const REFERRAL_TYPE_LABELS: Record<string, { label: string; className: string }> = {
-  academic_weakness: { label: 'ضعف أكاديمي', className: 'border-blue-200 bg-blue-50 text-blue-700' },
-  behavioral_violation: { label: 'مخالفة سلوكية', className: 'border-rose-200 bg-rose-50 text-rose-700' },
-  student_absence: { label: 'غياب طالب', className: 'border-amber-200 bg-amber-50 text-amber-700' },
+  academic_weakness: { label: 'دعم أكاديمي', className: 'border-blue-200 bg-blue-50 text-blue-700' },
+  behavioral_violation: { label: 'متابعة سلوكية', className: 'border-amber-200 bg-amber-50 text-amber-700' },
+  student_absence: { label: 'غياب طالب', className: 'border-slate-200 bg-slate-50 text-slate-700' },
 }
 
 const PRIORITY_MAP: Record<string, { label: string; className: string }> = {
@@ -52,7 +52,7 @@ export function ReferralsReportsSection({ referrals, points }: ReferralsReportsS
         <div>
           <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700">
             <Award className="h-4 w-4" />
-            النقاط (مكافآت ومخالفات)
+            نقاط الأداء
           </h4>
 
           <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -60,9 +60,9 @@ export function ReferralsReportsSection({ referrals, points }: ReferralsReportsS
               <p className="text-xl font-bold text-emerald-700">{points.summary.total_rewards}</p>
               <p className="text-xs text-slate-500">{points.summary.rewards_count} مكافأة</p>
             </div>
-            <div className="rounded-xl border border-rose-100 bg-rose-50/50 p-3 text-center">
-              <p className="text-xl font-bold text-rose-700">{points.summary.total_violations}</p>
-              <p className="text-xs text-slate-500">{points.summary.violations_count} مخالفة</p>
+            <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-center">
+              <p className="text-xl font-bold text-slate-700">{points.summary.total_violations}</p>
+              <p className="text-xs text-slate-500">{points.summary.violations_count} ملاحظة</p>
             </div>
           </div>
 
@@ -86,10 +86,10 @@ export function ReferralsReportsSection({ referrals, points }: ReferralsReportsS
                         className={
                           tx.type === 'reward'
                             ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                            : 'border-rose-200 bg-rose-50 text-rose-700'
+                            : 'border-slate-200 bg-slate-50 text-slate-700'
                         }
                       >
-                        {tx.type === 'reward' ? 'مكافأة' : 'مخالفة'}
+                        {tx.type === 'reward' ? 'مكافأة' : 'ملاحظة'}
                       </Badge>
                     </td>
                     <td className="px-3 py-2 font-bold text-slate-700">{tx.amount}</td>
@@ -123,11 +123,11 @@ export function ReferralsReportsSection({ referrals, points }: ReferralsReportsS
             </div>
             <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-3 text-center">
               <p className="text-xl font-bold text-slate-900">{referrals.summary.by_type.academic_weakness ?? 0}</p>
-              <p className="text-xs text-slate-500">ضعف أكاديمي</p>
+              <p className="text-xs text-slate-500">دعم أكاديمي</p>
             </div>
-            <div className="rounded-xl border border-rose-100 bg-rose-50/50 p-3 text-center">
+            <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-3 text-center">
               <p className="text-xl font-bold text-slate-900">{referrals.summary.by_type.behavioral_violation ?? 0}</p>
-              <p className="text-xs text-slate-500">سلوكية</p>
+              <p className="text-xs text-slate-500">متابعة سلوكية</p>
             </div>
             <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-3 text-center">
               <p className="text-xl font-bold text-slate-900">{referrals.summary.by_type.student_absence ?? 0}</p>

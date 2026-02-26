@@ -6,7 +6,7 @@ import type { TeacherPreparationResponse } from '../types'
 const PREP_STATUS_MAP: Record<string, { label: string; className: string }> = {
   prepared: { label: 'محضّر', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
   waiting: { label: 'لم يحضّر', className: 'border-amber-200 bg-amber-50 text-amber-700' },
-  warning: { label: 'تحذير', className: 'border-rose-200 bg-rose-50 text-rose-700' },
+  warning: { label: 'تحذير', className: 'border-slate-200 bg-slate-50 text-slate-700' },
   activity: { label: 'نشاط', className: 'border-blue-200 bg-blue-50 text-blue-700' },
   empty: { label: 'فارغ', className: 'border-slate-200 bg-slate-50 text-slate-500' },
 }

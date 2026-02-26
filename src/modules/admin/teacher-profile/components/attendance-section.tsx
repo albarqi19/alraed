@@ -7,7 +7,7 @@ const STATUS_MAP: Record<string, { label: string; className: string }> = {
   on_time: { label: 'في الوقت', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
   delayed: { label: 'متأخر', className: 'border-amber-200 bg-amber-50 text-amber-700' },
   excused: { label: 'معذور', className: 'border-blue-200 bg-blue-50 text-blue-700' },
-  absent: { label: 'غائب', className: 'border-rose-200 bg-rose-50 text-rose-700' },
+  absent: { label: 'غائب', className: 'border-slate-200 bg-slate-50 text-slate-700' },
   unknown: { label: 'غير محدد', className: 'border-slate-200 bg-slate-50 text-slate-700' },
 }
 
@@ -41,10 +41,10 @@ export function AttendanceSection({ data }: AttendanceSectionProps) {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[
           { label: 'إجمالي', value: data.summary.total, color: 'slate' },
-          { label: 'حاضر', value: data.summary.present, color: 'emerald' },
-          { label: 'غائب', value: data.summary.absent, color: 'rose' },
-          { label: 'متأخر', value: data.summary.delayed, color: 'amber' },
           { label: 'في الوقت', value: data.summary.on_time, color: 'blue' },
+          { label: 'حاضر', value: data.summary.present, color: 'emerald' },
+          { label: 'متأخر', value: data.summary.delayed, color: 'amber' },
+          { label: 'غائب', value: data.summary.absent, color: 'slate' },
         ].map((stat) => (
           <div
             key={stat.label}

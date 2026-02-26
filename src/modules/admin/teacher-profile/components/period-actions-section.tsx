@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from './empty-state'
-import { AlertCircle, Clock, LogOut, Flag } from 'lucide-react'
+import { CheckCircle, AlertCircle, Clock, LogOut, Flag } from 'lucide-react'
 import type { TeacherPeriodActionsResponse } from '../types'
 
 const ACTION_TYPE_MAP: Record<string, { label: string; className: string; icon: React.ElementType }> = {
@@ -27,9 +27,9 @@ export function PeriodActionsSection({ data }: PeriodActionsSectionProps) {
   if (actions.length === 0) {
     return (
       <EmptyState
-        icon={AlertCircle}
-        title="لا توجد مخالفات حصصية"
-        description="لم يُسجَّل على هذا المعلم أي غياب عن الحصص أو الطابور في الفترة المحددة - أداء ممتاز!"
+        icon={CheckCircle}
+        title="التزام كامل بحضور الحصص والطابور"
+        description="لم يُسجَّل أي ملاحظة على حضور الحصص أو الطابور في الفترة المحددة"
       />
     )
   }
@@ -58,7 +58,7 @@ export function PeriodActionsSection({ data }: PeriodActionsSectionProps) {
         </div>
         <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-center col-span-2 sm:col-span-1 lg:col-span-2">
           <p className="text-xl font-bold text-slate-900">{summary.total_actions}</p>
-          <p className="text-xs text-slate-500">إجمالي المخالفات</p>
+          <p className="text-xs text-slate-500">إجمالي الملاحظات</p>
         </div>
       </div>
 

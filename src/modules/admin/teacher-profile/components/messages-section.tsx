@@ -39,7 +39,7 @@ export function MessagesSection({ data }: MessagesSectionProps) {
           <p className="text-xl font-bold text-slate-900">{data.summary.delivered}</p>
           <p className="text-xs text-slate-500">تم الإرسال</p>
         </div>
-        <div className="rounded-xl border border-rose-100 bg-rose-50/50 p-3 text-center">
+        <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-center">
           <p className="text-xl font-bold text-slate-900">{data.summary.failed}</p>
           <p className="text-xs text-slate-500">فشل الإرسال</p>
         </div>

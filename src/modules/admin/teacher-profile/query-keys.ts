@@ -48,4 +48,13 @@ export const teacherProfileKeys = {
 
   periodActions: (id: number, filters: DateRangeFilter) =>
     ['admin', 'teacher-profile', id, 'period-actions', filters] as const,
+
+  badges: (id: number, filters: DateRangeFilter) =>
+    ['admin', 'teacher-profile', id, 'badges', filters] as const,
+
+  aiAnalysis: (id: number, filters: DateRangeFilter) =>
+    ['admin', 'teacher-profile', id, 'ai-analysis', filters] as const,
+
+  appreciationTemplates: (id: number) =>
+    ['admin', 'teacher-profile', id, 'appreciation-templates'] as const,
 }
