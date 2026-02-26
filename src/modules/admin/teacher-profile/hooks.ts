@@ -222,6 +222,7 @@ export function useTeacherBadges(
     queryKey: teacherProfileKeys.badges(teacherId!, filters),
     queryFn: () => fetchTeacherBadges(teacherId!, filters),
     enabled: Boolean(teacherId) && (opts.enabled ?? true),
+    placeholderData: (prev) => prev,
   })
 }
 

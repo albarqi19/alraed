@@ -111,7 +111,10 @@ export function BadgesSection({ badges, isLoading }: BadgesSectionProps) {
     )
   }
 
-  if (!badges.length) return null
+  if (!badges || !badges.length) {
+    // لا نخفي المكون بالكامل - نعرض skeleton خفيف بدل الاختفاء المفاجئ
+    return null
+  }
 
   const earnedCount = badges.filter(b => b.earned).length
 
@@ -119,7 +122,7 @@ export function BadgesSection({ badges, isLoading }: BadgesSectionProps) {
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-bold text-slate-700">
-          اوسمة التميز
+          أوسمة التميز
         </h3>
         <span className="text-xs font-medium text-slate-400">
           {earnedCount} / {badges.length}
