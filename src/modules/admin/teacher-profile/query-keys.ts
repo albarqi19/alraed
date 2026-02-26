@@ -45,4 +45,7 @@ export const teacherProfileKeys = {
 
   benchmarks: (id: number, filters: DateRangeFilter) =>
     ['admin', 'teacher-profile', id, 'benchmarks', filters] as const,
+
+  periodActions: (id: number, filters: DateRangeFilter) =>
+    ['admin', 'teacher-profile', id, 'period-actions', filters] as const,
 }

@@ -49,6 +49,13 @@ export interface TeacherProfileSummary {
     unprepared: number
     rate: number
   }
+  period_actions: {
+    class_absences: number
+    class_late_count: number
+    class_late_minutes: number
+    class_early_leaves: number
+    assembly_absences: number
+  }
   referrals_count: number
   period: {
     from: string
@@ -366,6 +373,39 @@ export interface TeacherBenchmarksResponse {
   benchmarks: BenchmarkValues | null
 }
 
+// ========== إجراءات الحصص والطابور ==========
+export interface PeriodActionRecord {
+  id: number
+  action_date: string
+  period_number: number
+  period_type: 'assembly' | 'class' | 'break' | 'dismissal'
+  period_type_label: string
+  action_type: 'absent' | 'late' | 'early_leave' | 'duty_absent'
+  action_type_label: string
+  minutes: number | null
+  formatted_minutes: string | null
+  grade: string | null
+  class_name: string | null
+  class_display: string | null
+  is_manual: boolean
+  notes: string | null
+}
+
+export interface PeriodActionsSummary {
+  class_absences: number
+  class_absences_days: number
+  class_late_count: number
+  class_late_total_minutes: number
+  class_early_leaves: number
+  assembly_absences: number
+  total_actions: number
+}
+
+export interface TeacherPeriodActionsResponse {
+  actions: PeriodActionRecord[]
+  summary: PeriodActionsSummary
+}
+
 // ========== فلاتر مشتركة ==========
 export interface DateRangeFilter {
   from?: string
@@ -377,6 +417,7 @@ export type ProfileTabKey =
   | 'overview'
   | 'attendance'
   | 'delays'
+  | 'period-actions'
   | 'teaching'
   | 'duties'
   | 'messages'

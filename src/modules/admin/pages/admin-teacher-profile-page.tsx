@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   Eye, CalendarCheck, Clock, BookOpen, Shield,
   MessageCircle, ClipboardCheck, FileText, Loader2, UserCircle,
+  AlertCircle,
 } from 'lucide-react'
 
 import { TeacherSelector } from '../teacher-profile/components/teacher-selector'
@@ -14,6 +15,7 @@ import { ScheduleSection } from '../teacher-profile/components/schedule-section'
 import { DutiesSection } from '../teacher-profile/components/duties-section'
 import { MessagesSection } from '../teacher-profile/components/messages-section'
 import { PreparationSection } from '../teacher-profile/components/preparation-section'
+import { PeriodActionsSection } from '../teacher-profile/components/period-actions-section'
 import { ReferralsReportsSection } from '../teacher-profile/components/referrals-section'
 import { PdfExportButton } from '../teacher-profile/components/pdf-export-button'
 import { EmptyState } from '../teacher-profile/components/empty-state'
@@ -31,6 +33,7 @@ import {
   useTeacherProfilePoints,
   useTeacherProfileCoverage,
   useTeacherStudentAttendanceStats,
+  useTeacherPeriodActions,
   useTeacherBenchmarks,
   useTeacherProfilePrefetch,
 } from '../teacher-profile/hooks'
@@ -42,6 +45,7 @@ const TABS: { key: ProfileTabKey; label: string; icon: React.ElementType }[] = [
   { key: 'overview', label: 'نظرة عامة', icon: Eye },
   { key: 'attendance', label: 'الحضور', icon: CalendarCheck },
   { key: 'delays', label: 'التأخرات', icon: Clock },
+  { key: 'period-actions', label: 'الحصص والطابور', icon: AlertCircle },
   { key: 'teaching', label: 'التدريس', icon: BookOpen },
   { key: 'duties', label: 'الإشراف', icon: Shield },
   { key: 'messages', label: 'التواصل', icon: MessageCircle },
@@ -111,6 +115,9 @@ export function AdminTeacherProfilePage() {
   const delayActionsQuery = useTeacherProfileDelayActions(selectedTeacherId, undefined, {
     enabled: activeTab === 'delays',
   })
+  const periodActionsQuery = useTeacherPeriodActions(selectedTeacherId, dateFilter, {
+    enabled: activeTab === 'period-actions',
+  })
   const scheduleQuery = useTeacherProfileSchedule(selectedTeacherId, {
     enabled: activeTab === 'teaching',
   })
@@ -145,6 +152,7 @@ export function AdminTeacherProfilePage() {
       case 'overview': return summaryQuery.isLoading
       case 'attendance': return attendanceQuery.isLoading
       case 'delays': return delaysQuery.isLoading
+      case 'period-actions': return periodActionsQuery.isLoading
       case 'teaching': return scheduleQuery.isLoading
       case 'duties': return dutiesQuery.isLoading
       case 'messages': return messagesQuery.isLoading
@@ -294,6 +302,10 @@ export function AdminTeacherProfilePage() {
                     delays={delaysQuery.data}
                     actions={delayActionsQuery.data}
                   />
+                )}
+
+                {activeTab === 'period-actions' && periodActionsQuery.data && (
+                  <PeriodActionsSection data={periodActionsQuery.data} />
                 )}
 
                 {activeTab === 'teaching' && scheduleQuery.data && (

@@ -17,6 +17,7 @@ import {
   fetchTeacherProfilePoints,
   fetchTeacherProfileCoverage,
   fetchTeacherStudentAttendanceStats,
+  fetchTeacherPeriodActions,
   fetchTeacherBenchmarks,
 } from './api'
 import type { DateRangeFilter, ProfileTabKey } from './types'
@@ -181,6 +182,19 @@ export function useTeacherStudentAttendanceStats(
   })
 }
 
+/** إجراءات الحصص والطابور */
+export function useTeacherPeriodActions(
+  teacherId: number | null,
+  filters: DateRangeFilter = {},
+  opts: QueryOptions = {},
+) {
+  return useQuery({
+    queryKey: teacherProfileKeys.periodActions(teacherId!, filters),
+    queryFn: () => fetchTeacherPeriodActions(teacherId!, filters),
+    enabled: Boolean(teacherId) && (opts.enabled ?? true),
+  })
+}
+
 /** المقارنة بمتوسط المدرسة */
 export function useTeacherBenchmarks(
   teacherId: number | null,
@@ -236,6 +250,13 @@ export function useTeacherProfilePrefetch(
           queryClient.prefetchQuery({
             queryKey: teacherProfileKeys.delayActions(teacherId),
             queryFn: () => fetchTeacherProfileDelayActions(teacherId),
+            staleTime: 30_000,
+          })
+        },
+        'period-actions': () => {
+          queryClient.prefetchQuery({
+            queryKey: teacherProfileKeys.periodActions(teacherId, filters),
+            queryFn: () => fetchTeacherPeriodActions(teacherId, filters),
             staleTime: 30_000,
           })
         },

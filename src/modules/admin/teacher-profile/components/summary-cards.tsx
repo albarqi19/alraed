@@ -1,6 +1,7 @@
 import {
   CheckCircle, XCircle, Clock, AlertTriangle, BookOpen,
-  MessageCircle, ClipboardCheck, FileText, TrendingUp, TrendingDown
+  MessageCircle, ClipboardCheck, FileText, TrendingUp, TrendingDown,
+  AlertCircle, Flag,
 } from 'lucide-react'
 import type { TeacherProfileSummary, BenchmarkValues } from '../types'
 
@@ -144,6 +145,21 @@ export function SummaryCards({ data, benchmarks }: SummaryCardsProps) {
         color="violet"
         benchmark={data.preparation.is_linked ? benchmarks?.school_preparation_rate : undefined}
         higherIsBetter={true}
+      />
+      <StatCard
+        title="غياب عن الحصص"
+        value={data.period_actions.class_absences}
+        subtitle={`${data.period_actions.class_late_count} تأخر`}
+        icon={AlertCircle}
+        color="rose"
+        higherIsBetter={false}
+      />
+      <StatCard
+        title="غياب عن الطابور"
+        value={data.period_actions.assembly_absences}
+        icon={Flag}
+        color="amber"
+        higherIsBetter={false}
       />
       <StatCard
         title="الإحالات"

@@ -18,6 +18,7 @@ import type {
   TeacherCoverageResponse,
   TeacherStudentAttendanceStats,
   TeacherBenchmarksResponse,
+  TeacherPeriodActionsResponse,
   DateRangeFilter,
 } from './types'
 
@@ -179,6 +180,18 @@ export async function fetchTeacherStudentAttendanceStats(
     { params: buildParams(filters) },
   )
   return unwrapResponse(data, 'تعذر تحميل إحصائيات تحضير الطلاب')
+}
+
+/** إجراءات الحصص والطابور */
+export async function fetchTeacherPeriodActions(
+  teacherId: number,
+  filters: DateRangeFilter = {},
+): Promise<TeacherPeriodActionsResponse> {
+  const { data } = await apiClient.get<ApiResponse<TeacherPeriodActionsResponse>>(
+    `${BASE}/${teacherId}/period-actions`,
+    { params: buildParams(filters) },
+  )
+  return unwrapResponse(data, 'تعذر تحميل إجراءات الحصص')
 }
 
 /** المقارنة بمتوسط المدرسة */
