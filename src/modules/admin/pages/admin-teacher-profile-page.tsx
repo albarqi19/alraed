@@ -187,11 +187,30 @@ export function AdminTeacherProfilePage() {
 
       {/* حالة عدم اختيار معلم */}
       {!selectedTeacherId && (
-        <EmptyState
-          icon={UserCircle}
-          title="اختر معلماً لعرض ملفه"
-          description="استخدم القائمة أعلاه للبحث واختيار معلم"
-        />
+        <>
+          <EmptyState
+            icon={UserCircle}
+            title="اختر معلماً لعرض ملفه"
+            description="استخدم القائمة أعلاه للبحث واختيار معلم"
+          />
+          <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4">
+            <div className="flex gap-3">
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+              <div className="space-y-1.5 text-xs leading-relaxed text-amber-800">
+                <p className="font-bold text-amber-900">تنبيه مهم</p>
+                <p>
+                  البيانات المعروضة في ملف المعلم مبنية على ما تم إدخاله في النظام فقط، وقد لا تعكس الصورة الكاملة لأداء المعلم الفعلي. كثير من الجهود والأعمال قد تكون موثقة ورقياً أو لم تُدخل بعد، لذا لا ينبغي الاعتماد على هذه البيانات وحدها في تقييم أداء المعلم.
+                </p>
+                <p>
+                  الهدف من هذه الصفحة هو إتاحة فرصة للتطوير والتحسين المستمر، وليس إصدار أحكام نهائية.
+                </p>
+                <p>
+                  كذلك فإن <span className="font-bold">«تحليل الأداء»</span> المولّد بالذكاء الاصطناعي يميل إلى نظرة تفاؤلية وتشجيعية، وقد لا يعبّر بدقة عن الواقع.
+                </p>
+              </div>
+            </div>
+          </div>
+        </>
       )}
 
       {/* المحتوى */}
