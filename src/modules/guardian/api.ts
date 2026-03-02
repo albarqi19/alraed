@@ -102,6 +102,8 @@ export async function submitGuardianStoreOrder(payload: GuardianStoreOrderPayloa
 export interface GuardianAttendanceStats {
   present_days: number
   absent_days: number
+  excused_absent_days?: number
+  unexcused_absent_days?: number
   late_days: number
   excused_days: number
   attendance_rate: number

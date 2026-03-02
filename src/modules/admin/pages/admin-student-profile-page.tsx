@@ -260,6 +260,8 @@ export function AdminStudentProfilePage() {
   const attendanceStats = useMemo(() => {
     const present = attendanceRow?.total_present ?? 0
     const absent = attendanceRow?.total_absent ?? 0
+    const excusedAbsent = attendanceRow?.total_excused_absent ?? 0
+    const unexcusedAbsent = attendanceRow?.total_unexcused_absent ?? 0
     const late = attendanceRow?.total_late ?? 0
     const excused = attendanceRow?.total_excused ?? 0
     const totalDays = present + absent + late + excused
@@ -267,11 +269,13 @@ export function AdminStudentProfilePage() {
     return {
       present,
       absent,
+      excusedAbsent,
+      unexcusedAbsent,
       late,
       excused,
       totalDays,
     }
-  }, [attendanceRow?.total_absent, attendanceRow?.total_excused, attendanceRow?.total_late, attendanceRow?.total_present])
+  }, [attendanceRow])
 
 
 
@@ -529,14 +533,20 @@ export function AdminStudentProfilePage() {
 
                       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                         {[
-                          { label: 'أيام الحضور', value: attendanceStats.present, tone: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
-                          { label: 'أيام الغياب', value: attendanceStats.absent, tone: 'bg-rose-50 text-rose-700 border border-rose-200' },
-                          { label: 'حالات التأخير', value: attendanceStats.late, tone: 'bg-amber-50 text-amber-700 border border-amber-200' },
-                          { label: 'الاستئذانات', value: attendanceStats.excused, tone: 'bg-sky-50 text-sky-700 border border-sky-200' },
+                          { label: 'أيام الحضور', value: attendanceStats.present, tone: 'bg-emerald-50 text-emerald-700 border border-emerald-200', subtitle: undefined as string | undefined },
+                          { label: 'أيام الغياب', value: attendanceStats.absent, tone: 'bg-rose-50 text-rose-700 border border-rose-200',
+                            subtitle: attendanceStats.absent > 0
+                              ? `${attendanceStats.excusedAbsent} بعذر · ${attendanceStats.unexcusedAbsent} بدون عذر`
+                              : undefined },
+                          { label: 'حالات التأخير', value: attendanceStats.late, tone: 'bg-amber-50 text-amber-700 border border-amber-200', subtitle: undefined as string | undefined },
+                          { label: 'الاستئذانات', value: attendanceStats.excused, tone: 'bg-sky-50 text-sky-700 border border-sky-200', subtitle: undefined as string | undefined },
                         ].map((stat) => (
                           <div key={stat.label} className={clsx('rounded-2xl px-4 py-3 text-right shadow-sm', stat.tone)}>
                             <p className="text-xs font-semibold text-slate-600">{stat.label}</p>
                             <p className="mt-1 text-2xl font-bold">{stat.value.toLocaleString('ar-SA')}</p>
+                            {stat.subtitle && (
+                              <p className="mt-0.5 text-[11px] font-medium opacity-75">{stat.subtitle}</p>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -549,6 +559,9 @@ export function AdminStudentProfilePage() {
                             <>
                               ، نسبة الحضور <span className="font-bold text-emerald-600">{Math.round((attendanceStats.present / attendanceStats.totalDays) * 100)}%</span>
                               ، ونسبة الغياب <span className="font-bold text-rose-600">{Math.round((attendanceStats.absent / attendanceStats.totalDays) * 100)}%</span>
+                              {attendanceStats.absent > 0 && (
+                                <> (<span className="font-bold text-orange-600">{attendanceStats.excusedAbsent}</span> بعذر، <span className="font-bold text-rose-600">{attendanceStats.unexcusedAbsent}</span> بدون عذر)</>
+                              )}
                             </>
                           )}
                         </p>

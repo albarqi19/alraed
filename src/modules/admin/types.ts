@@ -423,6 +423,8 @@ export interface AttendanceReportFiltersPayload {
 export interface AttendanceReportSummary {
   total_present: number
   total_absent: number
+  total_excused_absent?: number
+  total_unexcused_absent?: number
   total_late: number
   total_excused?: number
   students_count: number
@@ -447,6 +449,8 @@ export interface AttendanceReportStudentRow {
   class_name: string
   total_present: number
   total_absent: number
+  total_excused_absent?: number
+  total_unexcused_absent?: number
   total_late: number
   total_excused?: number
   attendance: AttendanceReportStudentAttendance[]

@@ -8,6 +8,7 @@ import {
   useUpdateAttendanceStatusMutation,
   useAbsenceSmsSettingsQuery,
   useUpdateAbsenceSmsSettingsMutation,
+  useGradesWithClassesQuery,
 } from '../hooks'
 import type { PendingApprovalRecord, AttendanceSessionDetails } from '../types'
 import { MissingSessionsModal } from '../components/missing-sessions-modal'
@@ -170,13 +171,21 @@ export function AdminApprovalPage() {
     }
   }, [])
 
+  const gradesWithClassesQuery = useGradesWithClassesQuery()
+  const gradeOptions = useMemo(() => gradesWithClassesQuery.data ?? [], [gradesWithClassesQuery.data])
+  const classOptions = useMemo(() => {
+    if (!filters.grade) return []
+    const found = gradeOptions.find((g) => g.grade === filters.grade)
+    return found?.classes ?? []
+  }, [gradeOptions, filters.grade])
+
   const approvalsQuery = usePendingApprovalsQuery()
   const approvals = useMemo(() => approvalsQuery.data ?? [], [approvalsQuery.data])
 
   const filteredApprovals = useMemo(() => {
     return approvals.filter((item) => {
-      const matchesGrade = filters.grade ? item.grade.includes(filters.grade) : true
-      const matchesClass = filters.className ? item.class_name.includes(filters.className) : true
+      const matchesGrade = filters.grade ? item.grade === filters.grade : true
+      const matchesClass = filters.className ? item.class_name === filters.className : true
       const matchesTeacher = filters.teacher ? item.teacher_name.includes(filters.teacher) : true
       const matchesSubject = filters.subject ? item.subject_name.includes(filters.subject) : true
       return matchesGrade && matchesClass && matchesTeacher && matchesSubject
@@ -218,7 +227,11 @@ export function AdminApprovalPage() {
   }, [approvals])
 
   const handleFilterChange = (field: keyof FilterState, value: string) => {
-    setFilters((prev) => ({ ...prev, [field]: value }))
+    setFilters((prev) => {
+      const next = { ...prev, [field]: value }
+      if (field === 'grade') next.className = ''
+      return next
+    })
   }
 
   const handleApprove = async (approval: PendingApprovalRecord) => {
@@ -494,23 +507,34 @@ export function AdminApprovalPage() {
         <div className="hidden grid-cols-4 gap-4 lg:grid">
           <div className="space-y-2 text-right">
             <label className="text-xs font-semibold text-slate-600">الصف الدراسي</label>
-            <input
-              type="text"
+            <select
               value={filters.grade}
               onChange={(event) => handleFilterChange('grade', event.target.value)}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              placeholder="مثال: ثاني ثانوي"
-            />
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            >
+              <option value="">جميع الصفوف</option>
+              {gradeOptions.map((g) => (
+                <option key={g.grade} value={g.grade}>
+                  {g.grade}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="space-y-2 text-right">
             <label className="text-xs font-semibold text-slate-600">الفصل</label>
-            <input
-              type="text"
+            <select
               value={filters.className}
               onChange={(event) => handleFilterChange('className', event.target.value)}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              placeholder="مثال: (ب)"
-            />
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              disabled={!filters.grade}
+            >
+              <option value="">جميع الفصول</option>
+              {classOptions.map((className) => (
+                <option key={className} value={className}>
+                  {className}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="space-y-2 text-right">
             <label className="text-xs font-semibold text-slate-600">اسم المعلم</label>

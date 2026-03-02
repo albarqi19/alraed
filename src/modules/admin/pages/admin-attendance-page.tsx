@@ -4,6 +4,7 @@ import {
   useAttendanceSessionDetailsQuery,
   useExportAttendanceReportMutation,
   useUpdateAttendanceStatusMutation,
+  useGradesWithClassesQuery,
 } from '../hooks'
 import type { AttendanceReportRecord, AttendanceSessionDetails } from '../types'
 import { getTodayRiyadh, isToday as isTodayRiyadh } from '@/lib/date-utils'
@@ -243,6 +244,14 @@ export function AdminAttendancePage() {
     return entries
   }, [filters])
 
+  const gradesWithClassesQuery = useGradesWithClassesQuery()
+  const gradeOptions = useMemo(() => gradesWithClassesQuery.data ?? [], [gradesWithClassesQuery.data])
+  const classOptions = useMemo(() => {
+    if (!filters.grade) return []
+    const found = gradeOptions.find((g) => g.grade === filters.grade)
+    return found?.classes ?? []
+  }, [gradeOptions, filters.grade])
+
   const reportsQuery = useAttendanceReportsQuery(queryFilters)
   const exportMutation = useExportAttendanceReportMutation()
   const updateStatusMutation = useUpdateAttendanceStatusMutation()
@@ -273,7 +282,11 @@ export function AdminAttendancePage() {
   }, [selectedRecord])
 
   const handleFilterChange = (field: keyof FilterState, value: string) => {
-    setFilters((prev) => ({ ...prev, [field]: value }))
+    setFilters((prev) => {
+      const next = { ...prev, [field]: value }
+      if (field === 'grade') next.className = ''
+      return next
+    })
   }
 
   const handleResetFilters = () => {
@@ -389,24 +402,35 @@ export function AdminAttendancePage() {
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="space-y-2 text-right">
             <label className="text-xs font-semibold text-slate-600">الصف الدراسي</label>
-            <input
-              type="text"
+            <select
               value={filters.grade}
               onChange={(event) => handleFilterChange('grade', event.target.value)}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-              placeholder="مثال: الأول متوسط"
-            />
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+            >
+              <option value="">جميع الصفوف</option>
+              {gradeOptions.map((g) => (
+                <option key={g.grade} value={g.grade}>
+                  {g.grade}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="space-y-2 text-right">
             <label className="text-xs font-semibold text-slate-600">الفصل</label>
-            <input
-              type="text"
+            <select
               value={filters.className}
               onChange={(event) => handleFilterChange('className', event.target.value)}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-              placeholder="مثال: (أ)"
-            />
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+              disabled={!filters.grade}
+            >
+              <option value="">جميع الفصول</option>
+              {classOptions.map((className) => (
+                <option key={className} value={className}>
+                  {className}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="space-y-2 text-right">

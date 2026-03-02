@@ -20,6 +20,8 @@ export function GuardianHomePage() {
     const attendanceStats = dashboardData?.attendance ?? {
         present_days: 0,
         absent_days: 0,
+        excused_absent_days: 0,
+        unexcused_absent_days: 0,
         late_days: 0,
         attendance_rate: 0,
     }
@@ -128,7 +130,14 @@ export function GuardianHomePage() {
                                 <AlertTriangle className="h-4 w-4 text-rose-500" />
                                 غياب
                             </span>
-                            <span className="text-sm font-bold text-rose-600">{attendanceStats.absent_days}</span>
+                            <div className="text-left">
+                                <span className="text-sm font-bold text-rose-600">{attendanceStats.absent_days}</span>
+                                {attendanceStats.absent_days > 0 && (
+                                    <p className="text-[10px] text-rose-400">
+                                        {attendanceStats.excused_absent_days} بعذر · {attendanceStats.unexcused_absent_days} بدون
+                                    </p>
+                                )}
+                            </div>
                         </div>
                         <div className="flex items-center justify-between rounded-xl bg-amber-50 px-3 py-2">
                             <span className="flex items-center gap-2 text-xs text-slate-600">

@@ -431,6 +431,8 @@ function normalizeAttendanceStudentRow(raw: unknown): AttendanceReportStudentRow
     class_name: className,
     total_present: coerceNumber(raw.total_present ?? raw.present_count ?? raw.present ?? 0),
     total_absent: coerceNumber(raw.total_absent ?? raw.absent_count ?? raw.absent ?? 0),
+    total_excused_absent: coerceNumber(raw.total_excused_absent ?? 0),
+    total_unexcused_absent: coerceNumber(raw.total_unexcused_absent ?? 0),
     total_late: coerceNumber(raw.total_late ?? raw.late_count ?? raw.late ?? 0),
     total_excused: coerceNumber(raw.total_excused ?? raw.excused_count ?? raw.excused ?? 0),
     attendance: normalizeAttendanceEntries(raw.attendance ?? raw.records ?? raw.attendance_records ?? []),
@@ -446,11 +448,13 @@ function computeAttendanceSummary(
     (acc, student) => {
       acc.present += student.total_present
       acc.absent += student.total_absent
+      acc.excusedAbsent += student.total_excused_absent ?? 0
+      acc.unexcusedAbsent += student.total_unexcused_absent ?? 0
       acc.late += student.total_late
       acc.excused += student.total_excused ?? 0
       return acc
     },
-    { present: 0, absent: 0, late: 0, excused: 0 },
+    { present: 0, absent: 0, excusedAbsent: 0, unexcusedAbsent: 0, late: 0, excused: 0 },
   )
 
   const summaryRecord = isRecord(summaryPayload) ? summaryPayload : {}
@@ -458,6 +462,8 @@ function computeAttendanceSummary(
   return {
     total_present: coerceNumber(summaryRecord.total_present, aggregate.present),
     total_absent: coerceNumber(summaryRecord.total_absent, aggregate.absent),
+    total_excused_absent: coerceNumber(summaryRecord.total_excused_absent, aggregate.excusedAbsent),
+    total_unexcused_absent: coerceNumber(summaryRecord.total_unexcused_absent, aggregate.unexcusedAbsent),
     total_late: coerceNumber(summaryRecord.total_late, aggregate.late),
     total_excused: coerceNumber(summaryRecord.total_excused, aggregate.excused),
     students_count: coerceNumber(summaryRecord.students_count, students.length),
