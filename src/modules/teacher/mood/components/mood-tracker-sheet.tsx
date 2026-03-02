@@ -1,3 +1,4 @@
+import { WebHaptics } from 'web-haptics'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Sun } from 'lucide-react'
 import { MOOD_OPTIONS, type MoodType } from '../types'
@@ -17,7 +18,7 @@ const springConfig = {
 
 export function MoodTrackerSheet({ isOpen, onSelect, onSkip }: MoodTrackerSheetProps) {
   const handleSelect = (mood: MoodType) => {
-    // إرسال الطلب في الخلفية وإغلاق المكون فوراً
+    new WebHaptics().trigger('success')
     onSelect(mood)
   }
 

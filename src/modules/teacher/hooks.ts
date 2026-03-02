@@ -1,3 +1,4 @@
+import { WebHaptics } from 'web-haptics'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   fetchSubmittedAttendance,
@@ -46,6 +47,7 @@ export function useSubmitAttendanceMutation(sessionId: number) {
         ? `تم حفظ تحضير الحصة (${response.saved_count}) طالب (التحضير اليومي مسجل مسبقاً)`
         : `تم حفظ التحضير اليومي (${response.saved_count}) طالب`
       toast({ type: 'success', title: msg })
+      new WebHaptics().trigger('success')
       queryClient.invalidateQueries({
         queryKey: ['teacher', 'sessions', sessionId, 'submitted-attendance'],
       })
