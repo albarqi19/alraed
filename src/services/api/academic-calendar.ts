@@ -26,6 +26,7 @@ export interface AcademicSemesterInfo {
 
 export interface DayStatusResponse {
   is_working_day: boolean
+  is_remote_day?: boolean
   reason: 'working_day' | 'weekend' | 'holiday' | 'interim_holiday' | 'event' | 'outside_academic_year' | 'before_academic_year' | 'after_academic_year' | 'no_academic_year'
   message: string
   next_working_day: string | null

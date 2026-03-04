@@ -51,6 +51,7 @@ import {
   UserCircle, // أيقونة ملف المعلم
   ScanLine, // أيقونة حضور البوابة
   Printer, // أيقونة طباعة الباركود
+  Laptop, // أيقونة الدوام عن بعد
 } from 'lucide-react'
 
 export interface AdminNavItem {
@@ -94,6 +95,7 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
       { to: '/admin/teacher-schedules', label: 'جداول المعلمين', icon: Calendar, permission: 'admin.teacher-schedules' },
       { to: '/admin/teacher-preparation', label: 'تحضير مدرستي', icon: ClipboardPen, permission: 'admin.teacher-preparation' },
       { to: '/admin/madrasati-report', label: 'تقرير مدرستي', icon: BarChart3, permission: 'admin.madrasati-report' },
+      { to: '/admin/remote-attendance', label: 'متابعة الدوام عن بعد', icon: Laptop, permission: 'admin.remote-attendance' },
     ],
   },
   {

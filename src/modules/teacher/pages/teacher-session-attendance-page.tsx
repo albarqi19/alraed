@@ -14,6 +14,8 @@ import {
 } from '../evaluation/components/student-evaluation-sheet'
 import { EvaluationOnboardingSheet } from '../evaluation/components/evaluation-onboarding-sheet'
 import type { AttendanceFormState, AttendanceStatus, TeacherSession, TeacherSessionStudent } from '../types'
+import { useRemoteAttendanceStatus } from '../remote-attendance/hooks'
+import { RemoteSessionUpload } from '../components/remote-session-upload'
 
 function buildDefaultAttendance(students: Array<{ id: number }>): AttendanceFormState {
   return students.reduce<AttendanceFormState>((accumulator, student) => {
@@ -78,6 +80,7 @@ export function TeacherSessionAttendancePage() {
   const evaluationsSummary = useSessionEvaluationsSummary(
     isValidSessionId && !studentsQuery.data?.session?.is_standby ? numericSessionId : undefined,
   )
+  const { data: remoteStatus } = useRemoteAttendanceStatus()
 
   const [attendance, setAttendance] = useState<AttendanceFormState>({})
 
@@ -225,6 +228,28 @@ export function TeacherSessionAttendancePage() {
           إعادة المحاولة
         </button>
       </div>
+    )
+  }
+
+  // عرض واجهة الدوام عن بعد بدل التحضير العادي
+  if (remoteStatus?.is_remote_day) {
+    const remoteSession = remoteStatus.sessions?.find((s) => s.id === numericSessionId)
+    return (
+      <section className="space-y-4">
+        {/* رأس الحصة */}
+        <div className="glass-card">
+          <div className="flex items-center gap-3 mb-4">
+            <button type="button" onClick={() => navigate(-1)} className="rounded-lg p-1 text-slate-400 hover:text-slate-600">
+              <i className="bi bi-arrow-right text-lg" />
+            </button>
+            <div>
+              <h2 className="text-lg font-bold text-slate-800">{getSubjectName(session)}</h2>
+              <p className="text-sm text-slate-500">{session.grade} - {session.class_name} | الحصة {session.period_number ?? '-'}</p>
+            </div>
+          </div>
+          <RemoteSessionUpload sessionId={numericSessionId} isUploaded={remoteSession?.is_uploaded ?? false} />
+        </div>
+      </section>
     )
   }
 

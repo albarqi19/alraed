@@ -16,6 +16,7 @@ import { TeacherAttendanceStatsModal } from '../components/teacher-attendance-st
 import { TeacherAttendanceFloatingWidget } from '../components/teacher-attendance-floating-widget'
 import { StandbyDistributionModal } from '../components/standby-distribution-modal'
 import { LeaveRequestModal } from '../components/leave-request-modal'
+import { RemoteDayActivationModal } from '../components/remote-day-activation-modal'
 import { CoverageRequestsModal } from '../components/coverage-requests-modal'
 import type {
   TeacherHudoriAttendanceFilters,
@@ -521,6 +522,7 @@ export function AdminTeacherAttendancePage() {
   const [inquiryDialog, setInquiryDialog] = useState<InquiryDialogState | null>(null)
   const [bulkInquiryDialog, setBulkInquiryDialog] = useState<BulkInquiryDialogState | null>(null)
   const [isStandbyModalOpen, setIsStandbyModalOpen] = useState(false)
+  const [isRemoteDayModalOpen, setIsRemoteDayModalOpen] = useState(false)
   const [isLeaveRequestModalOpen, setIsLeaveRequestModalOpen] = useState(false)
   const [isCoverageRequestsModalOpen, setIsCoverageRequestsModalOpen] = useState(false)
 
@@ -1137,44 +1139,96 @@ export function AdminTeacherAttendancePage() {
 
       <section className="glass-card space-y-6">
         <header id="teacher-delay-header" className="space-y-3 scroll-mt-16">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="space-y-2 text-right">
-              <h2 className="text-2xl font-bold text-slate-900">إدارة حالات التأخر والغياب</h2>
-              <p className="text-sm text-muted">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1 text-right">
+              <div className="flex items-center gap-3">
+                <h2 className="text-2xl font-bold tracking-tight text-slate-900">إدارة حالات التأخر والغياب</h2>
+                <span className="inline-flex items-center justify-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                  إجمالي {delayMeta?.total?.toLocaleString('ar-SA') ?? '0'} حالة
+                </span>
+              </div>
+              <p className="text-sm text-slate-500">
                 متابعة المعلمين المتأخرين والغائبين وإدارة حالاتهم
               </p>
             </div>
-            <div className="flex flex-wrap items-center justify-end gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => setIsStandbyModalOpen(true)}
-                className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
+                className="button-primary text-sm shadow-sm"
               >
                 <i className="bi bi-people-fill ml-1" /> توزيع الانتظار
               </button>
               <button
                 type="button"
-                onClick={() => delayQuery.refetch()}
-                className="button-secondary"
-                disabled={delayQuery.isFetching}
+                onClick={() => setIsRemoteDayModalOpen(true)}
+                className="rounded-xl bg-purple-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-purple-700"
               >
-                <i className="bi bi-arrow-repeat" /> {delayQuery.isFetching ? 'جارٍ التحديث...' : 'تحديث القائمة'}
+                <i className="bi bi-laptop ml-1" /> تحويل الدوام
               </button>
               <button
                 type="button"
                 onClick={handleBulkInquiryOpen}
-                className="button-secondary"
+                className="button-secondary text-sm shadow-sm"
                 disabled={delayAnalytics.delayedCount === 0}
               >
-                <i className="bi bi-printer" /> طباعة المسائلة
+                <i className="bi bi-printer ml-1" /> طباعة المسائلة
               </button>
-              <div className="rounded-full bg-slate-100 px-4 py-1 text-xs font-semibold text-slate-600">
-                إجمالي {delayMeta?.total?.toLocaleString('ar-SA') ?? '0'} حالة
+              <button
+                type="button"
+                onClick={() => delayQuery.refetch()}
+                className="flex items-center justify-center rounded-xl border border-slate-200 bg-white p-2.5 text-slate-600 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                disabled={delayQuery.isFetching}
+                title="تحديث البيانات"
+              >
+                <i className={`bi bi-arrow-repeat text-lg leading-none ${delayQuery.isFetching ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+          </div>
+
+          {/* Instant Statistics Moved Up */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="flex items-center gap-3 rounded-2xl border border-rose-100 bg-rose-50/50 p-3">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-rose-100/80 text-rose-600">
+                <i className="bi bi-clock-history text-lg" />
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold text-rose-600/80">مجموع المتأخرين</p>
+                <p className="text-lg font-bold text-rose-700">{delayAnalytics.delayedCount.toLocaleString('ar-SA')}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/50 p-3">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-100/80 text-emerald-600">
+                <i className="bi bi-check-circle text-lg" />
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold text-emerald-600/80">حالات بعذر</p>
+                <p className="text-lg font-bold text-emerald-700">{delayAnalytics.excusedCount.toLocaleString('ar-SA')}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-3">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-slate-200/60 text-slate-600">
+                <i className="bi bi-calendar-x text-lg" />
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold text-slate-500">سجلات الغياب</p>
+                <p className="text-lg font-bold text-slate-800">{delayAnalytics.absenceCount.toLocaleString('ar-SA')}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-3">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-indigo-100/80 text-indigo-600">
+                <i className="bi bi-stopwatch text-lg" />
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold text-indigo-600/80">متوسط التأخر</p>
+                <p className="text-lg font-bold text-indigo-700">
+                  {delayAnalytics.averageDelay !== null ? `${delayAnalytics.averageDelay.toLocaleString('ar-SA')} دقيقة` : '—'}
+                </p>
               </div>
             </div>
           </div>
 
-          <div className="grid gap-3 lg:grid-cols-6">
+          <div className="grid gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 p-3 lg:grid-cols-6">
             <label className="space-y-1">
               <span className="text-xs font-semibold text-slate-600">حالة التأخر / الغياب</span>
               <select
@@ -1266,17 +1320,17 @@ export function AdminTeacherAttendancePage() {
               لا توجد حالات تأخر مطابقة للمعايير الحالية.
             </div>
           ) : (
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
-              <div className="overflow-x-auto">
-                <table className="min-w-[880px] table-fixed text-right text-sm">
+            <div className="grid gap-4 grid-cols-1">
+              <div className="overflow-x-auto rounded-2xl">
+                <table className="w-full border-collapse border border-slate-200/60 text-right text-sm">
                   <thead className="bg-slate-50/80 text-[11px] uppercase tracking-wide text-slate-500">
                     <tr>
-                      <th className="px-4 py-2.5 font-semibold">المعلم</th>
-                      <th className="px-4 py-2.5 font-semibold">التاريخ والوقت</th>
-                      <th className="px-4 py-2.5 font-semibold">بيانات التأخر</th>
-                      <th className="px-4 py-2.5 font-semibold">حالة الحضور</th>
-                      <th className="px-4 py-2.5 font-semibold">الإشعارات</th>
-                      <th className="px-4 py-2.5 font-semibold">إجراءات</th>
+                      <th className="border border-slate-200/60 px-4 py-2.5 font-semibold">المعلم</th>
+                      <th className="border border-slate-200/60 px-4 py-2.5 font-semibold">التاريخ والوقت</th>
+                      <th className="border border-slate-200/60 px-4 py-2.5 font-semibold">بيانات التأخر</th>
+                      <th className="border border-slate-200/60 px-4 py-2.5 font-semibold">حالة الحضور</th>
+                      <th className="border border-slate-200/60 px-4 py-2.5 font-semibold">الإشعارات</th>
+                      <th className="border border-slate-200/60 px-4 py-2.5 font-semibold">إجراءات</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1292,35 +1346,35 @@ export function AdminTeacherAttendancePage() {
                           : null)
                       const absenceActionLabel = absenceReasonLabel ?? absenceReasonLabels.unjustified
                       const hasCustomAbsenceReason = Boolean(absenceReasonLabel)
-                      const notifyLabel = isNotifying ? 'جارٍ الإرسال...' : 'إشعار'
+
+                      let rowBgClass = 'hover:bg-slate-50/70'
+                      if (isAbsent) {
+                        rowBgClass = 'bg-rose-50/30 hover:bg-rose-50/60'
+                      } else if (delay.delay_status === 'delayed') {
+                        rowBgClass = 'bg-orange-50/30 hover:bg-orange-50/60'
+                      }
 
                       return (
-                        <tr key={delay.id} className="border-t border-slate-100 text-[13px] transition hover:bg-slate-50/70">
-                          <td className="px-4 py-3 align-top">
+                        <tr key={delay.id} className={`border-t border-slate-100 text-[13px] transition ${rowBgClass}`}>
+                          <td className="border border-slate-200/60 px-4 py-2 align-top">
                             <div className="space-y-1">
-                              <p className="font-semibold text-slate-900">{delay.teacher_name ?? '—'}</p>
-                              <p className="text-[11px] text-muted">الهوية: {delay.national_id ?? '—'}</p>
-                              {delay.teacher_phone ? (
-                                <p className="text-[11px] text-muted">الهاتف: {delay.teacher_phone}</p>
-                              ) : null}
+                              <p className="font-semibold text-slate-900" title={`الهوية: ${delay.national_id ?? '—'}`}>
+                                {delay.teacher_name ?? '—'}
+                              </p>
                             </div>
                           </td>
-                          <td className="px-4 py-3 align-top">
+                          <td className="border border-slate-200/60 px-4 py-2 align-top">
                             <div className="space-y-1 text-[12px] text-slate-600">
-                              <p>
-                                <span className="font-semibold text-slate-700">التاريخ:</span> {formatDate(delay.attendance_date)}
-                              </p>
-                              <p>
-                                <span className="font-semibold text-slate-700">وقت الحضور:</span> {formatTime(delay.check_in_time)}
-                              </p>
-                              <p>
-                                <span className="font-semibold text-slate-700">آخر احتساب:</span> {formatDate(delay.delay_evaluated_at)}
+                              <p title="وقت الحضور">
+                                {formatTime(delay.check_in_time)}
                               </p>
                             </div>
                           </td>
-                          <td className="px-4 py-3 align-top">
+                          <td className="border border-slate-200/60 px-4 py-2 align-top">
                             <div className="space-y-2">
-                              <DelayStatusBadge status={delay.delay_status} label={delay.delay_status_label} />
+                              {delay.delay_status !== 'delayed' ? (
+                                <DelayStatusBadge status={delay.delay_status} label={delay.delay_status_label} />
+                              ) : null}
                               {isAbsent ? (
                                 <>
                                   <div className="flex items-center gap-1.5">
@@ -1340,8 +1394,8 @@ export function AdminTeacherAttendancePage() {
                               ) : (
                                 <>
                                   {typeof delay.delay_minutes === 'number' ? (
-                                    <p className="text-[11px] text-muted">
-                                      دقائق التأخر: {delay.delay_minutes.toLocaleString('ar-SA')}
+                                    <p className="inline-flex items-center gap-1 rounded-md bg-rose-100/80 px-2 py-0.5 text-[11px] font-semibold text-rose-700">
+                                      {delay.delay_minutes.toLocaleString('ar-SA')} دقيقة تأخير
                                     </p>
                                   ) : null}
                                   {delay.delay_notes ? (
@@ -1351,26 +1405,18 @@ export function AdminTeacherAttendancePage() {
                               )}
                             </div>
                           </td>
-                          <td className="px-4 py-3 align-top">
+                          <td className="border border-slate-200/60 px-4 py-2 align-top">
                             <div className="space-y-1 text-[12px] text-slate-600">
-                              <p>
-                                <span className="font-semibold text-slate-700">الحالة:</span>{' '}
+                              <p title={`نوع العملية: ${delay.transaction_type === 'check_out' ? 'انصراف' : 'تسجيل حضور'}`}>
                                 {delay.status_label ?? (delay.status ? fallbackAttendanceStatusLabels[delay.status] : 'غير محدد')}
-                              </p>
-                              <p>
-                                <span className="font-semibold text-slate-700">نوع العملية:</span>{' '}
-                                {delay.transaction_type === 'check_out' ? 'انصراف' : 'تسجيل حضور'}
                               </p>
                             </div>
                           </td>
-                          <td className="px-4 py-3 align-top">
+                          <td className="border border-slate-200/60 px-4 py-2 align-top">
                             <div className="space-y-1 text-[12px] text-slate-600">
-                              <p>
+                              <p title={`القناة: ${delay.delay_notice_channel ?? '—'}`}>
                                 <span className="font-semibold text-slate-700">آخر إشعار:</span>{' '}
                                 {delay.delay_notified_at ? formatDate(delay.delay_notified_at) : 'لم يتم الإشعار بعد'}
-                              </p>
-                              <p>
-                                <span className="font-semibold text-slate-700">القناة:</span> {delay.delay_notice_channel ?? '—'}
                               </p>
                               {delay.delay_inquiry ? (
                                 <p className="text-[11px] text-muted">
@@ -1382,82 +1428,92 @@ export function AdminTeacherAttendancePage() {
                               ) : null}
                             </div>
                           </td>
-                          <td className="px-4 py-3 align-top">
-                            <div className="flex flex-col gap-2">
-                              <div className="inline-flex rounded-2xl border border-slate-200 bg-white p-0.5 shadow-sm">
-                                {isAbsent ? (
-                                  <>
-                                    <button
-                                      type="button"
-                                      className="flex-1 rounded-2xl bg-slate-700 px-3 py-1 text-[12px] font-semibold text-white shadow"
-                                      disabled
-                                    >
-                                      غائب
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => openAbsenceDialog(delay)}
-                                      className={`flex-1 rounded-2xl px-3 py-1 text-[12px] font-semibold transition ${hasCustomAbsenceReason
-                                        ? 'bg-indigo-600 text-white shadow'
-                                        : 'text-slate-600 hover:bg-slate-100'
-                                        }`}
-                                      disabled={isUpdatingStatus}
-                                    >
-                                      {absenceActionLabel}
-                                    </button>
-                                  </>
-                                ) : (
-                                  <>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDelayStatusChange(delay, 'delayed')}
-                                      className={`flex-1 rounded-2xl px-3 py-1 text-[12px] font-semibold transition ${actionStatus === 'delayed'
-                                        ? 'bg-rose-600 text-white shadow'
-                                        : 'text-slate-600 hover:bg-slate-100'
-                                        }`}
-                                      disabled={isUpdatingStatus}
-                                    >
-                                      متأخر
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDelayStatusChange(delay, 'excused')}
-                                      className={`flex-1 rounded-2xl px-3 py-1 text-[12px] font-semibold transition ${actionStatus === 'excused'
-                                        ? 'bg-amber-500 text-white shadow'
-                                        : 'text-slate-600 hover:bg-slate-100'
-                                        }`}
-                                      disabled={isUpdatingStatus}
-                                    >
-                                      بعذر
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-                              {!isAbsent ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleDelayRecalculate(delay)}
-                                  className="button-secondary text-xs"
-                                  disabled={isRecalculating}
-                                >
-                                  <i className="bi bi-calculator" /> {isRecalculating ? 'جارٍ الاحتساب...' : 'إعادة الاحتساب'}
-                                </button>
-                              ) : null}
-                              <div className="flex gap-2">
+                          <td className="border border-slate-200/60 px-4 py-2 align-top">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {/* حالة الحضور/الغياب */}
+                              {isAbsent ? (
+                                <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm">
+                                  <button
+                                    type="button"
+                                    className="rounded-md bg-slate-700 px-2 py-1 text-[11px] font-semibold text-white shadow"
+                                    disabled
+                                  >
+                                    غائب
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => openAbsenceDialog(delay)}
+                                    className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${hasCustomAbsenceReason
+                                      ? 'bg-indigo-600 text-white shadow'
+                                      : 'text-slate-600 hover:bg-slate-50'
+                                      }`}
+                                    disabled={isUpdatingStatus}
+                                    title={absenceActionLabel}
+                                  >
+                                    {hasCustomAbsenceReason ? <i className="bi bi-pencil-square" /> : <i className="bi bi-plus" />} السبب
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDelayStatusChange(delay, 'delayed')}
+                                    className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${actionStatus === 'delayed'
+                                      ? 'bg-orange-500 text-white shadow'
+                                      : 'text-slate-600 hover:bg-slate-50'
+                                      }`}
+                                    disabled={isUpdatingStatus}
+                                  >
+                                    متأخر
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDelayStatusChange(delay, 'excused')}
+                                    className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${actionStatus === 'excused'
+                                      ? 'bg-amber-500 text-white shadow'
+                                      : 'text-slate-600 hover:bg-slate-50'
+                                      }`}
+                                    disabled={isUpdatingStatus}
+                                  >
+                                    بعذر
+                                  </button>
+                                </div>
+                              )}
+
+                              {/* الإجراءات الأخرى */}
+                              <div className="flex items-center gap-1.5">
+                                {!isAbsent ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDelayRecalculate(delay)}
+                                    className="flex h-[28px] items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
+                                    disabled={isRecalculating}
+                                    title="إعادة الاحتساب"
+                                  >
+                                    <i className={`bi bi-calculator ${isRecalculating ? 'animate-spin opacity-50' : ''}`} />
+                                    <span className="hidden xl:inline">احتساب</span>
+                                  </button>
+                                ) : null}
                                 <button
                                   type="button"
                                   onClick={() => handleDelayNotify(delay)}
-                                  className="button-secondary text-xs"
+                                  className="flex h-[28px] w-[32px] items-center justify-center rounded-lg border border-slate-200 bg-white text-[12px] font-medium text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
                                   disabled={isNotifying}
+                                  title="إرسال إشعار"
                                 >
-                                  <i className="bi bi-send" /> {notifyLabel}
+                                  {isNotifying ? (
+                                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+                                  ) : (
+                                    <i className="bi bi-send" />
+                                  )}
                                 </button>
                                 <button
                                   type="button"
-                                  className="button-secondary text-xs"
+                                  className="flex h-[28px] w-[32px] items-center justify-center rounded-lg border border-slate-200 bg-white text-[13px] font-medium text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
                                   onClick={() => handleInquiryOpen(delay)}
+                                  title="طلب مسائلة"
                                 >
-                                  <i className="bi bi-chat-dots" /> مسائلة
+                                  <i className="bi bi-chat-dots" />
                                 </button>
                               </div>
                             </div>
@@ -1468,39 +1524,7 @@ export function AdminTeacherAttendancePage() {
                   </tbody>
                 </table>
               </div>
-              <aside className="flex h-full flex-col gap-3 rounded-3xl border border-slate-100 bg-slate-50/80 p-4 text-right shadow-inner">
-                <header className="space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">إحصائيات فورية</p>
-                  <h3 className="text-lg font-bold text-slate-800">نظرة على التأخر والغياب</h3>
-                </header>
-                <article className="rounded-2xl border border-rose-200 bg-white/90 px-4 py-3 shadow-sm">
-                  <p className="text-xs font-semibold text-rose-600">مجموع المتأخرين</p>
-                  <p className="mt-1 text-xl font-bold text-rose-700">
-                    {delayAnalytics.delayedCount.toLocaleString('ar-SA')}
-                  </p>
-                </article>
-                <article className="rounded-2xl border border-emerald-200 bg-white/90 px-4 py-3 shadow-sm">
-                  <p className="text-xs font-semibold text-emerald-600">حالات بعذر</p>
-                  <p className="mt-1 text-xl font-bold text-emerald-700">
-                    {delayAnalytics.excusedCount.toLocaleString('ar-SA')}
-                  </p>
-                </article>
-                <article className="rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm">
-                  <p className="text-xs font-semibold text-slate-600">سجلات الغياب</p>
-                  <p className="mt-1 text-xl font-bold text-slate-800">
-                    {delayAnalytics.absenceCount.toLocaleString('ar-SA')}
-                  </p>
-                </article>
-                <article className="rounded-2xl border border-indigo-200 bg-white/90 px-4 py-3 shadow-sm">
-                  <p className="text-xs font-semibold text-indigo-600">متوسط دقائق التأخر</p>
-                  <p className="mt-1 text-xl font-bold text-indigo-700">
-                    {delayAnalytics.averageDelay !== null
-                      ? delayAnalytics.averageDelay.toLocaleString('ar-SA')
-                      : '—'}
-                  </p>
-                  <p className="text-[11px] text-muted">محسوبة على السجلات المتأخرة فقط</p>
-                </article>
-              </aside>
+              {/* <aside /> Removed and moved above table */}
             </div>
           )}
         </div>
@@ -1628,7 +1652,7 @@ export function AdminTeacherAttendancePage() {
           </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="grid gap-6 grid-cols-1">
           <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white/85 shadow-sm">
             {attendanceQuery.isLoading ? (
               <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-sm text-muted">
@@ -1642,22 +1666,22 @@ export function AdminTeacherAttendancePage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full table-auto text-right text-sm">
+                <table className="min-w-full table-auto border-collapse border border-slate-200/60 text-right text-sm">
                   <thead className="bg-slate-50/80 text-[11px] uppercase tracking-wide text-slate-500">
                     <tr>
-                      <th className="px-3 py-2.5 font-semibold lg:px-4">المعلم</th>
-                      <th className="px-3 py-2.5 font-semibold lg:px-4">حالة السجل</th>
-                      <th className="px-3 py-2.5 font-semibold lg:px-4">وقت العملية</th>
-                      <th className="px-3 py-2.5 font-semibold lg:px-4">الدخول / الانصراف</th>
-                      <th className="px-3 py-2.5 font-semibold lg:px-4">التأخير</th>
-                      <th className="px-3 py-2.5 font-semibold lg:px-4">البوابة والمصدر</th>
-                      <th className="px-3 py-2.5 font-semibold lg:px-4">المطابقة</th>
+                      <th className="border border-slate-200/60 px-3 py-2.5 font-semibold lg:px-4">المعلم</th>
+                      <th className="border border-slate-200/60 px-3 py-2.5 font-semibold lg:px-4">حالة السجل</th>
+                      <th className="border border-slate-200/60 px-3 py-2.5 font-semibold lg:px-4">وقت العملية</th>
+                      <th className="border border-slate-200/60 px-3 py-2.5 font-semibold lg:px-4">الدخول / الانصراف</th>
+                      <th className="border border-slate-200/60 px-3 py-2.5 font-semibold lg:px-4">التأخير</th>
+                      <th className="border border-slate-200/60 px-3 py-2.5 font-semibold lg:px-4">البوابة والمصدر</th>
+                      <th className="border border-slate-200/60 px-3 py-2.5 font-semibold lg:px-4">المطابقة</th>
                     </tr>
                   </thead>
                   <tbody>
                     {(isAttendanceExpanded ? records : records.slice(0, 5)).map((record) => (
                       <tr key={record.id} className="border-t border-slate-100 text-[13px] transition hover:bg-slate-50/70">
-                        <td className="px-3 py-3 align-top lg:px-4">
+                        <td className="border border-slate-200/60 px-3 py-3 align-top lg:px-4">
                           <div className="space-y-1">
                             <p className="font-semibold text-slate-900">{record.employee_name}</p>
                             <p className="text-[11px] text-muted">الهوية: {record.national_id}</p>
@@ -1666,7 +1690,7 @@ export function AdminTeacherAttendancePage() {
                             ) : null}
                           </div>
                         </td>
-                        <td className="px-3 py-3 align-top lg:px-4">
+                        <td className="border border-slate-200/60 px-3 py-3 align-top lg:px-4">
                           <div className="space-y-2">
                             <StatusBadge record={record} />
                             <LoginMethodBadge record={record} />
@@ -1679,7 +1703,7 @@ export function AdminTeacherAttendancePage() {
                             ) : null}
                           </div>
                         </td>
-                        <td className="px-3 py-3 align-top lg:px-4">
+                        <td className="border border-slate-200/60 px-3 py-3 align-top lg:px-4">
                           <div className="space-y-1 text-[12px] text-slate-600">
                             <p>
                               <span className="font-semibold text-slate-700">وقت العملية:</span> {formatTime(record.transaction_time)}
@@ -1690,7 +1714,7 @@ export function AdminTeacherAttendancePage() {
                             ) : null}
                           </div>
                         </td>
-                        <td className="px-3 py-3 align-top lg:px-4">
+                        <td className="border border-slate-200/60 px-3 py-3 align-top lg:px-4">
                           <div className="space-y-1 text-[12px] text-slate-600">
                             <p>
                               <span className="font-semibold text-slate-700">حضور:</span> {formatTime(record.check_in_time)}
@@ -1700,7 +1724,7 @@ export function AdminTeacherAttendancePage() {
                             </p>
                           </div>
                         </td>
-                        <td className="px-3 py-3 align-top lg:px-4">
+                        <td className="border border-slate-200/60 px-3 py-3 align-top lg:px-4">
                           {record.delay_status ? (
                             <div className="space-y-2">
                               <DelayStatusBadge status={record.delay_status} label={record.delay_status_label} />
@@ -1722,7 +1746,7 @@ export function AdminTeacherAttendancePage() {
                             <span className="text-[11px] text-muted">لا توجد بيانات تأخير</span>
                           )}
                         </td>
-                        <td className="px-3 py-3 align-top lg:px-4">
+                        <td className="border border-slate-200/60 px-3 py-3 align-top lg:px-4">
                           <div className="space-y-1 text-[12px] text-slate-600">
                             <p>
                               <span className="font-semibold text-slate-700">البوابة:</span> {record.gate_name ?? '—'}
@@ -2367,6 +2391,13 @@ export function AdminTeacherAttendancePage() {
       <CoverageRequestsModal
         isOpen={isCoverageRequestsModalOpen}
         onClose={() => setIsCoverageRequestsModalOpen(false)}
+      />
+
+      {/* نافذة تحويل الدوام عن بعد */}
+      <RemoteDayActivationModal
+        isOpen={isRemoteDayModalOpen}
+        onClose={() => setIsRemoteDayModalOpen(false)}
+        date={delayFilters.start_date || today}
       />
     </section>
   )

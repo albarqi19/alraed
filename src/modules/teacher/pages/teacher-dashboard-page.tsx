@@ -5,6 +5,7 @@ import { useTeacherSessionsQuery } from '../hooks'
 import type { TeacherSession } from '../types'
 import { HolidayBanner } from '@/shared/components/holiday-banner'
 import { useTodayStatus } from '@/hooks/use-academic-calendar'
+import { useRemoteAttendanceStatus } from '../remote-attendance/hooks'
 
 function formatTime(time?: string) {
   if (!time) return 'غير محدد'
@@ -68,6 +69,10 @@ export function TeacherDashboardPage() {
 
   // التحقق من أن اليوم إجازة
   const isHoliday = todayStatus && !todayStatus.is_working_day
+
+  // التحقق من الدوام عن بعد
+  const { data: remoteStatus } = useRemoteAttendanceStatus()
+  const isRemoteDay = remoteStatus?.is_remote_day === true
 
   const sessions: TeacherSession[] = useMemo(() => {
     // فلترة الحصص لعرض حصص اليوم فقط
@@ -187,6 +192,23 @@ export function TeacherDashboardPage() {
       <section className="space-y-8">
         {/* Holiday Banner */}
         <HolidayBanner />
+
+        {/* بانر الدوام عن بعد */}
+        {isRemoteDay && (
+          <div className="flex items-center gap-3 rounded-2xl bg-purple-50 border border-purple-200 p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-purple-600">
+              <i className="bi bi-laptop text-xl" />
+            </div>
+            <div>
+              <p className="font-semibold text-purple-800">اليوم دوام عن بعد</p>
+              <p className="text-sm text-purple-600">
+                {remoteStatus?.remote_day?.note
+                  ? remoteStatus.remote_day.note
+                  : 'قم برفع تقرير حضور التيمز لكل حصة'}
+              </p>
+            </div>
+          </div>
+        )}
         
         <header className="space-y-3 text-right">
           <div className="flex items-center justify-between gap-3">
