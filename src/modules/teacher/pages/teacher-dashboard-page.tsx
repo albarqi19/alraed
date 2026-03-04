@@ -96,7 +96,7 @@ export function TeacherDashboardPage() {
       setAlertModal({
         type: 'warning',
         icon: '⏳',
-        text: 'لم يحن وقت هذه الحصة بعد. يمكنك فتح الحصة قبل بدايتها بـ 15 دقيقة.'
+        text: 'لم يحن وقت هذه الحصة بعد. يمكنك فتح الحصة قبل بدايتها بـ 5 دقائق.'
       })
       return
     }
