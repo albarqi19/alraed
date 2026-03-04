@@ -5,16 +5,19 @@ interface Props {
   isOpen: boolean
   onClose: () => void
   date: string
+  allowDateChange?: boolean
   onSuccess?: () => void
 }
 
 export function RemoteDayActivationModal({
   isOpen,
   onClose,
-  date,
+  date: initialDate,
+  allowDateChange = false,
   onSuccess,
 }: Props) {
   const [note, setNote] = useState('')
+  const [date, setDate] = useState(initialDate)
   const activateMutation = useActivateRemoteDayMutation()
 
   if (!isOpen) return null
@@ -82,6 +85,21 @@ export function RemoteDayActivationModal({
               </span>
             </div>
           </div>
+
+          {/* اختيار التاريخ */}
+          {allowDateChange && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">
+                التاريخ
+              </label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+              />
+            </div>
+          )}
 
           {/* ملاحظة اختيارية */}
           <div>
