@@ -129,6 +129,7 @@ import { AdminPeriodAttendancePage } from '@/modules/admin/pages/admin-period-at
 import AdminRemoteAttendancePage from '@/modules/admin/pages/admin-remote-attendance-page'
 import { NotebookWorkspacePage } from '@/modules/notebook/pages/notebook-workspace-page'
 import { GuideViewerPage } from '@/modules/notebook/pages/guide-viewer-page'
+import { PrivacyPolicyPage } from '@/modules/core/pages/privacy-policy-page'
 
 const appRoutes = [
   {
@@ -348,6 +349,10 @@ const appRoutes = [
           { path: 'referrals', element: <GuidanceReferralsPage /> },
           { path: 'referrals/:id', element: <GuidanceReferralDetailsPage /> },
         ],
+      },
+      {
+        path: 'privacy-policy',
+        element: <PrivacyPolicyPage />,
       },
       {
         path: 'account-suspended',
