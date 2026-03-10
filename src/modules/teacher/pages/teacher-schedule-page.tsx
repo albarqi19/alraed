@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { useTeacherSessionsQuery } from '../hooks'
 import type { TeacherSession } from '../types'
 import { InstallPWAPrompt } from '../components/install-pwa-prompt'
@@ -106,6 +106,38 @@ export function TeacherSchedulePage() {
   const weekRange = useWeekRange(data?.saudiTime)
 
   const [selectedDay, setSelectedDay] = useState<WeekDay>(WEEK_DAYS[0])
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const [showRightFog, setShowRightFog] = useState(false)
+  const [showLeftFog, setShowLeftFog] = useState(false)
+
+  const checkScroll = () => {
+    const el = scrollContainerRef.current
+    if (!el) return
+
+    const { scrollLeft, scrollWidth, clientWidth } = el
+    // In RTL scrollLeft is 0 at start (right) and negative as we scroll left
+    const currentScroll = Math.abs(scrollLeft)
+    const maxScroll = scrollWidth - clientWidth
+
+    setShowRightFog(currentScroll > 5)
+    setShowLeftFog(currentScroll < maxScroll - 5)
+  }
+
+  // Handle scroll events and window resizing
+  useEffect(() => {
+    const el = scrollContainerRef.current
+    if (!el) return
+
+    checkScroll() // Initial check
+
+    el.addEventListener('scroll', checkScroll)
+    window.addEventListener('resize', checkScroll)
+
+    return () => {
+      el.removeEventListener('scroll', checkScroll)
+      window.removeEventListener('resize', checkScroll)
+    }
+  }, [sessions]) // Re-run when sessions load to re-calc scrollWidth
 
   // Automatically select today if possible on initial load
   useEffect(() => {
@@ -181,8 +213,21 @@ export function TeacherSchedulePage() {
       </div>
 
       {/* Days Tabs */}
-      <div className="relative mt-8">
-        <div className="flex items-center gap-2 overflow-x-auto pb-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] -mx-5 px-5 sm:mx-0 sm:px-0">
+      <div className="relative mt-8 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-900/5">
+        {/* Fog Effects for Horizontal Scrolling (Dynamic Visibility) */}
+        <div className={clsx(
+          "pointer-events-none absolute bottom-0 right-0 top-0 z-10 w-12 bg-gradient-to-l from-white to-transparent transition-opacity duration-300",
+          showRightFog ? "opacity-100" : "opacity-0"
+        )} />
+        <div className={clsx(
+          "pointer-events-none absolute bottom-0 left-0 top-0 z-10 w-12 bg-gradient-to-r from-white to-transparent transition-opacity duration-300",
+          showLeftFog ? "opacity-100" : "opacity-0"
+        )} />
+
+        <div
+          ref={scrollContainerRef}
+          className="relative flex items-center gap-2 overflow-x-auto p-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']"
+        >
           {WEEK_DAYS.map((day) => {
             const isSelected = selectedDay === day;
             const daySessionsCount = byDay[day]?.length || 0;
@@ -191,15 +236,15 @@ export function TeacherSchedulePage() {
                 key={day}
                 onClick={() => setSelectedDay(day)}
                 className={clsx(
-                  "relative flex min-w-[5.5rem] flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-3 transition-all duration-300",
+                  "relative flex min-w-[5.5rem] flex-1 flex-col items-center justify-center gap-1.5 rounded-xl px-2 py-3 transition-all duration-300",
                   isSelected
-                    ? "bg-slate-900 text-white shadow-lg shadow-slate-900/20"
-                    : "bg-white text-slate-600 ring-1 ring-slate-900/5 hover:bg-slate-50"
+                    ? "bg-slate-900 text-white shadow-md shadow-slate-900/20"
+                    : "bg-transparent text-slate-600 hover:bg-slate-50"
                 )}
               >
-                <span className="text-sm font-semibold">{day}</span>
+                <span className="text-sm font-semibold shrink-0">{day}</span>
                 <span className={clsx(
-                  "flex h-5 items-center justify-center rounded-full px-2 text-[10px] font-bold",
+                  "flex h-5 shrink-0 items-center justify-center rounded-full px-2 text-[10px] font-bold",
                   isSelected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
                 )}>
                   {daySessionsCount} {daySessionsCount === 1 ? 'حصة' : daySessionsCount === 2 ? 'حصتان' : 'حصص'}

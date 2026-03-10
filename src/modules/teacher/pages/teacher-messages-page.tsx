@@ -531,16 +531,16 @@ export function TeacherMessagesPage() {
         {/* Compact Stats Row */}
         <div className="flex divide-x divide-x-reverse divide-slate-100 rounded-2xl bg-white shadow-sm ring-1 ring-slate-900/5 mt-2">
           <div className={clsx("flex flex-1 flex-col items-center justify-center py-4 px-2 transition-all hover:bg-slate-50/50 rounded-r-2xl", !settings.is_enabled && "bg-rose-50/50 opacity-90")}>
-            <p className="text-2xl mb-1">{settings.is_enabled ? '✅' : '🚫'}</p>
-            <p className="text-[10px] font-bold text-slate-700 sm:text-xs">{settings.is_enabled ? 'النظام مفعّل' : 'حساب معطّل'}</p>
+            <p className="text-3xl mb-1">{settings.is_enabled ? '✅' : '🚫'}</p>
+            <p className="text-xs font-bold text-slate-700 sm:text-sm">{settings.is_enabled ? 'النظام مفعّل' : 'حساب معطّل'}</p>
           </div>
           <div className="flex flex-1 flex-col items-center justify-center py-4 px-2 transition-all hover:bg-slate-50/50">
-            <p className="text-2xl font-bold text-blue-600">{todayStats.sent_today}</p>
-            <p className="mt-0.5 text-[10px] font-bold text-slate-500 sm:text-xs">رسائل اليوم</p>
+            <p className="text-3xl font-bold text-blue-600">{todayStats.sent_today}</p>
+            <p className="mt-0.5 text-xs font-bold text-slate-500 sm:text-sm">رسائل اليوم</p>
           </div>
           <div className="flex flex-1 flex-col items-center justify-center py-4 px-2 transition-all hover:bg-slate-50/50 rounded-l-2xl">
-            <p className={clsx("text-2xl font-bold", todayStats.remaining > 0 ? 'text-teal-600' : 'text-amber-600')}>{todayStats.remaining}</p>
-            <p className="mt-0.5 text-[10px] font-bold text-slate-500 sm:text-xs">رصيد متبقي</p>
+            <p className={clsx("text-3xl font-bold", todayStats.remaining > 0 ? 'text-teal-600' : 'text-amber-600')}>{todayStats.remaining}</p>
+            <p className="mt-0.5 text-xs font-bold text-slate-500 sm:text-sm">رصيد متبقي</p>
           </div>
         </div>
 
