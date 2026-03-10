@@ -5,7 +5,6 @@ import { apiClient } from '@/services/api/client'
 import { useToast } from '@/shared/feedback/use-toast'
 import { sendTeacherMessages } from '../api'
 import clsx from 'classnames'
-import { HolidayBanner } from '@/shared/components/holiday-banner'
 import { useCanSendMessages } from '@/hooks/use-academic-calendar'
 
 interface MessageTemplate {
@@ -499,8 +498,6 @@ export function TeacherMessagesPage() {
 
       {/* الصفحة الرئيسية */}
       <section className="space-y-6">
-        {/* Holiday Banner - عرض بانر الإجازة */}
-        <HolidayBanner />
 
         {/* Header */}
         <header className="flex items-center gap-4 text-right">

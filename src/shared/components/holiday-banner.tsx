@@ -15,22 +15,18 @@ export function HolidayBanner() {
   const { next_working_day_formatted } = todayStatus
 
   return (
-    <div className="glass-card border-r-4 border-r-amber-500 bg-gradient-to-l from-amber-50/50 to-white">
-      <div className="flex items-center gap-4 text-right">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-2xl">
-          🌙
-        </div>
-        <div className="flex-1">
-          <h3 className="text-lg font-bold text-slate-900">
-            إجازة
-          </h3>
-          {next_working_day_formatted && (
-            <p className="text-sm text-slate-600">
-              تبدأ الدراسة مجددًا يوم {next_working_day_formatted}
-            </p>
-          )}
-        </div>
+    <div className="flex w-full items-center justify-center gap-2 bg-amber-50/80 backdrop-blur-sm border-b border-amber-200/50 px-4 py-2 text-center sm:px-6 lg:px-10">
+      <div className="flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-100/80 border border-amber-200/50">
+        <span className="text-sm drop-shadow-sm">✨</span>
+        <p className="text-[11px] font-bold text-amber-900 tracking-wide">
+          إجازة رسمية
+        </p>
       </div>
+      {next_working_day_formatted && (
+        <p className="text-xs font-semibold text-amber-700">
+          العودة للدراسة: <span className="text-amber-900 font-bold">{next_working_day_formatted}</span>
+        </p>
+      )}
     </div>
   )
 }
