@@ -8,18 +8,17 @@ import { useTodayMoodQuery, useSubmitMoodMutation } from '../mood/hooks'
 import type { MoodType } from '../mood/types'
 
 const navItems = [
-  { to: '/teacher/dashboard', label: 'الرئيسية', exact: true },
-  { to: '/teacher/schedule', label: 'الجدول', exact: false },
-  { to: '/teacher/messages', label: 'الرسائل', exact: false },
-  { to: '/teacher/points', label: 'نقاطي', exact: false },
-  { to: '/teacher/services', label: 'خدمات', exact: false },
+  { to: '/teacher/dashboard', label: 'الرئيسية', exact: true, icon: 'bi-house' },
+  { to: '/teacher/schedule', label: 'الجدول', exact: false, icon: 'bi-calendar-week' },
+  { to: '/teacher/messages', label: 'الرسائل', exact: false, icon: 'bi-chat-left-text' },
+  { to: '/teacher/points', label: 'نقاطي', exact: false, icon: 'bi-star' },
+  { to: '/teacher/services', label: 'خدمات', exact: false, icon: 'bi-grid' },
 ]
 
 export function TeacherShell() {
   const teacher = useAuthStore((state) => state.user)
   const logoutMutation = useLogoutMutation()
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
-  const [navigationOpen, setNavigationOpen] = useState(false)
   const profileMenuRef = useRef<HTMLDivElement>(null)
 
   // Mood Tracker state and queries
@@ -65,7 +64,7 @@ export function TeacherShell() {
   }, [profileMenuOpen])
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-100">
+    <div className="flex min-h-screen flex-col bg-slate-100 pb-16 sm:pb-0">
       <nav className="sticky top-0 z-50 border-b border-white/20 bg-white/80 shadow-sm backdrop-blur-md">
         <div className="flex w-full flex-col gap-4 px-5 py-4 sm:px-6 lg:px-10">
           <div className="flex items-center justify-between gap-4">
@@ -76,14 +75,6 @@ export function TeacherShell() {
               لوحة تحكم المعلم
             </div>
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 sm:hidden"
-                onClick={() => setNavigationOpen((prev) => !prev)}
-              >
-                القائمة
-                <span aria-hidden>▾</span>
-              </button>
               <div className="relative" ref={profileMenuRef}>
                 <button
                   type="button"
@@ -111,12 +102,7 @@ export function TeacherShell() {
               </div>
             </div>
           </div>
-          <div
-            className={clsx(
-              'flex flex-col gap-2 text-sm font-medium text-slate-600 sm:flex-row sm:items-center sm:justify-between',
-              navigationOpen ? 'flex' : 'hidden sm:flex',
-            )}
-          >
+          <div className="hidden sm:flex flex-col gap-2 text-sm font-medium text-slate-600 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap sm:gap-1.5">
               {navItems.map((item) => (
                 <NavLink
@@ -129,7 +115,6 @@ export function TeacherShell() {
                       isActive ? 'bg-slate-900 text-white' : 'border border-transparent text-slate-500 hover:border-slate-200 hover:bg-white',
                     )
                   }
-                  onClick={() => setNavigationOpen(false)}
                 >
                   {item.label}
                 </NavLink>
@@ -144,6 +129,40 @@ export function TeacherShell() {
           <Outlet />
         </div>
       </main>
+
+      {/* Docked Mobile Bottom Navbar */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white px-2 py-2 pb-[env(safe-area-inset-bottom)] sm:hidden shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
+        <div className="flex items-center justify-around">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.exact}
+              className={({ isActive }) => clsx(
+                "flex flex-col items-center justify-center gap-1 p-1 transition-all min-w-[4rem]",
+                isActive ? "text-slate-900" : "text-slate-500 hover:text-slate-700"
+              )}
+            >
+              {({ isActive }) => (
+                <>
+                  <div className={clsx(
+                    "flex h-8 w-14 items-center justify-center rounded-2xl transition-all duration-300",
+                    isActive ? "bg-slate-100" : "bg-transparent"
+                  )}>
+                    <i className={clsx("bi text-xl", item.icon, isActive && "scale-110 drop-shadow-sm")}></i>
+                  </div>
+                  <span className={clsx(
+                    "text-[10px] transition-all",
+                    isActive ? "font-bold text-slate-900" : "font-medium"
+                  )}>
+                    {item.label}
+                  </span>
+                </>
+              )}
+            </NavLink>
+          ))}
+        </div>
+      </nav>
 
       {/* Mood Tracker Sheet */}
       <MoodTrackerSheet

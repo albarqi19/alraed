@@ -1,9 +1,11 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useTeacherSessionsQuery } from '../hooks'
 import type { TeacherSession } from '../types'
 import { InstallPWAPrompt } from '../components/install-pwa-prompt'
+import clsx from 'classnames'
 
 const WEEK_DAYS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'] as const
+type WeekDay = (typeof WEEK_DAYS)[number]
 
 function formatTime(value?: string) {
   if (!value) return 'غير محدد'
@@ -22,45 +24,35 @@ function getSessionTimeRange(session: TeacherSession) {
   return `${formatTime(start)} – ${formatTime(end)}`
 }
 
-function isWeekDay(day: unknown): day is (typeof WEEK_DAYS)[number] {
+function isWeekDay(day: unknown): day is WeekDay {
   return typeof day === 'string' && (WEEK_DAYS as readonly string[]).includes(day)
 }
 
-function extractPeriodNumbers(sessions: TeacherSession[]): number[] {
-  const periodNumbers = new Set<number>()
-  sessions.forEach((session) => {
-    if (session.period_number) {
-      periodNumbers.add(session.period_number)
-    }
-  })
-  if (periodNumbers.size === 0) {
-    return [1, 2, 3, 4, 5, 6, 7, 8] // default periods
-  }
-  return Array.from(periodNumbers).sort((a, b) => a - b)
-}
-
-function useScheduleMatrix(sessions: TeacherSession[]) {
+function useSessionsByDay(sessions: TeacherSession[]) {
   return useMemo(() => {
-    const matrix: Record<number, Partial<Record<(typeof WEEK_DAYS)[number], TeacherSession>>> = {}
+    const byDay: Partial<Record<WeekDay, TeacherSession[]>> = {}
     const unmatched: TeacherSession[] = []
 
     sessions.forEach((session) => {
-      const period = session.period_number
       const day = session.day
-
-      if (!period || !isWeekDay(day)) {
+      if (!isWeekDay(day)) {
         unmatched.push(session)
         return
       }
-
-      if (!matrix[period]) {
-        matrix[period] = {}
+      if (!byDay[day]) {
+        byDay[day] = []
       }
-
-      matrix[period]![day] = session
+      byDay[day]!.push(session)
     })
 
-    return { matrix, unmatched }
+    // Sort sessions in each day by period
+    Object.values(byDay).forEach(daySessions => {
+      if (daySessions) {
+        daySessions.sort((a, b) => (a.period_number ?? 0) - (b.period_number ?? 0))
+      }
+    })
+
+    return { byDay, unmatched }
   }, [sessions])
 }
 
@@ -109,164 +101,233 @@ function useWeekRange(saudiTime?: string) {
 export function TeacherSchedulePage() {
   const { data, isLoading, isError, refetch } = useTeacherSessionsQuery()
   const sessions = data?.sessions ?? []
-  const { matrix, unmatched } = useScheduleMatrix(sessions)
+  const { byDay, unmatched } = useSessionsByDay(sessions)
   const stats = useScheduleStats(sessions)
   const weekRange = useWeekRange(data?.saudiTime)
-  const periods = extractPeriodNumbers(sessions)
+
+  const [selectedDay, setSelectedDay] = useState<WeekDay>(WEEK_DAYS[0])
+
+  // Automatically select today if possible on initial load
+  useEffect(() => {
+    const dayIndex = new Date().getDay()
+    if (dayIndex >= 0 && dayIndex <= 4) {
+      setSelectedDay(WEEK_DAYS[dayIndex])
+    }
+  }, [])
 
   if (isLoading) {
     return (
-      <div className="glass-card text-center">
-        <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-teal-500/30 border-t-teal-500" />
-        <p className="mt-4 text-sm text-muted">جاري تحميل الجدول الأسبوعي...</p>
+      <div className="flex flex-col items-center justify-center py-20">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-slate-800" />
+        <p className="mt-4 text-sm font-medium text-slate-500">جاري تحميل الجدول...</p>
       </div>
     )
   }
 
   if (isError) {
     return (
-      <div className="glass-card text-center">
-        <p className="text-sm font-semibold text-rose-600">تعذر تحميل الجدول الأسبوعي</p>
-        <button type="button" onClick={() => refetch()} className="button-secondary mt-4">
+      <div className="flex flex-col items-center justify-center rounded-3xl bg-rose-50 p-8 text-center ring-1 ring-rose-100">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-rose-600">
+          <i className="bi bi-exclamation-triangle-fill text-xl"></i>
+        </div>
+        <p className="mt-4 font-semibold text-rose-900">تعذر تحميل الجدول الأسبوعي</p>
+        <button type="button" onClick={() => refetch()} className="mt-6 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-rose-700 shadow-sm ring-1 ring-inset ring-rose-200 hover:bg-rose-50 transition-all">
           إعادة المحاولة
         </button>
       </div>
     )
   }
 
+  const currentDaySessions = byDay[selectedDay] || []
+
   return (
-    <section className="space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-3xl font-bold text-slate-900">جدولي الدراسي</h1>
-        <p className="text-sm text-muted">
-          {weekRange ? `الأسبوع الحالي: ${weekRange}` : 'عرض جميع الحصص الأسبوعية'}
-        </p>
-      </header>
-
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <div className="glass-card text-center">
-          <p className="text-3xl font-semibold text-slate-900">{stats.total}</p>
-          <p className="text-xs text-muted">إجمالي الحصص</p>
-        </div>
-        <div className="glass-card text-center">
-          <p className="text-3xl font-semibold text-emerald-600">{stats.todaysSessions}</p>
-          <p className="text-xs text-muted">حصص اليوم</p>
-        </div>
-        <div className="glass-card text-center">
-          <p className="text-3xl font-semibold text-sky-600">{stats.subjects}</p>
-          <p className="text-xs text-muted">عدد المواد</p>
-        </div>
-        <div className="glass-card text-center">
-          <p className="text-3xl font-semibold text-amber-600">{stats.classes}</p>
-          <p className="text-xs text-muted">عدد الفصول</p>
-        </div>
-      </div>
-
-      <div className="glass-card overflow-hidden">
-        <header className="flex items-center justify-between border-b border-white/60 pb-4">
-          <div>
-            <h2 className="text-xl font-semibold text-slate-900">الجدول الأسبوعي</h2>
-            <p className="text-xs text-muted">يتم التحديث تلقائيًا من النظام المركزي</p>
-          </div>
-          <button type="button" onClick={() => refetch()} className="button-secondary">
-            تحديث البيانات
-          </button>
-        </header>
-
-        <div className="-mx-4 mt-4 overflow-x-auto px-4">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead>
-              <tr className="text-xs text-muted">
-                <th className="px-3 py-3 text-center font-semibold">الحصة</th>
-                {WEEK_DAYS.map((day) => (
-                  <th key={day} className="px-3 py-3 text-center font-semibold">
-                    {day}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {periods.map((period) => {
-                const sessionsByDay = matrix[period] ?? {}
-
-                return (
-                  <tr key={period} className="even:bg-slate-50/60">
-                    <td className="px-3 py-4 text-center text-sm font-semibold text-slate-900">{period}</td>
-                    {WEEK_DAYS.map((day) => {
-                      const session = sessionsByDay[day]
-                      if (!session) {
-                        return (
-                          <td key={day} className="px-3 py-4 text-center text-xs text-slate-300">
-                            —
-                          </td>
-                        )
-                      }
-
-                      const isStandby = session.is_standby === true
-                      return (
-                        <td key={day} className="px-3 py-4">
-                          <div
-                            className={`space-y-1 rounded-2xl border px-3 py-2 ${
-                              isStandby
-                                ? 'bg-orange-50 border-orange-200'
-                                : session.is_today
-                                  ? 'bg-emerald-50 border-emerald-200'
-                                  : 'bg-white/70 border-transparent'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between gap-1">
-                              <p className="text-sm font-semibold text-slate-900">
-                                {session.subject?.name ?? 'مادة غير محددة'}
-                              </p>
-                              {isStandby && (
-                                <span className="rounded-full bg-orange-100 px-1.5 py-0.5 text-[10px] font-semibold text-orange-700">
-                                  انتظار
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs text-muted">
-                              {session.grade} — {session.class_name}
-                            </p>
-                            {isStandby && session.replacing_teacher_name && (
-                              <p className="text-[10px] font-medium text-orange-600">
-                                بديلاً عن أ. {session.replacing_teacher_name}
-                              </p>
-                            )}
-                            <p className={`text-xs ${isStandby ? 'text-orange-600' : 'text-emerald-600'}`}>
-                              {getSessionTimeRange(session)}
-                            </p>
-                          </div>
-                        </td>
-                      )
-                    })}
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {unmatched.length > 0 ? (
-        <div className="glass-card">
-          <h3 className="text-lg font-semibold text-slate-900">حصص بلا جدول محدد</h3>
-          <p className="text-xs text-muted">
-            تم جلب هذه الحصص من النظام لكن ينقصها يوم أو رقم حصة، الرجاء مراجعة التنسيق في النظام الأساسي.
+    <div className="mx-auto max-w-4xl space-y-8 pb-10">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">جدولي الدراسي</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            {weekRange ? `الأسبوع الحالي: ${weekRange}` : 'عرض جميع الحصص الأسبوعية'}
           </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          title="تحديث البيانات"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-slate-600 shadow-sm ring-1 ring-inset ring-slate-200 transition-all hover:bg-slate-50 hover:text-slate-900 active:scale-95"
+        >
+          <i className="bi bi-arrow-clockwise text-[1.15rem]"></i>
+        </button>
+      </div>
+
+      {/* Compact Stats Summary */}
+      <div className="flex divide-x divide-x-reverse divide-slate-100 rounded-2xl bg-white shadow-sm ring-1 ring-slate-900/5">
+        <div className="flex flex-1 flex-col items-center justify-center py-4 px-2 transition-all hover:bg-slate-50/50 rounded-r-2xl">
+          <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
+          <p className="mt-0.5 text-[10px] font-medium text-slate-500 sm:text-xs">إجمالي الحصص</p>
+        </div>
+        <div className="flex flex-1 flex-col items-center justify-center py-4 px-2 transition-all hover:bg-slate-50/50">
+          <p className="text-2xl font-bold text-emerald-600">{stats.todaysSessions}</p>
+          <p className="mt-0.5 text-[10px] font-medium text-slate-500 sm:text-xs">حصص اليوم</p>
+        </div>
+        <div className="flex flex-1 flex-col items-center justify-center py-4 px-2 transition-all hover:bg-slate-50/50">
+          <p className="text-2xl font-bold text-sky-600">{stats.subjects}</p>
+          <p className="mt-0.5 text-[10px] font-medium text-slate-500 sm:text-xs">عدد المواد</p>
+        </div>
+        <div className="flex flex-1 flex-col items-center justify-center py-4 px-2 transition-all hover:bg-slate-50/50 rounded-l-2xl">
+          <p className="text-2xl font-bold text-amber-600">{stats.classes}</p>
+          <p className="mt-0.5 text-[10px] font-medium text-slate-500 sm:text-xs">عدد الفصول</p>
+        </div>
+      </div>
+
+      {/* Days Tabs */}
+      <div className="relative mt-8">
+        <div className="flex items-center gap-2 overflow-x-auto pb-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] -mx-5 px-5 sm:mx-0 sm:px-0">
+          {WEEK_DAYS.map((day) => {
+            const isSelected = selectedDay === day;
+            const daySessionsCount = byDay[day]?.length || 0;
+            return (
+              <button
+                key={day}
+                onClick={() => setSelectedDay(day)}
+                className={clsx(
+                  "relative flex min-w-[5.5rem] flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-3 transition-all duration-300",
+                  isSelected
+                    ? "bg-slate-900 text-white shadow-lg shadow-slate-900/20"
+                    : "bg-white text-slate-600 ring-1 ring-slate-900/5 hover:bg-slate-50"
+                )}
+              >
+                <span className="text-sm font-semibold">{day}</span>
+                <span className={clsx(
+                  "flex h-5 items-center justify-center rounded-full px-2 text-[10px] font-bold",
+                  isSelected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                )}>
+                  {daySessionsCount} {daySessionsCount === 1 ? 'حصة' : daySessionsCount === 2 ? 'حصتان' : 'حصص'}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Timeline List */}
+      <div className="mt-6 space-y-4">
+        {currentDaySessions.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-white/50 py-16 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-slate-400 ring-1 ring-slate-100">
+              <i className="bi bi-calendar-x text-2xl"></i>
+            </div>
+            <p className="mt-4 text-base font-semibold text-slate-900">لا يوجد حصص مبرمجة</p>
+            <p className="mt-1 text-sm text-slate-500">يوم معفي من الحصص، يوم موفق!</p>
+          </div>
+        ) : (
+          currentDaySessions.map((session, index) => {
+            const isStandby = session.is_standby === true;
+            const isToday = session.is_today === true;
+            return (
+              <div key={session.id || index} className="group relative flex gap-4">
+                {/* Timeline Line & Dot */}
+                <div className="flex flex-col items-center">
+                  <div className={clsx(
+                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-bold shadow-sm ring-1",
+                    isStandby
+                      ? "bg-orange-50 text-orange-600 ring-orange-200"
+                      : isToday
+                        ? "bg-emerald-50 text-emerald-600 ring-emerald-200"
+                        : "bg-white text-slate-900 ring-slate-200"
+                  )}>
+                    {session.period_number ?? '-'}
+                  </div>
+                  {index !== currentDaySessions.length - 1 && (
+                    <div className="my-2 min-h-[3rem] w-px flex-1 bg-slate-200" />
+                  )}
+                </div>
+
+                {/* Session Card */}
+                <div className={clsx(
+                  "flex-1 rounded-2xl p-4 shadow-sm ring-1 transition-all hover:shadow-md mb-4",
+                  isStandby
+                    ? "bg-gradient-to-br from-orange-50/80 to-bg-white ring-orange-200 hover:ring-orange-300"
+                    : isToday
+                      ? "bg-gradient-to-br from-emerald-50/50 to-white ring-emerald-200 hover:ring-emerald-300"
+                      : "bg-white ring-slate-200 hover:ring-slate-300"
+                )}>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-bold text-slate-900">
+                          {session.subject?.name ?? 'مادة غير محددة'}
+                        </h3>
+                        {isStandby && (
+                          <span className="rounded-md bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-700">
+                            انتظار
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-500">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          <i className="bi bi-people text-slate-400"></i>
+                          {session.grade} {session.class_name ? `— الفصل ${session.class_name}` : ''}
+                        </span>
+                        {isStandby && session.replacing_teacher_name && (
+                          <span className="flex items-center gap-1.5 font-medium text-orange-600">
+                            <i className="bi bi-person-lines-fill"></i>
+                            بديل أ. {session.replacing_teacher_name}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className={clsx(
+                      "inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold self-start shrink-0",
+                      isStandby ? "bg-orange-100 text-orange-700" : "bg-slate-100/80 text-slate-700"
+                    )}>
+                      <i className="bi bi-clock"></i>
+                      {getSessionTimeRange(session)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })
+        )}
+      </div>
+
+
+
+      {unmatched.length > 0 && (
+        <div className="mt-8 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+              <i className="bi bi-info-circle-fill"></i>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">حصص بلا وقت محدد</h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                توجد بيانات غير مكتملة المصدر تحتاج مراجعة في النظام المركزي
+              </p>
+            </div>
+          </div>
           <div className="mt-4 divide-y divide-slate-100">
             {unmatched.map((session) => (
-              <div key={session.id} className="py-3 text-sm">
-                <p className="font-medium text-slate-900">{session.subject?.name ?? 'مادة غير محددة'}</p>
-                <p className="text-xs text-muted">
-                  {session.grade} — {session.class_name} | {getSessionTimeRange(session)}
-                </p>
+              <div key={session.id} className="py-3 text-sm flex justify-between items-center">
+                <div>
+                  <p className="font-semibold text-slate-900">{session.subject?.name ?? 'مادة غير محددة'}</p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {session.grade} — {session.class_name}
+                  </p>
+                </div>
+                <div className="text-xs font-medium text-slate-400 text-left">
+                  {session.day || 'يوم غير محدد'}
+                  {session.period_number ? <><br />حصة {session.period_number}</> : ''}
+                </div>
               </div>
             ))}
           </div>
         </div>
-      ) : null}
+      )}
 
       <InstallPWAPrompt />
-    </section>
+    </div>
   )
 }
