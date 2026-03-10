@@ -57,6 +57,7 @@ export function TeacherMessagesPage() {
   const [isSending, setIsSending] = useState(false)
   const [customMessage, setCustomMessage] = useState('')
   const [useCustomMessage, setUseCustomMessage] = useState(false)
+  const [isClassDropdownOpen, setIsClassDropdownOpen] = useState(false)
 
   // Fetch templates
   const { data: templatesData } = useQuery({
@@ -511,8 +512,8 @@ export function TeacherMessagesPage() {
             <i className="bi bi-arrow-right text-xl" />
           </button>
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-slate-900">إرسال رسائل لأولياء الأمور</h1>
-            <p className="text-sm text-muted">تواصل مع أولياء أمور طلابك بسهولة</p>
+            <h1 className="text-3xl font-bold text-slate-900">الرسائل</h1>
+            <p className="text-sm text-muted">تواصل مع أولياء الأمور</p>
           </div>
           {/* زر الردود */}
           <button
@@ -530,51 +531,19 @@ export function TeacherMessagesPage() {
           </button>
         </header>
 
-        {/* بطاقة حالة النظام والإحصائيات */}
-        <div className="glass-card">
-          <div className="space-y-4">
-            {/* السطر الأول: النظام مفعل + رسائل اليوم */}
-            <div className="grid gap-4 grid-cols-2">
-              {/* حالة النظام */}
-              <div className={clsx(
-                'rounded-xl border-2 p-4 text-center',
-                settings.is_enabled
-                  ? 'border-emerald-300 bg-emerald-50'
-                  : 'border-rose-300 bg-rose-50'
-              )}>
-                <div className="text-3xl mb-2">{settings.is_enabled ? '✅' : '🚫'}</div>
-                <p className="text-sm font-semibold text-slate-900">
-                  {settings.is_enabled ? 'النظام مفعّل' : 'النظام معطّل'}
-                </p>
-                <p className="text-xs text-muted mt-1">
-                  {settings.is_enabled ? 'يمكنك إرسال الرسائل' : 'تم الإيقاف من الإدارة'}
-                </p>
-              </div>
-
-              {/* الرسائل المرسلة اليوم */}
-              <div className="rounded-xl border-2 border-blue-200 bg-blue-50 p-4 text-center">
-                <div className="text-3xl font-bold text-blue-600">{todayStats.sent_today}</div>
-                <p className="text-sm font-semibold text-slate-900 mt-2">رسائل اليوم</p>
-                <p className="text-xs text-muted mt-1">تم الإرسال</p>
-              </div>
-            </div>
-
-            {/* السطر الثاني: الرسائل المتبقية */}
-            <div className={clsx(
-              'rounded-xl border-2 p-4 text-center',
-              todayStats.remaining > 0 ? 'border-teal-200 bg-teal-50' : 'border-amber-200 bg-amber-50'
-            )}>
-              <div className={clsx(
-                'text-3xl font-bold',
-                todayStats.remaining > 0 ? 'text-teal-600' : 'text-amber-600'
-              )}>
-                {todayStats.remaining}
-              </div>
-              <p className="text-sm font-semibold text-slate-900 mt-2">رسائل متبقية</p>
-              <p className="text-xs text-muted mt-1">
-                من أصل {settings.daily_limit_per_teacher} يومياً
-              </p>
-            </div>
+        {/* Compact Stats Row */}
+        <div className="flex divide-x divide-x-reverse divide-slate-100 rounded-2xl bg-white shadow-sm ring-1 ring-slate-900/5 mt-2">
+          <div className={clsx("flex flex-1 flex-col items-center justify-center py-4 px-2 transition-all hover:bg-slate-50/50 rounded-r-2xl", !settings.is_enabled && "bg-rose-50/50 opacity-90")}>
+            <p className="text-2xl mb-1">{settings.is_enabled ? '✅' : '🚫'}</p>
+            <p className="text-[10px] font-bold text-slate-700 sm:text-xs">{settings.is_enabled ? 'النظام مفعّل' : 'حساب معطّل'}</p>
+          </div>
+          <div className="flex flex-1 flex-col items-center justify-center py-4 px-2 transition-all hover:bg-slate-50/50">
+            <p className="text-2xl font-bold text-blue-600">{todayStats.sent_today}</p>
+            <p className="mt-0.5 text-[10px] font-bold text-slate-500 sm:text-xs">رسائل اليوم</p>
+          </div>
+          <div className="flex flex-1 flex-col items-center justify-center py-4 px-2 transition-all hover:bg-slate-50/50 rounded-l-2xl">
+            <p className={clsx("text-2xl font-bold", todayStats.remaining > 0 ? 'text-teal-600' : 'text-amber-600')}>{todayStats.remaining}</p>
+            <p className="mt-0.5 text-[10px] font-bold text-slate-500 sm:text-xs">رصيد متبقي</p>
           </div>
         </div>
 
@@ -621,30 +590,75 @@ export function TeacherMessagesPage() {
               <p className="text-sm text-muted mt-2">يرجى التواصل مع الإدارة</p>
             </div>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {teacherClasses.map((classItem) => (
-                <button
-                  key={classItem.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedClass(classItem)
-                    setSelectedStudents([])
-                  }}
-                  className={clsx(
-                    'rounded-2xl border-2 p-4 text-right transition hover:border-teal-300',
-                    selectedClass?.id === classItem.id
-                      ? 'border-teal-500 bg-teal-50'
-                      : 'border-slate-200 bg-white'
-                  )}
-                >
-                  <div className="space-y-1">
-                    <p className="font-bold text-slate-900">
-                      {classItem.grade} - {classItem.class_name}
-                    </p>
-                    <p className="text-sm text-muted">{classItem.subject_name}</p>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsClassDropdownOpen(true)}
+                className={clsx(
+                  "flex w-full items-center justify-between rounded-2xl border-2 bg-white px-5 py-4 text-right shadow-sm transition-all focus:outline-none focus:ring-4 focus:ring-teal-500/10",
+                  isClassDropdownOpen ? "border-teal-500" : "border-slate-200 hover:border-teal-300"
+                )}
+              >
+                {selectedClass ? (
+                  <div className="flex flex-col items-start gap-1">
+                    <span className="text-base font-bold text-slate-900">
+                      {selectedClass.grade} - {selectedClass.class_name}
+                    </span>
+                    <span className="text-xs font-semibold text-teal-600 rounded-md bg-teal-50 px-2 py-0.5 border border-teal-100">
+                      {selectedClass.subject_name}
+                    </span>
                   </div>
-                </button>
-              ))}
+                ) : (
+                  <span className="text-base font-bold text-slate-500">-- الرجاء اختيار الفصل --</span>
+                )}
+                <i className={clsx("bi bi-chevron-down text-lg text-slate-400 transition-transform duration-300", isClassDropdownOpen && "rotate-180")}></i>
+              </button>
+
+              {isClassDropdownOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                  <div
+                    className="absolute inset-0"
+                    onClick={() => setIsClassDropdownOpen(false)}
+                  />
+                  <div className="relative w-full max-w-sm max-h-[70vh] flex flex-col rounded-3xl bg-white shadow-2xl animate-in zoom-in-95 duration-200">
+                    <div className="border-b border-slate-100 p-4 shrink-0 text-center">
+                      <h3 className="font-bold text-slate-900">اختر الفصل</h3>
+                    </div>
+                    <div className="p-2 overflow-y-auto overscroll-contain">
+                      {teacherClasses.map((classItem) => (
+                        <button
+                          key={classItem.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedClass(classItem);
+                            setSelectedStudents([]);
+                            setIsClassDropdownOpen(false);
+                          }}
+                          className={clsx(
+                            "flex w-full flex-col items-start rounded-xl px-4 py-3 text-right transition-colors active:bg-slate-100",
+                            selectedClass?.id === classItem.id ? "bg-teal-50" : ""
+                          )}
+                        >
+                          <span className={clsx("font-bold", selectedClass?.id === classItem.id ? "text-teal-900" : "text-slate-900")}>
+                            {classItem.grade} - {classItem.class_name}
+                          </span>
+                          <span className={clsx("text-xs font-semibold mt-1", selectedClass?.id === classItem.id ? "text-teal-600" : "text-slate-500")}>
+                            {classItem.subject_name}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="p-3 shrink-0">
+                      <button
+                        onClick={() => setIsClassDropdownOpen(false)}
+                        className="w-full rounded-xl bg-slate-100 py-3 font-semibold text-slate-700 hover:bg-slate-200 transition-colors"
+                      >
+                        إلغاء
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -689,21 +703,21 @@ export function TeacherMessagesPage() {
                   <label
                     key={student.id}
                     className={clsx(
-                      'rounded-2xl border-2 p-4 text-right transition cursor-pointer hover:border-teal-300',
+                      'rounded-xl border-2 py-2.5 px-3 text-right transition cursor-pointer hover:border-teal-300',
                       selectedStudents.includes(student.id)
                         ? 'border-teal-500 bg-teal-50'
                         : 'border-slate-200 bg-white'
                     )}
                   >
-                    <div className="flex items-start gap-3">
+                    <div className="flex items-center gap-3">
                       <input
                         type="checkbox"
                         checked={selectedStudents.includes(student.id)}
                         onChange={() => handleStudentToggle(student.id)}
-                        className="mt-1 h-5 w-5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                        className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                       />
                       <div className="flex-1">
-                        <p className="font-bold text-slate-900">{student.name}</p>
+                        <p className="font-bold text-slate-900 text-sm">{student.name}</p>
                       </div>
                     </div>
                   </label>
@@ -732,11 +746,11 @@ export function TeacherMessagesPage() {
         )}
 
         {selectedClass && selectedStudents.length > 0 && !selectedTemplate && !messageHint ? (
-          <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:hidden">
+          <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[calc(env(safe-area-inset-bottom)+5rem)] sm:hidden">
             <button
               type="button"
               onClick={handleGoToTemplates}
-              className="pointer-events-auto inline-flex w-full max-w-sm items-center justify-center gap-2 rounded-full bg-teal-600 px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-teal-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500"
+              className="pointer-events-auto inline-flex w-full max-w-sm items-center justify-center gap-2 rounded-full bg-teal-600 px-6 py-4 text-[15px] font-bold text-white shadow-xl shadow-teal-900/20 transition-all hover:bg-teal-700 hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500"
             >
               التالي - اختيار نوع الرسالة
             </button>
