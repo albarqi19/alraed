@@ -255,7 +255,6 @@ function TopicInput({
   targetWeek: number
 }) {
   const [open, setOpen] = useState(false)
-  const targetRef = useRef<HTMLDivElement>(null)
 
   if (!allTopics.length) {
     // لا يوجد توزيع → حقل كتابة عادي
