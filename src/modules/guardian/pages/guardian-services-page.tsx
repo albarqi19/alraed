@@ -14,6 +14,7 @@ import {
     Trash2,
     Send,
     Bell,
+    BookOpenCheck,
 } from 'lucide-react'
 import { useGuardianContext } from '../context/guardian-context'
 import {
@@ -22,6 +23,7 @@ import {
     useGuardianBehaviorQuery,
     useGuardianAbsencesQuery,
     useGuardianExcuseSubmissionMutation,
+    useGuardianLessonPlansQuery,
 } from '../hooks'
 import type { GuardianAbsenceRecord, GuardianSubmitExcusePayload } from '../types'
 
@@ -75,9 +77,17 @@ const SERVICES: ServiceItem[] = [
         color: 'text-rose-600',
         bgColor: 'bg-rose-100',
     },
+    {
+        id: 'lesson-plans',
+        title: 'الخطط الأسبوعية',
+        description: 'خطط الدروس المعتمدة',
+        icon: BookOpenCheck,
+        color: 'text-cyan-600',
+        bgColor: 'bg-cyan-100',
+    },
 ]
 
-type ServiceSheetType = 'leave-request' | 'auto-call' | 'points' | 'behavior' | 'attendance' | null
+type ServiceSheetType = 'leave-request' | 'auto-call' | 'points' | 'behavior' | 'attendance' | 'lesson-plans' | null
 
 // ============ Animated Alert for Absence Excuses ============
 function AbsenceExcuseAlert({
@@ -273,6 +283,7 @@ export function GuardianServicesPage() {
             <PointsSheet isOpen={activeSheet === 'points'} onClose={() => setActiveSheet(null)} />
             <BehaviorSheet isOpen={activeSheet === 'behavior'} onClose={() => setActiveSheet(null)} />
             <AttendanceSheet isOpen={activeSheet === 'attendance'} onClose={() => setActiveSheet(null)} />
+            <LessonPlansSheet isOpen={activeSheet === 'lesson-plans'} onClose={() => setActiveSheet(null)} />
         </div>
     )
 }
@@ -1091,5 +1102,109 @@ function StatusBadge({ status }: { status: string }) {
         <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${styles[status] ?? 'bg-slate-100 text-slate-600'}`}>
             {labels[status] ?? status}
         </span>
+    )
+}
+
+// ============ Lesson Plans Sheet ============
+
+function LessonPlansSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+    const { currentNationalId } = useGuardianContext()
+    const [selectedWeekId, setSelectedWeekId] = useState<number | undefined>()
+    const { data, isLoading } = useGuardianLessonPlansQuery(currentNationalId, selectedWeekId)
+
+    if (!isOpen) return null
+
+    const plans = data?.plans ?? []
+    const weeks = data?.weeks ?? []
+    const currentWeek = data?.week
+
+    return (
+        <BottomSheet title="الخطط الأسبوعية" onClose={onClose}>
+            <div className="space-y-4">
+                {/* Week Selector */}
+                {weeks.length > 0 && (
+                    <div className="flex gap-2 overflow-x-auto pb-1">
+                        {weeks.map((week) => (
+                            <button
+                                key={week.id}
+                                type="button"
+                                onClick={() => setSelectedWeekId(week.id)}
+                                className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                                    (selectedWeekId ?? currentWeek?.id) === week.id
+                                        ? 'bg-cyan-600 text-white'
+                                        : week.is_current
+                                          ? 'bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200'
+                                          : 'bg-white text-slate-600 ring-1 ring-slate-200'
+                                }`}
+                            >
+                                أسبوع {week.week_number}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
+                {/* Student Info */}
+                {data?.student && (
+                    <div className="rounded-xl bg-cyan-50 p-3 text-center">
+                        <p className="text-sm font-medium text-cyan-800">{data.student.name}</p>
+                        <p className="text-xs text-cyan-600">{data.student.grade}</p>
+                    </div>
+                )}
+
+                {isLoading ? (
+                    <div className="flex justify-center py-8">
+                        <div className="h-8 w-8 animate-spin rounded-full border-4 border-cyan-500/30 border-t-cyan-500" />
+                    </div>
+                ) : plans.length === 0 ? (
+                    <div className="py-8 text-center">
+                        <BookOpenCheck className="mx-auto h-10 w-10 text-slate-300" />
+                        <p className="mt-3 text-sm text-slate-500">لا توجد خطط معتمدة لهذا الأسبوع</p>
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        {plans.map((plan) => (
+                            <div key={plan.id} className="rounded-xl border border-slate-200 bg-white">
+                                {/* Subject Header */}
+                                <div className="flex items-center gap-2 border-b px-4 py-3">
+                                    <BookOpenCheck className="h-4 w-4 text-cyan-600" />
+                                    <span className="text-sm font-bold text-slate-900">{plan.subject_name}</span>
+                                    <span className="text-[10px] text-muted">({plan.teacher_name})</span>
+                                </div>
+                                {/* Sessions */}
+                                <div className="divide-y divide-slate-100">
+                                    {plan.sessions.map((session) => (
+                                        <div key={session.session_number} className="px-4 py-2.5">
+                                            <div className="flex items-center gap-2">
+                                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-cyan-100 text-[10px] font-bold text-cyan-700">
+                                                    {session.session_number}
+                                                </span>
+                                                <span className="text-xs font-medium text-slate-800">
+                                                    {session.topic}
+                                                </span>
+                                            </div>
+                                            {session.lesson_title && (
+                                                <p className="mt-1 mr-7 text-[11px] text-slate-600">
+                                                    {session.lesson_title}
+                                                </p>
+                                            )}
+                                            {session.objectives && (
+                                                <p className="mt-0.5 mr-7 text-[11px] text-slate-500">
+                                                    <span className="font-medium">الأهداف:</span> {session.objectives}
+                                                </p>
+                                            )}
+                                            {session.homework && (
+                                                <p className="mt-0.5 mr-7 text-[11px] text-cyan-700 font-medium">
+                                                    الواجب: {session.homework}
+                                                </p>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </BottomSheet>
     )
 }

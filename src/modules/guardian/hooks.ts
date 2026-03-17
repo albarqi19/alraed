@@ -180,6 +180,7 @@ export function useGuardianBehaviorQuery(nationalId: string | null) {
 import {
   fetchGuardianAbsences,
   submitGuardianExcuse,
+  fetchGuardianLessonPlans,
 } from './api'
 import type {
   GuardianAbsencesResponse,
@@ -209,6 +210,17 @@ export function useGuardianExcuseSubmissionMutation() {
     onError: (error) => {
       toast({ type: 'error', title: getErrorMessage(error, 'تعذر تقديم العذر') })
     },
+  })
+}
+
+// ═══════════ الخطط الأسبوعية ═══════════
+
+export function useGuardianLessonPlansQuery(nationalId: string | null, weekId?: number) {
+  return useQuery({
+    queryKey: ['guardian', 'lesson-plans', nationalId, weekId],
+    queryFn: () => fetchGuardianLessonPlans(nationalId!, weekId),
+    enabled: !!nationalId,
+    staleTime: 60 * 1000,
   })
 }
 

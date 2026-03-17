@@ -99,6 +99,7 @@ import { ReferralDetailPage } from '@/modules/teacher/pages/referral-detail-page
 import { TeacherCoverageRequestPage } from '@/modules/teacher/pages/teacher-coverage-request-page'
 import { TeacherCoverageIncomingPage } from '@/modules/teacher/pages/teacher-coverage-incoming-page'
 import { TeacherSkillsPage } from '@/modules/teacher/pages/teacher-skills-page'
+import { TeacherLessonPlansPage } from '@/modules/teacher/pages/teacher-lesson-plans-page'
 import { AdminReferralsPage } from '@/modules/admin/pages/admin-referrals-page'
 import { AdminReferralDetailPage } from '@/modules/admin/pages/admin-referral-detail-page'
 import { AdminParentRepliesPage } from '@/modules/admin/pages/admin-parent-replies-page'
@@ -127,6 +128,7 @@ import { AdminBarcodeSettingsPage } from '@/modules/admin/pages/admin-barcode-se
 import { AdminBarcodePrintPage } from '@/modules/admin/pages/admin-barcode-print-page'
 import { AdminPeriodAttendancePage } from '@/modules/admin/pages/admin-period-attendance-page'
 import AdminRemoteAttendancePage from '@/modules/admin/pages/admin-remote-attendance-page'
+import { AdminLessonPlansPage } from '@/modules/admin/pages/admin-lesson-plans-page'
 import { NotebookWorkspacePage } from '@/modules/notebook/pages/notebook-workspace-page'
 import { GuideViewerPage } from '@/modules/notebook/pages/guide-viewer-page'
 import { PrivacyPolicyPage } from '@/modules/core/pages/privacy-policy-page'
@@ -202,6 +204,7 @@ const appRoutes = [
           { path: 'coverage-request', element: <TeacherCoverageRequestPage /> },
           { path: 'coverage-incoming', element: <TeacherCoverageIncomingPage /> },
           { path: 'skills', element: <TeacherSkillsPage /> },
+          { path: 'lesson-plans', element: <TeacherLessonPlansPage /> },
           { path: 'sessions/:sessionId', element: <TeacherSessionAttendancePage /> },
         ],
       },
@@ -250,6 +253,7 @@ const appRoutes = [
           { path: 'barcode-print', element: <AdminBarcodePrintPage /> },
           { path: 'period-attendance', element: <AdminPeriodAttendancePage /> },
           { path: 'remote-attendance', element: <AdminRemoteAttendancePage /> },
+          { path: 'lesson-plans', element: <AdminLessonPlansPage /> },
           { path: 'behavior', element: <AdminBehaviorPage /> },
           { path: 'behavior/:violationId', element: <AdminBehaviorDetailPage /> },
           { path: 'behavior/plans', element: <AdminBehaviorPlansPage /> },

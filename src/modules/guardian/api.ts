@@ -255,6 +255,45 @@ export async function fetchGuardianAbsences(nationalId: string): Promise<Guardia
   return unwrap(data, 'تعذر تحميل سجل الغياب')
 }
 
+// ═══════════ الخطط الأسبوعية ═══════════
+
+export interface GuardianLessonPlanSession {
+  session_number: number
+  topic: string
+  lesson_title?: string
+  objectives?: string
+  homework?: string
+}
+
+export interface GuardianLessonPlan {
+  id: number
+  subject_name: string
+  teacher_name: string
+  sessions: GuardianLessonPlanSession[]
+  week_number: number
+}
+
+export interface GuardianLessonPlansData {
+  plans: GuardianLessonPlan[]
+  week: { id: number; week_number: number; date_range: string } | null
+  weeks: Array<{ id: number; week_number: number; date_range: string; is_current: boolean }>
+  student: { name: string; grade: string }
+}
+
+export async function fetchGuardianLessonPlans(
+  nationalId: string,
+  weekId?: number,
+): Promise<GuardianLessonPlansData> {
+  const params: Record<string, string | number> = { national_id: nationalId }
+  if (weekId) params.week_id = weekId
+
+  const { data } = await apiClient.get<ApiResponse<GuardianLessonPlansData>>(
+    '/public/guardian/lesson-plans',
+    { params },
+  )
+  return unwrap(data, 'تعذر تحميل الخطط الأسبوعية')
+}
+
 export async function submitGuardianExcuse(payload: GuardianSubmitExcusePayload): Promise<GuardianSubmitExcuseResponse> {
   const formData = new FormData()
   formData.append('national_id', payload.national_id)

@@ -96,6 +96,7 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
       { to: '/admin/teacher-preparation', label: 'تحضير مدرستي', icon: ClipboardPen, permission: 'admin.teacher-preparation' },
       { to: '/admin/madrasati-report', label: 'تقرير مدرستي', icon: BarChart3, permission: 'admin.madrasati-report' },
       { to: '/admin/remote-attendance', label: 'متابعة الدوام عن بعد', icon: Laptop, permission: 'admin.remote-attendance' },
+      { to: '/admin/lesson-plans', label: 'الخطط الأسبوعية', icon: BookOpenCheck, permission: 'admin.lesson-plans' },
     ],
   },
   {
