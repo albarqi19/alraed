@@ -5,12 +5,14 @@ import { useWeeksSummary, useWeekTeachers, useApprovePlanMutation, useApproveAll
 import type { WeekSummary, TeacherWeekPlan } from '../lesson-plans/api'
 
 const STATUS_COLORS: Record<string, string> = {
+  not_submitted: 'bg-slate-100 text-slate-400',
   draft: 'bg-gray-100 text-gray-600',
   teacher_approved: 'bg-amber-100 text-amber-700',
   admin_approved: 'bg-green-100 text-green-700',
   rejected: 'bg-red-100 text-red-700',
 }
 const STATUS_LABELS: Record<string, string> = {
+  not_submitted: 'لم تُقدم',
   draft: 'مسودة',
   teacher_approved: 'بانتظار',
   admin_approved: 'معتمد',
@@ -234,13 +236,14 @@ function TeacherRow({
 }) {
   const [expanded, setExpanded] = useState(false)
 
-  const allApproved = teacher.approved_count === teacher.total_plans
+  const allApproved = teacher.submitted_count > 0 && teacher.approved_count === teacher.total_subjects
   const hasPending = teacher.pending_count > 0
+  const noneSubmitted = teacher.submitted_count === 0
 
   return (
     <div className={clsx(
       'rounded-xl border transition-all',
-      allApproved ? 'border-green-200 bg-green-50/30' : 'border-slate-200 bg-white',
+      allApproved ? 'border-green-200 bg-green-50/30' : noneSubmitted ? 'border-slate-200 bg-slate-50/30' : 'border-slate-200 bg-white',
     )}>
       {/* المعلم */}
       <button
@@ -251,9 +254,9 @@ function TeacherRow({
         {/* أيقونة الحالة */}
         <div className={clsx(
           'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold',
-          allApproved ? 'bg-green-100 text-green-600' : hasPending ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-500',
+          allApproved ? 'bg-green-100 text-green-600' : hasPending ? 'bg-amber-100 text-amber-600' : noneSubmitted ? 'bg-slate-100 text-slate-400' : 'bg-slate-100 text-slate-500',
         )}>
-          {allApproved ? '✓' : teacher.total_plans}
+          {allApproved ? '✓' : teacher.total_subjects}
         </div>
 
         <div className="min-w-0 flex-1 text-right">
@@ -271,8 +274,8 @@ function TeacherRow({
               onClick={(e) => {
                 e.stopPropagation()
                 teacher.plans
-                  .filter((p) => p.status === 'teacher_approved')
-                  .forEach((p) => onApprove(p.id))
+                  .filter((p) => p.status === 'teacher_approved' && p.id)
+                  .forEach((p) => onApprove(p.id!))
               }}
               disabled={isApproving}
               className="rounded-lg bg-green-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-green-700 disabled:opacity-50"
@@ -282,9 +285,9 @@ function TeacherRow({
           )}
           <span className={clsx(
             'rounded-full px-2 py-0.5 text-[10px] font-medium',
-            allApproved ? 'bg-green-100 text-green-700' : hasPending ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600',
+            allApproved ? 'bg-green-100 text-green-700' : noneSubmitted ? 'bg-slate-100 text-slate-400' : hasPending ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600',
           )}>
-            {allApproved ? 'معتمد' : `${teacher.approved_count}/${teacher.total_plans}`}
+            {allApproved ? 'معتمد' : noneSubmitted ? 'لم تُقدم' : `${teacher.submitted_count}/${teacher.total_subjects}`}
           </span>
           <ChevronDown className={clsx('h-4 w-4 text-slate-400 transition-transform', expanded && 'rotate-180')} />
         </div>
@@ -293,9 +296,9 @@ function TeacherRow({
       {/* تفاصيل الخطط */}
       {expanded && (
         <div className="border-t px-3.5 py-3 space-y-2">
-          {teacher.plans.map((plan) => (
-            <div key={plan.id} className="rounded-lg bg-slate-50 p-3">
-              <div className="flex items-center justify-between mb-2">
+          {teacher.plans.map((plan, idx) => (
+            <div key={plan.id ?? `ns-${idx}`} className="rounded-lg bg-slate-50 p-3">
+              <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-slate-800">{plan.subject_name}</span>
                   <span className="rounded bg-slate-200 px-1 py-0.5 text-[9px] text-slate-500">{plan.grade}</span>
@@ -304,17 +307,21 @@ function TeacherRow({
                   {STATUS_LABELS[plan.status]}
                 </span>
               </div>
-              {plan.sessions.map((s) => (
-                <div key={s.session_number} className="flex items-start gap-2 mt-1.5">
-                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-cyan-100 text-[9px] font-bold text-cyan-700 mt-0.5">
-                    {s.session_number}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-[11px] text-slate-700">{s.topic || '—'}</p>
-                    {s.homework && <p className="text-[10px] text-cyan-600">الواجب: {s.homework}</p>}
+              {plan.status === 'not_submitted' ? (
+                <p className="text-[11px] text-slate-400 mt-1">لم يقدم المعلم خطة لهذه المادة</p>
+              ) : (
+                plan.sessions.map((s) => (
+                  <div key={s.session_number} className="flex items-start gap-2 mt-1.5">
+                    <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-cyan-100 text-[9px] font-bold text-cyan-700 mt-0.5">
+                      {s.session_number}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-[11px] text-slate-700">{s.topic || '—'}</p>
+                      {s.homework && <p className="text-[10px] text-cyan-600">الواجب: {s.homework}</p>}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           ))}
         </div>

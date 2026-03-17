@@ -38,14 +38,16 @@ export interface TeacherWeekPlan {
   teacher_id: number
   teacher_name: string
   plans: Array<{
-    id: number
+    id: number | null
+    subject_id: number
     subject_name: string
     grade: string
-    status: string
+    status: string // 'not_submitted' | 'draft' | 'teacher_approved' | 'admin_approved' | 'rejected'
     sessions_count: number
     sessions: Array<{ session_number: number; topic: string; homework?: string }>
   }>
-  total_plans: number
+  total_subjects: number
+  submitted_count: number
   approved_count: number
   pending_count: number
 }
