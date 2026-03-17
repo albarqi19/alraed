@@ -17,7 +17,7 @@ function useAcademicWeeks() {
     queryFn: async () => {
       // إعادة استخدام نفس endpoint المعلم (بنفس الـ middleware)
       const { data } = await apiClient.get<
-        ApiResponse<Array<{ id: number; week_number: number; date_range: string; is_current: boolean }>>
+        ApiResponse<Array<{ id: number; week_number: number; start_date: string; date_range: string; is_current: boolean }>>
       >('/teacher/lesson-plans/weeks')
       if (!data.success) return []
       return data.data ?? []
