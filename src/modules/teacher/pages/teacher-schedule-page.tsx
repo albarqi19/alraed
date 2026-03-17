@@ -107,6 +107,7 @@ export function TeacherSchedulePage() {
 
   const [selectedDay, setSelectedDay] = useState<WeekDay>(WEEK_DAYS[0])
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const selectedDayRef = useRef<HTMLButtonElement>(null)
   const [showRightFog, setShowRightFog] = useState(false)
   const [showLeftFog, setShowLeftFog] = useState(false)
 
@@ -146,6 +147,17 @@ export function TeacherSchedulePage() {
       setSelectedDay(WEEK_DAYS[dayIndex])
     }
   }, [])
+
+  // تمرير شريط الأيام لإظهار اليوم المحدد في المنتصف
+  useEffect(() => {
+    if (selectedDayRef.current) {
+      selectedDayRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center',
+      })
+    }
+  }, [selectedDay])
 
   if (isLoading) {
     return (
@@ -234,6 +246,7 @@ export function TeacherSchedulePage() {
             return (
               <button
                 key={day}
+                ref={isSelected ? selectedDayRef : undefined}
                 onClick={() => setSelectedDay(day)}
                 className={clsx(
                   "relative flex min-w-[5.5rem] flex-1 flex-col items-center justify-center gap-1.5 rounded-xl px-2 py-3 transition-all duration-300",

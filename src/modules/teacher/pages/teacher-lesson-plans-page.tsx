@@ -14,11 +14,23 @@ export function TeacherLessonPlansPage() {
   const [selectedWeekId, setSelectedWeekId] = useState<number | undefined>()
   const [editorSubject, setEditorSubject] = useState<TeacherPlanSubject | null>(null)
 
-  // تحديد الأسبوع الحالي تلقائياً
+  // تحديد الأسبوع: الحالي → أو القادم → أو الأخير الماضي
   useEffect(() => {
     if (weeks?.length && !selectedWeekId) {
-      const currentWeek = weeks.find((w) => w.is_current)
-      setSelectedWeekId(currentWeek?.id ?? weeks[0]?.id)
+      const current = weeks.find((w) => w.is_current)
+      if (current) {
+        setSelectedWeekId(current.id)
+        return
+      }
+      // لا يوجد أسبوع حالي (إجازة) → أقرب أسبوع مستقبلي
+      const today = new Date().toISOString().slice(0, 10)
+      const upcoming = weeks.find((w) => w.start_date > today)
+      if (upcoming) {
+        setSelectedWeekId(upcoming.id)
+        return
+      }
+      // كل الأسابيع ماضية → آخر أسبوع
+      setSelectedWeekId(weeks[weeks.length - 1]?.id)
     }
   }, [weeks, selectedWeekId])
 

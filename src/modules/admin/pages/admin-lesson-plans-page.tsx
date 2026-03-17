@@ -39,7 +39,11 @@ export function AdminLessonPlansPage() {
   useEffect(() => {
     if (weeks?.length && !selectedWeekId) {
       const current = weeks.find((w) => w.is_current)
-      setSelectedWeekId(current?.id ?? weeks[0]?.id)
+      if (current) { setSelectedWeekId(current.id); return }
+      const today = new Date().toISOString().slice(0, 10)
+      const upcoming = weeks.find((w) => w.start_date > today)
+      if (upcoming) { setSelectedWeekId(upcoming.id); return }
+      setSelectedWeekId(weeks[weeks.length - 1]?.id)
     }
   }, [weeks, selectedWeekId])
 
