@@ -74,16 +74,6 @@ const SERVICES: ServiceCard[] = [
     to: '/teacher/skills',
   },
   {
-    id: 'lesson-plans',
-    title: 'الخطط الأسبوعية',
-    description: 'إعداد واعتماد خطط الدروس',
-    icon: 'bi-journal-text',
-    iconColor: 'text-cyan-600',
-    iconBg: 'bg-cyan-100/80',
-    accentBar: 'from-cyan-400/50 via-cyan-200/40 to-transparent',
-    to: '/teacher/lesson-plans',
-  },
-  {
     id: 'reports',
     title: 'التقارير',
     description: 'تقارير الحضور والأداء',

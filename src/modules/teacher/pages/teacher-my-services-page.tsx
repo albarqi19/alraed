@@ -22,6 +22,16 @@ const MY_SERVICES: ServiceCard[] = [
     accentBar: 'from-teal-400/50 via-teal-200/40 to-transparent',
     to: '/teacher/delay-excuses',
   },
+  {
+    id: 'lesson-plans',
+    title: 'الخطط الأسبوعية',
+    description: 'إعداد واعتماد خطط الدروس',
+    icon: 'bi-journal-text',
+    iconColor: 'text-cyan-600',
+    iconBg: 'bg-cyan-100/80',
+    accentBar: 'from-cyan-400/50 via-cyan-200/40 to-transparent',
+    to: '/teacher/lesson-plans',
+  },
 ]
 
 export function TeacherMyServicesPage() {

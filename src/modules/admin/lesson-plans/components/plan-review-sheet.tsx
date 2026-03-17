@@ -29,7 +29,7 @@ export function PlanReviewSheet({ plan, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+    <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center">
       <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
       <div className="relative z-10 flex max-h-[90vh] w-full max-w-lg flex-col rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl">

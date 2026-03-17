@@ -82,7 +82,7 @@ export function PlanEditorSheet({ subject, weekId, existingPlan, onClose }: Prop
   const isSaving = storeMutation.isPending || approveMutation.isPending
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+    <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center">
       {/* Overlay */}
       <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
@@ -204,7 +204,7 @@ export function PlanEditorSheet({ subject, weekId, existingPlan, onClose }: Prop
 
         {/* Footer Actions */}
         {isEditable && sessions.length > 0 && (
-          <div className="flex gap-2 border-t px-5 py-3">
+          <div className="flex gap-2 border-t px-5 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
             <button
               type="button"
               onClick={handleSave}
