@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import clsx from 'classnames'
-import { X, Save, CheckCircle2, Loader2, Plus, Trash2 } from 'lucide-react'
+import { X, Save, CheckCircle2, Loader2, Plus, Trash2, ChevronDown } from 'lucide-react'
 import { useSuggestedTopics, useStorePlanMutation, useApprovePlanMutation } from '../hooks'
 import type { WeeklyLessonPlan, LessonPlanSession, TeacherPlanSubject } from '../types'
 import { STATUS_LABELS, STATUS_COLORS } from '../types'
@@ -44,7 +44,6 @@ export function PlanEditorSheet({ subject, weekId, existingPlan, onClose }: Prop
         })),
       )
     } else {
-      // لا يوجد توزيع → ننشئ حصص فارغة بناءً على عدد الحصص أو 1 افتراضي
       const count = subject.sessions_per_week || suggested?.sessions_per_week || 1
       setSessions(Array.from({ length: count }, (_, i) => makeEmptySession(i + 1)))
     }
@@ -83,6 +82,10 @@ export function PlanEditorSheet({ subject, weekId, existingPlan, onClose }: Prop
   }
 
   const isSaving = storeMutation.isPending || approveMutation.isPending
+
+  // قائمة الدروس من التوزيع مجمعة بالأسبوع
+  const allTopics = suggested?.all_topics ?? []
+  const hasTopics = allTopics.length > 0
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center">
@@ -147,20 +150,14 @@ export function PlanEditorSheet({ subject, weekId, existingPlan, onClose }: Prop
                     )}
                   </div>
 
-                  {/* عنوان الدرس */}
+                  {/* عنوان الدرس: dropdown + كتابة حرة */}
                   <div>
                     <label className="mb-1 block text-xs font-medium text-slate-600">عنوان الدرس</label>
-                    <input
-                      type="text"
+                    <TopicInput
                       value={session.topic}
-                      onChange={(e) => updateSession(index, 'topic', e.target.value)}
+                      onChange={(v) => updateSession(index, 'topic', v)}
                       disabled={!isEditable}
-                      placeholder="عنوان الدرس"
-                      className={clsx(
-                        'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition',
-                        'focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20',
-                        'disabled:bg-slate-100 disabled:text-slate-500',
-                      )}
+                      allTopics={allTopics}
                     />
                   </div>
 
@@ -195,7 +192,7 @@ export function PlanEditorSheet({ subject, weekId, existingPlan, onClose }: Prop
                 </button>
               )}
 
-              {suggested?.is_auto_suggested && !existingPlan && (
+              {suggested?.is_auto_suggested && !existingPlan && hasTopics && (
                 <p className="text-center text-[11px] text-cyan-600">
                   تم اقتراح المواضيع تلقائياً بناءً على توزيع المنهج
                 </p>
@@ -231,6 +228,119 @@ export function PlanEditorSheet({ subject, weekId, existingPlan, onClose }: Prop
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+// ═══════════ حقل اختيار الدرس (dropdown + كتابة حرة) ═══════════
+
+function TopicInput({
+  value,
+  onChange,
+  disabled,
+  allTopics,
+}: {
+  value: string
+  onChange: (v: string) => void
+  disabled?: boolean
+  allTopics: Array<{ week_number: number; session_number: number; topic: string }>
+}) {
+  const [open, setOpen] = useState(false)
+
+  if (!allTopics.length) {
+    // لا يوجد توزيع → حقل كتابة عادي
+    return (
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        placeholder="اكتب عنوان الدرس"
+        className={clsx(
+          'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition',
+          'focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20',
+          'disabled:bg-slate-100 disabled:text-slate-500',
+        )}
+      />
+    )
+  }
+
+  // تجميع المواضيع بالأسبوع
+  const grouped: Record<number, typeof allTopics> = {}
+  allTopics.forEach((t) => {
+    if (!grouped[t.week_number]) grouped[t.week_number] = []
+    grouped[t.week_number].push(t)
+  })
+
+  return (
+    <div className="relative">
+      {/* الحقل: يعرض القيمة الحالية + زر فتح القائمة */}
+      <div className="flex gap-1">
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+          placeholder="اختر أو اكتب عنوان الدرس"
+          className={clsx(
+            'min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition',
+            'focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20',
+            'disabled:bg-slate-100 disabled:text-slate-500',
+          )}
+        />
+        {!disabled && (
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            className={clsx(
+              'flex h-[38px] w-9 shrink-0 items-center justify-center rounded-lg border transition',
+              open
+                ? 'border-cyan-400 bg-cyan-50 text-cyan-600'
+                : 'border-slate-200 bg-white text-slate-400 hover:bg-slate-50',
+            )}
+          >
+            <ChevronDown className={clsx('h-4 w-4 transition-transform', open && 'rotate-180')} />
+          </button>
+        )}
+      </div>
+
+      {/* القائمة المنسدلة */}
+      {open && (
+        <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-52 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+          {Object.entries(grouped).map(([weekNum, topics]) => (
+            <div key={weekNum}>
+              <div className="sticky top-0 bg-slate-50 px-3 py-1.5 text-[10px] font-bold text-slate-500 border-b border-slate-100">
+                الأسبوع {weekNum}
+              </div>
+              {topics.map((t) => {
+                const isSelected = value === t.topic
+                return (
+                  <button
+                    key={`${t.week_number}-${t.session_number}`}
+                    type="button"
+                    onClick={() => {
+                      onChange(t.topic)
+                      setOpen(false)
+                    }}
+                    className={clsx(
+                      'flex w-full items-center gap-2 px-3 py-2 text-right text-xs transition',
+                      isSelected
+                        ? 'bg-cyan-50 text-cyan-700 font-medium'
+                        : 'text-slate-700 hover:bg-slate-50',
+                    )}
+                  >
+                    <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[9px] font-bold text-slate-500">
+                      {t.session_number}
+                    </span>
+                    <span className="line-clamp-1">{t.topic}</span>
+                    {isSelected && <span className="mr-auto text-cyan-500">✓</span>}
+                  </button>
+                )
+              })}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
