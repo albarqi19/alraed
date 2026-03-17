@@ -1,14 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useToast } from '@/shared/feedback/use-toast'
 import {
-  fetchLessonPlans,
-  fetchLessonPlanDetail,
+  fetchWeeksSummary,
+  fetchWeekTeachers,
   approveLessonPlan,
+  approveAllWeekPlans,
   rejectLessonPlan,
-  fetchLessonPlanStats,
-  fetchCurriculumDistributions,
-  fetchUnmappedSubjects,
-  mapSubjectCurriculum,
 } from './api'
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -16,50 +13,20 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback
 }
 
-export function useLessonPlans(params: {
-  teacher_id?: number
-  subject_id?: number
-  grade?: string
-  academic_week_id?: number
-  status?: string
-  page?: number
-}) {
+export function useWeeksSummary() {
   return useQuery({
-    queryKey: ['admin', 'lesson-plans', params],
-    queryFn: () => fetchLessonPlans(params),
+    queryKey: ['admin', 'lesson-plans', 'weeks-summary'],
+    queryFn: fetchWeeksSummary,
     staleTime: 30 * 1000,
   })
 }
 
-export function useLessonPlanDetail(id: number | undefined) {
+export function useWeekTeachers(weekId: number | undefined) {
   return useQuery({
-    queryKey: ['admin', 'lesson-plans', 'detail', id],
-    queryFn: () => fetchLessonPlanDetail(id!),
-    enabled: !!id,
-  })
-}
-
-export function useLessonPlanStats(weekId?: number) {
-  return useQuery({
-    queryKey: ['admin', 'lesson-plans', 'stats', weekId],
-    queryFn: () => fetchLessonPlanStats(weekId),
-    staleTime: 30 * 1000,
-  })
-}
-
-export function useCurriculumDistributions() {
-  return useQuery({
-    queryKey: ['admin', 'curriculum-distributions'],
-    queryFn: fetchCurriculumDistributions,
-    staleTime: 5 * 60 * 1000,
-  })
-}
-
-export function useUnmappedSubjects() {
-  return useQuery({
-    queryKey: ['admin', 'unmapped-subjects'],
-    queryFn: fetchUnmappedSubjects,
-    staleTime: 60 * 1000,
+    queryKey: ['admin', 'lesson-plans', 'week-teachers', weekId],
+    queryFn: () => fetchWeekTeachers(weekId!),
+    enabled: !!weekId,
+    staleTime: 15 * 1000,
   })
 }
 
@@ -79,6 +46,22 @@ export function useApprovePlanMutation() {
   })
 }
 
+export function useApproveAllMutation() {
+  const queryClient = useQueryClient()
+  const toast = useToast()
+
+  return useMutation({
+    mutationFn: (weekId: number) => approveAllWeekPlans(weekId),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'lesson-plans'] })
+      toast({ type: 'success', title: `تم اعتماد ${data.approved_count} خطة` })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر اعتماد الخطط') })
+    },
+  })
+}
+
 export function useRejectPlanMutation() {
   const queryClient = useQueryClient()
   const toast = useToast()
@@ -91,23 +74,6 @@ export function useRejectPlanMutation() {
     },
     onError: (error) => {
       toast({ type: 'error', title: getErrorMessage(error, 'تعذر رفض الخطة') })
-    },
-  })
-}
-
-export function useMapSubjectMutation() {
-  const queryClient = useQueryClient()
-  const toast = useToast()
-
-  return useMutation({
-    mutationFn: ({ subjectId, name }: { subjectId: number; name: string }) =>
-      mapSubjectCurriculum(subjectId, name),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'unmapped-subjects'] })
-      toast({ type: 'success', title: 'تم ربط المادة بالتوزيع' })
-    },
-    onError: (error) => {
-      toast({ type: 'error', title: getErrorMessage(error, 'تعذر ربط المادة') })
     },
   })
 }

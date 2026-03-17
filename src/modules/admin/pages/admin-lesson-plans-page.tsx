@@ -1,204 +1,324 @@
-import { useState, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import clsx from 'classnames'
-import { BookOpenCheck, Filter, ChevronLeft, Loader2 } from 'lucide-react'
-import { useLessonPlans, useLessonPlanStats } from '../lesson-plans/hooks'
-import { PlanReviewSheet } from '../lesson-plans/components/plan-review-sheet'
-import type { AdminWeeklyLessonPlan } from '../lesson-plans/types'
-import { STATUS_LABELS, STATUS_COLORS } from '../lesson-plans/types'
+import { BookOpenCheck, CheckCircle2, Loader2, X, ChevronDown } from 'lucide-react'
+import { useWeeksSummary, useWeekTeachers, useApprovePlanMutation, useApproveAllMutation } from '../lesson-plans/hooks'
+import type { WeekSummary, TeacherWeekPlan } from '../lesson-plans/api'
 
-// ═══════════ hooks for weeks ═══════════
-import { useQuery } from '@tanstack/react-query'
-import { apiClient } from '@/services/api/client'
-import type { ApiResponse } from '@/services/api/types'
-
-function useAcademicWeeks() {
-  return useQuery({
-    queryKey: ['admin', 'lesson-plans', 'weeks'],
-    queryFn: async () => {
-      // إعادة استخدام نفس endpoint المعلم (بنفس الـ middleware)
-      const { data } = await apiClient.get<
-        ApiResponse<Array<{ id: number; week_number: number; start_date: string; date_range: string; is_current: boolean }>>
-      >('/teacher/lesson-plans/weeks')
-      if (!data.success) return []
-      return data.data ?? []
-    },
-    staleTime: 10 * 60 * 1000,
-  })
+const STATUS_COLORS: Record<string, string> = {
+  draft: 'bg-gray-100 text-gray-600',
+  teacher_approved: 'bg-amber-100 text-amber-700',
+  admin_approved: 'bg-green-100 text-green-700',
+  rejected: 'bg-red-100 text-red-700',
+}
+const STATUS_LABELS: Record<string, string> = {
+  draft: 'مسودة',
+  teacher_approved: 'بانتظار',
+  admin_approved: 'معتمد',
+  rejected: 'مرفوض',
 }
 
-// ═══════════ الصفحة الرئيسية ═══════════
-
 export function AdminLessonPlansPage() {
+  const { data: weeks, isLoading } = useWeeksSummary()
   const [selectedWeekId, setSelectedWeekId] = useState<number | undefined>()
-  const [statusFilter, setStatusFilter] = useState<string>('')
-  const [reviewPlan, setReviewPlan] = useState<AdminWeeklyLessonPlan | null>(null)
-  const [page, setPage] = useState(1)
 
-  const { data: weeks } = useAcademicWeeks()
+  // ترتيب: الحالي/المستقبلي أولاً، ثم الماضي بالعكس
+  const sortedWeeks = useMemo(() => {
+    if (!weeks?.length) return []
+    const today = new Date().toISOString().slice(0, 10)
 
-  useEffect(() => {
-    if (weeks?.length && !selectedWeekId) {
-      const current = weeks.find((w) => w.is_current)
-      if (current) { setSelectedWeekId(current.id); return }
-      const today = new Date().toISOString().slice(0, 10)
-      const upcoming = weeks.find((w) => w.start_date > today)
-      if (upcoming) { setSelectedWeekId(upcoming.id); return }
-      setSelectedWeekId(weeks[weeks.length - 1]?.id)
-    }
-  }, [weeks, selectedWeekId])
+    const upcoming = weeks.filter((w) => w.end_date >= today).sort((a, b) => a.week_number - b.week_number)
+    const past = weeks.filter((w) => w.end_date < today).sort((a, b) => b.week_number - a.week_number)
 
-  const { data: stats } = useLessonPlanStats(selectedWeekId)
-  const { data: plansData, isLoading } = useLessonPlans({
-    academic_week_id: selectedWeekId,
-    status: statusFilter || undefined,
-    page,
-  })
-
-  const plans = plansData?.data ?? []
-  const selectedWeek = weeks?.find((w) => w.id === selectedWeekId)
+    return [...upcoming, ...past]
+  }, [weeks])
 
   return (
     <section className="space-y-5">
-      {/* Header */}
       <header>
         <h1 className="text-xl font-bold text-slate-900">الخطط الأسبوعية</h1>
-        <p className="text-sm text-muted">مراجعة واعتماد خطط المعلمين</p>
+        <p className="text-sm text-muted">متابعة واعتماد خطط المعلمين</p>
       </header>
 
-      {/* Week Selector */}
-      <div className="flex items-center gap-3 overflow-x-auto pb-1">
-        {weeks?.map((week) => (
-          <button
-            key={week.id}
-            type="button"
-            onClick={() => { setSelectedWeekId(week.id); setPage(1) }}
-            className={clsx(
-              'shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition',
-              week.id === selectedWeekId
-                ? 'bg-cyan-600 text-white'
-                : week.is_current
-                  ? 'bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200'
-                  : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50',
-            )}
-          >
-            أسبوع {week.week_number}
-          </button>
-        ))}
-      </div>
-
-      {/* Stats Cards */}
-      {stats && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatCard label="الإجمالي" value={stats.total} color="bg-slate-100 text-slate-700" />
-          <StatCard label="بانتظار الاعتماد" value={stats.pending_approval} color="bg-amber-100 text-amber-700" />
-          <StatCard label="معتمد" value={stats.approved} color="bg-green-100 text-green-700" />
-          <StatCard label="مرفوض" value={stats.rejected} color="bg-red-100 text-red-700" />
-        </div>
-      )}
-
-      {/* Filters */}
-      <div className="flex items-center gap-2">
-        <Filter className="h-4 w-4 text-slate-400" />
-        <select
-          value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); setPage(1) }}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 outline-none"
-        >
-          <option value="">جميع الحالات</option>
-          <option value="draft">مسودة</option>
-          <option value="teacher_approved">بانتظار الاعتماد</option>
-          <option value="admin_approved">معتمد</option>
-          <option value="rejected">مرفوض</option>
-        </select>
-
-        {selectedWeek && (
-          <span className="text-xs text-muted">
-            {selectedWeek.date_range}
-          </span>
-        )}
-      </div>
-
-      {/* Plans List */}
       {isLoading ? (
-        <div className="flex justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-20 animate-pulse rounded-xl bg-slate-100" />
+          ))}
         </div>
-      ) : plans.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 py-10 text-center">
+      ) : sortedWeeks.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 py-12 text-center">
           <BookOpenCheck className="mx-auto h-10 w-10 text-slate-300" />
-          <p className="mt-3 text-sm text-slate-500">لا توجد خطط لهذا الأسبوع</p>
+          <p className="mt-3 text-sm text-slate-500">لا توجد أسابيع في الفصل الحالي</p>
         </div>
       ) : (
         <div className="space-y-2">
-          {plans.map((plan) => (
-            <button
-              key={plan.id}
-              type="button"
-              onClick={() => setReviewPlan(plan)}
-              className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 text-right transition hover:border-cyan-200 hover:shadow-md"
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-cyan-50">
-                <BookOpenCheck className="h-5 w-5 text-cyan-600" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-slate-900">{plan.subject?.name}</span>
-                  <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">
-                    {plan.grade}
-                  </span>
-                </div>
-                <div className="mt-0.5 flex items-center gap-2">
-                  <span className="text-xs text-muted">{plan.teacher?.name}</span>
-                  <span
-                    className={clsx(
-                      'rounded-full px-2 py-0.5 text-[10px] font-medium',
-                      STATUS_COLORS[plan.status],
-                    )}
-                  >
-                    {STATUS_LABELS[plan.status]}
-                  </span>
-                </div>
-              </div>
-              <ChevronLeft className="h-4 w-4 shrink-0 text-slate-300" />
-            </button>
+          {sortedWeeks.map((week) => (
+            <WeekCard
+              key={week.id}
+              week={week}
+              onOpen={() => setSelectedWeekId(week.id)}
+            />
           ))}
         </div>
       )}
 
-      {/* Pagination */}
-      {plansData && plansData.last_page > 1 && (
-        <div className="flex justify-center gap-1">
-          {Array.from({ length: plansData.last_page }, (_, i) => i + 1).map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => setPage(p)}
-              className={clsx(
-                'rounded-lg px-3 py-1 text-xs font-medium transition',
-                p === page ? 'bg-cyan-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
-              )}
-            >
-              {p}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Review Sheet */}
-      {reviewPlan && (
-        <PlanReviewSheet plan={reviewPlan} onClose={() => setReviewPlan(null)} />
+      {/* Modal */}
+      {selectedWeekId && (
+        <WeekDetailModal
+          weekId={selectedWeekId}
+          week={weeks?.find((w) => w.id === selectedWeekId)}
+          onClose={() => setSelectedWeekId(undefined)}
+        />
       )}
     </section>
   )
 }
 
-// ═══════════ بطاقة إحصائية ═══════════
+// ═══════════ بطاقة الأسبوع ═══════════
 
-function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
+function WeekCard({ week, onOpen }: { week: WeekSummary; onOpen: () => void }) {
+  const hasPlans = week.plans_count > 0
+  const allApproved = hasPlans && week.approved_count === week.plans_count
+  const hasPending = week.pending_count > 0
+
+  // لون الشريط الجانبي
+  const barColor = allApproved
+    ? 'bg-green-500'
+    : hasPending
+      ? 'bg-amber-500'
+      : hasPlans
+        ? 'bg-cyan-500'
+        : 'bg-slate-300'
+
   return (
-    <div className={clsx('rounded-xl p-3 text-center', color)}>
-      <p className="text-xl font-bold">{value}</p>
-      <p className="text-[11px]">{label}</p>
+    <button
+      type="button"
+      onClick={onOpen}
+      className={clsx(
+        'flex w-full items-center gap-3 rounded-xl border bg-white p-4 text-right transition-all',
+        'hover:shadow-md hover:border-cyan-200',
+        week.is_current && 'ring-2 ring-cyan-500/20',
+        week.is_past && 'opacity-75',
+      )}
+    >
+      {/* شريط جانبي ملون */}
+      <div className={clsx('h-12 w-1.5 shrink-0 rounded-full', barColor)} />
+
+      {/* المعلومات */}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold text-slate-900">الأسبوع {week.week_number}</span>
+          {week.is_current && (
+            <span className="rounded-full bg-cyan-100 px-1.5 py-0.5 text-[9px] font-bold text-cyan-700">الحالي</span>
+          )}
+        </div>
+        <p className="mt-0.5 text-[11px] text-muted">{week.date_range}</p>
+      </div>
+
+      {/* الإحصائيات */}
+      <div className="flex items-center gap-2 shrink-0">
+        {hasPlans ? (
+          <div className="flex items-center gap-1.5">
+            <span className={clsx(
+              'rounded-lg px-2 py-1 text-xs font-bold',
+              allApproved ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700',
+            )}>
+              {week.approved_count}/{week.plans_count}
+            </span>
+            {hasPending && (
+              <span className="rounded-lg bg-amber-100 px-2 py-1 text-xs font-bold text-amber-700">
+                {week.pending_count} بانتظار
+              </span>
+            )}
+          </div>
+        ) : (
+          <span className="text-[11px] text-slate-400">لا توجد خطط</span>
+        )}
+        <ChevronDown className="h-4 w-4 text-slate-300 -rotate-90 rtl:rotate-90" />
+      </div>
+    </button>
+  )
+}
+
+// ═══════════ نافذة تفاصيل الأسبوع ═══════════
+
+function WeekDetailModal({
+  weekId,
+  week,
+  onClose,
+}: {
+  weekId: number
+  week: WeekSummary | undefined
+  onClose: () => void
+}) {
+  const { data: teachers, isLoading } = useWeekTeachers(weekId)
+  const approveMutation = useApprovePlanMutation()
+  const approveAllMutation = useApproveAllMutation()
+
+  const pendingCount = teachers?.reduce((sum, t) => sum + t.pending_count, 0) ?? 0
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center">
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+
+      <div className="relative z-10 flex max-h-[90vh] w-full max-w-2xl flex-col rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b px-5 py-4">
+          <div>
+            <h2 className="text-base font-bold text-slate-900">
+              الأسبوع {week?.week_number}
+            </h2>
+            <p className="text-xs text-muted">{week?.date_range}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {pendingCount > 0 && (
+              <button
+                type="button"
+                onClick={() => approveAllMutation.mutate(weekId)}
+                disabled={approveAllMutation.isPending}
+                className="flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50"
+              >
+                {approveAllMutation.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                )}
+                اعتماد الجميع ({pendingCount})
+              </button>
+            )}
+            <button type="button" onClick={onClose} className="rounded-lg p-1.5 hover:bg-slate-100">
+              <X className="h-5 w-5 text-slate-400" />
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
+            </div>
+          ) : !teachers?.length ? (
+            <div className="py-10 text-center">
+              <BookOpenCheck className="mx-auto h-10 w-10 text-slate-300" />
+              <p className="mt-3 text-sm text-slate-500">لا توجد خطط مقدمة لهذا الأسبوع</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {teachers.map((teacher) => (
+                <TeacherRow
+                  key={teacher.teacher_id}
+                  teacher={teacher}
+                  onApprove={(planId) => approveMutation.mutate(planId)}
+                  isApproving={approveMutation.isPending}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ═══════════ صف المعلم ═══════════
+
+function TeacherRow({
+  teacher,
+  onApprove,
+  isApproving,
+}: {
+  teacher: TeacherWeekPlan
+  onApprove: (planId: number) => void
+  isApproving: boolean
+}) {
+  const [expanded, setExpanded] = useState(false)
+
+  const allApproved = teacher.approved_count === teacher.total_plans
+  const hasPending = teacher.pending_count > 0
+
+  return (
+    <div className={clsx(
+      'rounded-xl border transition-all',
+      allApproved ? 'border-green-200 bg-green-50/30' : 'border-slate-200 bg-white',
+    )}>
+      {/* المعلم */}
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center gap-3 p-3.5"
+      >
+        {/* أيقونة الحالة */}
+        <div className={clsx(
+          'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold',
+          allApproved ? 'bg-green-100 text-green-600' : hasPending ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-500',
+        )}>
+          {allApproved ? '✓' : teacher.total_plans}
+        </div>
+
+        <div className="min-w-0 flex-1 text-right">
+          <p className="text-sm font-semibold text-slate-900">{teacher.teacher_name}</p>
+          <p className="text-[11px] text-muted">
+            {teacher.plans.map((p) => p.subject_name).join(' • ')}
+          </p>
+        </div>
+
+        {/* حالة + زر اعتماد */}
+        <div className="flex items-center gap-2 shrink-0">
+          {hasPending && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                teacher.plans
+                  .filter((p) => p.status === 'teacher_approved')
+                  .forEach((p) => onApprove(p.id))
+              }}
+              disabled={isApproving}
+              className="rounded-lg bg-green-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-green-700 disabled:opacity-50"
+            >
+              اعتماد
+            </button>
+          )}
+          <span className={clsx(
+            'rounded-full px-2 py-0.5 text-[10px] font-medium',
+            allApproved ? 'bg-green-100 text-green-700' : hasPending ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600',
+          )}>
+            {allApproved ? 'معتمد' : `${teacher.approved_count}/${teacher.total_plans}`}
+          </span>
+          <ChevronDown className={clsx('h-4 w-4 text-slate-400 transition-transform', expanded && 'rotate-180')} />
+        </div>
+      </button>
+
+      {/* تفاصيل الخطط */}
+      {expanded && (
+        <div className="border-t px-3.5 py-3 space-y-2">
+          {teacher.plans.map((plan) => (
+            <div key={plan.id} className="rounded-lg bg-slate-50 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-800">{plan.subject_name}</span>
+                  <span className="rounded bg-slate-200 px-1 py-0.5 text-[9px] text-slate-500">{plan.grade}</span>
+                </div>
+                <span className={clsx('rounded-full px-2 py-0.5 text-[10px] font-medium', STATUS_COLORS[plan.status])}>
+                  {STATUS_LABELS[plan.status]}
+                </span>
+              </div>
+              {plan.sessions.map((s) => (
+                <div key={s.session_number} className="flex items-start gap-2 mt-1.5">
+                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-cyan-100 text-[9px] font-bold text-cyan-700 mt-0.5">
+                    {s.session_number}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-slate-700">{s.topic || '—'}</p>
+                    {s.homework && <p className="text-[10px] text-cyan-600">الواجب: {s.homework}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
