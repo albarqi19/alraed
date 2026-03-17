@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import clsx from 'classnames'
-import { X, Save, CheckCircle2, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
+import { X, Save, CheckCircle2, Loader2, Plus, Trash2 } from 'lucide-react'
 import { useSuggestedTopics, useStorePlanMutation, useApprovePlanMutation } from '../hooks'
 import type { WeeklyLessonPlan, LessonPlanSession, TeacherPlanSubject } from '../types'
 import { STATUS_LABELS, STATUS_COLORS } from '../types'
@@ -10,6 +10,10 @@ interface Props {
   weekId: number
   existingPlan: WeeklyLessonPlan | null
   onClose: () => void
+}
+
+function makeEmptySession(num: number): LessonPlanSession {
+  return { session_number: num, topic: '', homework: '' }
 }
 
 export function PlanEditorSheet({ subject, weekId, existingPlan, onClose }: Props) {
@@ -22,41 +26,42 @@ export function PlanEditorSheet({ subject, weekId, existingPlan, onClose }: Prop
   const approveMutation = useApprovePlanMutation()
 
   const [sessions, setSessions] = useState<LessonPlanSession[]>([])
-  const [expandedSession, setExpandedSession] = useState<number | null>(null)
 
-  // تحميل البيانات: إما الخطة الموجودة أو الاقتراحات
+  // تحميل البيانات
   useEffect(() => {
     if (existingPlan?.sessions?.length) {
       setSessions(existingPlan.sessions)
-    } else if (suggested?.suggested_topics?.length) {
-      const initial = suggested.suggested_topics.map((t) => ({
-        session_number: t.session_number,
-        topic: t.topic,
-        lesson_title: '',
-        objectives: '',
-        homework: '',
-        notes: '',
-      }))
-      setSessions(initial)
-    } else if (subject.sessions_per_week > 0 && !loadingSuggestions) {
-      // إذا لا يوجد توزيع، نُنشئ حقول فارغة
-      const empty: LessonPlanSession[] = Array.from(
-        { length: subject.sessions_per_week },
-        (_, i) => ({
-          session_number: i + 1,
-          topic: '',
-          lesson_title: '',
-          objectives: '',
+      return
+    }
+    if (loadingSuggestions) return
+
+    if (suggested?.suggested_topics?.length) {
+      setSessions(
+        suggested.suggested_topics.map((t) => ({
+          session_number: t.session_number,
+          topic: t.topic,
           homework: '',
-          notes: '',
-        }),
+        })),
       )
-      setSessions(empty)
+    } else {
+      // لا يوجد توزيع → ننشئ حصص فارغة بناءً على عدد الحصص أو 1 افتراضي
+      const count = subject.sessions_per_week || suggested?.sessions_per_week || 1
+      setSessions(Array.from({ length: count }, (_, i) => makeEmptySession(i + 1)))
     }
   }, [existingPlan, suggested, loadingSuggestions, subject.sessions_per_week])
 
   const updateSession = (index: number, field: keyof LessonPlanSession, value: string) => {
     setSessions((prev) => prev.map((s, i) => (i === index ? { ...s, [field]: value } : s)))
+  }
+
+  const addSession = () => {
+    setSessions((prev) => [...prev, makeEmptySession(prev.length + 1)])
+  }
+
+  const removeSession = (index: number) => {
+    setSessions((prev) =>
+      prev.filter((_, i) => i !== index).map((s, i) => ({ ...s, session_number: i + 1 })),
+    )
   }
 
   const isEditable = !existingPlan || existingPlan.status === 'draft' || existingPlan.status === 'rejected'
@@ -73,9 +78,7 @@ export function PlanEditorSheet({ subject, weekId, existingPlan, onClose }: Prop
 
   const handleApprove = () => {
     if (existingPlan) {
-      approveMutation.mutate(existingPlan.id, {
-        onSuccess: () => onClose(),
-      })
+      approveMutation.mutate(existingPlan.id, { onSuccess: () => onClose() })
     }
   }
 
@@ -83,10 +86,8 @@ export function PlanEditorSheet({ subject, weekId, existingPlan, onClose }: Prop
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center">
-      {/* Overlay */}
       <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Sheet */}
       <div className="relative z-10 flex max-h-[90vh] w-full max-w-lg flex-col rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b px-5 py-4">
@@ -118,91 +119,92 @@ export function PlanEditorSheet({ subject, weekId, existingPlan, onClose }: Prop
           {loadingSuggestions ? (
             <div className="flex flex-col items-center gap-2 py-8">
               <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
-              <p className="text-sm text-muted">جاري تحميل المواضيع...</p>
+              <p className="text-sm text-muted">جاري التحميل...</p>
             </div>
           ) : (
-            sessions.map((session, index) => {
-              const isExpanded = expandedSession === index
-              return (
+            <>
+              {sessions.map((session, index) => (
                 <div
-                  key={session.session_number}
-                  className="rounded-xl border border-slate-200 bg-slate-50/50"
+                  key={index}
+                  className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3"
                 >
-                  {/* Session Header */}
-                  <button
-                    type="button"
-                    onClick={() => setExpandedSession(isExpanded ? null : index)}
-                    className="flex w-full items-center justify-between px-4 py-3"
-                  >
-                    <div className="flex items-center gap-2">
+                  {/* رقم الحصة + حذف */}
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2">
                       <span className="flex h-6 w-6 items-center justify-center rounded-full bg-cyan-100 text-xs font-bold text-cyan-700">
                         {session.session_number}
                       </span>
-                      <span className="text-sm font-medium text-slate-800 line-clamp-1">
-                        {session.topic || 'حصة بدون عنوان'}
-                      </span>
-                    </div>
-                    {isExpanded ? (
-                      <ChevronUp className="h-4 w-4 text-slate-400" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4 text-slate-400" />
+                      <span className="text-xs font-medium text-slate-500">الحصة {session.session_number}</span>
+                    </span>
+                    {isEditable && sessions.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeSession(index)}
+                        className="rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-red-500"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     )}
-                  </button>
+                  </div>
 
-                  {/* Expanded Fields */}
-                  {isExpanded && (
-                    <div className="space-y-3 border-t px-4 py-3">
-                      <Field
-                        label="الموضوع"
-                        value={session.topic}
-                        onChange={(v) => updateSession(index, 'topic', v)}
-                        disabled={!isEditable}
-                        placeholder="عنوان الموضوع"
-                      />
-                      <Field
-                        label="عنوان الدرس"
-                        value={session.lesson_title ?? ''}
-                        onChange={(v) => updateSession(index, 'lesson_title', v)}
-                        disabled={!isEditable}
-                        placeholder="عنوان الدرس التفصيلي"
-                      />
-                      <Field
-                        label="الأهداف"
-                        value={session.objectives ?? ''}
-                        onChange={(v) => updateSession(index, 'objectives', v)}
-                        disabled={!isEditable}
-                        multiline
-                        placeholder="أهداف الدرس"
-                      />
-                      <Field
-                        label="الواجبات"
-                        value={session.homework ?? ''}
-                        onChange={(v) => updateSession(index, 'homework', v)}
-                        disabled={!isEditable}
-                        placeholder="الواجب المنزلي"
-                      />
-                      <Field
-                        label="ملاحظات"
-                        value={session.notes ?? ''}
-                        onChange={(v) => updateSession(index, 'notes', v)}
-                        disabled={!isEditable}
-                        placeholder="ملاحظات إضافية (اختياري)"
-                      />
-                    </div>
-                  )}
+                  {/* عنوان الدرس */}
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">عنوان الدرس</label>
+                    <input
+                      type="text"
+                      value={session.topic}
+                      onChange={(e) => updateSession(index, 'topic', e.target.value)}
+                      disabled={!isEditable}
+                      placeholder="عنوان الدرس"
+                      className={clsx(
+                        'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition',
+                        'focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20',
+                        'disabled:bg-slate-100 disabled:text-slate-500',
+                      )}
+                    />
+                  </div>
+
+                  {/* الواجب */}
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">الواجب</label>
+                    <input
+                      type="text"
+                      value={session.homework ?? ''}
+                      onChange={(e) => updateSession(index, 'homework', e.target.value)}
+                      disabled={!isEditable}
+                      placeholder="الواجب المنزلي (اختياري)"
+                      className={clsx(
+                        'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition',
+                        'focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20',
+                        'disabled:bg-slate-100 disabled:text-slate-500',
+                      )}
+                    />
+                  </div>
                 </div>
-              )
-            })
-          )}
+              ))}
 
-          {suggested?.is_auto_suggested && !existingPlan && (
-            <p className="text-center text-[11px] text-cyan-600">
-              تم اقتراح المواضيع تلقائياً بناءً على آخر خطة لك
-            </p>
+              {/* زر إضافة حصة */}
+              {isEditable && (
+                <button
+                  type="button"
+                  onClick={addSession}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-300 py-3 text-xs font-medium text-slate-500 transition hover:border-cyan-400 hover:text-cyan-600"
+                >
+                  <Plus className="h-4 w-4" />
+                  إضافة حصة
+                </button>
+              )}
+
+              {suggested?.is_auto_suggested && !existingPlan && (
+                <p className="text-center text-[11px] text-cyan-600">
+                  تم اقتراح المواضيع تلقائياً بناءً على توزيع المنهج
+                </p>
+              )}
+            </>
           )}
         </div>
 
-        {/* Footer Actions */}
+        {/* Footer */}
         {isEditable && sessions.length > 0 && (
           <div className="flex gap-2 border-t px-5 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
             <button
@@ -211,11 +213,7 @@ export function PlanEditorSheet({ subject, weekId, existingPlan, onClose }: Prop
               disabled={isSaving}
               className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200 disabled:opacity-50"
             >
-              {storeMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4" />
-              )}
+              {storeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               حفظ مسودة
             </button>
 
@@ -226,58 +224,13 @@ export function PlanEditorSheet({ subject, weekId, existingPlan, onClose }: Prop
                 disabled={isSaving}
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-cyan-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-cyan-700 disabled:opacity-50"
               >
-                {approveMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="h-4 w-4" />
-                )}
+                {approveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                 اعتماد
               </button>
             )}
           </div>
         )}
       </div>
-    </div>
-  )
-}
-
-// ═══════════ حقل إدخال ═══════════
-
-function Field({
-  label,
-  value,
-  onChange,
-  disabled,
-  multiline,
-  placeholder,
-}: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-  disabled?: boolean
-  multiline?: boolean
-  placeholder?: string
-}) {
-  const commonProps = {
-    value,
-    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange(e.target.value),
-    disabled,
-    placeholder,
-    className: clsx(
-      'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition',
-      'focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20',
-      'disabled:bg-slate-100 disabled:text-slate-500',
-    ),
-  }
-
-  return (
-    <div>
-      <label className="mb-1 block text-xs font-medium text-slate-600">{label}</label>
-      {multiline ? (
-        <textarea {...commonProps} rows={2} />
-      ) : (
-        <input type="text" {...commonProps} />
-      )}
     </div>
   )
 }
