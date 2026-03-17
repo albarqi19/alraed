@@ -52,6 +52,7 @@ export interface SuggestedTopicsResponse {
   sessions_per_week: number
   is_auto_suggested: boolean
   curriculum_distribution_id: number | null
+  target_week_number: number
 }
 
 export interface StorePlanPayload {

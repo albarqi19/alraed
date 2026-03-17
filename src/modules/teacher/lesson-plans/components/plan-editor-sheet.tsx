@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import clsx from 'classnames'
 import { X, Save, CheckCircle2, Loader2, Plus, Trash2, ChevronDown } from 'lucide-react'
 import { useSuggestedTopics, useStorePlanMutation, useApprovePlanMutation } from '../hooks'
@@ -35,17 +35,22 @@ export function PlanEditorSheet({ subject, weekId, existingPlan, onClose }: Prop
     }
     if (loadingSuggestions) return
 
+    const defaultHomework = 'حل واجب الكتاب ومنصة مدرستي'
+
     if (suggested?.suggested_topics?.length) {
       setSessions(
         suggested.suggested_topics.map((t) => ({
           session_number: t.session_number,
           topic: t.topic,
-          homework: '',
+          homework: defaultHomework,
         })),
       )
     } else {
       const count = subject.sessions_per_week || suggested?.sessions_per_week || 1
-      setSessions(Array.from({ length: count }, (_, i) => makeEmptySession(i + 1)))
+      setSessions(Array.from({ length: count }, (_, i) => ({
+        ...makeEmptySession(i + 1),
+        homework: defaultHomework,
+      })))
     }
   }, [existingPlan, suggested, loadingSuggestions, subject.sessions_per_week])
 
@@ -86,6 +91,7 @@ export function PlanEditorSheet({ subject, weekId, existingPlan, onClose }: Prop
   // قائمة الدروس من التوزيع مجمعة بالأسبوع
   const allTopics = suggested?.all_topics ?? []
   const hasTopics = allTopics.length > 0
+  const targetWeek = suggested?.target_week_number ?? 1
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center">
@@ -158,6 +164,7 @@ export function PlanEditorSheet({ subject, weekId, existingPlan, onClose }: Prop
                       onChange={(v) => updateSession(index, 'topic', v)}
                       disabled={!isEditable}
                       allTopics={allTopics}
+                      targetWeek={targetWeek}
                     />
                   </div>
 
@@ -239,13 +246,16 @@ function TopicInput({
   onChange,
   disabled,
   allTopics,
+  targetWeek,
 }: {
   value: string
   onChange: (v: string) => void
   disabled?: boolean
   allTopics: Array<{ week_number: number; session_number: number; topic: string }>
+  targetWeek: number
 }) {
   const [open, setOpen] = useState(false)
+  const targetRef = useRef<HTMLDivElement>(null)
 
   if (!allTopics.length) {
     // لا يوجد توزيع → حقل كتابة عادي
@@ -306,11 +316,38 @@ function TopicInput({
 
       {/* القائمة المنسدلة */}
       {open && (
-        <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-52 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+        <DropdownList grouped={grouped} targetWeek={targetWeek} value={value} onSelect={(v) => { onChange(v); setOpen(false) }} />
+      )}
+    </div>
+  )
+}
+
+function DropdownList({
+  grouped, targetWeek, value, onSelect,
+}: {
+  grouped: Record<number, Array<{ week_number: number; session_number: number; topic: string }>>
+  targetWeek: number
+  value: string
+  onSelect: (v: string) => void
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const targetRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (targetRef.current && scrollRef.current) {
+      targetRef.current.scrollIntoView({ block: 'start' })
+    }
+  }, [])
+
+  return (
+        <div ref={scrollRef} className="absolute left-0 right-0 top-full z-20 mt-1 max-h-52 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
           {Object.entries(grouped).map(([weekNum, topics]) => (
-            <div key={weekNum}>
-              <div className="sticky top-0 bg-slate-50 px-3 py-1.5 text-[10px] font-bold text-slate-500 border-b border-slate-100">
-                الأسبوع {weekNum}
+            <div key={weekNum} ref={Number(weekNum) === targetWeek ? targetRef : undefined}>
+              <div className={clsx(
+                'sticky top-0 px-3 py-1.5 text-[10px] font-bold border-b border-slate-100',
+                Number(weekNum) === targetWeek ? 'bg-cyan-50 text-cyan-700' : 'bg-slate-50 text-slate-500',
+              )}>
+                الأسبوع {weekNum} {Number(weekNum) === targetWeek ? '← الحالي' : ''}
               </div>
               {topics.map((t) => {
                 const isSelected = value === t.topic
@@ -318,10 +355,7 @@ function TopicInput({
                   <button
                     key={`${t.week_number}-${t.session_number}`}
                     type="button"
-                    onClick={() => {
-                      onChange(t.topic)
-                      setOpen(false)
-                    }}
+                    onClick={() => onSelect(t.topic)}
                     className={clsx(
                       'flex w-full items-center gap-2 px-3 py-2 text-right text-xs transition',
                       isSelected
@@ -340,7 +374,5 @@ function TopicInput({
             </div>
           ))}
         </div>
-      )}
-    </div>
   )
 }
