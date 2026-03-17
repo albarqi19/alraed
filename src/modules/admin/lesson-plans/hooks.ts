@@ -71,10 +71,10 @@ export function useApprovePlanMutation() {
     mutationFn: (id: number) => approveLessonPlan(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'lesson-plans'] })
-      toast.success('تم اعتماد الخطة')
+      toast({ type: 'success', title: 'تم اعتماد الخطة' })
     },
     onError: (error) => {
-      toast.error(getErrorMessage(error, 'تعذر اعتماد الخطة'))
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر اعتماد الخطة') })
     },
   })
 }
@@ -87,10 +87,10 @@ export function useRejectPlanMutation() {
     mutationFn: ({ id, reason }: { id: number; reason: string }) => rejectLessonPlan(id, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'lesson-plans'] })
-      toast.success('تم رفض الخطة')
+      toast({ type: 'success', title: 'تم رفض الخطة' })
     },
     onError: (error) => {
-      toast.error(getErrorMessage(error, 'تعذر رفض الخطة'))
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر رفض الخطة') })
     },
   })
 }
@@ -104,10 +104,10 @@ export function useMapSubjectMutation() {
       mapSubjectCurriculum(subjectId, name),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'unmapped-subjects'] })
-      toast.success('تم ربط المادة بالتوزيع')
+      toast({ type: 'success', title: 'تم ربط المادة بالتوزيع' })
     },
     onError: (error) => {
-      toast.error(getErrorMessage(error, 'تعذر ربط المادة'))
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر ربط المادة') })
     },
   })
 }

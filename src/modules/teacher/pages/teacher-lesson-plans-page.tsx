@@ -22,7 +22,7 @@ export function TeacherLessonPlansPage() {
     }
   }, [weeks, selectedWeekId])
 
-  const { data: weekPlans, isLoading: loadingPlans } = useWeekPlans(selectedWeekId)
+  const { data: weekPlans } = useWeekPlans(selectedWeekId)
 
   // البحث عن خطة لمادة معينة
   const findPlanForSubject = (subjectId: number, grade: string): WeeklyLessonPlan | null => {

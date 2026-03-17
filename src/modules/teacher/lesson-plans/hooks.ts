@@ -73,10 +73,10 @@ export function useStorePlanMutation() {
       queryClient.invalidateQueries({
         queryKey: ['teacher', 'lesson-plans', 'week', variables.academic_week_id],
       })
-      toast.success('تم حفظ الخطة بنجاح')
+      toast({ type: 'success', title: 'تم حفظ الخطة بنجاح' })
     },
     onError: (error) => {
-      toast.error(getErrorMessage(error, 'تعذر حفظ الخطة'))
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر حفظ الخطة') })
     },
   })
 }
@@ -91,10 +91,10 @@ export function useApprovePlanMutation() {
     mutationFn: (planId: number) => approvePlan(planId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teacher', 'lesson-plans'] })
-      toast.success('تم اعتماد الخطة بنجاح')
+      toast({ type: 'success', title: 'تم اعتماد الخطة بنجاح' })
     },
     onError: (error) => {
-      toast.error(getErrorMessage(error, 'تعذر اعتماد الخطة'))
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر اعتماد الخطة') })
     },
   })
 }

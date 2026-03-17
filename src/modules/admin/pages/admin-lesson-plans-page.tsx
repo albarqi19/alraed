@@ -3,7 +3,7 @@ import clsx from 'classnames'
 import { BookOpenCheck, Filter, ChevronLeft, Loader2 } from 'lucide-react'
 import { useLessonPlans, useLessonPlanStats } from '../lesson-plans/hooks'
 import { PlanReviewSheet } from '../lesson-plans/components/plan-review-sheet'
-import type { AdminWeeklyLessonPlan, PlanStatus } from '../lesson-plans/types'
+import type { AdminWeeklyLessonPlan } from '../lesson-plans/types'
 import { STATUS_LABELS, STATUS_COLORS } from '../lesson-plans/types'
 
 // ═══════════ hooks for weeks ═══════════
