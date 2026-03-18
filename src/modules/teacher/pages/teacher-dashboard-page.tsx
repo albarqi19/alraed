@@ -168,14 +168,14 @@ export function TeacherDashboardPage() {
         >
           <div
             className={clsx(
-              'w-full max-w-md rounded-t-3xl border-t-4 bg-white p-6 shadow-2xl animate-in slide-in-from-bottom-8 duration-300',
+              'w-full max-w-md rounded-t-3xl border-t-4 bg-white dark:bg-slate-800 p-6 shadow-2xl animate-in slide-in-from-bottom-8 duration-300',
               alertModal.type === 'error' ? 'border-rose-500' : 'border-amber-500'
             )}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="space-y-4 text-center">
               <div className="text-5xl">{alertModal.icon}</div>
-              <p className="text-lg font-semibold text-slate-900">{alertModal.text}</p>
+              <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">{alertModal.text}</p>
               <button
                 type="button"
                 onClick={() => setAlertModal(null)}
@@ -192,13 +192,13 @@ export function TeacherDashboardPage() {
 
         {/* بانر الدوام عن بعد */}
         {isRemoteDay && (
-          <div className="flex items-center gap-3 rounded-2xl bg-purple-50 border border-purple-200 p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-purple-600">
+          <div className="flex items-center gap-3 rounded-2xl bg-purple-50 dark:bg-purple-950 border border-purple-200 dark:border-purple-800 p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-400">
               <i className="bi bi-laptop text-xl" />
             </div>
             <div>
-              <p className="font-semibold text-purple-800">اليوم دوام عن بعد</p>
-              <p className="text-sm text-purple-600">
+              <p className="font-semibold text-purple-800 dark:text-purple-300">اليوم دوام عن بعد</p>
+              <p className="text-sm text-purple-600 dark:text-purple-400">
                 {remoteStatus?.remote_day?.note
                   ? remoteStatus.remote_day.note
                   : 'قم برفع تقرير حضور التيمز لكل حصة'}
@@ -209,7 +209,7 @@ export function TeacherDashboardPage() {
 
         <header className="space-y-3 text-right">
           <div className="flex items-center justify-between gap-3">
-            <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 sm:text-3xl">
               {isHoliday ? 'لوحة المعلم' : 'حصص اليوم'}
             </h1>
             <Link
@@ -231,46 +231,46 @@ export function TeacherDashboardPage() {
         {/* إخفاء الحصص أثناء الإجازة */}
         {!isHoliday && actionableSession ? (
           <article className={clsx(
-            'rounded-3xl border bg-white p-6 text-right',
-            actionableSession.is_standby ? 'border-orange-300' : 'border-emerald-300'
+            'rounded-3xl border bg-white dark:bg-slate-800 p-6 text-right',
+            actionableSession.is_standby ? 'border-orange-300 dark:border-orange-700' : 'border-emerald-300 dark:border-emerald-700'
           )}>
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <p className={clsx(
                     'text-sm font-semibold',
-                    actionableSession.is_standby ? 'text-orange-700' : 'text-emerald-700'
+                    actionableSession.is_standby ? 'text-orange-700 dark:text-orange-400' : 'text-emerald-700 dark:text-emerald-400'
                   )}>
                     {actionableSession.is_standby ? 'حصة انتظار متاحة الآن' : 'الحصة المتاحة الآن'}
                   </p>
                   {actionableSession.is_standby && (
-                    <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700">
+                    <span className="rounded-full bg-orange-100 dark:bg-orange-900 px-2 py-0.5 text-xs font-semibold text-orange-700 dark:text-orange-400">
                       انتظار
                     </span>
                   )}
                 </div>
                 <h2 className={clsx(
                   'text-2xl font-bold',
-                  actionableSession.is_standby ? 'text-orange-900' : 'text-emerald-900'
+                  actionableSession.is_standby ? 'text-orange-900 dark:text-orange-100' : 'text-emerald-900 dark:text-emerald-100'
                 )}>
                   {getSubjectName(actionableSession)}
                 </h2>
                 <p className={clsx(
                   'text-sm',
-                  actionableSession.is_standby ? 'text-orange-700' : 'text-emerald-700'
+                  actionableSession.is_standby ? 'text-orange-700 dark:text-orange-400' : 'text-emerald-700 dark:text-emerald-400'
                 )}>
                   {actionableSession.grade} — {actionableSession.class_name} • الحصة رقم{' '}
                   {actionableSession.period_number ?? '--'}
                 </p>
                 {actionableSession.is_standby && actionableSession.replacing_teacher_name && (
-                  <p className="text-sm font-medium text-orange-600">
+                  <p className="text-sm font-medium text-orange-600 dark:text-orange-400">
                     <i className="bi bi-arrow-left-right ml-1" aria-hidden></i>
                     بديلاً عن أ. {actionableSession.replacing_teacher_name}
                   </p>
                 )}
                 <p className={clsx(
                   'text-xs',
-                  actionableSession.is_standby ? 'text-orange-600' : 'text-emerald-600'
+                  actionableSession.is_standby ? 'text-orange-600 dark:text-orange-400' : 'text-emerald-600 dark:text-emerald-400'
                 )}>
                   من {formatTime(actionableSession.formatted_start_time ?? actionableSession.start_time)} إلى{' '}
                   {formatTime(actionableSession.formatted_end_time ?? actionableSession.end_time)}
@@ -289,7 +289,7 @@ export function TeacherDashboardPage() {
             </div>
           </article>
         ) : !isHoliday ? (
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 text-center text-sm text-muted">
+          <div className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 text-center text-sm text-muted">
             لا توجد حصص متاحة للتحضير في الوقت الحالي.
           </div>
         ) : null}
@@ -298,7 +298,7 @@ export function TeacherDashboardPage() {
         {!isHoliday && (
           <div className="glass-card space-y-4">
             <div className="text-right">
-              <h2 className="text-xl font-semibold text-slate-900">سجل حصص اليوم</h2>
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">سجل حصص اليوم</h2>
               <p className="text-sm text-muted">
                 {sessions.length > 0
                   ? `لديك ${sessions.length.toLocaleString('ar-SA')} حصص مجدولة لليوم.`
@@ -307,7 +307,7 @@ export function TeacherDashboardPage() {
             </div>
 
             {sessions.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-muted">
+              <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50 p-6 text-center text-sm text-muted">
                 لا توجد حصص مسجلة لهذا اليوم.
               </div>
             ) : (
@@ -320,22 +320,22 @@ export function TeacherDashboardPage() {
                     <article
                       key={`${session.id}-${isStandby ? 'standby' : 'original'}`}
                       className={clsx(
-                        'flex h-full flex-col gap-3 rounded-3xl border bg-white p-5 transition',
+                        'flex h-full flex-col gap-3 rounded-3xl border bg-white dark:bg-slate-800 p-5 transition',
                         isHighlighted
-                          ? isStandby ? 'border-orange-300' : 'border-emerald-300'
-                          : isStandby ? 'border-orange-200 hover:border-orange-300' : 'border-slate-200 hover:border-emerald-200',
+                          ? isStandby ? 'border-orange-300 dark:border-orange-700' : 'border-emerald-300 dark:border-emerald-700'
+                          : isStandby ? 'border-orange-200 dark:border-orange-800 hover:border-orange-300' : 'border-slate-200 dark:border-slate-700 hover:border-emerald-200',
                       )}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1 text-right">
-                          <h3 className="text-lg font-semibold text-slate-900">
+                          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                             {getSubjectName(session)}
                           </h3>
                           <p className="text-xs text-muted">
                             {session.grade} — {session.class_name}
                           </p>
                           {isStandby && session.replacing_teacher_name && (
-                            <p className="text-xs font-medium text-orange-600">
+                            <p className="text-xs font-medium text-orange-600 dark:text-orange-400">
                               <i className="bi bi-arrow-left-right ml-1" aria-hidden></i>
                               بديلاً عن أ. {session.replacing_teacher_name}
                             </p>
@@ -345,7 +345,7 @@ export function TeacherDashboardPage() {
                           'rounded-full px-3 py-1 text-xs font-semibold border',
                           status.accent,
                           status.tone,
-                          isStandby && 'border-orange-200'
+                          isStandby && 'border-orange-200 dark:border-orange-800'
                         )}>
                           {status.badge}
                         </span>
@@ -388,11 +388,11 @@ export function TeacherDashboardPage() {
         {/* إحصائيات اليوم - تظهر دائماً */}
         <div className="glass-card space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-xl font-semibold text-slate-900">إحصائيات اليوم</h2>
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">إحصائيات اليوم</h2>
             <button
               type="button"
               onClick={() => setShowStats((prev) => !prev)}
-              className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-teal-200 hover:text-teal-600"
+              className="rounded-full border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-400 transition hover:border-teal-200 hover:text-teal-600"
             >
               {showStats ? 'إخفاء الإحصائيات' : 'عرض الإحصائيات'}
             </button>
@@ -408,7 +408,7 @@ export function TeacherDashboardPage() {
               ))}
             </div>
           ) : (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-muted">
+            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-700/50 px-4 py-3 text-sm text-muted">
               اضغط على "عرض الإحصائيات" للاطلاع على ملخص سريع لليوم.
             </div>
           )}

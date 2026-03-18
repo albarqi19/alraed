@@ -36,7 +36,7 @@ export function QrScannerModal({
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal>
-      <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white text-right shadow-2xl">
+      <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white dark:bg-slate-800 text-right shadow-2xl">
         <header className={`flex items-center justify-between px-5 py-4 ${mode === 'reward' ? 'bg-teal-600 text-white' : 'bg-amber-600 text-white'}`}>
           <div>
             <h2 className="text-lg font-semibold">ماسح رمز الطالب</h2>
@@ -54,18 +54,18 @@ export function QrScannerModal({
 
           <div className="space-y-4 px-5 py-6">
           {cameraError ? (
-            <div className="rounded-2xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-700">
+            <div className="rounded-2xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950 p-4 text-sm text-rose-700">
               {cameraError}
             </div>
           ) : null}
 
             {studentName ? (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
-                الرجاء مسح بطاقة الطالب: <span className="text-teal-700">{studentName}</span>
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50 px-4 py-3 text-sm font-semibold text-slate-700 dark:text-slate-300">
+                الرجاء مسح بطاقة الطالب: <span className="text-teal-700 dark:text-teal-400">{studentName}</span>
               </div>
             ) : null}
 
-          <div className="relative aspect-[3/4] overflow-hidden rounded-3xl border border-slate-200 bg-black/80">
+          <div className="relative aspect-[3/4] overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-700 bg-black/80">
             <Scanner
               onScan={(detected) => {
                 if (!Array.isArray(detected) || detected.length === 0) {
@@ -113,7 +113,7 @@ export function QrScannerModal({
           </p>
 
           {isProcessing ? (
-            <div className="flex items-center justify-center gap-2 text-sm font-semibold text-slate-700">
+            <div className="flex items-center justify-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
               <span className="h-2 w-2 animate-ping rounded-full bg-teal-500"></span>
               جاري حفظ العملية...
             </div>

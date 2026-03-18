@@ -7,6 +7,7 @@ import { HolidayBanner } from '@/shared/components/holiday-banner'
 import { MoodTrackerSheet } from '../mood/components/mood-tracker-sheet'
 import { useTodayMoodQuery, useSubmitMoodMutation } from '../mood/hooks'
 import type { MoodType } from '../mood/types'
+import { useTeacherDarkMode } from '../hooks/use-teacher-dark-mode'
 
 const navItems = [
   { to: '/teacher/dashboard', label: 'الرئيسية', exact: true, icon: 'bi-house' },
@@ -21,6 +22,7 @@ export function TeacherShell() {
   const logoutMutation = useLogoutMutation()
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const profileMenuRef = useRef<HTMLDivElement>(null)
+  const { isDark, mode, setMode } = useTeacherDarkMode()
 
   // Mood Tracker state and queries
   const [showMoodSheet, setShowMoodSheet] = useState(false)
@@ -65,37 +67,52 @@ export function TeacherShell() {
   }, [profileMenuOpen])
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-100 pb-16 sm:pb-0">
+    <div className={clsx(isDark && "dark")}>
+    <div className="flex min-h-screen flex-col bg-slate-100 pb-16 sm:pb-0 transition-colors duration-200 dark:bg-slate-900">
 
       <nav className="sticky top-0 z-50 shadow-sm backdrop-blur-lg">
-        <div className="border-b border-slate-200/60 bg-white/90">
+        <div className="border-b border-slate-200/60 bg-white/90 dark:border-slate-700/60 dark:bg-slate-800/90">
           <div className="flex w-full flex-col gap-4 px-5 py-4 sm:px-6 lg:px-10">
             <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3 text-lg font-semibold text-slate-800">
-                <span className="grid h-10 w-10 place-items-center rounded-2xl bg-slate-900/5 text-base font-bold text-slate-900">
+              <div className="flex items-center gap-3 text-lg font-semibold text-slate-800 dark:text-slate-200">
+                <span className="grid h-10 w-10 place-items-center rounded-2xl bg-slate-900/5 text-base font-bold text-slate-900 dark:bg-slate-100/10 dark:text-slate-100">
                   <i className="bi bi-book"></i>
                 </span>
                 لوحة تحكم المعلم
               </div>
               <div className="flex items-center gap-2">
+                {/* زر تبديل الوضع الداكن */}
+                <button
+                  type="button"
+                  onClick={() => setMode(isDark ? 'light' : mode === 'light' ? 'auto' : 'dark')}
+                  onDoubleClick={() => setMode('auto')}
+                  className="grid h-10 w-10 place-items-center rounded-full border border-slate-200 bg-white text-lg transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600"
+                  title={mode === 'auto' ? 'تلقائي' : isDark ? 'وضع داكن' : 'وضع فاتح'}
+                >
+                  {isDark ? (
+                    <i className="bi bi-moon-stars-fill text-slate-300"></i>
+                  ) : (
+                    <i className="bi bi-sun-fill text-slate-500"></i>
+                  )}
+                </button>
                 <div className="relative" ref={profileMenuRef}>
                   <button
                     type="button"
                     onClick={() => setProfileMenuOpen((prev) => !prev)}
-                    className="grid h-10 w-10 place-items-center rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-700"
+                    className="grid h-10 w-10 place-items-center rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-700 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
                   >
                     {teacher?.name?.charAt(0) ?? 'م'}
                   </button>
                   {profileMenuOpen ? (
-                    <div className="absolute left-0 mt-2 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white text-right text-sm text-slate-700 shadow-xl">
-                      <div className="border-b border-slate-100 px-4 py-3 text-xs text-slate-500">
-                        <p className="font-semibold text-slate-700">{teacher?.name ?? 'معلم'}</p>
-                        {teacher?.national_id ? <p className="mt-1 text-[11px] text-slate-500">{teacher.national_id}</p> : null}
+                    <div className="absolute left-0 z-50 mt-2 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white text-right text-sm text-slate-700 shadow-xl dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200">
+                      <div className="border-b border-slate-100 px-4 py-3 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                        <p className="font-semibold text-slate-700 dark:text-slate-200">{teacher?.name ?? 'معلم'}</p>
+                        {teacher?.national_id ? <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">{teacher.national_id}</p> : null}
                       </div>
                       <button
                         type="button"
                         onClick={() => logoutMutation.mutate()}
-                        className="flex w-full items-center justify-between px-4 py-3 text-rose-600 hover:bg-rose-50 sm:justify-center"
+                        className="flex w-full items-center justify-between px-4 py-3 text-rose-600 hover:bg-rose-50 sm:justify-center dark:text-rose-400 dark:hover:bg-rose-950"
                       >
                         <span>تسجيل الخروج</span>
                         <span className="text-xs sm:hidden">↩</span>
@@ -105,7 +122,7 @@ export function TeacherShell() {
                 </div>
               </div>
             </div>
-            <div className="hidden sm:flex flex-col gap-2 text-sm font-medium text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+            <div className="hidden sm:flex flex-col gap-2 text-sm font-medium text-slate-600 dark:text-slate-400 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap sm:gap-1.5">
                 {navItems.map((item) => (
                   <NavLink
@@ -115,7 +132,7 @@ export function TeacherShell() {
                     className={({ isActive }) =>
                       clsx(
                         'rounded-full px-3 py-2 text-sm transition',
-                        isActive ? 'bg-slate-900 text-white' : 'border border-transparent text-slate-500 hover:border-slate-200 hover:bg-white',
+                        isActive ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-transparent text-slate-500 hover:border-slate-200 hover:bg-white dark:text-slate-400 dark:hover:border-slate-600 dark:hover:bg-slate-700',
                       )
                     }
                   >
@@ -136,7 +153,7 @@ export function TeacherShell() {
       </main>
 
       {/* Docked Mobile Bottom Navbar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white px-2 py-2 pb-[env(safe-area-inset-bottom)] sm:hidden shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white px-2 py-2 pb-[env(safe-area-inset-bottom)] sm:hidden shadow-[0_-4px_10px_rgba(0,0,0,0.02)] dark:border-slate-700 dark:bg-slate-800">
         <div className="flex items-center justify-around">
           {navItems.map((item) => (
             <NavLink
@@ -145,20 +162,20 @@ export function TeacherShell() {
               end={item.exact}
               className={({ isActive }) => clsx(
                 "flex flex-col items-center justify-center gap-1 p-1 transition-all min-w-[4rem]",
-                isActive ? "text-slate-900" : "text-slate-500 hover:text-slate-700"
+                isActive ? "text-slate-900 dark:text-slate-100" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
               )}
             >
               {({ isActive }) => (
                 <>
                   <div className={clsx(
                     "flex h-8 w-14 items-center justify-center rounded-2xl transition-all duration-300",
-                    isActive ? "bg-slate-100" : "bg-transparent"
+                    isActive ? "bg-slate-100 dark:bg-slate-700" : "bg-transparent"
                   )}>
                     <i className={clsx("bi text-xl", item.icon, isActive && "scale-110 drop-shadow-sm")}></i>
                   </div>
                   <span className={clsx(
                     "text-[10px] transition-all",
-                    isActive ? "font-bold text-slate-900" : "font-medium"
+                    isActive ? "font-bold text-slate-900 dark:text-slate-100" : "font-medium"
                   )}>
                     {item.label}
                   </span>
@@ -175,6 +192,7 @@ export function TeacherShell() {
         onSelect={handleMoodSelect}
         onSkip={handleMoodSkip}
       />
+    </div>
     </div>
   )
 }

@@ -239,12 +239,12 @@ export function TeacherSessionAttendancePage() {
         {/* رأس الحصة */}
         <div className="glass-card">
           <div className="flex items-center gap-3 mb-4">
-            <button type="button" onClick={() => navigate(-1)} className="rounded-lg p-1 text-slate-400 hover:text-slate-600">
+            <button type="button" onClick={() => navigate(-1)} className="rounded-lg p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
               <i className="bi bi-arrow-right text-lg" />
             </button>
             <div>
-              <h2 className="text-lg font-bold text-slate-800">{getSubjectName(session)}</h2>
-              <p className="text-sm text-slate-500">{session.grade} - {session.class_name} | الحصة {session.period_number ?? '-'}</p>
+              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">{getSubjectName(session)}</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">{session.grade} - {session.class_name} | الحصة {session.period_number ?? '-'}</p>
             </div>
           </div>
           <RemoteSessionUpload sessionId={numericSessionId} isUploaded={remoteSession?.is_uploaded ?? false} />
@@ -257,10 +257,10 @@ export function TeacherSessionAttendancePage() {
     <section className="space-y-4">
       {/* ═══ شريط الرصد الجماعي ═══ */}
       {selectionMode && (
-        <div className="sticky top-0 z-40 flex items-center justify-between gap-3 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 shadow-sm">
+        <div className="sticky top-0 z-40 flex items-center justify-between gap-3 rounded-xl border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950 px-4 py-3 shadow-sm">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-teal-600" />
-            <span className="text-sm font-semibold text-teal-800">
+            <CheckCircle2 className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+            <span className="text-sm font-semibold text-teal-800 dark:text-teal-300">
               تم تحديد {selectedIds.size} طالب
             </span>
           </div>
@@ -276,7 +276,7 @@ export function TeacherSessionAttendancePage() {
             <button
               type="button"
               onClick={cancelSelection}
-              className="rounded-lg p-1.5 text-teal-600 transition hover:bg-teal-100"
+              className="rounded-lg p-1.5 text-teal-600 dark:text-teal-400 transition hover:bg-teal-100 dark:hover:bg-teal-900"
             >
               <X className="h-4 w-4" />
             </button>
@@ -285,11 +285,11 @@ export function TeacherSessionAttendancePage() {
       )}
 
       <header className="space-y-1">
-        <h1 className="text-3xl font-bold text-slate-900">الحصة</h1>
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">الحصة</h1>
         <p className="text-sm text-muted">
           {getSubjectName(session)} — {session.grade} / {session.class_name}
         </p>
-        <p className="text-xs text-slate-500">التوقيت: {extractSessionTime(session)}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">التوقيت: {extractSessionTime(session)}</p>
       </header>
 
       <div className="glass-card">
@@ -339,19 +339,19 @@ export function TeacherSessionAttendancePage() {
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <div className="glass-card py-3 text-center">
-          <p className="text-2xl font-semibold text-emerald-600">{summary.present}</p>
+          <p className="text-2xl font-semibold text-emerald-600 dark:text-emerald-400">{summary.present}</p>
           <p className="text-xs text-muted">حاضر</p>
         </div>
         <div className="glass-card py-3 text-center">
-          <p className="text-2xl font-semibold text-rose-600">{summary.absent}</p>
+          <p className="text-2xl font-semibold text-rose-600 dark:text-rose-400">{summary.absent}</p>
           <p className="text-xs text-muted">غائب</p>
         </div>
         <div className="glass-card py-3 text-center">
-          <p className="text-2xl font-semibold text-amber-600">{summary.late}</p>
+          <p className="text-2xl font-semibold text-amber-600 dark:text-amber-400">{summary.late}</p>
           <p className="text-xs text-muted">متأخر</p>
         </div>
         <div className="glass-card py-3 text-center">
-          <p className="text-2xl font-semibold text-sky-600">{summary.excused}</p>
+          <p className="text-2xl font-semibold text-sky-600 dark:text-sky-400">{summary.excused}</p>
           <p className="text-xs text-muted">مستأذن</p>
         </div>
       </div>
@@ -366,7 +366,7 @@ export function TeacherSessionAttendancePage() {
       </button>
 
       {hasSubmitted ? (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 text-sm text-emerald-700">
+        <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-950/70 p-4 text-sm text-emerald-700 dark:text-emerald-400">
           تم إرسال تحضير هذه الحصة بالفعل. يمكن مراجعة الحالة أو تعديلها من خلال إدارة النظام.
         </div>
       ) : null}
@@ -425,10 +425,10 @@ function StudentCard({
       className={clsx(
         'rounded-xl border p-3 transition',
         isSelected
-          ? 'border-teal-500 bg-teal-50/50 shadow-sm'
+          ? 'border-teal-500 bg-teal-50/50 dark:bg-teal-950/50 shadow-sm'
           : isAdminStatus
-          ? 'border-slate-300 bg-slate-50'
-          : 'border-slate-200 bg-white',
+          ? 'border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50'
+          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800',
       )}
       {...(onLongPress ? longPressHandlers : {})}
     >
@@ -440,7 +440,7 @@ function StudentCard({
             onClick={onNameClick}
             disabled={!onNameClick}
             className={clsx(
-              'text-sm font-semibold text-slate-900 transition',
+              'text-sm font-semibold text-slate-900 dark:text-slate-100 transition',
               onNameClick ? 'hover:text-teal-600 active:text-teal-700' : 'cursor-default',
             )}
           >
@@ -450,7 +450,7 @@ function StudentCard({
                   'me-1.5 inline-flex h-4 w-4 items-center justify-center rounded border text-[10px] transition',
                   isSelected
                     ? 'border-teal-500 bg-teal-500 text-white'
-                    : 'border-slate-300 bg-white',
+                    : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800',
                 )}
               >
                 {isSelected ? '✓' : ''}

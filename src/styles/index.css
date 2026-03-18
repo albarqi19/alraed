@@ -234,6 +234,46 @@
     color: var(--color-muted);
   }
 
+  /* ═══ Teacher Dark Mode Overrides ═══ */
+  .dark .glass-card {
+    background-color: #1e293b; /* slate-800 */
+    border-color: #334155; /* slate-700 */
+  }
+
+  .dark .button-secondary {
+    background-color: #334155; /* slate-700 */
+    border-color: #475569; /* slate-600 */
+    color: #e2e8f0; /* slate-200 */
+  }
+
+  .dark .button-secondary:hover {
+    background-color: #475569;
+    border-color: #64748b;
+    color: #f1f5f9;
+  }
+
+  .dark .text-muted {
+    color: #94a3b8; /* slate-400 */
+  }
+
+  /* Dark Scrollbar */
+  .dark ::-webkit-scrollbar {
+    background: #0f172a;
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 4px;
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+  }
+
+  .dark {
+    scrollbar-color: #334155 #0f172a;
+  }
+
   .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;

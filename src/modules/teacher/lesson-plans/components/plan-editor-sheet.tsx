@@ -97,11 +97,11 @@ export function PlanEditorSheet({ subject, weekId, existingPlan, onClose }: Prop
     <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center">
       <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative z-10 flex max-h-[90vh] w-full max-w-lg flex-col rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl">
+      <div className="relative z-10 flex max-h-[90vh] w-full max-w-lg flex-col rounded-t-2xl bg-white dark:bg-slate-800 shadow-2xl sm:rounded-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b px-5 py-4">
           <div>
-            <h2 className="text-base font-bold text-slate-900">
+            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
               {subject.subject_name} - {subject.grade}
             </h2>
             {existingPlan && (
@@ -118,8 +118,8 @@ export function PlanEditorSheet({ subject, weekId, existingPlan, onClose }: Prop
               <p className="mt-1 text-xs text-red-600">سبب الرفض: {existingPlan.rejection_reason}</p>
             )}
           </div>
-          <button type="button" onClick={onClose} className="rounded-lg p-1.5 hover:bg-slate-100">
-            <X className="h-5 w-5 text-slate-400" />
+          <button type="button" onClick={onClose} className="rounded-lg p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700">
+            <X className="h-5 w-5 text-slate-400 dark:text-slate-500" />
           </button>
         </div>
 
@@ -135,21 +135,21 @@ export function PlanEditorSheet({ subject, weekId, existingPlan, onClose }: Prop
               {sessions.map((session, index) => (
                 <div
                   key={index}
-                  className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3"
+                  className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-700/50 p-4 space-y-3"
                 >
                   {/* رقم الحصة + حذف */}
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-2">
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-cyan-100 text-xs font-bold text-cyan-700">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-cyan-100 dark:bg-cyan-900 text-xs font-bold text-cyan-700 dark:text-cyan-400">
                         {session.session_number}
                       </span>
-                      <span className="text-xs font-medium text-slate-500">الحصة {session.session_number}</span>
+                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400">الحصة {session.session_number}</span>
                     </span>
                     {isEditable && sessions.length > 1 && (
                       <button
                         type="button"
                         onClick={() => removeSession(index)}
-                        className="rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-red-500"
+                        className="rounded-lg p-1 text-slate-400 dark:text-slate-500 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-500"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -158,7 +158,7 @@ export function PlanEditorSheet({ subject, weekId, existingPlan, onClose }: Prop
 
                   {/* عنوان الدرس: dropdown + كتابة حرة */}
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-600">عنوان الدرس</label>
+                    <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">عنوان الدرس</label>
                     <TopicInput
                       value={session.topic}
                       onChange={(v) => updateSession(index, 'topic', v)}
@@ -170,7 +170,7 @@ export function PlanEditorSheet({ subject, weekId, existingPlan, onClose }: Prop
 
                   {/* الواجب */}
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-600">الواجب</label>
+                    <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">الواجب</label>
                     <input
                       type="text"
                       value={session.homework ?? ''}
@@ -178,9 +178,9 @@ export function PlanEditorSheet({ subject, weekId, existingPlan, onClose }: Prop
                       disabled={!isEditable}
                       placeholder="الواجب المنزلي (اختياري)"
                       className={clsx(
-                        'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition',
+                        'w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-800 dark:text-slate-200 outline-none transition',
                         'focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20',
-                        'disabled:bg-slate-100 disabled:text-slate-500',
+                        'disabled:bg-slate-100 dark:disabled:bg-slate-700 disabled:text-slate-500 dark:disabled:text-slate-400',
                       )}
                     />
                   </div>
@@ -192,7 +192,7 @@ export function PlanEditorSheet({ subject, weekId, existingPlan, onClose }: Prop
                 <button
                   type="button"
                   onClick={addSession}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-300 py-3 text-xs font-medium text-slate-500 transition hover:border-cyan-400 hover:text-cyan-600"
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 transition hover:border-cyan-400 hover:text-cyan-600"
                 >
                   <Plus className="h-4 w-4" />
                   إضافة حصة
@@ -215,7 +215,7 @@ export function PlanEditorSheet({ subject, weekId, existingPlan, onClose }: Prop
               type="button"
               onClick={handleSave}
               disabled={isSaving}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200 disabled:opacity-50"
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-slate-100 dark:bg-slate-700 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 transition hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-50"
             >
               {storeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               حفظ مسودة
@@ -266,9 +266,9 @@ function TopicInput({
         disabled={disabled}
         placeholder="اكتب عنوان الدرس"
         className={clsx(
-          'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition',
+          'w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-800 dark:text-slate-200 outline-none transition',
           'focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20',
-          'disabled:bg-slate-100 disabled:text-slate-500',
+          'disabled:bg-slate-100 dark:disabled:bg-slate-700 disabled:text-slate-500 dark:disabled:text-slate-400',
         )}
       />
     )
@@ -292,9 +292,9 @@ function TopicInput({
           disabled={disabled}
           placeholder="اختر أو اكتب عنوان الدرس"
           className={clsx(
-            'min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition',
+            'min-w-0 flex-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-800 dark:text-slate-200 outline-none transition',
             'focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20',
-            'disabled:bg-slate-100 disabled:text-slate-500',
+            'disabled:bg-slate-100 dark:disabled:bg-slate-700 disabled:text-slate-500 dark:disabled:text-slate-400',
           )}
         />
         {!disabled && (
@@ -304,8 +304,8 @@ function TopicInput({
             className={clsx(
               'flex h-[38px] w-9 shrink-0 items-center justify-center rounded-lg border transition',
               open
-                ? 'border-cyan-400 bg-cyan-50 text-cyan-600'
-                : 'border-slate-200 bg-white text-slate-400 hover:bg-slate-50',
+                ? 'border-cyan-400 bg-cyan-50 dark:bg-cyan-950 text-cyan-600 dark:text-cyan-400'
+                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700',
             )}
           >
             <ChevronDown className={clsx('h-4 w-4 transition-transform', open && 'rotate-180')} />
@@ -339,12 +339,12 @@ function DropdownList({
   }, [])
 
   return (
-        <div ref={scrollRef} className="absolute left-0 right-0 top-full z-20 mt-1 max-h-52 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+        <div ref={scrollRef} className="absolute left-0 right-0 top-full z-20 mt-1 max-h-52 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg">
           {Object.entries(grouped).map(([weekNum, topics]) => (
             <div key={weekNum} ref={Number(weekNum) === targetWeek ? targetRef : undefined}>
               <div className={clsx(
-                'sticky top-0 px-3 py-1.5 text-[10px] font-bold border-b border-slate-100',
-                Number(weekNum) === targetWeek ? 'bg-cyan-50 text-cyan-700' : 'bg-slate-50 text-slate-500',
+                'sticky top-0 px-3 py-1.5 text-[10px] font-bold border-b border-slate-100 dark:border-slate-700',
+                Number(weekNum) === targetWeek ? 'bg-cyan-50 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-400' : 'bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400',
               )}>
                 الأسبوع {weekNum} {Number(weekNum) === targetWeek ? '← الحالي' : ''}
               </div>
@@ -358,11 +358,11 @@ function DropdownList({
                     className={clsx(
                       'flex w-full items-center gap-2 px-3 py-2 text-right text-xs transition',
                       isSelected
-                        ? 'bg-cyan-50 text-cyan-700 font-medium'
-                        : 'text-slate-700 hover:bg-slate-50',
+                        ? 'bg-cyan-50 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-400 font-medium'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700',
                     )}
                   >
-                    <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[9px] font-bold text-slate-500">
+                    <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700 text-[9px] font-bold text-slate-500 dark:text-slate-400">
                       {t.session_number}
                     </span>
                     <span className="line-clamp-1">{t.topic}</span>

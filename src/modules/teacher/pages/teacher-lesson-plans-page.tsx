@@ -47,13 +47,13 @@ export function TeacherLessonPlansPage() {
     <section className="space-y-4">
       {/* Header */}
       <header className="space-y-1">
-        <h1 className="text-xl font-bold text-slate-900">الخطط الأسبوعية</h1>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">الخطط الأسبوعية</h1>
         <p className="text-xs text-muted">إعداد واعتماد خطط الدروس الأسبوعية</p>
       </header>
 
       {/* Week Selector */}
       {loadingWeeks ? (
-        <div className="h-14 animate-pulse rounded-xl bg-slate-100" />
+        <div className="h-14 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-700" />
       ) : weeks?.length ? (
         <WeekSelector
           weeks={weeks}
@@ -61,7 +61,7 @@ export function TeacherLessonPlansPage() {
           onSelect={setSelectedWeekId}
         />
       ) : (
-        <div className="rounded-xl bg-amber-50 p-3 text-center text-xs text-amber-700">
+        <div className="rounded-xl bg-amber-50 dark:bg-amber-950 p-3 text-center text-xs text-amber-700 dark:text-amber-400">
           لا توجد أسابيع دراسية في الفصل الحالي
         </div>
       )}
@@ -70,13 +70,13 @@ export function TeacherLessonPlansPage() {
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-20 animate-pulse rounded-xl bg-slate-100" />
+            <div key={i} className="h-20 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-700" />
           ))}
         </div>
       ) : !subjects?.length ? (
         <div className="glass-card text-center">
-          <BookOpenCheck className="mx-auto h-10 w-10 text-slate-300" />
-          <p className="mt-3 text-sm font-medium text-slate-500">لا توجد مواد مسجلة</p>
+          <BookOpenCheck className="mx-auto h-10 w-10 text-slate-300 dark:text-slate-500" />
+          <p className="mt-3 text-sm font-medium text-slate-500 dark:text-slate-400">لا توجد مواد مسجلة</p>
           <p className="text-xs text-muted">تأكد من وجود جدول حصص مُسند إليك</p>
         </div>
       ) : (
@@ -91,17 +91,17 @@ export function TeacherLessonPlansPage() {
                 onClick={() => setEditorSubject(subject)}
                 disabled={!selectedWeekId}
                 className={clsx(
-                  'flex w-full items-center gap-3 rounded-xl border bg-white p-4 text-right transition-all',
-                  'hover:border-cyan-200 hover:shadow-md hover:shadow-cyan-600/5',
+                  'flex w-full items-center gap-3 rounded-xl border bg-white dark:bg-slate-800 p-4 text-right transition-all',
+                  'hover:border-cyan-200 dark:hover:border-cyan-800 hover:shadow-md hover:shadow-cyan-600/5',
                   'disabled:opacity-50',
-                  plan ? 'border-slate-200' : 'border-dashed border-slate-300',
+                  plan ? 'border-slate-200 dark:border-slate-700' : 'border-dashed border-slate-300 dark:border-slate-500',
                 )}
               >
                 {/* Icon */}
                 <div
                   className={clsx(
                     'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl',
-                    subject.has_curriculum ? 'bg-cyan-100 text-cyan-600' : 'bg-slate-100 text-slate-400',
+                    subject.has_curriculum ? 'bg-cyan-100 dark:bg-cyan-950 text-cyan-600 dark:text-cyan-400' : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500',
                   )}
                 >
                   <BookOpenCheck className="h-5 w-5" />
@@ -110,8 +110,8 @@ export function TeacherLessonPlansPage() {
                 {/* Info */}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-slate-900">{subject.subject_name}</span>
-                    <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">
+                    <span className="text-sm font-bold text-slate-900 dark:text-slate-100">{subject.subject_name}</span>
+                    <span className="rounded-md bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 text-[10px] text-slate-500 dark:text-slate-400">
                       {subject.grade}
                     </span>
                   </div>
@@ -131,14 +131,14 @@ export function TeacherLessonPlansPage() {
                       </span>
                     )}
                     {subject.sessions_per_week > 0 && (
-                      <span className="text-[10px] text-slate-400">
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500">
                         {subject.sessions_per_week} حصص/أسبوع
                       </span>
                     )}
                   </div>
                 </div>
 
-                <ChevronLeft className="h-4 w-4 shrink-0 text-slate-300" />
+                <ChevronLeft className="h-4 w-4 shrink-0 text-slate-300 dark:text-slate-500" />
               </button>
             )
           })}

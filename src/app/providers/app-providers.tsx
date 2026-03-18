@@ -72,6 +72,7 @@ export function AppProviders({ children }: AppProvidersProps) {
           <ThemeProvider>
             <Toaster
               position="bottom-center"
+              offset={{ bottom: 80 }}
               options={{
                 fill: 'rgba(255, 255, 255, 0.85)',
                 roundness: 16,

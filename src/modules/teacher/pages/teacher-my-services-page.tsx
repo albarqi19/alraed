@@ -44,13 +44,13 @@ export function TeacherMyServicesPage() {
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50"
+          className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 transition hover:bg-slate-50 dark:hover:bg-slate-700"
         >
           <i className="bi bi-arrow-right text-lg" />
         </button>
         <div>
-          <h1 className="text-xl font-bold text-slate-900">خدماتي</h1>
-          <p className="text-sm text-slate-500">إدارة خدماتك الشخصية</p>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">خدماتي</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">إدارة خدماتك الشخصية</p>
         </div>
       </div>
 
@@ -61,7 +61,7 @@ export function TeacherMyServicesPage() {
             key={service.id}
             type="button"
             onClick={() => navigate(service.to)}
-            className="group w-full text-right transition-transform duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50"
+            className="group w-full text-right transition-transform duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 dark:focus-visible:ring-slate-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50 dark:focus-visible:ring-offset-slate-900"
           >
             <span className="glass-card relative flex h-[90px] w-full flex-col justify-center overflow-hidden p-3 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-lg">
               <span
@@ -73,8 +73,8 @@ export function TeacherMyServicesPage() {
 
               {/* Content */}
               <span className="relative z-10 space-y-0.5">
-                <h3 className="text-base font-bold text-slate-900">{service.title}</h3>
-                <p className="text-xs leading-5 text-slate-600 line-clamp-1">{service.description}</p>
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">{service.title}</h3>
+                <p className="text-xs leading-5 text-slate-600 dark:text-slate-400 line-clamp-1">{service.description}</p>
               </span>
             </span>
           </button>
@@ -84,11 +84,11 @@ export function TeacherMyServicesPage() {
       {/* Empty state if no services */}
       {MY_SERVICES.length === 0 && (
         <div className="glass-card flex flex-col items-center justify-center py-12 text-center">
-          <div className="mb-4 grid h-16 w-16 place-items-center rounded-full bg-slate-100">
-            <i className="bi bi-inbox text-2xl text-slate-400" />
+          <div className="mb-4 grid h-16 w-16 place-items-center rounded-full bg-slate-100 dark:bg-slate-700">
+            <i className="bi bi-inbox text-2xl text-slate-400 dark:text-slate-500" />
           </div>
-          <h3 className="text-lg font-semibold text-slate-700">لا توجد خدمات متاحة</h3>
-          <p className="mt-1 text-sm text-slate-500">ستظهر هنا الخدمات المتاحة لك</p>
+          <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300">لا توجد خدمات متاحة</h3>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">ستظهر هنا الخدمات المتاحة لك</p>
         </div>
       )}
     </section>

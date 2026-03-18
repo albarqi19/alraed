@@ -12,7 +12,7 @@ const MODES: Array<{ key: TeacherPointMode; label: string; icon: string }> = [
 
 export function ModeToggle({ value, onChange }: ModeToggleProps) {
   return (
-    <div className="grid grid-cols-2 gap-2 rounded-3xl bg-white p-1 shadow-sm">
+    <div className="grid grid-cols-2 gap-2 rounded-3xl bg-white dark:bg-slate-800 p-1 shadow-sm">
       {MODES.map((mode) => {
         const isActive = value === mode.key
         const isReward = mode.key === 'reward'
@@ -26,7 +26,7 @@ export function ModeToggle({ value, onChange }: ModeToggleProps) {
                 ? isReward
                   ? 'bg-emerald-600 text-white shadow-lg focus-visible:ring-emerald-500'
                   : 'bg-rose-600 text-white shadow-lg focus-visible:ring-rose-500'
-                : 'bg-transparent text-slate-600 hover:bg-slate-50 focus-visible:ring-slate-500'
+                : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 focus-visible:ring-slate-500'
             }`}
           >
             <span className="flex items-center gap-2 text-base font-semibold">

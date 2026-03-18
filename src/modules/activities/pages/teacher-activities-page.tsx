@@ -10,9 +10,9 @@ const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
 }
 
 const REPORT_STATUS_COLORS: Record<ReportStatus, string> = {
-  pending: 'bg-amber-50 text-amber-700 border-amber-200',
-  approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  rejected: 'bg-red-50 text-red-700 border-red-200',
+  pending: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-800',
+  approved: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800',
+  rejected: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-800',
 }
 
 function formatDate(value: string | null | undefined): string {
@@ -88,9 +88,9 @@ export function TeacherActivitiesPage() {
 
   if (error) {
     return (
-      <div className="rounded-2xl bg-red-50 border border-red-200 p-8 text-center">
+      <div className="rounded-2xl bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 p-8 text-center">
         <i className="bi bi-exclamation-triangle text-4xl text-red-500 mb-3" />
-        <p className="text-red-700">{error instanceof Error ? error.message : 'حدث خطأ'}</p>
+        <p className="text-red-700 dark:text-red-400">{error instanceof Error ? error.message : 'حدث خطأ'}</p>
       </div>
     )
   }
@@ -99,7 +99,7 @@ export function TeacherActivitiesPage() {
     <section className="space-y-6">
       {/* Header */}
       <header>
-        <h1 className="text-2xl font-bold text-slate-900">الأنشطة</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">الأنشطة</h1>
         <p className="text-sm text-muted">
           الأنشطة المخصصة لك بناءً على الصفوف التي تدرسها: {teacherGrades.join(', ')}
         </p>
@@ -107,8 +107,8 @@ export function TeacherActivitiesPage() {
 
       {activities.length === 0 ? (
         <div className="glass-card p-8 text-center">
-          <i className="bi bi-calendar-event text-5xl text-slate-300 mb-4" />
-          <h3 className="text-lg font-semibold text-slate-700 mb-2">لا توجد أنشطة</h3>
+          <i className="bi bi-calendar-event text-5xl text-slate-300 dark:text-slate-500 mb-4" />
+          <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">لا توجد أنشطة</h3>
           <p className="text-sm text-muted">
             لا توجد أنشطة مخصصة لك حالياً
           </p>
@@ -118,10 +118,10 @@ export function TeacherActivitiesPage() {
           {/* Pending Activities */}
           {pendingActivities.length > 0 && (
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                 <i className="bi bi-clock text-amber-500" />
                 أنشطة بانتظار تسليم التقرير
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
+                <span className="rounded-full bg-amber-100 dark:bg-amber-900 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-400">
                   {pendingActivities.length}
                 </span>
               </h2>
@@ -140,10 +140,10 @@ export function TeacherActivitiesPage() {
           {/* Submitted Activities */}
           {submittedActivities.length > 0 && (
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                 <i className="bi bi-check-circle text-emerald-500" />
                 أنشطة تم تسليمها
-                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">
+                <span className="rounded-full bg-emerald-100 dark:bg-emerald-900 px-2 py-0.5 text-xs text-emerald-700 dark:text-emerald-400">
                   {submittedActivities.length}
                 </span>
               </h2>
@@ -211,7 +211,7 @@ function ActivityCard({ activity, onClick }: ActivityCardProps) {
     
     if (isExpired) {
       return (
-        <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
+        <span className="inline-flex items-center gap-1 rounded-full border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 px-3 py-1 text-xs font-semibold text-red-700 dark:text-red-400">
           <i className="bi bi-exclamation-triangle" />
           منتهي
         </span>
@@ -219,7 +219,7 @@ function ActivityCard({ activity, onClick }: ActivityCardProps) {
     }
     
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+      <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950 px-3 py-1 text-xs font-semibold text-blue-700 dark:text-blue-400">
         <i className="bi bi-file-earmark-plus" />
         {status.submittedCount}/{status.totalGrades} صفوف
       </span>
@@ -235,15 +235,15 @@ function ActivityCard({ activity, onClick }: ActivityCardProps) {
       {/* Status Badge */}
       <div className="flex items-start justify-between mb-3">
         {getStatusBadge()}
-        <i className="bi bi-chevron-left text-slate-300 group-hover:text-indigo-500 transition" />
+        <i className="bi bi-chevron-left text-slate-300 dark:text-slate-500 group-hover:text-indigo-500 transition" />
       </div>
 
       {/* Title */}
-      <h3 className="text-lg font-bold text-slate-900 mb-2 line-clamp-2">{activity.title}</h3>
+      <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-2 line-clamp-2">{activity.title}</h3>
 
       {/* Description */}
       {activity.description && (
-        <p className="text-sm text-slate-600 mb-3 line-clamp-2">{activity.description}</p>
+        <p className="text-sm text-slate-600 dark:text-slate-400 mb-3 line-clamp-2">{activity.description}</p>
       )}
 
       {/* Dates */}
@@ -252,7 +252,7 @@ function ActivityCard({ activity, onClick }: ActivityCardProps) {
           <i className="bi bi-calendar-event" />
           {formatDate(activity.start_date)}
         </span>
-        <span className="text-slate-300">→</span>
+        <span className="text-slate-300 dark:text-slate-500">→</span>
         <span className="flex items-center gap-1">
           <i className="bi bi-calendar-check" />
           {formatDate(activity.end_date)}
@@ -267,11 +267,11 @@ function ActivityCard({ activity, onClick }: ActivityCardProps) {
             className={`rounded-full px-2 py-0.5 text-xs ${
               gradeInfo.has_report
                 ? gradeInfo.report_status === 'approved'
-                  ? 'bg-emerald-100 text-emerald-700'
+                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-400'
                   : gradeInfo.report_status === 'rejected'
-                  ? 'bg-red-100 text-red-700'
-                  : 'bg-amber-100 text-amber-700'
-                : 'bg-slate-100 text-slate-600'
+                  ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-400'
+                  : 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-400'
+                : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400'
             }`}
           >
             {gradeInfo.grade}
@@ -284,7 +284,7 @@ function ActivityCard({ activity, onClick }: ActivityCardProps) {
           </span>
         ))}
         {(activity.grades_reports?.length ?? 0) > 4 && (
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+          <span className="rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs text-slate-500 dark:text-slate-400">
             +{(activity.grades_reports?.length ?? 0) - 4}
           </span>
         )}
@@ -292,8 +292,8 @@ function ActivityCard({ activity, onClick }: ActivityCardProps) {
 
       {/* Rejection Warning */}
       {status.hasRejected && (
-        <div className="mt-3 rounded-lg bg-red-50 border border-red-200 p-2">
-          <p className="text-xs text-red-700 font-medium">
+        <div className="mt-3 rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 p-2">
+          <p className="text-xs text-red-700 dark:text-red-400 font-medium">
             <i className="bi bi-exclamation-circle ml-1" />
             يوجد تقرير مرفوض يتطلب إعادة التعديل
           </p>

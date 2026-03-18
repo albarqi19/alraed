@@ -34,12 +34,12 @@ const ICON_EMOJI_MAP: Record<string, string> = {
 }
 
 const COLOR_CLASSES: Record<string, { bg: string; border: string; text: string; activeBg: string }> = {
-  emerald: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', activeBg: 'bg-emerald-100' },
-  rose: { bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700', activeBg: 'bg-rose-100' },
-  amber: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', activeBg: 'bg-amber-100' },
-  sky: { bg: 'bg-sky-50', border: 'border-sky-200', text: 'text-sky-700', activeBg: 'bg-sky-100' },
-  purple: { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', activeBg: 'bg-purple-100' },
-  slate: { bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-700', activeBg: 'bg-slate-100' },
+  emerald: { bg: 'bg-emerald-50 dark:bg-emerald-950', border: 'border-emerald-200 dark:border-emerald-800', text: 'text-emerald-700 dark:text-emerald-400', activeBg: 'bg-emerald-100 dark:bg-emerald-900' },
+  rose: { bg: 'bg-rose-50 dark:bg-rose-950', border: 'border-rose-200 dark:border-rose-800', text: 'text-rose-700 dark:text-rose-400', activeBg: 'bg-rose-100 dark:bg-rose-900' },
+  amber: { bg: 'bg-amber-50 dark:bg-amber-950', border: 'border-amber-200 dark:border-amber-800', text: 'text-amber-700 dark:text-amber-400', activeBg: 'bg-amber-100 dark:bg-amber-900' },
+  sky: { bg: 'bg-sky-50 dark:bg-sky-950', border: 'border-sky-200 dark:border-sky-800', text: 'text-sky-700 dark:text-sky-400', activeBg: 'bg-sky-100 dark:bg-sky-900' },
+  purple: { bg: 'bg-purple-50 dark:bg-purple-950', border: 'border-purple-200 dark:border-purple-800', text: 'text-purple-700 dark:text-purple-400', activeBg: 'bg-purple-100 dark:bg-purple-900' },
+  slate: { bg: 'bg-slate-50 dark:bg-slate-700/50', border: 'border-slate-200 dark:border-slate-700', text: 'text-slate-700 dark:text-slate-300', activeBg: 'bg-slate-100 dark:bg-slate-700' },
 }
 
 /* ─────── Props ─────── */
@@ -62,25 +62,25 @@ function getEvaluationColor(
   // Mastery
   if (gradeType === 'mastery') {
     return descriptiveGrade === 'اتقن'
-      ? { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'اتقن' }
-      : { bg: 'bg-red-100', text: 'text-red-700', label: 'لم يتقن' }
+      ? { bg: 'bg-emerald-100 dark:bg-emerald-900', text: 'text-emerald-700 dark:text-emerald-400', label: 'اتقن' }
+      : { bg: 'bg-red-100 dark:bg-red-900', text: 'text-red-700 dark:text-red-400', label: 'لم يتقن' }
   }
 
   // Numeric: percentage → color
   if (gradeType === 'numeric' && numericGrade != null) {
     const pct = (numericGrade / (maxGrade || 100)) * 100
-    if (pct >= 67) return { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'متقدم' }
-    if (pct >= 34) return { bg: 'bg-amber-100', text: 'text-amber-700', label: 'متوسط' }
-    return { bg: 'bg-red-100', text: 'text-red-700', label: 'مبتدئ' }
+    if (pct >= 67) return { bg: 'bg-emerald-100 dark:bg-emerald-900', text: 'text-emerald-700 dark:text-emerald-400', label: 'متقدم' }
+    if (pct >= 34) return { bg: 'bg-amber-100 dark:bg-amber-900', text: 'text-amber-700 dark:text-amber-400', label: 'متوسط' }
+    return { bg: 'bg-red-100 dark:bg-red-900', text: 'text-red-700 dark:text-red-400', label: 'مبتدئ' }
   }
 
   // Descriptive
   const descriptiveMap: Record<string, { bg: string; text: string }> = {
-    'ممتاز': { bg: 'bg-emerald-100', text: 'text-emerald-700' },
-    'جيد جدا': { bg: 'bg-green-100', text: 'text-green-700' },
-    'جيد': { bg: 'bg-amber-100', text: 'text-amber-700' },
-    'مقبول': { bg: 'bg-orange-100', text: 'text-orange-700' },
-    'ضعيف': { bg: 'bg-red-100', text: 'text-red-700' },
+    'ممتاز': { bg: 'bg-emerald-100 dark:bg-emerald-900', text: 'text-emerald-700 dark:text-emerald-400' },
+    'جيد جدا': { bg: 'bg-green-100 dark:bg-green-900', text: 'text-green-700 dark:text-green-400' },
+    'جيد': { bg: 'bg-amber-100 dark:bg-amber-900', text: 'text-amber-700 dark:text-amber-400' },
+    'مقبول': { bg: 'bg-orange-100 dark:bg-orange-900', text: 'text-orange-700 dark:text-orange-400' },
+    'ضعيف': { bg: 'bg-red-100 dark:bg-red-900', text: 'text-red-700 dark:text-red-400' },
   }
   if (gradeType === 'descriptive' && descriptiveGrade && descriptiveMap[descriptiveGrade]) {
     return { ...descriptiveMap[descriptiveGrade], label: descriptiveGrade }
@@ -88,8 +88,8 @@ function getEvaluationColor(
 
   // Category fallback
   return category === 'positive'
-    ? { bg: 'bg-emerald-50', text: 'text-emerald-700', label: 'إيجابي' }
-    : { bg: 'bg-red-50', text: 'text-red-700', label: 'سلبي' }
+    ? { bg: 'bg-emerald-50 dark:bg-emerald-950', text: 'text-emerald-700 dark:text-emerald-400', label: 'إيجابي' }
+    : { bg: 'bg-red-50 dark:bg-red-950', text: 'text-red-700 dark:text-red-400', label: 'سلبي' }
 }
 
 /* ─────── NumberGrid (بديل input number) ─────── */
@@ -116,7 +116,7 @@ function NumberGrid({
             : pct >= 34
               ? 'bg-amber-500 text-white shadow-sm'
               : 'bg-red-500 text-white shadow-sm'
-          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+          : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
 
         return (
           <button
@@ -129,7 +129,7 @@ function NumberGrid({
           </button>
         )
       })}
-      <span className="flex items-center text-xs text-slate-400">/ {maxGrade}</span>
+      <span className="flex items-center text-xs text-slate-400 dark:text-slate-500">/ {maxGrade}</span>
     </div>
   )
 }
@@ -155,7 +155,7 @@ function GradePicker({
           className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition ${
             value.descriptive === 'اتقن'
               ? 'bg-emerald-600 text-white shadow-md'
-              : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+              : 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900'
           }`}
         >
           ✓ اتقن
@@ -166,7 +166,7 @@ function GradePicker({
           className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition ${
             value.descriptive === 'لم يتقن'
               ? 'bg-red-600 text-white shadow-md'
-              : 'bg-red-50 text-red-700 hover:bg-red-100'
+              : 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900'
           }`}
         >
           ✗ لم يتقن
@@ -188,7 +188,7 @@ function GradePicker({
               className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${
                 value.descriptive === g
                   ? `${color.bg} ${color.text} shadow-sm ring-1 ring-current/20`
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
               }`}
             >
               {g}
@@ -221,9 +221,9 @@ function GradePicker({
           step="1"
           value={value.numeric ?? 0}
           onChange={(e) => onChange({ numeric: Number(e.target.value) || null })}
-          className="h-2 flex-1 cursor-pointer appearance-none rounded-lg bg-slate-200 accent-teal-600"
+          className="h-2 flex-1 cursor-pointer appearance-none rounded-lg bg-slate-200 dark:bg-slate-700 accent-teal-600"
         />
-        <span className="min-w-[3rem] rounded-lg bg-slate-100 px-2 py-1 text-center text-sm font-medium text-slate-700">
+        <span className="min-w-[3rem] rounded-lg bg-slate-100 dark:bg-slate-700 px-2 py-1 text-center text-sm font-medium text-slate-700 dark:text-slate-300">
           {value.numeric ?? 0} / {max}
         </span>
       </div>
@@ -256,7 +256,7 @@ function QuickActionButton({
       className={`flex shrink-0 flex-col items-center gap-1 rounded-xl border-2 px-3 py-2 transition ${
         isActive
           ? `${colors.activeBg} ${colors.border} ${colors.text} shadow-sm`
-          : `border-transparent bg-slate-50 text-slate-500 hover:bg-slate-100`
+          : `border-transparent bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700`
       }`}
     >
       <span className="text-xl">{emoji}</span>
@@ -295,8 +295,8 @@ function SkillItem({
         evalColor
           ? `${evalColor.bg} border-current/10`
           : isActive
-            ? 'border-teal-200 bg-teal-50/50'
-            : 'border-slate-100 bg-white'
+            ? 'border-teal-200 dark:border-teal-800 bg-teal-50/50 dark:bg-teal-950/50'
+            : 'border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800'
       }`}
     >
       <div className="flex items-center justify-between">
@@ -304,11 +304,11 @@ function SkillItem({
           type="button"
           disabled={isPending}
           onClick={onToggle}
-          className="flex items-center gap-2 text-sm font-medium text-slate-700"
+          className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300"
         >
           <span
             className={`flex h-5 w-5 items-center justify-center rounded-md text-xs transition ${
-              isActive ? 'bg-teal-600 text-white' : 'bg-slate-200 text-slate-400'
+              isActive ? 'bg-teal-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500'
             }`}
           >
             {isActive ? '✓' : ''}
@@ -323,7 +323,7 @@ function SkillItem({
           )}
           <span
             className={`rounded-full px-2 py-0.5 text-[10px] ${
-              skill.category === 'positive' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
+              skill.category === 'positive' ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-400'
             }`}
           >
             {skill.category === 'positive' ? 'إيجابي' : 'سلبي'}
@@ -360,7 +360,7 @@ function AddSkillRedirect({ onClose }: { onClose: () => void }) {
         onClose()
         navigate('/teacher/skills')
       }}
-      className="flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-200 py-2.5 text-xs text-slate-400 transition hover:border-teal-300 hover:text-teal-500"
+      className="flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 py-2.5 text-xs text-slate-400 dark:text-slate-500 transition hover:border-teal-300 hover:text-teal-500"
     >
       <ExternalLink className="h-3.5 w-3.5" />
       إضافة مهارة من صفحة إدارة المهارات
@@ -413,7 +413,7 @@ function StudentReportPanel({ studentId, subjectId }: { studentId: number; subje
     return (
       <div className="flex flex-col items-center gap-2 py-6">
         <Loader2 className="h-5 w-5 animate-spin text-teal-500" />
-        <p className="text-xs text-slate-500">جاري تحميل الكشف...</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">جاري تحميل الكشف...</p>
       </div>
     )
   }
@@ -421,9 +421,9 @@ function StudentReportPanel({ studentId, subjectId }: { studentId: number; subje
   if (reportQuery.isError) {
     return (
       <div className="flex flex-col items-center gap-3 py-10 text-center">
-        <BarChart3 className="h-10 w-10 text-slate-300" />
-        <p className="text-sm font-medium text-slate-500">تعذر تحميل الكشف</p>
-        <p className="text-xs text-slate-400">حدث خطأ أثناء جلب البيانات، حاول مرة أخرى</p>
+        <BarChart3 className="h-10 w-10 text-slate-300 dark:text-slate-500" />
+        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">تعذر تحميل الكشف</p>
+        <p className="text-xs text-slate-400 dark:text-slate-500">حدث خطأ أثناء جلب البيانات، حاول مرة أخرى</p>
       </div>
     )
   }
@@ -442,9 +442,9 @@ function StudentReportPanel({ studentId, subjectId }: { studentId: number; subje
         transition={{ duration: 0.3 }}
         className="flex flex-col items-center gap-3 py-10 text-center"
       >
-        <BarChart3 className="h-10 w-10 text-slate-300" />
-        <p className="text-sm font-medium text-slate-500">لا يوجد كشف للطالب</p>
-        <p className="text-xs text-slate-400">لم يتم تسجيل أي تقييمات لهذا الطالب في الفصل الحالي</p>
+        <BarChart3 className="h-10 w-10 text-slate-300 dark:text-slate-500" />
+        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">لا يوجد كشف للطالب</p>
+        <p className="text-xs text-slate-400 dark:text-slate-500">لم يتم تسجيل أي تقييمات لهذا الطالب في الفصل الحالي</p>
       </motion.div>
     )
   }
@@ -459,7 +459,7 @@ function StudentReportPanel({ studentId, subjectId }: { studentId: number; subje
     >
       {/* إحصائيات السلوك */}
       <div>
-        <p className="mb-2 text-xs font-medium text-slate-500">إحصائيات السلوك (الفصل الحالي)</p>
+        <p className="mb-2 text-xs font-medium text-slate-500 dark:text-slate-400">إحصائيات السلوك (الفصل الحالي)</p>
         <div className="grid grid-cols-2 gap-2">
           {behavior_summary.filter((b) => b.count > 0 || b.category === 'positive').slice(0, 4).map((b) => {
             const emoji = ICON_EMOJI_MAP[b.icon ?? ''] ?? '📌'
@@ -469,7 +469,7 @@ function StudentReportPanel({ studentId, subjectId }: { studentId: number; subje
                 <span className="text-xl">{emoji}</span>
                 <div>
                   <p className={`text-lg font-bold ${colors.text}`}>{b.count}</p>
-                  <p className="text-[10px] text-slate-500">{b.name}</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400">{b.name}</p>
                 </div>
               </div>
             )
@@ -477,7 +477,7 @@ function StudentReportPanel({ studentId, subjectId }: { studentId: number; subje
         </div>
         <div className="mt-2 flex justify-center gap-4 text-xs">
           <span className="text-emerald-600">إيجابي: {total_positive}</span>
-          <span className="text-slate-300">|</span>
+          <span className="text-slate-300 dark:text-slate-500">|</span>
           <span className="text-red-600">سلبي: {total_negative}</span>
         </div>
       </div>
@@ -485,7 +485,7 @@ function StudentReportPanel({ studentId, subjectId }: { studentId: number; subje
       {/* المهارات */}
       {skills_summary.length > 0 && (
         <div>
-          <p className="mb-2 text-xs font-medium text-slate-500">المهارات ({skills_summary.length})</p>
+          <p className="mb-2 text-xs font-medium text-slate-500 dark:text-slate-400">المهارات ({skills_summary.length})</p>
           <div className="space-y-1.5">
             {skills_summary.map((s: SkillSummaryItem) => {
               const color = getSkillSummaryColor(s)
@@ -493,8 +493,8 @@ function StudentReportPanel({ studentId, subjectId }: { studentId: number; subje
                 <div key={s.skill_id} className={`flex items-center justify-between rounded-xl border p-2.5 ${color.bg}`}>
                   <div className="flex items-center gap-2">
                     <span className={`h-2 w-2 rounded-full ${color.dot}`} />
-                    <span className="text-sm font-medium text-slate-700">{s.name}</span>
-                    <span className="text-[10px] text-slate-400">{s.count} مرة</span>
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{s.name}</span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500">{s.count} مرة</span>
                   </div>
                   <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${color.badge} ${color.badgeText}`}>
                     {getSkillSummaryLabel(s)}
@@ -512,28 +512,28 @@ function StudentReportPanel({ studentId, subjectId }: { studentId: number; subje
 function getSkillSummaryColor(s: SkillSummaryItem) {
   if (s.grade_type === 'mastery') {
     return s.last_mastery
-      ? { bg: 'bg-emerald-50 border-emerald-100', dot: 'bg-emerald-500', badge: 'bg-emerald-100', badgeText: 'text-emerald-700' }
-      : { bg: 'bg-red-50 border-red-100', dot: 'bg-red-500', badge: 'bg-red-100', badgeText: 'text-red-700' }
+      ? { bg: 'bg-emerald-50 dark:bg-emerald-950 border-emerald-100 dark:border-emerald-800', dot: 'bg-emerald-500', badge: 'bg-emerald-100 dark:bg-emerald-900', badgeText: 'text-emerald-700 dark:text-emerald-400' }
+      : { bg: 'bg-red-50 dark:bg-red-950 border-red-100 dark:border-red-800', dot: 'bg-red-500', badge: 'bg-red-100 dark:bg-red-900', badgeText: 'text-red-700 dark:text-red-400' }
   }
   if (s.grade_type === 'numeric' && s.avg_grade != null && s.max_grade) {
     const pct = (s.avg_grade / s.max_grade) * 100
-    if (pct >= 67) return { bg: 'bg-emerald-50 border-emerald-100', dot: 'bg-emerald-500', badge: 'bg-emerald-100', badgeText: 'text-emerald-700' }
-    if (pct >= 34) return { bg: 'bg-amber-50 border-amber-100', dot: 'bg-amber-500', badge: 'bg-amber-100', badgeText: 'text-amber-700' }
-    return { bg: 'bg-red-50 border-red-100', dot: 'bg-red-500', badge: 'bg-red-100', badgeText: 'text-red-700' }
+    if (pct >= 67) return { bg: 'bg-emerald-50 dark:bg-emerald-950 border-emerald-100 dark:border-emerald-800', dot: 'bg-emerald-500', badge: 'bg-emerald-100 dark:bg-emerald-900', badgeText: 'text-emerald-700 dark:text-emerald-400' }
+    if (pct >= 34) return { bg: 'bg-amber-50 dark:bg-amber-950 border-amber-100 dark:border-amber-800', dot: 'bg-amber-500', badge: 'bg-amber-100 dark:bg-amber-900', badgeText: 'text-amber-700 dark:text-amber-400' }
+    return { bg: 'bg-red-50 dark:bg-red-950 border-red-100 dark:border-red-800', dot: 'bg-red-500', badge: 'bg-red-100 dark:bg-red-900', badgeText: 'text-red-700 dark:text-red-400' }
   }
   if (s.grade_type === 'descriptive') {
     const map: Record<string, typeof defaultColor> = {
-      'ممتاز': { bg: 'bg-emerald-50 border-emerald-100', dot: 'bg-emerald-500', badge: 'bg-emerald-100', badgeText: 'text-emerald-700' },
-      'جيد جدا': { bg: 'bg-green-50 border-green-100', dot: 'bg-green-500', badge: 'bg-green-100', badgeText: 'text-green-700' },
-      'جيد': { bg: 'bg-amber-50 border-amber-100', dot: 'bg-amber-500', badge: 'bg-amber-100', badgeText: 'text-amber-700' },
-      'مقبول': { bg: 'bg-orange-50 border-orange-100', dot: 'bg-orange-500', badge: 'bg-orange-100', badgeText: 'text-orange-700' },
-      'ضعيف': { bg: 'bg-red-50 border-red-100', dot: 'bg-red-500', badge: 'bg-red-100', badgeText: 'text-red-700' },
+      'ممتاز': { bg: 'bg-emerald-50 dark:bg-emerald-950 border-emerald-100 dark:border-emerald-800', dot: 'bg-emerald-500', badge: 'bg-emerald-100 dark:bg-emerald-900', badgeText: 'text-emerald-700 dark:text-emerald-400' },
+      'جيد جدا': { bg: 'bg-green-50 dark:bg-green-950 border-green-100 dark:border-green-800', dot: 'bg-green-500', badge: 'bg-green-100 dark:bg-green-900', badgeText: 'text-green-700 dark:text-green-400' },
+      'جيد': { bg: 'bg-amber-50 dark:bg-amber-950 border-amber-100 dark:border-amber-800', dot: 'bg-amber-500', badge: 'bg-amber-100 dark:bg-amber-900', badgeText: 'text-amber-700 dark:text-amber-400' },
+      'مقبول': { bg: 'bg-orange-50 dark:bg-orange-950 border-orange-100 dark:border-orange-800', dot: 'bg-orange-500', badge: 'bg-orange-100 dark:bg-orange-900', badgeText: 'text-orange-700 dark:text-orange-400' },
+      'ضعيف': { bg: 'bg-red-50 dark:bg-red-950 border-red-100 dark:border-red-800', dot: 'bg-red-500', badge: 'bg-red-100 dark:bg-red-900', badgeText: 'text-red-700 dark:text-red-400' },
     }
     if (s.last_descriptive && map[s.last_descriptive]) return map[s.last_descriptive]
   }
   return defaultColor
 }
-const defaultColor = { bg: 'bg-slate-50 border-slate-100', dot: 'bg-slate-400', badge: 'bg-slate-100', badgeText: 'text-slate-600' }
+const defaultColor = { bg: 'bg-slate-50 dark:bg-slate-700/50 border-slate-100 dark:border-slate-700', dot: 'bg-slate-400', badge: 'bg-slate-100 dark:bg-slate-700', badgeText: 'text-slate-600 dark:text-slate-400' }
 
 function getSkillSummaryLabel(s: SkillSummaryItem): string {
   if (s.grade_type === 'mastery') return s.last_mastery ? 'اتقن' : 'لم يتقن'
@@ -704,11 +704,11 @@ export function StudentEvaluationSheet({
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={springConfig}
-            className={`fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-3xl bg-white shadow-2xl transition-[max-height] duration-300 ${showReport ? 'max-h-[92vh]' : 'max-h-[85vh]'}`}
+            className={`fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-3xl bg-white dark:bg-slate-800 shadow-2xl transition-[max-height] duration-300 ${showReport ? 'max-h-[92vh]' : 'max-h-[85vh]'}`}
           >
             {/* Handle bar */}
             <div className="flex justify-center pt-3">
-              <div className="h-1.5 w-12 rounded-full bg-slate-200" />
+              <div className="h-1.5 w-12 rounded-full bg-slate-200 dark:bg-slate-700" />
             </div>
 
             {/* Header */}
@@ -719,7 +719,7 @@ export function StudentEvaluationSheet({
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
-                    className="text-lg font-bold text-slate-900"
+                    className="text-lg font-bold text-slate-900 dark:text-slate-100"
                   >
                     {isBulk ? `${students.length} طلاب محددين` : singleStudent?.name ?? ''}
                   </motion.h2>
@@ -727,7 +727,7 @@ export function StudentEvaluationSheet({
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.15 }}
-                    className="text-sm text-slate-500"
+                    className="text-sm text-slate-500 dark:text-slate-400"
                   >
                     {isBulk ? 'تقييم جماعي' : configQuery.data?.subject_name ?? ''}
                   </motion.p>
@@ -740,7 +740,7 @@ export function StudentEvaluationSheet({
                     className={`flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-medium transition ${
                       showReport
                         ? 'bg-teal-600 text-white shadow-sm'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
                     }`}
                   >
                     <BarChart3 className="h-3.5 w-3.5" />
@@ -777,7 +777,7 @@ export function StudentEvaluationSheet({
                     {configQuery.isLoading ? (
                       <div className="flex flex-col items-center gap-3 py-12">
                         <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
-                        <p className="text-xs text-slate-500">جاري تحميل إعدادات التقييم...</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">جاري تحميل إعدادات التقييم...</p>
                       </div>
                     ) : (
                       <>
@@ -788,7 +788,7 @@ export function StudentEvaluationSheet({
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                               transition={{ delay: 0.1 }}
-                              className="mb-2 text-xs font-medium text-slate-500"
+                              className="mb-2 text-xs font-medium text-slate-500 dark:text-slate-400"
                             >
                               تقييم سريع
                             </motion.p>
@@ -811,15 +811,15 @@ export function StudentEvaluationSheet({
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: 0.2 }}
-                          className="mb-3 flex gap-1 rounded-xl bg-slate-100 p-1"
+                          className="mb-3 flex gap-1 rounded-xl bg-slate-100 dark:bg-slate-700 p-1"
                         >
                           <button
                             type="button"
                             onClick={() => setActiveTab('behaviors')}
                             className={`flex-1 rounded-lg py-2 text-xs font-medium transition ${
                               activeTab === 'behaviors'
-                                ? 'bg-white text-slate-900 shadow-sm'
-                                : 'text-slate-500 hover:text-slate-700'
+                                ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-sm'
+                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
                             }`}
                           >
                             التقييمات
@@ -829,8 +829,8 @@ export function StudentEvaluationSheet({
                             onClick={() => setActiveTab('skills')}
                             className={`flex flex-1 items-center justify-center gap-1 rounded-lg py-2 text-xs font-medium transition ${
                               activeTab === 'skills'
-                                ? 'bg-white text-slate-900 shadow-sm'
-                                : 'text-slate-500 hover:text-slate-700'
+                                ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-sm'
+                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
                             }`}
                           >
                             <BookOpen className="h-3.5 w-3.5" />
@@ -855,24 +855,24 @@ export function StudentEvaluationSheet({
                             >
                               {!isBulk && evaluations.length > 0 ? (
                                 <div className="space-y-2">
-                                  <p className="text-xs font-medium text-slate-500">
+                                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
                                     تقييمات اليوم ({evaluations.length})
                                   </p>
                                   {evaluations.map((ev) => (
                                     <div
                                       key={ev.id}
-                                      className="flex items-center justify-between rounded-xl border border-slate-100 bg-white p-3"
+                                      className="flex items-center justify-between rounded-xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 p-3"
                                     >
                                       <div className="flex items-center gap-2">
                                         <span className="text-lg">
                                           {ICON_EMOJI_MAP[ev.behavior_type?.icon ?? ''] ?? '📋'}
                                         </span>
                                         <div>
-                                          <p className="text-sm font-medium text-slate-700">
+                                          <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
                                             {ev.behavior_type?.name ?? ev.subject_skill?.name ?? 'تقييم'}
                                           </p>
                                           {(ev.descriptive_grade || ev.numeric_grade !== null) && (
-                                            <p className="text-xs text-slate-500">
+                                            <p className="text-xs text-slate-500 dark:text-slate-400">
                                               {ev.descriptive_grade ?? `${ev.numeric_grade}`}
                                             </p>
                                           )}
@@ -887,7 +887,7 @@ export function StudentEvaluationSheet({
                                             evaluationId: ev.id,
                                           })
                                         }
-                                        className="rounded-lg p-1.5 text-slate-300 transition hover:bg-rose-50 hover:text-rose-500"
+                                        className="rounded-lg p-1.5 text-slate-300 dark:text-slate-500 transition hover:bg-rose-50 dark:hover:bg-rose-950 hover:text-rose-500"
                                       >
                                         <Trash2 className="h-4 w-4" />
                                       </button>
@@ -897,14 +897,14 @@ export function StudentEvaluationSheet({
                               ) : !isBulk ? (
                                 <div className="flex flex-col items-center gap-2 py-8 text-center">
                                   <span className="text-3xl">📋</span>
-                                  <p className="text-sm text-slate-500">
+                                  <p className="text-sm text-slate-500 dark:text-slate-400">
                                     لا توجد تقييمات بعد. استخدم الأزرار أعلاه
                                   </p>
                                 </div>
                               ) : (
                                 <div className="flex flex-col items-center gap-2 py-8 text-center">
                                   <span className="text-3xl">👥</span>
-                                  <p className="text-sm text-slate-500">
+                                  <p className="text-sm text-slate-500 dark:text-slate-400">
                                     اضغط على أي زر أعلاه لتطبيقه على {students.length} طالب
                                   </p>
                                 </div>
@@ -936,9 +936,9 @@ export function StudentEvaluationSheet({
                                 ))
                               ) : (
                                 <div className="flex flex-col items-center gap-2 py-6 text-center">
-                                  <BookOpen className="h-8 w-8 text-slate-300" />
-                                  <p className="text-sm text-slate-500">لا توجد مهارات لهذه المادة</p>
-                                  <p className="text-xs text-slate-400">أضف مهارات من خدمات ← إدارة المهارات</p>
+                                  <BookOpen className="h-8 w-8 text-slate-300 dark:text-slate-500" />
+                                  <p className="text-sm text-slate-500 dark:text-slate-400">لا توجد مهارات لهذه المادة</p>
+                                  <p className="text-xs text-slate-400 dark:text-slate-500">أضف مهارات من خدمات ← إدارة المهارات</p>
                                 </div>
                               )}
 
@@ -958,7 +958,7 @@ export function StudentEvaluationSheet({
 
             {/* ═══ حالة الحفظ ═══ */}
             {isPending && (
-              <div className="border-t border-slate-100 px-4 py-2 text-center">
+              <div className="border-t border-slate-100 dark:border-slate-700 px-4 py-2 text-center">
                 <div className="flex items-center justify-center gap-2 text-xs text-teal-600">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   جاري الحفظ...

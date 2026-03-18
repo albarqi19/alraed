@@ -15,9 +15,9 @@ const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
 }
 
 const REPORT_STATUS_COLORS: Record<ReportStatus, string> = {
-  pending: 'bg-amber-50 text-amber-700 border-amber-200',
-  approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  rejected: 'bg-red-50 text-red-700 border-red-200',
+  pending: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-800',
+  approved: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800',
+  rejected: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-800',
 }
 
 function formatDate(value: string | null | undefined): string {
@@ -168,10 +168,10 @@ export function TeacherActivityModal({ activityId, onClose }: Props) {
   if (isLoading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-        <div className="rounded-2xl bg-white p-8">
+        <div className="rounded-2xl bg-white dark:bg-slate-800 p-8">
           <div className="flex items-center gap-3">
             <i className="bi bi-arrow-repeat animate-spin text-2xl text-indigo-600" />
-            <span className="text-slate-600">جاري التحميل...</span>
+            <span className="text-slate-600 dark:text-slate-400">جاري التحميل...</span>
           </div>
         </div>
       </div>
@@ -181,13 +181,13 @@ export function TeacherActivityModal({ activityId, onClose }: Props) {
   if (error || !data) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-        <div className="rounded-2xl bg-white p-8 text-center">
+        <div className="rounded-2xl bg-white dark:bg-slate-800 p-8 text-center">
           <i className="bi bi-exclamation-triangle text-4xl text-red-500 mb-3" />
-          <p className="text-slate-600">{error instanceof Error ? error.message : 'حدث خطأ'}</p>
+          <p className="text-slate-600 dark:text-slate-400">{error instanceof Error ? error.message : 'حدث خطأ'}</p>
           <button
             type="button"
             onClick={onClose}
-            className="mt-4 rounded-full bg-slate-100 px-6 py-2 text-sm font-semibold"
+            className="mt-4 rounded-full bg-slate-100 dark:bg-slate-700 px-6 py-2 text-sm font-semibold"
           >
             إغلاق
           </button>
@@ -204,20 +204,20 @@ export function TeacherActivityModal({ activityId, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-xl">
+      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white dark:bg-slate-800 shadow-xl">
         {/* Header */}
-        <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-4">
+        <header className="sticky top-0 z-10 flex items-center justify-between border-b dark:border-slate-700 bg-white dark:bg-slate-800 px-6 py-4">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-1">
-              <h2 className="text-xl font-bold text-slate-900">{activity.title}</h2>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">{activity.title}</h2>
               {!activity.has_started && (
-                <span className="px-3 py-1 text-xs font-semibold rounded-full bg-slate-100 text-slate-600 border border-slate-300">
+                <span className="px-3 py-1 text-xs font-semibold rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-600">
                   <i className="bi bi-hourglass-split ml-1" />
                   لم يبدأ
                 </span>
               )}
               {activity.has_started && activity.is_late && hasUnsubmittedGrades && (
-                <span className="px-3 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700 border border-amber-300">
+                <span className="px-3 py-1 text-xs font-semibold rounded-full bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-700">
                   <i className="bi bi-clock-history ml-1" />
                   متأخر
                 </span>
@@ -230,7 +230,7 @@ export function TeacherActivityModal({ activityId, onClose }: Props) {
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="rounded-full p-2 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300"
           >
             <i className="bi bi-x-lg text-xl" />
           </button>
@@ -240,30 +240,30 @@ export function TeacherActivityModal({ activityId, onClose }: Props) {
           {/* Activity Details */}
           <div className="space-y-4">
             {activity.description && (
-              <div className="rounded-xl bg-slate-50 p-4">
-                <h3 className="font-semibold text-slate-700 mb-2">
+              <div className="rounded-xl bg-slate-50 dark:bg-slate-700/50 p-4">
+                <h3 className="font-semibold text-slate-700 dark:text-slate-300 mb-2">
                   <i className="bi bi-info-circle ml-2" />
                   الوصف
                 </h3>
-                <p className="text-sm text-slate-600 whitespace-pre-wrap">{activity.description}</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap">{activity.description}</p>
               </div>
             )}
 
             {/* عرض الأهداف كقائمة */}
             {activity.objectives && activity.objectives.length > 0 && (
-              <div className="rounded-xl bg-slate-50 p-4">
-                <h3 className="font-semibold text-slate-700 mb-3">
+              <div className="rounded-xl bg-slate-50 dark:bg-slate-700/50 p-4">
+                <h3 className="font-semibold text-slate-700 dark:text-slate-300 mb-3">
                   <i className="bi bi-bullseye ml-2" />
                   الأهداف ({activity.objectives.length})
                 </h3>
                 <div className="space-y-2">
                   {activity.objectives.map((objective, index) => (
-                    <div key={index} className="flex items-start gap-3 bg-white rounded-lg px-3 py-2 border border-slate-200">
+                    <div key={index} className="flex items-start gap-3 bg-white dark:bg-slate-800 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700">
                       <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
                         style={{ background: 'var(--color-primary)' }}>
                         {index + 1}
                       </span>
-                      <span className="text-sm text-slate-700">{objective}</span>
+                      <span className="text-sm text-slate-700 dark:text-slate-300">{objective}</span>
                     </div>
                   ))}
                 </div>
@@ -271,16 +271,16 @@ export function TeacherActivityModal({ activityId, onClose }: Props) {
             )}
 
             {activity.examples && (
-              <div className="rounded-xl bg-slate-50 p-4">
-                <h3 className="font-semibold text-slate-700 mb-2">
+              <div className="rounded-xl bg-slate-50 dark:bg-slate-700/50 p-4">
+                <h3 className="font-semibold text-slate-700 dark:text-slate-300 mb-2">
                   <i className="bi bi-lightbulb ml-2" />
                   أمثلة تطبيقية
                 </h3>
-                <p className="text-sm text-slate-600 whitespace-pre-wrap">{activity.examples}</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap">{activity.examples}</p>
               </div>
             )}
             {activity.pdf_file && (
-              <div className="rounded-xl bg-slate-50 p-4">
+              <div className="rounded-xl bg-slate-50 dark:bg-slate-700/50 p-4">
                 <a
                   href={getActivityPdfUrl(activityId, true)}
                   target="_blank"
@@ -295,8 +295,8 @@ export function TeacherActivityModal({ activityId, onClose }: Props) {
           </div>
 
           {/* قائمة الصفوف مع حالة التقارير */}
-          <div className="rounded-xl border-2 border-indigo-200 bg-indigo-50/50 p-4">
-            <h3 className="text-lg font-bold text-indigo-800 mb-4">
+          <div className="rounded-xl border-2 border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/50 p-4">
+            <h3 className="text-lg font-bold text-indigo-800 dark:text-indigo-300 mb-4">
               <i className="bi bi-journal-check ml-2" />
               التقارير حسب الصف
             </h3>
@@ -306,8 +306,8 @@ export function TeacherActivityModal({ activityId, onClose }: Props) {
                 <div
                   key={gradeInfo.grade}
                   className={`rounded-xl border-2 p-4 transition cursor-pointer ${selectedGrade === gradeInfo.grade
-                    ? 'border-indigo-500 bg-indigo-100'
-                    : 'border-slate-200 bg-white hover:border-indigo-300'
+                    ? 'border-indigo-500 bg-indigo-100 dark:bg-indigo-900'
+                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700'
                     }`}
                   onClick={() => {
                     if (!gradeInfo.has_report || gradeInfo.report?.status === 'rejected') {
@@ -316,7 +316,7 @@ export function TeacherActivityModal({ activityId, onClose }: Props) {
                   }}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-bold text-slate-800">{gradeInfo.grade}</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200">{gradeInfo.grade}</span>
                     {gradeInfo.has_report && gradeInfo.report && (
                       <span className={`text-xs px-2 py-1 rounded-full border ${REPORT_STATUS_COLORS[gradeInfo.report.status]}`}>
                         {REPORT_STATUS_LABELS[gradeInfo.report.status]}
@@ -324,7 +324,7 @@ export function TeacherActivityModal({ activityId, onClose }: Props) {
                     )}
                   </div>
 
-                  <div className="text-sm text-slate-600">
+                  <div className="text-sm text-slate-600 dark:text-slate-400">
                     <i className="bi bi-people ml-1" />
                     {gradeInfo.students_count} طالب
                   </div>
@@ -337,9 +337,9 @@ export function TeacherActivityModal({ activityId, onClose }: Props) {
                   )}
 
                   {gradeInfo.report?.status === 'rejected' && (
-                    <div className="mt-2 p-2 rounded-lg bg-red-50 border border-red-200">
-                      <p className="text-xs text-red-700 font-medium">سبب الرفض:</p>
-                      <p className="text-xs text-red-600">{gradeInfo.report.rejection_reason}</p>
+                    <div className="mt-2 p-2 rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800">
+                      <p className="text-xs text-red-700 dark:text-red-400 font-medium">سبب الرفض:</p>
+                      <p className="text-xs text-red-600 dark:text-red-400">{gradeInfo.report.rejection_reason}</p>
                     </div>
                   )}
 
@@ -363,23 +363,23 @@ export function TeacherActivityModal({ activityId, onClose }: Props) {
           {/* نموذج تقديم التقرير */}
           {selectedGrade && selectedGradeInfo && (!selectedGradeInfo.has_report || selectedGradeInfo.report?.status === 'rejected') && (
             !activity.has_started ? (
-              <div className="rounded-xl border-2 border-slate-300 bg-slate-50 p-6 text-center">
-                <i className="bi bi-hourglass-split text-4xl text-slate-400 mb-3 block" />
-                <h3 className="text-lg font-bold text-slate-700 mb-2">النشاط لم يبدأ بعد</h3>
-                <p className="text-sm text-slate-600">
+              <div className="rounded-xl border-2 border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 p-6 text-center">
+                <i className="bi bi-hourglass-split text-4xl text-slate-400 dark:text-slate-500 mb-3 block" />
+                <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300 mb-2">النشاط لم يبدأ بعد</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
                   سيتم فتح التسليم في تاريخ: <span className="font-semibold">{formatDate(activity.start_date)}</span>
                 </p>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="rounded-xl border-2 border-dashed border-emerald-200 bg-emerald-50/50 p-4">
-                  <h3 className="text-lg font-bold text-emerald-800 mb-4">
+                <div className="rounded-xl border-2 border-dashed border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/50 p-4">
+                  <h3 className="text-lg font-bold text-emerald-800 dark:text-emerald-300 mb-4">
                     <i className="bi bi-file-earmark-plus ml-2" />
                     {selectedGradeInfo.report?.status === 'rejected' ? 'تعديل التقرير' : 'تسليم التقرير'} - {selectedGrade}
                   </h3>
 
                   {formError && (
-                    <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700 mb-4">
+                    <div className="rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 p-3 text-sm text-red-700 dark:text-red-400 mb-4">
                       <i className="bi bi-exclamation-triangle ml-2" />
                       {formError}
                     </div>
@@ -387,13 +387,13 @@ export function TeacherActivityModal({ activityId, onClose }: Props) {
 
                   {/* مكان التنفيذ - قائمة اختيار */}
                   <div className="space-y-2 mb-4">
-                    <label className="block text-sm font-semibold text-slate-700">
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
                       مكان التنفيذ <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={form.execution_location_id}
                       onChange={(e) => setForm({ ...form, execution_location_id: parseInt(e.target.value) })}
-                      className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-slate-800 transition focus:border-emerald-500 focus:outline-none"
+                      className="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-slate-800 dark:text-slate-200 transition focus:border-emerald-500 focus:outline-none"
                     >
                       <option value={0}>-- اختر مكان التنفيذ --</option>
                       {execution_locations.map((location) => (
@@ -406,12 +406,12 @@ export function TeacherActivityModal({ activityId, onClose }: Props) {
 
                   {/* عدد الطلاب */}
                   <div className="space-y-2 mb-4">
-                    <label className="block text-sm font-semibold text-slate-700">عدد الطلاب</label>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">عدد الطلاب</label>
                     <input
                       type="number"
                       value={form.students_count}
                       onChange={(e) => setForm({ ...form, students_count: parseInt(e.target.value) || 0 })}
-                      className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-slate-800 transition focus:border-emerald-500 focus:outline-none"
+                      className="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-slate-800 dark:text-slate-200 transition focus:border-emerald-500 focus:outline-none"
                       min={0}
                     />
                     <p className="text-xs text-muted">
@@ -421,23 +421,23 @@ export function TeacherActivityModal({ activityId, onClose }: Props) {
 
                   {/* الأهداف المحققة - اختيار متعدد */}
                   <div className="space-y-3 mb-4">
-                    <label className="block text-sm font-semibold text-slate-700">
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
                       الأهداف المحققة <span className="text-red-500">*</span>
-                      <span className="text-xs font-normal text-slate-400 mr-2">
+                      <span className="text-xs font-normal text-slate-400 dark:text-slate-500 mr-2">
                         (اختر الأهداف التي تحققت)
                       </span>
                     </label>
 
                     {activity.objectives && activity.objectives.length > 0 ? (
-                      <div className="space-y-2 rounded-xl border-2 border-slate-200 bg-white p-3">
+                      <div className="space-y-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
                         {activity.objectives.map((objective, index) => {
                           const isSelected = form.achieved_objectives.includes(objective)
                           return (
                             <label
                               key={index}
                               className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition ${isSelected
-                                ? 'bg-emerald-50 border-2 border-emerald-400'
-                                : 'bg-slate-50 border-2 border-transparent hover:bg-slate-100'
+                                ? 'bg-emerald-50 dark:bg-emerald-950 border-2 border-emerald-400 dark:border-emerald-700'
+                                : 'bg-slate-50 dark:bg-slate-700/50 border-2 border-transparent hover:bg-slate-100 dark:hover:bg-slate-700'
                                 }`}
                             >
                               <input
@@ -450,7 +450,7 @@ export function TeacherActivityModal({ activityId, onClose }: Props) {
                                 style={{ background: isSelected ? '#10b981' : '#94a3b8' }}>
                                 {index + 1}
                               </span>
-                              <span className={`text-sm ${isSelected ? 'text-emerald-800 font-medium' : 'text-slate-700'}`}>
+                              <span className={`text-sm ${isSelected ? 'text-emerald-800 dark:text-emerald-300 font-medium' : 'text-slate-700 dark:text-slate-300'}`}>
                                 {objective}
                               </span>
                             </label>
@@ -458,7 +458,7 @@ export function TeacherActivityModal({ activityId, onClose }: Props) {
                         })}
                       </div>
                     ) : (
-                      <div className="text-sm text-slate-500 bg-slate-100 rounded-xl p-4 text-center">
+                      <div className="text-sm text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 rounded-xl p-4 text-center">
                         لا توجد أهداف محددة لهذا النشاط
                       </div>
                     )}
@@ -473,7 +473,7 @@ export function TeacherActivityModal({ activityId, onClose }: Props) {
 
                   {/* صور التوثيق */}
                   <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-slate-700">
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
                       صور التوثيق (اختياري - 4 صور كحد أقصى)
                     </label>
 
@@ -483,7 +483,7 @@ export function TeacherActivityModal({ activityId, onClose }: Props) {
                           <img
                             src={preview}
                             alt={`صورة ${index + 1}`}
-                            className="h-24 w-24 rounded-lg object-cover border border-slate-200"
+                            className="h-24 w-24 rounded-lg object-cover border border-slate-200 dark:border-slate-700"
                           />
                           <button
                             type="button"
@@ -499,7 +499,7 @@ export function TeacherActivityModal({ activityId, onClose }: Props) {
                         <button
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
-                          className="h-24 w-24 rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 flex items-center justify-center text-slate-400 hover:border-emerald-400 hover:text-emerald-500 transition"
+                          className="h-24 w-24 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 flex items-center justify-center text-slate-400 dark:text-slate-500 hover:border-emerald-400 hover:text-emerald-500 transition"
                         >
                           <div className="text-center">
                             <i className="bi bi-camera text-2xl" />
@@ -524,7 +524,7 @@ export function TeacherActivityModal({ activityId, onClose }: Props) {
                     <button
                       type="button"
                       onClick={() => setSelectedGrade(null)}
-                      className="rounded-full border border-slate-200 px-6 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                      className="rounded-full border border-slate-200 dark:border-slate-700 px-6 py-2 text-sm font-semibold text-slate-600 dark:text-slate-400 transition hover:bg-slate-50 dark:hover:bg-slate-700"
                     >
                       إلغاء
                     </button>

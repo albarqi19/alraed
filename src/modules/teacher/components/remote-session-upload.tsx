@@ -52,7 +52,7 @@ export function RemoteSessionUpload({ sessionId, isUploaded }: Props) {
 
     if (reportQuery.isLoading) {
       return (
-        <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+        <div className="flex flex-col items-center justify-center py-12 text-slate-400 dark:text-slate-500">
           <i className="bi bi-hourglass-split text-3xl animate-spin" />
           <p className="mt-3 text-sm">جاري تحميل التقرير...</p>
         </div>
@@ -68,31 +68,31 @@ export function RemoteSessionUpload({ sessionId, isUploaded }: Props) {
     return (
       <div className="space-y-4">
         {/* بانر النجاح */}
-        <div className="flex items-center gap-3 rounded-2xl bg-emerald-50 p-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
+        <div className="flex items-center gap-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950 p-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-400">
             <i className="bi bi-check-circle-fill text-xl" />
           </div>
           <div>
-            <p className="font-semibold text-emerald-800">
+            <p className="font-semibold text-emerald-800 dark:text-emerald-300">
               تم رفع تقرير الحضور بنجاح
             </p>
-            <p className="text-sm text-emerald-600">
+            <p className="text-sm text-emerald-600 dark:text-emerald-400">
               {report.upload.original_filename}
             </p>
           </div>
         </div>
 
         {/* معلومات الاجتماع */}
-        <div className="rounded-2xl border border-slate-100 bg-white p-4">
-          <h4 className="mb-3 text-sm font-semibold text-slate-700">
+        <div className="rounded-2xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+          <h4 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">
             <i className="bi bi-camera-video ml-1 text-purple-500" />
             معلومات الاجتماع
           </h4>
           <div className="grid grid-cols-2 gap-3 text-sm">
             {report.upload.meeting_title && (
               <div className="col-span-2">
-                <span className="text-slate-400">العنوان: </span>
-                <span className="font-medium text-slate-700">
+                <span className="text-slate-400 dark:text-slate-500">العنوان: </span>
+                <span className="font-medium text-slate-700 dark:text-slate-300">
                   {report.upload.meeting_title}
                 </span>
               </div>
@@ -111,8 +111,8 @@ export function RemoteSessionUpload({ sessionId, isUploaded }: Props) {
             </div>
             {report.stats.organizer && (
               <div className="col-span-2">
-                <span className="text-slate-400">المنظم: </span>
-                <span className="font-medium text-slate-700">
+                <span className="text-slate-400 dark:text-slate-500">المنظم: </span>
+                <span className="font-medium text-slate-700 dark:text-slate-300">
                   {report.stats.organizer}
                 </span>
               </div>
@@ -122,37 +122,37 @@ export function RemoteSessionUpload({ sessionId, isUploaded }: Props) {
 
         {/* إحصائيات سريعة */}
         <div className="grid grid-cols-3 gap-2">
-          <div className="rounded-xl bg-purple-50 p-3 text-center">
-            <p className="text-lg font-bold text-purple-700">
+          <div className="rounded-xl bg-purple-50 dark:bg-purple-950 p-3 text-center">
+            <p className="text-lg font-bold text-purple-700 dark:text-purple-400">
               {report.stats.total_attendees}
             </p>
-            <p className="text-xs text-purple-500">مشارك</p>
+            <p className="text-xs text-purple-500 dark:text-purple-400">مشارك</p>
           </div>
-          <div className="rounded-xl bg-blue-50 p-3 text-center">
-            <p className="text-lg font-bold text-blue-700">
+          <div className="rounded-xl bg-blue-50 dark:bg-blue-950 p-3 text-center">
+            <p className="text-lg font-bold text-blue-700 dark:text-blue-400">
               {formatDuration(report.stats.avg_duration_seconds)}
             </p>
-            <p className="text-xs text-blue-500">متوسط المدة</p>
+            <p className="text-xs text-blue-500 dark:text-blue-400">متوسط المدة</p>
           </div>
-          <div className="rounded-xl bg-emerald-50 p-3 text-center">
-            <p className="text-lg font-bold text-emerald-700">
+          <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950 p-3 text-center">
+            <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">
               {report.upload.meeting_duration ?? '-'}
             </p>
-            <p className="text-xs text-emerald-500">مدة الاجتماع</p>
+            <p className="text-xs text-emerald-500 dark:text-emerald-400">مدة الاجتماع</p>
           </div>
         </div>
 
         {/* جدول المشاركين */}
-        <div className="rounded-2xl border border-slate-100 bg-white">
-          <div className="border-b border-slate-100 px-4 py-3">
-            <h4 className="text-sm font-semibold text-slate-700">
+        <div className="rounded-2xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800">
+          <div className="border-b border-slate-100 dark:border-slate-700 px-4 py-3">
+            <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
               <i className="bi bi-people ml-1 text-purple-500" />
               المشاركون ({attendees.length})
             </h4>
           </div>
           <div className="max-h-80 overflow-y-auto">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-slate-50 text-xs text-slate-500">
+              <thead className="sticky top-0 bg-slate-50 dark:bg-slate-700/50 text-xs text-slate-500 dark:text-slate-400">
                 <tr>
                   <th className="px-4 py-2 text-right font-medium">الاسم</th>
                   <th className="px-4 py-2 text-right font-medium">المدة</th>
@@ -164,7 +164,7 @@ export function RemoteSessionUpload({ sessionId, isUploaded }: Props) {
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-slate-50 dark:divide-slate-700">
                 {attendees.map((p, i) => (
                   <ParticipantRow key={i} participant={p} />
                 ))}
@@ -195,11 +195,11 @@ export function RemoteSessionUpload({ sessionId, isUploaded }: Props) {
   if (uploadMutation.isError) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center gap-3 rounded-2xl bg-red-50 p-4">
+        <div className="flex items-center gap-3 rounded-2xl bg-red-50 dark:bg-red-950 p-4">
           <i className="bi bi-exclamation-triangle-fill text-xl text-red-500" />
           <div>
-            <p className="font-semibold text-red-800">فشل في معالجة الملف</p>
-            <p className="text-sm text-red-600">
+            <p className="font-semibold text-red-800 dark:text-red-300">فشل في معالجة الملف</p>
+            <p className="text-sm text-red-600 dark:text-red-400">
               {uploadMutation.error instanceof Error
                 ? uploadMutation.error.message
                 : 'خطأ غير معروف'}
@@ -224,37 +224,37 @@ export function RemoteSessionUpload({ sessionId, isUploaded }: Props) {
   return (
     <div className="space-y-4">
       <div className="text-center">
-        <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-100 text-purple-600">
+        <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-400">
           <i className="bi bi-cloud-arrow-up text-3xl" />
         </div>
-        <h3 className="text-lg font-bold text-slate-800">
+        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">
           الحصة عن بعد - رفع تقرير الحضور
         </h3>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           قم بتنزيل تقرير الحضور من Microsoft Teams ثم ارفعه هنا
         </p>
       </div>
 
       {/* خطوات */}
-      <div className="rounded-2xl bg-slate-50 p-4">
-        <h4 className="mb-2 text-xs font-semibold text-slate-500">
+      <div className="rounded-2xl bg-slate-50 dark:bg-slate-700/50 p-4">
+        <h4 className="mb-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
           كيفية تنزيل التقرير من التيمز:
         </h4>
-        <ol className="space-y-1.5 text-sm text-slate-600">
+        <ol className="space-y-1.5 text-sm text-slate-600 dark:text-slate-400">
           <li className="flex items-start gap-2">
-            <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-purple-100 text-xs font-bold text-purple-600">
+            <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900 text-xs font-bold text-purple-600 dark:text-purple-400">
               1
             </span>
             افتح الاجتماع في Microsoft Teams
           </li>
           <li className="flex items-start gap-2">
-            <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-purple-100 text-xs font-bold text-purple-600">
+            <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900 text-xs font-bold text-purple-600 dark:text-purple-400">
               2
             </span>
             اضغط على "المشاركون" ثم "تنزيل قائمة الحضور"
           </li>
           <li className="flex items-start gap-2">
-            <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-purple-100 text-xs font-bold text-purple-600">
+            <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900 text-xs font-bold text-purple-600 dark:text-purple-400">
               3
             </span>
             سيتم تنزيل ملف CSV - ارفعه هنا
@@ -266,8 +266,8 @@ export function RemoteSessionUpload({ sessionId, isUploaded }: Props) {
       <div
         className={`relative rounded-2xl border-2 border-dashed p-8 text-center transition-colors ${
           dragActive
-            ? 'border-purple-400 bg-purple-50'
-            : 'border-slate-200 bg-white hover:border-purple-300 hover:bg-purple-50/30'
+            ? 'border-purple-400 bg-purple-50 dark:bg-purple-950'
+            : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-purple-300 hover:bg-purple-50/30 dark:hover:bg-purple-950/30'
         }`}
         onDragOver={(e) => {
           e.preventDefault()
@@ -283,8 +283,8 @@ export function RemoteSessionUpload({ sessionId, isUploaded }: Props) {
           className="hidden"
           onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
         />
-        <i className="bi bi-file-earmark-spreadsheet text-4xl text-slate-300" />
-        <p className="mt-2 text-sm text-slate-500">
+        <i className="bi bi-file-earmark-spreadsheet text-4xl text-slate-300 dark:text-slate-500" />
+        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
           اسحب ملف CSV هنا أو
         </p>
         <button
@@ -294,7 +294,7 @@ export function RemoteSessionUpload({ sessionId, isUploaded }: Props) {
         >
           <i className="bi bi-upload ml-1" /> اختيار الملف
         </button>
-        <p className="mt-2 text-xs text-slate-400">CSV فقط - حتى 5 MB</p>
+        <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">CSV فقط - حتى 5 MB</p>
       </div>
     </div>
   )
@@ -310,22 +310,22 @@ function ParticipantRow({ participant }: { participant: RemoteParticipant }) {
   }
 
   return (
-    <tr className="hover:bg-slate-50/50">
+    <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50">
       <td className="px-4 py-2.5">
-        <div className="font-medium text-slate-700">{participant.name}</div>
+        <div className="font-medium text-slate-700 dark:text-slate-300">{participant.name}</div>
         {participant.join_leave_count > 1 && (
           <span className="text-xs text-amber-500">
             {participant.join_leave_count} مرات دخول
           </span>
         )}
       </td>
-      <td className="px-4 py-2.5 text-slate-600">
+      <td className="px-4 py-2.5 text-slate-600 dark:text-slate-400">
         {participant.duration_text ?? formatDuration(participant.total_duration_seconds)}
       </td>
-      <td className="hidden px-4 py-2.5 text-slate-500 sm:table-cell">
+      <td className="hidden px-4 py-2.5 text-slate-500 dark:text-slate-400 sm:table-cell">
         {formatTime(participant.first_join_time)}
       </td>
-      <td className="hidden px-4 py-2.5 text-slate-500 sm:table-cell">
+      <td className="hidden px-4 py-2.5 text-slate-500 dark:text-slate-400 sm:table-cell">
         {formatTime(participant.last_leave_time)}
       </td>
     </tr>

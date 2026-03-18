@@ -50,40 +50,40 @@ export function EvaluationOnboardingSheet() {
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={springConfig}
-            className="fixed inset-x-0 bottom-0 z-[61] rounded-t-3xl bg-white px-6 pb-8 pt-4 shadow-2xl"
+            className="fixed inset-x-0 bottom-0 z-[61] rounded-t-3xl bg-white dark:bg-slate-800 px-6 pb-8 pt-4 shadow-2xl"
           >
             {/* Handle */}
-            <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-slate-300" />
+            <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-slate-300 dark:bg-slate-500" />
 
             {/* Content */}
             <div className="text-center">
               <span className="text-4xl">🎉</span>
-              <h2 className="mt-3 text-lg font-bold text-slate-900">ميزة جديدة وصلتك!</h2>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">
+              <h2 className="mt-3 text-lg font-bold text-slate-900 dark:text-slate-100">ميزة جديدة وصلتك!</h2>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
                 الحين تقدر تقيّم طلابك من داخل الحصة بضغطة وحدة!
               </p>
             </div>
 
-            <div className="mt-5 space-y-2.5 text-right text-sm text-slate-700">
-              <div className="flex items-center gap-3 rounded-xl bg-emerald-50 px-4 py-2.5">
+            <div className="mt-5 space-y-2.5 text-right text-sm text-slate-700 dark:text-slate-300">
+              <div className="flex items-center gap-3 rounded-xl bg-emerald-50 dark:bg-emerald-950 px-4 py-2.5">
                 <span className="text-xl">✋</span>
                 <span>سجّل مشاركة الطالب</span>
               </div>
-              <div className="flex items-center gap-3 rounded-xl bg-amber-50 px-4 py-2.5">
+              <div className="flex items-center gap-3 rounded-xl bg-amber-50 dark:bg-amber-950 px-4 py-2.5">
                 <span className="text-xl">😴</span>
                 <span>نبّه على النوم بالحصة</span>
               </div>
-              <div className="flex items-center gap-3 rounded-xl bg-rose-50 px-4 py-2.5">
+              <div className="flex items-center gap-3 rounded-xl bg-rose-50 dark:bg-rose-950 px-4 py-2.5">
                 <span className="text-xl">📕</span>
                 <span>تابع اللي ما جاب كتابه</span>
               </div>
-              <div className="flex items-center gap-3 rounded-xl bg-teal-50 px-4 py-2.5">
+              <div className="flex items-center gap-3 rounded-xl bg-teal-50 dark:bg-teal-950 px-4 py-2.5">
                 <span className="text-xl">💬</span>
                 <span>وضيف المهارات اللي تبيها لمادتك</span>
               </div>
             </div>
 
-            <p className="mt-4 text-center text-xs leading-relaxed text-slate-500">
+            <p className="mt-4 text-center text-xs leading-relaxed text-slate-500 dark:text-slate-400">
               تقدر تضيف مهارات خاصة بمادتك من صفحة
               <button
                 type="button"
@@ -94,7 +94,7 @@ export function EvaluationOnboardingSheet() {
               </button>
             </p>
 
-            <p className="mt-3 text-center text-sm text-slate-500">
+            <p className="mt-3 text-center text-sm text-slate-500 dark:text-slate-400">
               اضغط على اسم أي طالب وجرّب 👇
             </p>
 

@@ -127,7 +127,7 @@ export function TeacherCoverageIncomingPage() {
     return (
       <section className="space-y-6">
         <header className="space-y-1">
-          <h1 className="text-2xl font-bold text-slate-900">طلبات التأمين الواردة</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">طلبات التأمين الواردة</h1>
         </header>
         <div className="glass-card flex items-center justify-center py-12">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-orange-500/30 border-t-orange-500" />
@@ -141,14 +141,14 @@ export function TeacherCoverageIncomingPage() {
     return (
       <section className="space-y-6">
         <header className="space-y-1">
-          <h1 className="text-2xl font-bold text-slate-900">طلبات التأمين الواردة</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">طلبات التأمين الواردة</h1>
         </header>
-        <div className="glass-card text-center py-12 border-amber-200 bg-amber-50/50">
+        <div className="glass-card text-center py-12 border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/50">
           <i className="bi bi-slash-circle text-5xl text-amber-500" />
-          <p className="mt-4 text-lg font-semibold text-amber-900">
+          <p className="mt-4 text-lg font-semibold text-amber-900 dark:text-amber-100">
             الإدارة عطلت هذه الميزة
           </p>
-          <p className="mt-2 text-sm text-amber-700">
+          <p className="mt-2 text-sm text-amber-700 dark:text-amber-400">
             يرجى التواصل مع الإدارة لمزيد من المعلومات
           </p>
           <button
@@ -168,7 +168,7 @@ export function TeacherCoverageIncomingPage() {
     return (
       <section className="space-y-6">
         <header className="space-y-1">
-          <h1 className="text-2xl font-bold text-slate-900">طلبات التأمين الواردة</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">طلبات التأمين الواردة</h1>
         </header>
         <div className="glass-card flex items-center justify-center py-12">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-orange-500/30 border-t-orange-500" />
@@ -182,11 +182,11 @@ export function TeacherCoverageIncomingPage() {
     return (
       <section className="space-y-6">
         <header className="space-y-1">
-          <h1 className="text-2xl font-bold text-slate-900">طلبات التأمين الواردة</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">طلبات التأمين الواردة</h1>
         </header>
         <div className="glass-card text-center py-12">
           <i className="bi bi-exclamation-triangle text-4xl text-rose-400" />
-          <p className="mt-4 text-slate-600">حدث خطأ في تحميل الطلبات</p>
+          <p className="mt-4 text-slate-600 dark:text-slate-400">حدث خطأ في تحميل الطلبات</p>
           <button
             type="button"
             onClick={() => refetch()}
@@ -204,14 +204,14 @@ export function TeacherCoverageIncomingPage() {
     return (
       <section className="space-y-6">
         <header className="space-y-1">
-          <h1 className="text-2xl font-bold text-slate-900">طلبات التأمين الواردة</h1>
-          <p className="text-sm text-slate-600">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">طلبات التأمين الواردة</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             طلبات تأمين الحصص من زملائك
           </p>
         </header>
         <div className="glass-card text-center py-12">
           <i className="bi bi-inbox text-4xl text-slate-300" />
-          <p className="mt-4 text-slate-600">لا توجد طلبات تأمين واردة</p>
+          <p className="mt-4 text-slate-600 dark:text-slate-400">لا توجد طلبات تأمين واردة</p>
           <Link
             to="/teacher/services"
             className="button-secondary mt-4 inline-block"
@@ -227,8 +227,8 @@ export function TeacherCoverageIncomingPage() {
     <section className="space-y-6">
       <header className="flex items-center justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold text-slate-900">طلبات التأمين الواردة</h1>
-          <p className="text-sm text-slate-600">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">طلبات التأمين الواردة</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             {items.length} طلب{items.length > 1 ? 'ات' : ''} بانتظار ردك
           </p>
         </div>
@@ -252,44 +252,44 @@ export function TeacherCoverageIncomingPage() {
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-100 text-sm font-bold text-orange-700">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900 text-sm font-bold text-orange-700 dark:text-orange-400">
                     {item.requesting_teacher.name.charAt(0)}
                   </span>
                   <div>
-                    <p className="font-semibold text-slate-900">{item.requesting_teacher.name}</p>
-                    <p className="text-xs text-slate-500">يطلب منك تأمين حصته</p>
+                    <p className="font-semibold text-slate-900 dark:text-slate-100">{item.requesting_teacher.name}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">يطلب منك تأمين حصته</p>
                   </div>
                 </div>
               </div>
-              <span className="rounded-full bg-orange-100 px-2.5 py-1 text-xs font-medium text-orange-700">
+              <span className="rounded-full bg-orange-100 dark:bg-orange-900 px-2.5 py-1 text-xs font-medium text-orange-700 dark:text-orange-400">
                 جديد
               </span>
             </div>
 
             {/* Details */}
-            <div className="rounded-xl bg-slate-50 p-4 space-y-2">
+            <div className="rounded-xl bg-slate-50 dark:bg-slate-700/50 p-4 space-y-2">
               <div className="flex items-center gap-3 text-sm">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-200 text-xs font-bold text-orange-800">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-200 dark:bg-orange-800 text-xs font-bold text-orange-800 dark:text-orange-300">
                   {item.period_number}
                 </span>
-                <span className="font-medium text-slate-900">الحصة {PERIOD_NAMES[item.period_number]}</span>
-                <span className="text-slate-400">|</span>
-                <span className="text-slate-600">{item.subject_name}</span>
+                <span className="font-medium text-slate-900 dark:text-slate-100">الحصة {PERIOD_NAMES[item.period_number]}</span>
+                <span className="text-slate-400 dark:text-slate-500">|</span>
+                <span className="text-slate-600 dark:text-slate-400">{item.subject_name}</span>
               </div>
 
-              <div className="flex items-center gap-2 text-sm text-slate-600">
-                <i className="bi bi-geo-alt text-slate-400" />
+              <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                <i className="bi bi-geo-alt text-slate-400 dark:text-slate-500" />
                 {item.grade} — {item.class_name}
               </div>
 
-              <div className="flex items-center gap-2 text-sm text-slate-600">
-                <i className="bi bi-calendar text-slate-400" />
+              <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                <i className="bi bi-calendar text-slate-400 dark:text-slate-500" />
                 {new Date(item.request_date).toLocaleDateString('ar-SA')}
               </div>
 
               {item.reason && (
-                <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <i className="bi bi-chat-text text-slate-400" />
+                <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                  <i className="bi bi-chat-text text-slate-400 dark:text-slate-500" />
                   السبب: {item.reason_type_label} {item.reason ? `- ${item.reason}` : ''}
                 </div>
               )}
@@ -333,8 +333,8 @@ export function TeacherCoverageIncomingPage() {
       </div>
 
       {/* Info */}
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-        <i className="bi bi-info-circle text-slate-400 ml-2" />
+      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50 p-4 text-sm text-slate-600 dark:text-slate-400">
+        <i className="bi bi-info-circle text-slate-400 dark:text-slate-500 ml-2" />
         عند قبولك للطلب، سيتم إضافة الحصة لجدولك بعد موافقة الإدارة.
         يُرجى التواصل مع زميلك للتنسيق.
       </div>

@@ -55,38 +55,38 @@ export function StudentPickerSheet({
       onClick={onClose}
     >
       <div
-        className="max-h-[80vh] w-full overflow-hidden rounded-3xl bg-white shadow-2xl"
+        className="max-h-[80vh] w-full overflow-hidden rounded-3xl bg-white dark:bg-slate-800 shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
-        <header className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+        <header className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-5 py-4">
           <div className="space-y-1 text-right">
-            <h2 className="text-lg font-semibold text-slate-900">اختر الطالب</h2>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">اختر الطالب</h2>
             <p className="text-xs text-muted">
               {mode === 'reward'
                 ? 'ابحث باسم الطالب أو الصف لإضافة النقاط دون استخدام الكاميرا.'
                 : 'ابحث باسم الطالب لتسجيل المخالفة بسرعة.'}
             </p>
             {reasonTitle ? (
-              <p className="text-[11px] font-semibold text-teal-600">السبب المختار: {reasonTitle}</p>
+              <p className="text-[11px] font-semibold text-teal-600 dark:text-teal-400">السبب المختار: {reasonTitle}</p>
             ) : null}
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="grid h-10 w-10 place-items-center rounded-full border border-slate-200 text-slate-500"
+            className="grid h-10 w-10 place-items-center rounded-full border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400"
             aria-label="إغلاق"
           >
             ×
           </button>
         </header>
 
-        <div className="border-b border-slate-100 px-5 py-3">
+        <div className="border-b border-slate-100 dark:border-slate-700 px-5 py-3">
           <input
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="ابحث باسم الطالب أو الصف"
-            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-right text-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-200"
+            className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50 px-4 py-2 text-right text-sm dark:text-slate-200 focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-200"
           />
         </div>
 
@@ -100,19 +100,19 @@ export function StudentPickerSheet({
                   <button
                     type="button"
                     onClick={() => onSelect(student)}
-                    className={`w-full rounded-3xl border border-slate-200 bg-white px-4 py-3 text-right transition hover:border-amber-300`}
+                    className={`w-full rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-right transition hover:border-amber-300`}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div>
-                        <p className="text-base font-semibold text-slate-900">{student.name}</p>
+                        <p className="text-base font-semibold text-slate-900 dark:text-slate-100">{student.name}</p>
                         <p className="text-xs text-muted">
                           {student.grade ?? '—'} — {student.class_name ?? '—'}
                         </p>
                       </div>
-                      <span className="text-xs font-semibold text-amber-600">اختيار</span>
+                      <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">اختيار</span>
                     </div>
                     {!student.card_token ? (
-                      <p className="mt-2 rounded-2xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
+                      <p className="mt-2 rounded-2xl bg-amber-50 dark:bg-amber-950 px-3 py-2 text-xs font-semibold text-amber-700 dark:text-amber-400">
                         ⚠ لم يتم تفعيل بطاقة الطالب بعد. ستحتاج لمسح الرمز لإتمام العملية.
                       </p>
                     ) : null}

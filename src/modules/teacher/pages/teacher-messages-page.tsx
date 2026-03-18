@@ -407,7 +407,7 @@ export function TeacherMessagesPage() {
           onClick={() => setShowPreview(false)}
         >
           <div
-            className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-300"
+            className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white dark:bg-slate-800 p-6 shadow-2xl animate-in zoom-in-95 duration-300"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="space-y-6 text-right">
@@ -415,59 +415,59 @@ export function TeacherMessagesPage() {
                 <button
                   type="button"
                   onClick={() => setShowPreview(false)}
-                  className="text-2xl text-slate-400 hover:text-slate-600"
+                  className="text-2xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                 >
                   ×
                 </button>
-                <h2 className="text-2xl font-bold text-slate-900">معاينة الرسالة</h2>
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">معاينة الرسالة</h2>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 space-y-4">
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50 p-6 space-y-4">
                 <div className="text-center">
                   <div className="text-4xl mb-2">{useCustomMessage ? '✍️' : selectedTemplateData?.icon}</div>
-                  <h3 className="text-xl font-bold text-slate-900">
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
                     {useCustomMessage ? 'رسالة مخصصة' : selectedTemplateData?.title}
                   </h3>
                 </div>
 
                 {/* محتوى الرسالة بالتنسيق المطلوب */}
-                <div className="rounded-xl bg-white p-5 text-right space-y-3 border-2 border-slate-300">
-                  <p className="text-base leading-relaxed text-slate-900">
-                    <span className="font-bold text-teal-700">رسالة من المعلم:</span>{' '}
+                <div className="rounded-xl bg-white dark:bg-slate-800 p-5 text-right space-y-3 border-2 border-slate-300 dark:border-slate-600">
+                  <p className="text-base leading-relaxed text-slate-900 dark:text-slate-100">
+                    <span className="font-bold text-teal-700 dark:text-teal-400">رسالة من المعلم:</span>{' '}
                     <span className="font-semibold">{settings.teacher_name}</span>
                   </p>
 
-                  <p className="text-base leading-relaxed text-slate-900">
-                    <span className="font-bold text-teal-700">ولي أمر الطالب:</span>{' '}
+                  <p className="text-base leading-relaxed text-slate-900 dark:text-slate-100">
+                    <span className="font-bold text-teal-700 dark:text-teal-400">ولي أمر الطالب:</span>{' '}
                     <span className="font-semibold">
                       {students.find(s => s.id === selectedStudents[0])?.name || 'اسم الطالب'}
                     </span>
                   </p>
 
-                  <p className="text-base leading-relaxed text-slate-800 pt-2">
+                  <p className="text-base leading-relaxed text-slate-800 dark:text-slate-200 pt-2">
                     {useCustomMessage ? customMessage : selectedTemplateData?.content}
                   </p>
 
-                  <p className="text-base leading-relaxed text-slate-900 pt-3">
-                    <span className="font-bold text-teal-700">المادة:</span>{' '}
+                  <p className="text-base leading-relaxed text-slate-900 dark:text-slate-100 pt-3">
+                    <span className="font-bold text-teal-700 dark:text-teal-400">المادة:</span>{' '}
                     <span className="font-semibold">{selectedClass.subject_name}</span>
                   </p>
 
-                  <div className="border-t-2 border-slate-200 pt-3 mt-3">
-                    <p className="text-sm text-slate-600 text-center">{settings.school_name}</p>
+                  <div className="border-t-2 border-slate-200 dark:border-slate-700 pt-3 mt-3">
+                    <p className="text-sm text-slate-600 dark:text-slate-400 text-center">{settings.school_name}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-xl bg-blue-50 border border-blue-200 p-4">
-                <p className="text-sm text-blue-800 text-center">
+              <div className="rounded-xl bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 p-4">
+                <p className="text-sm text-blue-800 dark:text-blue-300 text-center">
                   سيتم إرسال هذه الرسالة إلى <span className="font-bold">{selectedStudents.length}</span> ولي أمر
                 </p>
               </div>
 
               {!checkSendingTime.allowed && (
-                <div className="rounded-xl bg-rose-50 border border-rose-200 p-4">
-                  <p className="text-sm text-rose-800 text-center font-semibold">
+                <div className="rounded-xl bg-rose-50 dark:bg-rose-950 border border-rose-200 dark:border-rose-800 p-4">
+                  <p className="text-sm text-rose-800 dark:text-rose-300 text-center font-semibold">
                     ⏰ {checkSendingTime.reason}
                   </p>
                 </div>
@@ -504,19 +504,19 @@ export function TeacherMessagesPage() {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="rounded-full p-2 hover:bg-slate-100"
+            className="rounded-full p-2 hover:bg-slate-100 dark:hover:bg-slate-700"
           >
             <i className="bi bi-arrow-right text-xl" />
           </button>
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-slate-900">الرسائل</h1>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">الرسائل</h1>
             <p className="text-sm text-muted">تواصل مع أولياء الأمور</p>
           </div>
           {/* زر الردود */}
           <button
             type="button"
             onClick={() => navigate('/teacher/messages/replies')}
-            className="relative rounded-xl border-2 border-teal-200 bg-teal-50 px-4 py-2 text-teal-700 font-semibold hover:bg-teal-100 transition flex items-center gap-2"
+            className="relative rounded-xl border-2 border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950 px-4 py-2 text-teal-700 dark:text-teal-400 font-semibold hover:bg-teal-100 transition flex items-center gap-2"
           >
             <i className="bi bi-reply-all text-lg" />
             <span>الردود</span>
@@ -529,18 +529,18 @@ export function TeacherMessagesPage() {
         </header>
 
         {/* Compact Stats Row */}
-        <div className="flex divide-x divide-x-reverse divide-slate-100 rounded-2xl bg-white shadow-sm ring-1 ring-slate-900/5 mt-2">
-          <div className={clsx("flex flex-1 flex-col items-center justify-center py-4 px-2 transition-all hover:bg-slate-50/50 rounded-r-2xl", !settings.is_enabled && "bg-rose-50/50 opacity-90")}>
+        <div className="flex divide-x divide-x-reverse divide-slate-100 dark:divide-slate-700 rounded-2xl bg-white dark:bg-slate-800 shadow-sm ring-1 ring-slate-900/5 dark:ring-slate-100/10 mt-2">
+          <div className={clsx("flex flex-1 flex-col items-center justify-center py-4 px-2 transition-all hover:bg-slate-50/50 dark:hover:bg-slate-700/50 rounded-r-2xl", !settings.is_enabled && "bg-rose-50/50 opacity-90")}>
             <p className="text-3xl mb-1">{settings.is_enabled ? '✅' : '🚫'}</p>
-            <p className="text-xs font-bold text-slate-700 sm:text-sm">{settings.is_enabled ? 'النظام مفعّل' : 'حساب معطّل'}</p>
+            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 sm:text-sm">{settings.is_enabled ? 'النظام مفعّل' : 'حساب معطّل'}</p>
           </div>
-          <div className="flex flex-1 flex-col items-center justify-center py-4 px-2 transition-all hover:bg-slate-50/50">
-            <p className="text-3xl font-bold text-blue-600">{todayStats.sent_today}</p>
-            <p className="mt-0.5 text-xs font-bold text-slate-500 sm:text-sm">رسائل اليوم</p>
+          <div className="flex flex-1 flex-col items-center justify-center py-4 px-2 transition-all hover:bg-slate-50/50 dark:hover:bg-slate-700/50">
+            <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{todayStats.sent_today}</p>
+            <p className="mt-0.5 text-xs font-bold text-slate-500 dark:text-slate-400 sm:text-sm">رسائل اليوم</p>
           </div>
-          <div className="flex flex-1 flex-col items-center justify-center py-4 px-2 transition-all hover:bg-slate-50/50 rounded-l-2xl">
-            <p className={clsx("text-3xl font-bold", todayStats.remaining > 0 ? 'text-teal-600' : 'text-amber-600')}>{todayStats.remaining}</p>
-            <p className="mt-0.5 text-xs font-bold text-slate-500 sm:text-sm">رصيد متبقي</p>
+          <div className="flex flex-1 flex-col items-center justify-center py-4 px-2 transition-all hover:bg-slate-50/50 dark:hover:bg-slate-700/50 rounded-l-2xl">
+            <p className={clsx("text-3xl font-bold", todayStats.remaining > 0 ? 'text-teal-600 dark:text-teal-400' : 'text-amber-600 dark:text-amber-400')}>{todayStats.remaining}</p>
+            <p className="mt-0.5 text-xs font-bold text-slate-500 dark:text-slate-400 sm:text-sm">رصيد متبقي</p>
           </div>
         </div>
 
@@ -549,25 +549,25 @@ export function TeacherMessagesPage() {
           <div className={clsx(
             'rounded-2xl border p-4 text-right',
             !settings.is_enabled
-              ? 'bg-rose-50 border-rose-200'
-              : 'bg-amber-50 border-amber-200'
+              ? 'bg-rose-50 dark:bg-rose-950 border-rose-200 dark:border-rose-800'
+              : 'bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800'
           )}>
             <div className="flex items-start gap-3">
               <span className="text-2xl">{!settings.is_enabled ? '🚫' : '⏰'}</span>
               <div>
                 <p className={clsx(
                   'font-semibold',
-                  !settings.is_enabled ? 'text-rose-800' : 'text-amber-800'
+                  !settings.is_enabled ? 'text-rose-800 dark:text-rose-300' : 'text-amber-800 dark:text-amber-300'
                 )}>
                   {checkSendingTime.reason}
                 </p>
                 {settings.is_enabled && (
-                  <p className="text-sm text-amber-700 mt-1">
+                  <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
                     يمكنك تجهيز الرسالة الآن وإرسالها في الوقت المحدد.
                   </p>
                 )}
                 {!settings.is_enabled && (
-                  <p className="text-sm text-rose-700 mt-1">
+                  <p className="text-sm text-rose-700 dark:text-rose-400 mt-1">
                     يرجى التواصل مع الإدارة لمعرفة سبب الإيقاف.
                   </p>
                 )}
@@ -578,12 +578,12 @@ export function TeacherMessagesPage() {
 
         {/* اختيار الفصل */}
         <div className="glass-card space-y-4">
-          <h2 className="text-xl font-semibold text-slate-900 text-right">1. اختر الفصل</h2>
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 text-right">1. اختر الفصل</h2>
 
           {teacherClasses.length === 0 ? (
-            <div className="rounded-xl border-2 border-slate-200 bg-slate-50 p-8 text-center">
+            <div className="rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50 p-8 text-center">
               <div className="text-4xl mb-3">📚</div>
-              <p className="text-slate-600 font-semibold">لا توجد فصول مسندة لك حالياً</p>
+              <p className="text-slate-600 dark:text-slate-400 font-semibold">لا توجد فصول مسندة لك حالياً</p>
               <p className="text-sm text-muted mt-2">يرجى التواصل مع الإدارة</p>
             </div>
           ) : (
@@ -592,21 +592,21 @@ export function TeacherMessagesPage() {
                 type="button"
                 onClick={() => setIsClassDropdownOpen(true)}
                 className={clsx(
-                  "flex w-full items-center justify-between rounded-2xl border-2 bg-white px-5 py-4 text-right shadow-sm transition-all focus:outline-none focus:ring-4 focus:ring-teal-500/10",
-                  isClassDropdownOpen ? "border-teal-500" : "border-slate-200 hover:border-teal-300"
+                  "flex w-full items-center justify-between rounded-2xl border-2 bg-white dark:bg-slate-800 px-5 py-4 text-right shadow-sm transition-all focus:outline-none focus:ring-4 focus:ring-teal-500/10",
+                  isClassDropdownOpen ? "border-teal-500" : "border-slate-200 dark:border-slate-700 hover:border-teal-300"
                 )}
               >
                 {selectedClass ? (
                   <div className="flex flex-col items-start gap-1">
-                    <span className="text-base font-bold text-slate-900">
+                    <span className="text-base font-bold text-slate-900 dark:text-slate-100">
                       {selectedClass.grade} - {selectedClass.class_name}
                     </span>
-                    <span className="text-xs font-semibold text-teal-600 rounded-md bg-teal-50 px-2 py-0.5 border border-teal-100">
+                    <span className="text-xs font-semibold text-teal-600 dark:text-teal-400 rounded-md bg-teal-50 dark:bg-teal-950 px-2 py-0.5 border border-teal-100 dark:border-teal-800">
                       {selectedClass.subject_name}
                     </span>
                   </div>
                 ) : (
-                  <span className="text-base font-bold text-slate-500">-- الرجاء اختيار الفصل --</span>
+                  <span className="text-base font-bold text-slate-500 dark:text-slate-400">-- الرجاء اختيار الفصل --</span>
                 )}
                 <i className={clsx("bi bi-chevron-down text-lg text-slate-400 transition-transform duration-300", isClassDropdownOpen && "rotate-180")}></i>
               </button>
@@ -617,9 +617,9 @@ export function TeacherMessagesPage() {
                     className="absolute inset-0"
                     onClick={() => setIsClassDropdownOpen(false)}
                   />
-                  <div className="relative w-full max-w-sm max-h-[70vh] flex flex-col rounded-3xl bg-white shadow-2xl animate-in zoom-in-95 duration-200">
-                    <div className="border-b border-slate-100 p-4 shrink-0 text-center">
-                      <h3 className="font-bold text-slate-900">اختر الفصل</h3>
+                  <div className="relative w-full max-w-sm max-h-[70vh] flex flex-col rounded-3xl bg-white dark:bg-slate-800 shadow-2xl animate-in zoom-in-95 duration-200">
+                    <div className="border-b border-slate-100 dark:border-slate-700 p-4 shrink-0 text-center">
+                      <h3 className="font-bold text-slate-900 dark:text-slate-100">اختر الفصل</h3>
                     </div>
                     <div className="p-2 overflow-y-auto overscroll-contain">
                       {teacherClasses.map((classItem) => (
@@ -632,14 +632,14 @@ export function TeacherMessagesPage() {
                             setIsClassDropdownOpen(false);
                           }}
                           className={clsx(
-                            "flex w-full flex-col items-start rounded-xl px-4 py-3 text-right transition-colors active:bg-slate-100",
-                            selectedClass?.id === classItem.id ? "bg-teal-50" : ""
+                            "flex w-full flex-col items-start rounded-xl px-4 py-3 text-right transition-colors active:bg-slate-100 dark:active:bg-slate-700",
+                            selectedClass?.id === classItem.id ? "bg-teal-50 dark:bg-teal-950" : ""
                           )}
                         >
-                          <span className={clsx("font-bold", selectedClass?.id === classItem.id ? "text-teal-900" : "text-slate-900")}>
+                          <span className={clsx("font-bold", selectedClass?.id === classItem.id ? "text-teal-900 dark:text-teal-200" : "text-slate-900 dark:text-slate-100")}>
                             {classItem.grade} - {classItem.class_name}
                           </span>
-                          <span className={clsx("text-xs font-semibold mt-1", selectedClass?.id === classItem.id ? "text-teal-600" : "text-slate-500")}>
+                          <span className={clsx("text-xs font-semibold mt-1", selectedClass?.id === classItem.id ? "text-teal-600 dark:text-teal-400" : "text-slate-500 dark:text-slate-400")}>
                             {classItem.subject_name}
                           </span>
                         </button>
@@ -648,7 +648,7 @@ export function TeacherMessagesPage() {
                     <div className="p-3 shrink-0">
                       <button
                         onClick={() => setIsClassDropdownOpen(false)}
-                        className="w-full rounded-xl bg-slate-100 py-3 font-semibold text-slate-700 hover:bg-slate-200 transition-colors"
+                        className="w-full rounded-xl bg-slate-100 dark:bg-slate-700 py-3 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
                       >
                         إلغاء
                       </button>
@@ -660,7 +660,7 @@ export function TeacherMessagesPage() {
           )}
 
           {studentsHint ? (
-            <p className="rounded-2xl border border-teal-100 bg-teal-50/70 px-4 py-2 text-xs font-semibold text-teal-700 text-right">
+            <p className="rounded-2xl border border-teal-100 dark:border-teal-800 bg-teal-50/70 dark:bg-teal-950/70 px-4 py-2 text-xs font-semibold text-teal-700 dark:text-teal-400 text-right">
               {studentsHint}
             </p>
           ) : null}
@@ -680,18 +680,18 @@ export function TeacherMessagesPage() {
                 <button
                   type="button"
                   onClick={handleSelectAllStudents}
-                  className="text-sm font-semibold text-teal-600 hover:text-teal-700"
+                  className="text-sm font-semibold text-teal-600 dark:text-teal-400 hover:text-teal-700"
                 >
                   {selectedStudents.length === students.length ? 'إلغاء تحديد الكل' : 'تحديد الكل'}
                 </button>
               )}
-              <h2 className="text-xl font-semibold text-slate-900">2. اختر الطلاب</h2>
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">2. اختر الطلاب</h2>
             </div>
 
             {students.length === 0 ? (
-              <div className="rounded-xl border-2 border-slate-200 bg-slate-50 p-8 text-center">
+              <div className="rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50 p-8 text-center">
                 <div className="text-4xl mb-3">👥</div>
-                <p className="text-slate-600 font-semibold">لا يوجد طلاب في هذا الفصل</p>
+                <p className="text-slate-600 dark:text-slate-400 font-semibold">لا يوجد طلاب في هذا الفصل</p>
                 <p className="text-sm text-muted mt-2">يرجى التواصل مع الإدارة</p>
               </div>
             ) : (
@@ -702,8 +702,8 @@ export function TeacherMessagesPage() {
                     className={clsx(
                       'rounded-xl border-2 py-2.5 px-3 text-right transition cursor-pointer hover:border-teal-300',
                       selectedStudents.includes(student.id)
-                        ? 'border-teal-500 bg-teal-50'
-                        : 'border-slate-200 bg-white'
+                        ? 'border-teal-500 bg-teal-50 dark:bg-teal-950'
+                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'
                     )}
                   >
                     <div className="flex items-center gap-3">
@@ -714,7 +714,7 @@ export function TeacherMessagesPage() {
                         className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                       />
                       <div className="flex-1">
-                        <p className="font-bold text-slate-900 text-sm">{student.name}</p>
+                        <p className="font-bold text-slate-900 dark:text-slate-100 text-sm">{student.name}</p>
                       </div>
                     </div>
                   </label>
@@ -724,7 +724,7 @@ export function TeacherMessagesPage() {
 
             {students.length > 0 && selectedStudents.length > 0 ? (
               <div className="space-y-3">
-                <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-center">
+                <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 p-3 text-center">
                   <p className="text-sm text-emerald-800">
                     تم تحديد <span className="font-bold">{selectedStudents.length}</span> من{' '}
                     {students.length} طالب
@@ -763,9 +763,9 @@ export function TeacherMessagesPage() {
               highlightMessageSection && 'ring-2 ring-teal-200 ring-offset-2 ring-offset-white shadow-lg',
             )}
           >
-            <h2 className="text-xl font-semibold text-slate-900 text-right">3. اختر نوع الرسالة</h2>
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 text-right">3. اختر نوع الرسالة</h2>
             {messageHint ? (
-              <p className="rounded-2xl border border-teal-100 bg-teal-50/60 px-4 py-2 text-xs font-semibold text-teal-700 text-right">
+              <p className="rounded-2xl border border-teal-100 dark:border-teal-800 bg-teal-50/60 dark:bg-teal-950/60 px-4 py-2 text-xs font-semibold text-teal-700 dark:text-teal-400 text-right">
                 {messageHint}
               </p>
             ) : null}
@@ -783,7 +783,7 @@ export function TeacherMessagesPage() {
                     'rounded-xl px-6 py-3 font-semibold transition',
                     !useCustomMessage
                       ? 'bg-teal-500 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
                   )}
                 >
                   استخدام قالب جاهز
@@ -798,7 +798,7 @@ export function TeacherMessagesPage() {
                     'rounded-xl px-6 py-3 font-semibold transition',
                     useCustomMessage
                       ? 'bg-teal-500 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
                   )}
                 >
                   كتابة رسالة مخصصة
@@ -810,7 +810,7 @@ export function TeacherMessagesPage() {
             {useCustomMessage ? (
               <div className="space-y-4">
                 <label className="block text-right">
-                  <span className="text-lg font-semibold text-slate-900">اكتب رسالتك</span>
+                  <span className="text-lg font-semibold text-slate-900 dark:text-slate-100">اكتب رسالتك</span>
                   <span className="text-sm text-muted block mt-1">
                     (10-500 حرف)
                   </span>
@@ -821,11 +821,11 @@ export function TeacherMessagesPage() {
                   placeholder="اكتب رسالتك هنا..."
                   rows={5}
                   maxLength={500}
-                  className="w-full rounded-xl border-2 border-slate-200 p-4 text-right focus:border-teal-500 focus:ring-2 focus:ring-teal-200 focus:outline-none"
+                  className="w-full rounded-xl border-2 border-slate-200 dark:border-slate-700 p-4 text-right focus:border-teal-500 focus:ring-2 focus:ring-teal-200 focus:outline-none"
                   dir="rtl"
                 />
                 <div className="flex justify-between text-sm text-muted">
-                  <span className={customMessage.length < 10 ? 'text-amber-600' : 'text-emerald-600'}>
+                  <span className={customMessage.length < 10 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}>
                     {customMessage.length < 10 ? `أدخل ${10 - customMessage.length} أحرف إضافية على الأقل` : 'جاهز للإرسال'}
                   </span>
                   <span>{customMessage.length}/500</span>
@@ -841,14 +841,14 @@ export function TeacherMessagesPage() {
                     className={clsx(
                       'rounded-2xl border-2 p-6 text-center transition hover:scale-105',
                       selectedTemplate === template.id
-                        ? 'border-2 border-teal-300 bg-teal-50'
-                        : 'border-slate-200 bg-white hover:border-slate-300'
+                        ? 'border-2 border-teal-300 bg-teal-50 dark:bg-teal-950'
+                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600'
                     )}
                   >
                     <div className="space-y-3">
                       <div className="text-4xl">{template.icon}</div>
-                      <p className="font-bold text-slate-900">{template.title}</p>
-                      <p className="text-xs text-slate-600 line-clamp-2">{template.content}</p>
+                      <p className="font-bold text-slate-900 dark:text-slate-100">{template.title}</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2">{template.content}</p>
                     </div>
                   </button>
                 ))}
@@ -867,7 +867,7 @@ export function TeacherMessagesPage() {
             )}
           >
             {previewHint ? (
-              <p className="rounded-2xl border border-teal-100 bg-teal-50/60 px-4 py-2 text-xs font-semibold text-teal-700 text-right">
+              <p className="rounded-2xl border border-teal-100 dark:border-teal-800 bg-teal-50/60 dark:bg-teal-950/60 px-4 py-2 text-xs font-semibold text-teal-700 dark:text-teal-400 text-right">
                 {previewHint}
               </p>
             ) : null}

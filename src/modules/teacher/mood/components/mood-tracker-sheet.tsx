@@ -42,11 +42,11 @@ export function MoodTrackerSheet({ isOpen, onSelect, onSkip }: MoodTrackerSheetP
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={springConfig}
-            className="fixed inset-x-0 bottom-0 z-50 max-h-[55vh] rounded-t-3xl bg-white shadow-2xl"
+            className="fixed inset-x-0 bottom-0 z-50 max-h-[55vh] rounded-t-3xl bg-white dark:bg-slate-800 shadow-2xl"
           >
             {/* Handle bar */}
             <div className="flex justify-center pt-3">
-              <div className="h-1.5 w-12 rounded-full bg-slate-200" />
+              <div className="h-1.5 w-12 rounded-full bg-slate-200 dark:bg-slate-700" />
             </div>
 
             {/* Skip button */}
@@ -54,7 +54,7 @@ export function MoodTrackerSheet({ isOpen, onSelect, onSkip }: MoodTrackerSheetP
               <button
                 type="button"
                 onClick={onSkip}
-                className="flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-200"
+                className="flex items-center gap-1 rounded-full bg-slate-100 dark:bg-slate-700 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 transition hover:bg-slate-200 dark:hover:bg-slate-600"
               >
                 <X className="h-3.5 w-3.5" />
                 <span>تخطي</span>
@@ -81,7 +81,7 @@ export function MoodTrackerSheet({ isOpen, onSelect, onSkip }: MoodTrackerSheetP
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
-                className="text-xl font-bold text-slate-900"
+                className="text-xl font-bold text-slate-900 dark:text-slate-100"
               >
                 صباح النور!
               </motion.h2>
@@ -89,7 +89,7 @@ export function MoodTrackerSheet({ isOpen, onSelect, onSkip }: MoodTrackerSheetP
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="mt-1 text-sm text-slate-500"
+                className="mt-1 text-sm text-slate-500 dark:text-slate-400"
               >
                 تذكر أن ابتسامتك في وجه طلابك هي أقصر طريق لقلوبهم
               </motion.p>
@@ -97,7 +97,7 @@ export function MoodTrackerSheet({ isOpen, onSelect, onSkip }: MoodTrackerSheetP
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.25 }}
-                className="mt-3 text-base font-medium text-slate-700"
+                className="mt-3 text-base font-medium text-slate-700 dark:text-slate-300"
               >
                 كيف حالك هذا الصباح؟
               </motion.p>
@@ -115,7 +115,7 @@ export function MoodTrackerSheet({ isOpen, onSelect, onSkip }: MoodTrackerSheetP
                     whileHover={{ scale: 1.1, y: -5 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => handleSelect(mood.key)}
-                    className="group flex flex-col items-center gap-2 rounded-2xl border-2 border-transparent bg-slate-50 p-3 transition-colors hover:border-slate-200 hover:bg-white"
+                    className="group flex flex-col items-center gap-2 rounded-2xl border-2 border-transparent bg-slate-50 dark:bg-slate-700/50 p-3 transition-colors hover:border-slate-200 dark:hover:border-slate-600 hover:bg-white dark:hover:bg-slate-700"
                   >
                     <motion.span
                       className="text-4xl"
@@ -124,7 +124,7 @@ export function MoodTrackerSheet({ isOpen, onSelect, onSkip }: MoodTrackerSheetP
                     >
                       {mood.emoji}
                     </motion.span>
-                    <span className="text-[10px] font-medium text-slate-500 group-hover:text-slate-700">
+                    <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300">
                       {mood.label}
                     </span>
                   </motion.button>

@@ -54,14 +54,14 @@ function UndoTimer({ undoableUntil }: { undoableUntil?: string | null }) {
   }
 
   return (
-    <span className="text-xs font-semibold text-amber-700">يتبقى {formatParts(remaining)}</span>
+    <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">يتبقى {formatParts(remaining)}</span>
   )
 }
 
 export function RecentTransactionsList({ transactions, onUndo, undoingId }: RecentTransactionsListProps) {
   if (!transactions.length) {
     return (
-      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-center text-sm text-muted">
+      <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50 p-5 text-center text-sm text-muted">
         لم يتم تسجيل أي عمليات اليوم بعد.
       </div>
     )
@@ -73,14 +73,14 @@ export function RecentTransactionsList({ transactions, onUndo, undoingId }: Rece
         const isReward = transaction.type === 'reward'
         const undoable = transaction.is_undoable && !transaction.undone_at
         return (
-          <li key={transaction.id} className="rounded-3xl border border-slate-200 bg-white px-4 py-4 text-right shadow-sm">
+          <li key={transaction.id} className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-4 text-right shadow-sm">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm font-semibold">
-                  <span className={`grid h-8 w-8 place-items-center rounded-2xl ${isReward ? 'bg-teal-100 text-teal-700' : 'bg-amber-100 text-amber-700'}`}>
+                  <span className={`grid h-8 w-8 place-items-center rounded-2xl ${isReward ? 'bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-400' : 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-400'}`}>
                     <i className={`bi ${isReward ? 'bi-stars' : 'bi-exclamation-diamond'}`} aria-hidden></i>
                   </span>
-                  <span className="text-slate-900">{transaction.reason?.title ?? 'عملية بدون سبب'}</span>
+                  <span className="text-slate-900 dark:text-slate-100">{transaction.reason?.title ?? 'عملية بدون سبب'}</span>
                 </div>
                 <p className="text-xs text-muted">
                   {transaction.student?.name ?? 'طالب غير معروف'} • {transaction.student?.grade ?? '—'} —{' '}
@@ -91,7 +91,7 @@ export function RecentTransactionsList({ transactions, onUndo, undoingId }: Rece
               <div className="flex flex-col items-end gap-2">
                 <span
                   className={`rounded-full px-4 py-1 text-sm font-bold ${
-                    isReward ? 'bg-teal-50 text-teal-700' : 'bg-amber-50 text-amber-700'
+                    isReward ? 'bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-400' : 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400'
                   }`}
                 >
                   {isReward ? '+' : '−'}
@@ -104,7 +104,7 @@ export function RecentTransactionsList({ transactions, onUndo, undoingId }: Rece
                       type="button"
                       onClick={() => onUndo(transaction)}
                       disabled={undoingId === transaction.id}
-                      className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-rose-300 hover:text-rose-600 disabled:opacity-60"
+                      className="rounded-full border border-slate-200 dark:border-slate-700 px-3 py-1 text-xs font-semibold text-slate-600 dark:text-slate-400 transition hover:border-rose-300 dark:hover:border-rose-700 hover:text-rose-600 dark:hover:text-rose-400 disabled:opacity-60"
                     >
                       تراجع
                     </button>

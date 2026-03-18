@@ -25,13 +25,13 @@ export function TeacherSkillsPage() {
           <button
             type="button"
             onClick={() => setSelectedSubject(null)}
-            className="flex items-center gap-1 text-xs text-teal-600 transition hover:text-teal-700"
+            className="flex items-center gap-1 text-xs text-teal-600 dark:text-teal-400 transition hover:text-teal-700"
           >
             <ArrowRight className="h-3 w-3" />
             المواد
           </button>
         ) : null}
-        <h1 className="text-xl font-bold text-slate-900">
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
           {selectedSubject ? `مهارات ${selectedSubject.name}` : 'إدارة المهارات'}
         </h1>
         <p className="text-xs text-muted">
@@ -67,7 +67,7 @@ function SubjectsList({ onSelect }: { onSelect: (s: TeacherSubject) => void }) {
   if (isError) {
     return (
       <div className="glass-card text-center">
-        <p className="text-sm font-medium text-rose-600">تعذر تحميل المواد</p>
+        <p className="text-sm font-medium text-rose-600 dark:text-rose-400">تعذر تحميل المواد</p>
         <button type="button" className="button-secondary mt-4" onClick={() => refetch()}>
           إعادة المحاولة
         </button>
@@ -78,7 +78,7 @@ function SubjectsList({ onSelect }: { onSelect: (s: TeacherSubject) => void }) {
   if (!subjects || subjects.length === 0) {
     return (
       <div className="glass-card text-center">
-        <BookOpen className="mx-auto h-12 w-12 text-slate-300" />
+        <BookOpen className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-500" />
         <p className="mt-3 text-sm text-muted">لا توجد مواد مسجلة لك حالياً</p>
       </div>
     )
@@ -94,17 +94,17 @@ function SubjectsList({ onSelect }: { onSelect: (s: TeacherSubject) => void }) {
           className="glass-card flex w-full items-center justify-between p-4 text-right transition hover:-translate-y-0.5 hover:shadow-md"
         >
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-100 text-teal-600">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-100 dark:bg-teal-900 text-teal-600 dark:text-teal-400">
               <BookOpen className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900">{subject.name}</h3>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">{subject.name}</h3>
               <p className="text-xs text-muted">
                 {subject.skills_count > 0 ? `${subject.skills_count} مهارة` : 'لا توجد مهارات بعد'}
               </p>
             </div>
           </div>
-          <ArrowRight className="h-4 w-4 rotate-180 text-slate-400" />
+          <ArrowRight className="h-4 w-4 rotate-180 text-slate-400 dark:text-slate-500" />
         </button>
       ))}
     </div>
@@ -146,7 +146,7 @@ function SkillsList({ subjectId, grades }: { subjectId: number; grades: string[]
           setEditingSkill(null)
           setShowForm(true)
         }}
-        className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-teal-300 bg-teal-50/50 px-4 py-3 text-sm font-semibold text-teal-600 transition hover:border-teal-400 hover:bg-teal-50"
+        className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-teal-300 dark:border-teal-700 bg-teal-50/50 dark:bg-teal-950/50 px-4 py-3 text-sm font-semibold text-teal-600 dark:text-teal-400 transition hover:border-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950"
       >
         <Plus className="h-4 w-4" />
         إضافة مهارة جديدة
@@ -174,16 +174,16 @@ function SkillsList({ subjectId, grades }: { subjectId: number; grades: string[]
               className="glass-card flex items-start justify-between gap-3 p-3"
             >
               <div className="flex items-start gap-2">
-                <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-slate-300" />
+                <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-slate-300 dark:text-slate-500" />
                 <div>
                   <div className="flex items-center gap-2">
-                    <h4 className="text-sm font-semibold text-slate-900">{skill.name}</h4>
+                    <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{skill.name}</h4>
                     <span
                       className={clsx(
                         'rounded-full px-2 py-0.5 text-[10px] font-medium',
                         skill.category === 'positive'
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : 'bg-rose-100 text-rose-700',
+                          ? 'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-400'
+                          : 'bg-rose-100 dark:bg-rose-900 text-rose-700 dark:text-rose-400',
                       )}
                     >
                       {skill.category === 'positive' ? 'إيجابي' : 'سلبي'}
@@ -191,7 +191,7 @@ function SkillsList({ subjectId, grades }: { subjectId: number; grades: string[]
                   </div>
                   <div className="mt-0.5 flex flex-wrap items-center gap-1">
                     {skill.grade && (
-                      <span className="rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-medium text-sky-600">
+                      <span className="rounded bg-sky-50 dark:bg-sky-950 px-1.5 py-0.5 text-[10px] font-medium text-sky-600 dark:text-sky-400">
                         {skill.grade}
                       </span>
                     )}
@@ -215,14 +215,14 @@ function SkillsList({ subjectId, grades }: { subjectId: number; grades: string[]
                     setEditingSkill(skill)
                     setShowForm(true)
                   }}
-                  className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                  className="rounded-lg p-1.5 text-slate-400 dark:text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300"
                 >
                   <Pencil className="h-3.5 w-3.5" />
                 </button>
                 <button
                   type="button"
                   onClick={() => setDeletingSkill(skill)}
-                  className="rounded-lg p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                  className="rounded-lg p-1.5 text-slate-400 dark:text-slate-500 transition hover:bg-rose-50 dark:hover:bg-rose-950 hover:text-rose-600 dark:hover:text-rose-400"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -241,8 +241,8 @@ function SkillsList({ subjectId, grades }: { subjectId: number; grades: string[]
       {/* تأكيد الحذف */}
       {deletingSkill && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
-            <h3 className="text-base font-bold text-slate-900">حذف المهارة</h3>
+          <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-800 p-5 shadow-xl">
+            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">حذف المهارة</h3>
             <p className="mt-2 text-sm text-muted">
               هل أنت متأكد من حذف <strong>"{deletingSkill.name}"</strong>؟
             </p>
@@ -258,7 +258,7 @@ function SkillsList({ subjectId, grades }: { subjectId: number; grades: string[]
               <button
                 type="button"
                 onClick={() => setDeletingSkill(null)}
-                className="flex-1 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-700"
               >
                 إلغاء
               </button>
@@ -320,32 +320,32 @@ function SkillForm({
   }
 
   return (
-    <div className="glass-card space-y-4 border-teal-200 bg-teal-50/30 p-4">
+    <div className="glass-card space-y-4 border-teal-200 dark:border-teal-800 bg-teal-50/30 dark:bg-teal-950/30 p-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-slate-900">
+        <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
           {isEditing ? 'تعديل المهارة' : 'مهارة جديدة'}
         </h3>
-        <button type="button" onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:text-slate-600">
+        <button type="button" onClick={onClose} className="rounded-lg p-1 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">
           <X className="h-4 w-4" />
         </button>
       </div>
 
       {/* اسم المهارة */}
       <div>
-        <label className="mb-1 block text-xs font-medium text-slate-700">اسم المهارة</label>
+        <label className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">اسم المهارة</label>
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="مثال: القراءة الجهرية، حل المسائل..."
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20"
+          className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm outline-none transition focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20"
         />
       </div>
 
       {/* الصف الدراسي */}
       {grades.length > 0 && (
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-700">الصف الدراسي</label>
+          <label className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">الصف الدراسي</label>
           <div className="flex flex-wrap gap-1.5">
             <button
               type="button"
@@ -354,7 +354,7 @@ function SkillForm({
                 'rounded-lg px-2.5 py-1.5 text-xs font-medium transition',
                 selectedGrade === null
                   ? 'bg-teal-600 text-white shadow-sm'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600',
               )}
             >
               كل الصفوف
@@ -368,7 +368,7 @@ function SkillForm({
                   'rounded-lg px-2.5 py-1.5 text-xs font-medium transition',
                   selectedGrade === g
                     ? 'bg-teal-600 text-white shadow-sm'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
+                    : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600',
                 )}
               >
                 {g}
@@ -380,7 +380,7 @@ function SkillForm({
 
       {/* التصنيف */}
       <div>
-        <label className="mb-1 block text-xs font-medium text-slate-700">التصنيف</label>
+        <label className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">التصنيف</label>
         <div className="flex gap-2">
           <button
             type="button"
@@ -388,8 +388,8 @@ function SkillForm({
             className={clsx(
               'flex-1 rounded-xl border px-3 py-2 text-xs font-semibold transition',
               category === 'positive'
-                ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
-                : 'border-slate-200 bg-white text-slate-500 hover:border-emerald-200',
+                ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400'
+                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:border-emerald-200 dark:hover:border-emerald-800',
             )}
           >
             إيجابي
@@ -405,8 +405,8 @@ function SkillForm({
             className={clsx(
               'flex-1 rounded-xl border px-3 py-2 text-xs font-semibold transition',
               category === 'negative'
-                ? 'border-rose-400 bg-rose-50 text-rose-700'
-                : 'border-slate-200 bg-white text-slate-500 hover:border-rose-200',
+                ? 'border-rose-400 bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-400'
+                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:border-rose-200',
             )}
           >
             سلبي
@@ -432,9 +432,9 @@ function SkillForm({
                   setMaxGrade('')
                 }
               }}
-              className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+              className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-teal-600 focus:ring-teal-500"
             />
-            <span className="text-xs font-medium text-slate-700">يتطلب تقييم/درجة</span>
+            <span className="text-xs font-medium text-slate-700 dark:text-slate-300">يتطلب تقييم/درجة</span>
           </label>
         </div>
       )}
@@ -443,7 +443,7 @@ function SkillForm({
       {category === 'positive' && requiresGrade && (
         <div className="space-y-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">نوع التقييم</label>
+            <label className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">نوع التقييم</label>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -451,8 +451,8 @@ function SkillForm({
                 className={clsx(
                   'flex-1 rounded-xl border px-3 py-2 text-xs font-semibold transition',
                   gradeType === 'descriptive'
-                    ? 'border-violet-400 bg-violet-50 text-violet-700'
-                    : 'border-slate-200 bg-white text-slate-500 hover:border-violet-200',
+                    ? 'border-violet-400 bg-violet-50 dark:bg-violet-950 text-violet-700 dark:text-violet-400'
+                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:border-violet-200',
                 )}
               >
                 وصفي
@@ -463,8 +463,8 @@ function SkillForm({
                 className={clsx(
                   'flex-1 rounded-xl border px-3 py-2 text-xs font-semibold transition',
                   gradeType === 'numeric'
-                    ? 'border-blue-400 bg-blue-50 text-blue-700'
-                    : 'border-slate-200 bg-white text-slate-500 hover:border-blue-200',
+                    ? 'border-blue-400 bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-400'
+                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:border-blue-200',
                 )}
               >
                 رقمي
@@ -475,8 +475,8 @@ function SkillForm({
                 className={clsx(
                   'flex-1 rounded-xl border px-3 py-2 text-xs font-semibold transition',
                   gradeType === 'mastery'
-                    ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
-                    : 'border-slate-200 bg-white text-slate-500 hover:border-emerald-200',
+                    ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400'
+                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:border-emerald-200 dark:hover:border-emerald-800',
                 )}
               >
                 إتقان
@@ -487,12 +487,12 @@ function SkillForm({
           {/* معاينة التقييم الوصفي */}
           {gradeType === 'descriptive' && (
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">المستويات المتاحة</label>
+              <label className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">المستويات المتاحة</label>
               <div className="flex flex-wrap gap-1.5">
                 {DESCRIPTIVE_GRADES.map((g: DescriptiveGrade) => (
                   <span
                     key={g}
-                    className="rounded-lg bg-violet-100 px-2.5 py-1 text-xs font-medium text-violet-700"
+                    className="rounded-lg bg-violet-100 dark:bg-violet-900 px-2.5 py-1 text-xs font-medium text-violet-700 dark:text-violet-400"
                   >
                     {g}
                   </span>
@@ -504,9 +504,9 @@ function SkillForm({
           {/* معاينة تقييم الإتقان */}
           {gradeType === 'mastery' && (
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">خيارات التقييم</label>
+              <label className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">خيارات التقييم</label>
               <div className="flex gap-2">
-                <span className="flex-1 rounded-xl bg-emerald-100 py-2 text-center text-xs font-bold text-emerald-700">
+                <span className="flex-1 rounded-xl bg-emerald-100 dark:bg-emerald-900 py-2 text-center text-xs font-bold text-emerald-700 dark:text-emerald-400">
                   ✓ اتقن
                 </span>
                 <span className="flex-1 rounded-xl bg-red-100 py-2 text-center text-xs font-bold text-red-700">
@@ -519,14 +519,14 @@ function SkillForm({
           {/* الحد الأقصى للدرجة */}
           {gradeType === 'numeric' && (
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">الحد الأقصى للدرجة</label>
+              <label className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">الحد الأقصى للدرجة</label>
               <input
                 type="number"
                 value={maxGrade}
                 onChange={(e) => setMaxGrade(e.target.value)}
                 placeholder="مثال: 10"
                 min={1}
-                className="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20"
+                className="w-32 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm outline-none transition focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20"
               />
             </div>
           )}
@@ -546,7 +546,7 @@ function SkillForm({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+          className="rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-400 transition hover:bg-slate-50 dark:hover:bg-slate-700"
         >
           إلغاء
         </button>

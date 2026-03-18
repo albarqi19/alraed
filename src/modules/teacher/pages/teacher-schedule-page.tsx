@@ -162,20 +162,20 @@ export function TeacherSchedulePage() {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-slate-800" />
-        <p className="mt-4 text-sm font-medium text-slate-500">جاري تحميل الجدول...</p>
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 dark:border-slate-700 border-t-slate-800 dark:border-t-slate-200" />
+        <p className="mt-4 text-sm font-medium text-slate-500 dark:text-slate-400">جاري تحميل الجدول...</p>
       </div>
     )
   }
 
   if (isError) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-3xl bg-rose-50 p-8 text-center ring-1 ring-rose-100">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-rose-600">
+      <div className="flex flex-col items-center justify-center rounded-3xl bg-rose-50 dark:bg-rose-950 p-8 text-center ring-1 ring-rose-100 dark:ring-rose-900">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-900 text-rose-600 dark:text-rose-400">
           <i className="bi bi-exclamation-triangle-fill text-xl"></i>
         </div>
-        <p className="mt-4 font-semibold text-rose-900">تعذر تحميل الجدول الأسبوعي</p>
-        <button type="button" onClick={() => refetch()} className="mt-6 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-rose-700 shadow-sm ring-1 ring-inset ring-rose-200 hover:bg-rose-50 transition-all">
+        <p className="mt-4 font-semibold text-rose-900 dark:text-rose-200">تعذر تحميل الجدول الأسبوعي</p>
+        <button type="button" onClick={() => refetch()} className="mt-6 rounded-xl bg-white dark:bg-slate-800 px-5 py-2.5 text-sm font-semibold text-rose-700 dark:text-rose-400 shadow-sm ring-1 ring-inset ring-rose-200 dark:ring-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950 transition-all">
           إعادة المحاولة
         </button>
       </div>
@@ -189,8 +189,8 @@ export function TeacherSchedulePage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">جدولي الدراسي</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">جدولي الدراسي</h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             {weekRange ? `الأسبوع الحالي: ${weekRange}` : 'عرض جميع الحصص الأسبوعية'}
           </p>
         </div>
@@ -198,41 +198,41 @@ export function TeacherSchedulePage() {
           type="button"
           onClick={() => refetch()}
           title="تحديث البيانات"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-slate-600 shadow-sm ring-1 ring-inset ring-slate-200 transition-all hover:bg-slate-50 hover:text-slate-900 active:scale-95"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 shadow-sm ring-1 ring-inset ring-slate-200 dark:ring-slate-700 transition-all hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100 active:scale-95"
         >
           <i className="bi bi-arrow-clockwise text-[1.15rem]"></i>
         </button>
       </div>
 
       {/* Compact Stats Summary */}
-      <div className="flex divide-x divide-x-reverse divide-slate-100 rounded-2xl bg-white shadow-sm ring-1 ring-slate-900/5">
-        <div className="flex flex-1 flex-col items-center justify-center py-4 px-2 transition-all hover:bg-slate-50/50 rounded-r-2xl">
-          <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
-          <p className="mt-0.5 text-[10px] font-medium text-slate-500 sm:text-xs">إجمالي الحصص</p>
+      <div className="flex divide-x divide-x-reverse divide-slate-100 dark:divide-slate-700 rounded-2xl bg-white dark:bg-slate-800 shadow-sm ring-1 ring-slate-900/5 dark:ring-slate-100/10">
+        <div className="flex flex-1 flex-col items-center justify-center py-4 px-2 transition-all hover:bg-slate-50/50 dark:hover:bg-slate-700/50 rounded-r-2xl">
+          <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats.total}</p>
+          <p className="mt-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-400 sm:text-xs">إجمالي الحصص</p>
         </div>
-        <div className="flex flex-1 flex-col items-center justify-center py-4 px-2 transition-all hover:bg-slate-50/50">
-          <p className="text-2xl font-bold text-emerald-600">{stats.todaysSessions}</p>
-          <p className="mt-0.5 text-[10px] font-medium text-slate-500 sm:text-xs">حصص اليوم</p>
+        <div className="flex flex-1 flex-col items-center justify-center py-4 px-2 transition-all hover:bg-slate-50/50 dark:hover:bg-slate-700/50">
+          <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{stats.todaysSessions}</p>
+          <p className="mt-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-400 sm:text-xs">حصص اليوم</p>
         </div>
-        <div className="flex flex-1 flex-col items-center justify-center py-4 px-2 transition-all hover:bg-slate-50/50">
-          <p className="text-2xl font-bold text-sky-600">{stats.subjects}</p>
-          <p className="mt-0.5 text-[10px] font-medium text-slate-500 sm:text-xs">عدد المواد</p>
+        <div className="flex flex-1 flex-col items-center justify-center py-4 px-2 transition-all hover:bg-slate-50/50 dark:hover:bg-slate-700/50">
+          <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{stats.subjects}</p>
+          <p className="mt-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-400 sm:text-xs">عدد المواد</p>
         </div>
-        <div className="flex flex-1 flex-col items-center justify-center py-4 px-2 transition-all hover:bg-slate-50/50 rounded-l-2xl">
-          <p className="text-2xl font-bold text-amber-600">{stats.classes}</p>
-          <p className="mt-0.5 text-[10px] font-medium text-slate-500 sm:text-xs">عدد الفصول</p>
+        <div className="flex flex-1 flex-col items-center justify-center py-4 px-2 transition-all hover:bg-slate-50/50 dark:hover:bg-slate-700/50 rounded-l-2xl">
+          <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{stats.classes}</p>
+          <p className="mt-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-400 sm:text-xs">عدد الفصول</p>
         </div>
       </div>
 
       {/* Days Tabs */}
-      <div className="relative mt-8 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-900/5">
+      <div className="relative mt-8 overflow-hidden rounded-2xl bg-white dark:bg-slate-800 shadow-sm ring-1 ring-slate-900/5 dark:ring-slate-100/10">
         {/* Fog Effects for Horizontal Scrolling (Dynamic Visibility) */}
         <div className={clsx(
-          "pointer-events-none absolute bottom-0 right-0 top-0 z-10 w-12 bg-gradient-to-l from-white to-transparent transition-opacity duration-300",
+          "pointer-events-none absolute bottom-0 right-0 top-0 z-10 w-12 bg-gradient-to-l from-white dark:from-slate-800 to-transparent transition-opacity duration-300",
           showRightFog ? "opacity-100" : "opacity-0"
         )} />
         <div className={clsx(
-          "pointer-events-none absolute bottom-0 left-0 top-0 z-10 w-12 bg-gradient-to-r from-white to-transparent transition-opacity duration-300",
+          "pointer-events-none absolute bottom-0 left-0 top-0 z-10 w-12 bg-gradient-to-r from-white dark:from-slate-800 to-transparent transition-opacity duration-300",
           showLeftFog ? "opacity-100" : "opacity-0"
         )} />
 
@@ -251,14 +251,14 @@ export function TeacherSchedulePage() {
                 className={clsx(
                   "relative flex min-w-[5.5rem] flex-1 flex-col items-center justify-center gap-1.5 rounded-xl px-2 py-3 transition-all duration-300",
                   isSelected
-                    ? "bg-slate-900 text-white shadow-md shadow-slate-900/20"
-                    : "bg-transparent text-slate-600 hover:bg-slate-50"
+                    ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-md shadow-slate-900/20"
+                    : "bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700"
                 )}
               >
                 <span className="text-sm font-semibold shrink-0">{day}</span>
                 <span className={clsx(
                   "flex h-5 shrink-0 items-center justify-center rounded-full px-2 text-[10px] font-bold",
-                  isSelected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                  isSelected ? "bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-900" : "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
                 )}>
                   {daySessionsCount} {daySessionsCount === 1 ? 'حصة' : daySessionsCount === 2 ? 'حصتان' : 'حصص'}
                 </span>
@@ -271,12 +271,12 @@ export function TeacherSchedulePage() {
       {/* Timeline List */}
       <div className="mt-6 space-y-4">
         {currentDaySessions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-white/50 py-16 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-slate-400 ring-1 ring-slate-100">
+          <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 py-16 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 dark:bg-slate-700/50 text-slate-400 dark:text-slate-500 ring-1 ring-slate-100 dark:ring-slate-700">
               <i className="bi bi-calendar-x text-2xl"></i>
             </div>
-            <p className="mt-4 text-base font-semibold text-slate-900">لا يوجد حصص مبرمجة</p>
-            <p className="mt-1 text-sm text-slate-500">يوم معفي من الحصص، يوم موفق!</p>
+            <p className="mt-4 text-base font-semibold text-slate-900 dark:text-slate-100">لا يوجد حصص مبرمجة</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">يوم معفي من الحصص، يوم موفق!</p>
           </div>
         ) : (
           currentDaySessions.map((session, index) => {
@@ -289,15 +289,15 @@ export function TeacherSchedulePage() {
                   <div className={clsx(
                     "flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-bold shadow-sm ring-1",
                     isStandby
-                      ? "bg-orange-50 text-orange-600 ring-orange-200"
+                      ? "bg-orange-50 dark:bg-orange-950 text-orange-600 dark:text-orange-400 ring-orange-200 dark:ring-orange-800"
                       : isToday
-                        ? "bg-emerald-50 text-emerald-600 ring-emerald-200"
-                        : "bg-white text-slate-900 ring-slate-200"
+                        ? "bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 ring-emerald-200 dark:ring-emerald-800"
+                        : "bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 ring-slate-200 dark:ring-slate-700"
                   )}>
                     {session.period_number ?? '-'}
                   </div>
                   {index !== currentDaySessions.length - 1 && (
-                    <div className="my-2 min-h-[3rem] w-px flex-1 bg-slate-200" />
+                    <div className="my-2 min-h-[3rem] w-px flex-1 bg-slate-200 dark:bg-slate-700" />
                   )}
                 </div>
 
@@ -305,30 +305,30 @@ export function TeacherSchedulePage() {
                 <div className={clsx(
                   "flex-1 rounded-2xl p-4 shadow-sm ring-1 transition-all hover:shadow-md mb-4",
                   isStandby
-                    ? "bg-gradient-to-br from-orange-50/80 to-bg-white ring-orange-200 hover:ring-orange-300"
+                    ? "bg-gradient-to-br from-orange-50/80 dark:from-orange-950/80 to-bg-white ring-orange-200 dark:ring-orange-800 hover:ring-orange-300 dark:hover:ring-orange-700"
                     : isToday
-                      ? "bg-gradient-to-br from-emerald-50/50 to-white ring-emerald-200 hover:ring-emerald-300"
-                      : "bg-white ring-slate-200 hover:ring-slate-300"
+                      ? "bg-gradient-to-br from-emerald-50/50 dark:from-emerald-950/50 to-white dark:to-slate-800 ring-emerald-200 dark:ring-emerald-800 hover:ring-emerald-300 dark:hover:ring-emerald-700"
+                      : "bg-white dark:bg-slate-800 ring-slate-200 dark:ring-slate-700 hover:ring-slate-300 dark:hover:ring-slate-600"
                 )}>
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-base font-bold text-slate-900">
+                        <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
                           {session.subject?.name ?? 'مادة غير محددة'}
                         </h3>
                         {isStandby && (
-                          <span className="rounded-md bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-700">
+                          <span className="rounded-md bg-orange-100 dark:bg-orange-900 px-2 py-0.5 text-[10px] font-bold text-orange-700 dark:text-orange-400">
                             انتظار
                           </span>
                         )}
                       </div>
-                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-500">
+                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-500 dark:text-slate-400">
                         <span className="flex items-center gap-1.5 font-medium">
-                          <i className="bi bi-people text-slate-400"></i>
+                          <i className="bi bi-people text-slate-400 dark:text-slate-500"></i>
                           {session.grade} {session.class_name ? `— الفصل ${session.class_name}` : ''}
                         </span>
                         {isStandby && session.replacing_teacher_name && (
-                          <span className="flex items-center gap-1.5 font-medium text-orange-600">
+                          <span className="flex items-center gap-1.5 font-medium text-orange-600 dark:text-orange-400">
                             <i className="bi bi-person-lines-fill"></i>
                             بديل أ. {session.replacing_teacher_name}
                           </span>
@@ -338,7 +338,7 @@ export function TeacherSchedulePage() {
 
                     <div className={clsx(
                       "inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold self-start shrink-0",
-                      isStandby ? "bg-orange-100 text-orange-700" : "bg-slate-100/80 text-slate-700"
+                      isStandby ? "bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-400" : "bg-slate-100/80 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300"
                     )}>
                       <i className="bi bi-clock"></i>
                       {getSessionTimeRange(session)}
@@ -354,28 +354,28 @@ export function TeacherSchedulePage() {
 
 
       {unmatched.length > 0 && (
-        <div className="mt-8 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <div className="mt-8 rounded-2xl bg-white dark:bg-slate-800 p-5 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400">
               <i className="bi bi-info-circle-fill"></i>
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900">حصص بلا وقت محدد</h3>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">حصص بلا وقت محدد</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 توجد بيانات غير مكتملة المصدر تحتاج مراجعة في النظام المركزي
               </p>
             </div>
           </div>
-          <div className="mt-4 divide-y divide-slate-100">
+          <div className="mt-4 divide-y divide-slate-100 dark:divide-slate-700">
             {unmatched.map((session) => (
               <div key={session.id} className="py-3 text-sm flex justify-between items-center">
                 <div>
-                  <p className="font-semibold text-slate-900">{session.subject?.name ?? 'مادة غير محددة'}</p>
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="font-semibold text-slate-900 dark:text-slate-100">{session.subject?.name ?? 'مادة غير محددة'}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                     {session.grade} — {session.class_name}
                   </p>
                 </div>
-                <div className="text-xs font-medium text-slate-400 text-left">
+                <div className="text-xs font-medium text-slate-400 dark:text-slate-500 text-left">
                   {session.day || 'يوم غير محدد'}
                   {session.period_number ? <><br />حصة {session.period_number}</> : ''}
                 </div>

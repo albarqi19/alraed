@@ -87,8 +87,8 @@ const SERVICES: ServiceCard[] = [
     title: 'الإعدادات',
     description: 'الحساب والتفضيلات',
     icon: 'bi-gear',
-    iconColor: 'text-slate-600',
-    iconBg: 'bg-slate-200/80',
+    iconColor: 'text-slate-600 dark:text-slate-400',
+    iconBg: 'bg-slate-200/80 dark:bg-slate-700/50',
     accentBar: 'from-slate-400/40 via-slate-200/40 to-transparent',
   },
 ]
@@ -147,8 +147,8 @@ export function TeacherServicesPage() {
 
               {/* Content */}
               <span className="relative z-10 space-y-0.5">
-                <h3 className="text-base font-bold text-slate-900">{service.title}</h3>
-                <p className="text-xs leading-5 text-slate-600 line-clamp-1">{service.description}</p>
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">{service.title}</h3>
+                <p className="text-xs leading-5 text-slate-600 dark:text-slate-400 line-clamp-1">{service.description}</p>
               </span>
             </span>
           </button>
@@ -156,12 +156,12 @@ export function TeacherServicesPage() {
       </div>
 
       {comingSoonMessage && (
-        <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4 animate-in slide-in-from-bottom-4 duration-300">
-          <div className="flex max-w-xl items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-3 shadow-lg">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100">
-              <i className="bi bi-clock-history text-sm text-amber-600" />
+        <div className="fixed inset-x-0 bottom-20 sm:bottom-6 z-50 flex justify-center px-4 animate-in slide-in-from-bottom-4 duration-300">
+          <div className="flex max-w-xl items-center gap-3 rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950 px-5 py-3 shadow-lg">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900">
+              <i className="bi bi-clock-history text-sm text-amber-600 dark:text-amber-400" />
             </div>
-            <p className="text-sm font-medium text-amber-900">{comingSoonMessage}</p>
+            <p className="text-sm font-medium text-amber-900 dark:text-amber-100">{comingSoonMessage}</p>
           </div>
         </div>
       )}

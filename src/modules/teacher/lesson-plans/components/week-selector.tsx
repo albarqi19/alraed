@@ -28,7 +28,7 @@ export function WeekSelector({ weeks, selectedWeekId, onSelect }: Props) {
   return (
     <div
       ref={scrollRef}
-      className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-300"
+      className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600"
     >
       {weeks.map((week) => {
         const isSelected = week.id === selectedWeekId
@@ -45,8 +45,8 @@ export function WeekSelector({ weeks, selectedWeekId, onSelect }: Props) {
               isSelected
                 ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/25'
                 : isCurrent
-                  ? 'bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200 hover:bg-cyan-100'
-                  : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50',
+                  ? 'bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200 hover:bg-cyan-100 dark:bg-cyan-950 dark:text-cyan-400 dark:ring-cyan-800 dark:hover:bg-cyan-900'
+                  : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700 dark:hover:bg-slate-700',
             )}
           >
             <span className="text-[11px] font-bold">الأسبوع {week.week_number}</span>

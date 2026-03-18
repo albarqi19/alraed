@@ -219,7 +219,7 @@ export function TeacherCoverageRequestPage() {
     return (
       <section className="space-y-6">
         <header className="space-y-1">
-          <h1 className="text-2xl font-bold text-slate-900">طلب تأمين الحصص</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">طلب تأمين الحصص</h1>
         </header>
         <div className="glass-card flex items-center justify-center py-12">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-orange-500/30 border-t-orange-500" />
@@ -233,14 +233,14 @@ export function TeacherCoverageRequestPage() {
     return (
       <section className="space-y-6">
         <header className="space-y-1">
-          <h1 className="text-2xl font-bold text-slate-900">طلب تأمين الحصص</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">طلب تأمين الحصص</h1>
         </header>
-        <div className="glass-card text-center py-12 border-amber-200 bg-amber-50/50">
+        <div className="glass-card text-center py-12 border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/50">
           <i className="bi bi-slash-circle text-5xl text-amber-500" />
-          <p className="mt-4 text-lg font-semibold text-amber-900">
+          <p className="mt-4 text-lg font-semibold text-amber-900 dark:text-amber-100">
             الإدارة عطلت هذه الميزة
           </p>
-          <p className="mt-2 text-sm text-amber-700">
+          <p className="mt-2 text-sm text-amber-700 dark:text-amber-400">
             يرجى التواصل مع الإدارة لمزيد من المعلومات
           </p>
           <button
@@ -260,7 +260,7 @@ export function TeacherCoverageRequestPage() {
     return (
       <section className="space-y-6">
         <header className="space-y-1">
-          <h1 className="text-2xl font-bold text-slate-900">طلب تأمين الحصص</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">طلب تأمين الحصص</h1>
         </header>
         <div className="glass-card flex items-center justify-center py-12">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-orange-500/30 border-t-orange-500" />
@@ -274,11 +274,11 @@ export function TeacherCoverageRequestPage() {
     return (
       <section className="space-y-6">
         <header className="space-y-1">
-          <h1 className="text-2xl font-bold text-slate-900">طلب تأمين الحصص</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">طلب تأمين الحصص</h1>
         </header>
         <div className="glass-card text-center py-12">
           <i className="bi bi-calendar-x text-4xl text-slate-300" />
-          <p className="mt-4 text-slate-600">لا توجد حصص متبقية اليوم</p>
+          <p className="mt-4 text-slate-600 dark:text-slate-400">لا توجد حصص متبقية اليوم</p>
           <button
             type="button"
             onClick={() => navigate(-1)}
@@ -294,15 +294,15 @@ export function TeacherCoverageRequestPage() {
   return (
     <section className="space-y-6">
       <header className="space-y-1">
-        <h1 className="text-2xl font-bold text-slate-900">طلب تأمين الحصص</h1>
-        <p className="text-sm text-slate-600">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">طلب تأمين الحصص</h1>
+        <p className="text-sm text-slate-600 dark:text-slate-400">
           تقديم طلب استئذان وتأمين حصصك المتبقية
         </p>
       </header>
 
       {/* اختيار الحصة */}
       <div className="glass-card space-y-4">
-        <h2 className="text-lg font-semibold text-slate-900">الاستئذان من الحصة</h2>
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">الاستئذان من الحصة</h2>
 
         <div className="grid grid-cols-7 gap-2">
           {[1, 2, 3, 4, 5, 6, 7].map(period => {
@@ -320,10 +320,10 @@ export function TeacherCoverageRequestPage() {
                 className={`
                   rounded-xl py-3 text-sm font-medium transition-all
                   ${isDisabled
-                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                    ? 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed'
                     : isSelected
                       ? 'bg-orange-500 text-white shadow-lg'
-                      : 'bg-white border border-slate-200 text-slate-700 hover:border-orange-300 hover:bg-orange-50'
+                      : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-orange-300 dark:hover:border-orange-700 hover:bg-orange-50 dark:hover:bg-orange-950'
                   }
                 `}
               >
@@ -333,7 +333,7 @@ export function TeacherCoverageRequestPage() {
           })}
         </div>
 
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
           * سيتم طلب تأمين جميع حصصك من الحصة {PERIOD_NAMES[fromPeriod]} وحتى نهاية اليوم
         </p>
       </div>
@@ -341,11 +341,11 @@ export function TeacherCoverageRequestPage() {
       {/* الحصص المتبقية */}
       {filteredSessions.length > 0 && (
         <div className="glass-card space-y-4">
-          <h2 className="text-lg font-semibold text-slate-900">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
             الحصص المتبقية ({filteredSessions.length})
           </h2>
 
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-slate-100 dark:divide-slate-700">
             {filteredSessions.map(session => {
               const substitutes = substitutesCache.get(session.period_number)
               const selectedSubstitute = coverageItems.get(session.id)
@@ -357,15 +357,15 @@ export function TeacherCoverageRequestPage() {
                     {/* معلومات الحصة */}
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-100 text-sm font-bold text-orange-700">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-100 dark:bg-orange-900 text-sm font-bold text-orange-700 dark:text-orange-400">
                           {session.period_number}
                         </span>
-                        <span className="font-semibold text-slate-900">{session.subject_name}</span>
+                        <span className="font-semibold text-slate-900 dark:text-slate-100">{session.subject_name}</span>
                       </div>
-                      <p className="text-sm text-slate-600">
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
                         {session.grade} — {session.class_name}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
                         {session.start_time} – {session.end_time}
                       </p>
                     </div>
@@ -376,7 +376,7 @@ export function TeacherCoverageRequestPage() {
                         <button
                           type="button"
                           onClick={() => handleLoadSubstitutes(session.period_number)}
-                          className="w-full rounded-lg border border-dashed border-slate-300 px-3 py-2 text-sm text-slate-600 hover:border-orange-400 hover:bg-orange-50 hover:text-orange-600"
+                          className="w-full rounded-lg border border-dashed border-slate-300 dark:border-slate-600 px-3 py-2 text-sm text-slate-600 dark:text-slate-400 hover:border-orange-400 dark:hover:border-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950 hover:text-orange-600 dark:hover:text-orange-400"
                         >
                           <i className="bi bi-person-plus ml-1" />
                           اختر البديل
@@ -389,7 +389,7 @@ export function TeacherCoverageRequestPage() {
                         <select
                           value={selectedSubstitute ?? ''}
                           onChange={(e) => handleSelectSubstitute(session.id, e.target.value ? Number(e.target.value) : null)}
-                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                          className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100 dark:ring-orange-800"
                         >
                           <option value="">اختر البديل...</option>
                           {substitutes?.standby_teachers && substitutes.standby_teachers.length > 0 && (
@@ -414,7 +414,7 @@ export function TeacherCoverageRequestPage() {
                       )}
 
                       {selectedSubstitute && (
-                        <p className="mt-1 text-xs text-emerald-600">
+                        <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
                           <i className="bi bi-check-circle ml-1" />
                           تم الاختيار
                         </p>
@@ -430,15 +430,15 @@ export function TeacherCoverageRequestPage() {
 
       {/* السبب */}
       <div className="glass-card space-y-4">
-        <h2 className="text-lg font-semibold text-slate-900">سبب الاستئذان</h2>
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">سبب الاستئذان</h2>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">نوع السبب</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">نوع السبب</label>
             <select
               value={reasonType}
               onChange={(e) => setReasonType(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100 dark:ring-orange-800"
             >
               {REASON_TYPES.map(rt => (
                 <option key={rt.value} value={rt.value}>{rt.label}</option>
@@ -447,29 +447,29 @@ export function TeacherCoverageRequestPage() {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">وصف السبب (اختياري)</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">وصف السبب (اختياري)</label>
             <input
               type="text"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="مثال: موعد طبي"
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100 dark:ring-orange-800"
             />
           </div>
         </div>
       </div>
 
       {/* ملخص وإرسال */}
-      <div className="glass-card space-y-4 border-orange-200 bg-orange-50/50">
-        <h2 className="text-lg font-semibold text-orange-900">ملخص الطلب</h2>
+      <div className="glass-card space-y-4 border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-950/50">
+        <h2 className="text-lg font-semibold text-orange-900 dark:text-orange-200">ملخص الطلب</h2>
 
-        <div className="text-sm text-orange-800">
+        <div className="text-sm text-orange-800 dark:text-orange-300">
           <p>• عدد الحصص: <strong>{filteredSessions.length}</strong></p>
           <p>• من الحصة: <strong>{PERIOD_NAMES[fromPeriod]}</strong></p>
           <p>• البدلاء المختارون: <strong>{coverageItems.size} من {filteredSessions.length}</strong></p>
         </div>
 
-        <div className="rounded-lg bg-orange-100/60 p-3 text-xs text-orange-700">
+        <div className="rounded-lg bg-orange-100/60 dark:bg-orange-900/60 p-3 text-xs text-orange-700 dark:text-orange-400">
           <i className="bi bi-info-circle ml-1" />
           سيتم إرسال الطلب للبدلاء للموافقة، ثم للإدارة للاعتماد النهائي.
         </div>
