@@ -70,8 +70,10 @@
     direction: rtl;
     background: var(--color-background);
     overflow-x: hidden;
-    /* منع قفزة شريط التمرير عند فتح Select dropdowns */
-    scrollbar-gutter: stable;
+    /* منع قفزة شريط التمرير عند فتح Select dropdowns - ديسكتوب فقط */
+    @media (min-width: 640px) {
+      scrollbar-gutter: stable;
+    }
   }
 
   * {
