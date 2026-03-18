@@ -14,12 +14,6 @@ function getSystemPrefersDark(): boolean {
   return window.matchMedia('(prefers-color-scheme: dark)').matches
 }
 
-function resolveIsDark(mode: DarkModePreference): boolean {
-  if (mode === 'dark') return true
-  if (mode === 'light') return false
-  return getSystemPrefersDark()
-}
-
 export function useTeacherDarkMode() {
   const [mode, setModeState] = useState<DarkModePreference>(getStoredMode)
   const [systemDark, setSystemDark] = useState(getSystemPrefersDark)
