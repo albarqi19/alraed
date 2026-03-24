@@ -58,6 +58,7 @@ import { GuardianHomePage } from '@/modules/guardian/pages/guardian-home-page'
 import { GuardianServicesPage } from '@/modules/guardian/pages/guardian-services-page'
 import { GuardianFormsPage } from '@/modules/guardian/pages/guardian-forms-page'
 import { GuardianMessagesPage } from '@/modules/guardian/pages/guardian-messages-page'
+import GuardianChatPage from '@/modules/guardian/pages/guardian-chat-page'
 import { NotFoundPage } from '@/modules/core/pages/not-found-page'
 import { AccountSuspendedPage } from '@/modules/core/pages/account-suspended-page'
 import { RequireAuth, RedirectIfAuthenticated, RequireOnboarding } from '@/modules/auth/components/route-guards'
@@ -100,6 +101,8 @@ import { TeacherCoverageRequestPage } from '@/modules/teacher/pages/teacher-cove
 import { TeacherCoverageIncomingPage } from '@/modules/teacher/pages/teacher-coverage-incoming-page'
 import { TeacherSkillsPage } from '@/modules/teacher/pages/teacher-skills-page'
 import { TeacherLessonPlansPage } from '@/modules/teacher/pages/teacher-lesson-plans-page'
+import TeacherChatPage from '@/modules/teacher/pages/teacher-chat-page'
+import AdminChatPage from '@/modules/admin/pages/admin-chat-page'
 import { AdminReferralsPage } from '@/modules/admin/pages/admin-referrals-page'
 import { AdminReferralDetailPage } from '@/modules/admin/pages/admin-referral-detail-page'
 import { AdminParentRepliesPage } from '@/modules/admin/pages/admin-parent-replies-page'
@@ -193,6 +196,7 @@ const appRoutes = [
           { path: 'schedule', element: <TeacherSchedulePage /> },
           { path: 'messages', element: <TeacherMessagesPage /> },
           { path: 'messages/replies', element: <TeacherRepliesPage /> },
+          { path: 'chat', element: <TeacherChatPage /> },
           { path: 'points', element: <TeacherPointsPage /> },
           { path: 'services', element: <TeacherServicesPage /> },
           { path: 'my-services', element: <TeacherMyServicesPage /> },
@@ -259,6 +263,7 @@ const appRoutes = [
           { path: 'behavior/plans', element: <AdminBehaviorPlansPage /> },
           { path: 'behavior/analytics', element: <AdminBehaviorAnalyticsPage /> },
           { path: 'teacher-messages', element: <AdminTeacherMessagesPage /> },
+          { path: 'chat', element: <AdminChatPage /> },
           { path: 'student-cases', element: <StudentCasesPage /> },
           { path: 'student-cases/list', element: <StudentCasesListPage /> },
           { path: 'student-cases/new', element: <AdminStudentCaseFormPage mode="create" /> },
@@ -321,6 +326,7 @@ const appRoutes = [
           { path: 'services', element: <GuardianServicesPage /> },
           { path: 'forms', element: <GuardianFormsPage /> },
           { path: 'messages', element: <GuardianMessagesPage /> },
+          { path: 'chat', element: <GuardianChatPage /> },
         ],
       },
       // Backwards compatibility for old route

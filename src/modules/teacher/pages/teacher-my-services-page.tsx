@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { NotificationModal } from '../components/notification-modal'
 
 type ServiceCard = {
   id: string
@@ -13,6 +15,15 @@ type ServiceCard = {
 
 const MY_SERVICES: ServiceCard[] = [
   {
+    id: 'notifications',
+    title: 'الإشعارات',
+    description: 'تذكير بمواعيد الحصص',
+    icon: 'bi-bell',
+    iconColor: 'text-violet-600',
+    iconBg: 'bg-violet-100/80',
+    accentBar: 'from-violet-400/50 via-violet-200/40 to-transparent',
+  },
+  {
     id: 'delay-excuses',
     title: 'أعذار التأخير',
     description: 'تقديم أعذار عن التأخير',
@@ -23,19 +34,20 @@ const MY_SERVICES: ServiceCard[] = [
     to: '/teacher/delay-excuses',
   },
   {
-    id: 'lesson-plans',
-    title: 'الخطط الأسبوعية',
-    description: 'إعداد واعتماد خطط الدروس',
-    icon: 'bi-journal-text',
-    iconColor: 'text-cyan-600',
-    iconBg: 'bg-cyan-100/80',
-    accentBar: 'from-cyan-400/50 via-cyan-200/40 to-transparent',
-    to: '/teacher/lesson-plans',
+    id: 'coverage-request',
+    title: 'الاستئذان',
+    description: 'تأمين الحصص المتبقية',
+    icon: 'bi-calendar-x',
+    iconColor: 'text-orange-600',
+    iconBg: 'bg-orange-100/80',
+    accentBar: 'from-orange-400/50 via-orange-200/40 to-transparent',
+    to: '/teacher/coverage-request',
   },
 ]
 
 export function TeacherMyServicesPage() {
   const navigate = useNavigate()
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false)
 
   return (
     <section className="space-y-6">
@@ -60,7 +72,10 @@ export function TeacherMyServicesPage() {
           <button
             key={service.id}
             type="button"
-            onClick={() => navigate(service.to)}
+            onClick={() => {
+              if (service.id === 'notifications') { setIsNotificationModalOpen(true); return }
+              if (service.to) navigate(service.to)
+            }}
             className="group w-full text-right transition-transform duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 dark:focus-visible:ring-slate-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50 dark:focus-visible:ring-offset-slate-900"
           >
             <span className="glass-card relative flex h-[90px] w-full flex-col justify-center overflow-hidden p-3 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-lg">
@@ -91,6 +106,11 @@ export function TeacherMyServicesPage() {
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">ستظهر هنا الخدمات المتاحة لك</p>
         </div>
       )}
+
+      <NotificationModal
+        isOpen={isNotificationModalOpen}
+        onClose={() => setIsNotificationModalOpen(false)}
+      />
     </section>
   )
 }

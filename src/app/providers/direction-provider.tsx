@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect } from 'react'
+import { DirectionProvider as RadixDirectionProvider } from '@radix-ui/react-direction'
 
 interface DirectionProviderProps {
   children: ReactNode
@@ -11,5 +12,9 @@ export function DirectionProvider({ children }: DirectionProviderProps) {
     html.setAttribute('dir', 'rtl')
   }, [])
 
-  return children
+  return (
+    <RadixDirectionProvider dir="rtl">
+      {children}
+    </RadixDirectionProvider>
+  )
 }

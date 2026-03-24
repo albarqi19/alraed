@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useCallback, useMemo, useEffect, type ReactNode } from 'react'
 import type { GuardianStudentSummary, GuardianPortalSettings, GuardianStoreOverview } from '../types'
 import { useGuardianSettingsQuery, useGuardianStudentLookupMutation, useGuardianStoreOverviewQuery } from '../hooks'
+import { guardianLogin } from '@/modules/chat/api'
+import { setGuardianToken, removeGuardianToken } from '@/services/api/guardian-client'
 
 // ============ Session Storage Types ============
 interface StoredChild {
@@ -220,6 +222,17 @@ export function GuardianProvider({ children: childrenProp }: GuardianProviderPro
                 phone_last4: trimmedPhoneLast4,
             })
 
+            // تسجيل دخول Guardian JWT للدردشة (بالخلفية - لا يمنع الدخول)
+            try {
+                const authResponse = await guardianLogin({
+                    national_id: trimmedNationalId,
+                    phone_last4: trimmedPhoneLast4,
+                })
+                setGuardianToken(authResponse.token)
+            } catch {
+                // JWT فشل - الدردشة لن تعمل لكن باقي البوابة تعمل عادي
+            }
+
             // Add new child to list
             const newChild: StoredChild = {
                 national_id: trimmedNationalId,
@@ -282,6 +295,7 @@ export function GuardianProvider({ children: childrenProp }: GuardianProviderPro
         setPhoneLast4Input('')
         setLoginError(null)
         setIsStoreModalOpen(false)
+        removeGuardianToken()
         clearSession()
     }, [])
 

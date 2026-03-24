@@ -162,6 +162,7 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
       { to: '/admin/school-tools/bell', label: 'الجرس المدرسي', icon: BellRing, permission: 'admin.school-tools.bell' },
       { to: '/admin/school-tools/auto-call', label: 'النداء الآلي', icon: Megaphone, permission: 'admin.school-tools.auto-call' },
       { to: '/admin/school-tools/academic-calendar', label: 'التقويم الدراسي', icon: CalendarDays, permission: 'admin.school-tools.academic-calendar' },
+      { to: '/admin/chat', label: 'المحادثات', icon: MessageCircle, permission: 'admin.chat' },
     ],
   },
   {

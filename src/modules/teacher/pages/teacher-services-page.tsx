@@ -15,13 +15,14 @@ type ServiceCard = {
 
 const SERVICES: ServiceCard[] = [
   {
-    id: 'notifications',
-    title: 'الإشعارات',
-    description: 'تذكير بمواعيد الحصص',
-    icon: 'bi-bell',
-    iconColor: 'text-violet-600',
-    iconBg: 'bg-violet-100/80',
-    accentBar: 'from-violet-400/50 via-violet-200/40 to-transparent',
+    id: 'chat',
+    title: 'المحادثات',
+    description: 'تواصل مع أولياء الأمور والإدارة',
+    icon: 'bi-chat-dots',
+    iconColor: 'text-blue-600',
+    iconBg: 'bg-blue-100/80',
+    accentBar: 'from-blue-400/50 via-blue-200/40 to-transparent',
+    to: '/teacher/chat',
   },
   {
     id: 'activities',
@@ -54,14 +55,14 @@ const SERVICES: ServiceCard[] = [
     to: '/teacher/referrals',
   },
   {
-    id: 'coverage-request',
-    title: 'الاستئذان',
-    description: 'تأمين الحصص المتبقية',
-    icon: 'bi-calendar-x',
-    iconColor: 'text-orange-600',
-    iconBg: 'bg-orange-100/80',
-    accentBar: 'from-orange-400/50 via-orange-200/40 to-transparent',
-    to: '/teacher/coverage-request',
+    id: 'lesson-plans',
+    title: 'الخطط الأسبوعية',
+    description: 'إعداد واعتماد خطط الدروس',
+    icon: 'bi-journal-text',
+    iconColor: 'text-cyan-600',
+    iconBg: 'bg-cyan-100/80',
+    accentBar: 'from-cyan-400/50 via-cyan-200/40 to-transparent',
+    to: '/teacher/lesson-plans',
   },
   {
     id: 'skills-management',
@@ -99,11 +100,6 @@ export function TeacherServicesPage() {
   const navigate = useNavigate()
 
   const handleServiceClick = (serviceId: string, serviceName: string, to?: string) => {
-    if (serviceId === 'notifications') {
-      setIsNotificationModalOpen(true)
-      return
-    }
-
     if (to) {
       navigate(to)
       return
