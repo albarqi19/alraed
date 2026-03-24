@@ -40,6 +40,7 @@ import {
 import type { Conversation } from '@/modules/chat/types'
 import { useToast } from '@/shared/feedback/use-toast'
 import { useAuthStore } from '@/modules/auth/store/auth-store'
+import { useInitEcho, useChatRealtime, useChatListRealtime } from '@/modules/chat/services/chat-realtime'
 
 export default function AdminChatPage() {
   const toast = useToast()
@@ -80,6 +81,12 @@ export default function AdminChatPage() {
   const archiveMutation = useArchiveConversationMutation()
   const reopenMutation = useReopenConversationMutation()
   const blockMutation = useBlockGuardianMutation()
+
+  // تهيئة WebSocket
+  const adminAuthToken = window.localStorage.getItem('auth_token')
+  useInitEcho(adminAuthToken)
+  useChatListRealtime('user', adminUser?.id ?? null)
+  useChatRealtime(activeConversation?.id ?? null)
 
   const conversations = conversationsQuery.data?.data ?? []
   const messages = messagesQuery.data?.pages?.flatMap((p) => p.data) ?? []

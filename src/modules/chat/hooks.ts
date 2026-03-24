@@ -10,7 +10,8 @@ export function useGuardianConversationsQuery() {
     queryKey: chatQueryKeys.guardianConversations,
     queryFn: () => api.fetchGuardianConversations(),
     refetchOnWindowFocus: true,
-    staleTime: 15_000,
+    refetchInterval: 30_000, // fallback polling
+    staleTime: 10_000,
   })
 }
 
@@ -22,7 +23,8 @@ export function useGuardianMessagesQuery(conversationId: number | null) {
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
     enabled: !!conversationId,
     refetchOnWindowFocus: true,
-    staleTime: 10_000,
+    refetchInterval: 15_000,
+    staleTime: 5_000,
   })
 }
 
@@ -82,7 +84,8 @@ export function useStaffConversationsQuery() {
     queryKey: chatQueryKeys.staffConversations,
     queryFn: () => api.fetchStaffConversations(),
     refetchOnWindowFocus: true,
-    staleTime: 15_000,
+    refetchInterval: 30_000,
+    staleTime: 10_000,
   })
 }
 
@@ -94,7 +97,8 @@ export function useStaffMessagesQuery(conversationId: number | null) {
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
     enabled: !!conversationId,
     refetchOnWindowFocus: true,
-    staleTime: 10_000,
+    refetchInterval: 15_000,
+    staleTime: 5_000,
   })
 }
 

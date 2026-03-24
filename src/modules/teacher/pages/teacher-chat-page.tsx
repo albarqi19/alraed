@@ -11,6 +11,7 @@ import {
   useStaffMyStudentsQuery,
   useStartStaffConversationMutation,
 } from '@/modules/chat/hooks'
+import { useInitEcho, useChatRealtime, useChatListRealtime } from '@/modules/chat/services/chat-realtime'
 import type { Conversation } from '@/modules/chat/types'
 
 export default function TeacherChatPage() {
@@ -47,6 +48,12 @@ export default function TeacherChatPage() {
   const markReadMutation = useMarkStaffReadMutation(activeConversation?.id ?? 0)
   const toggleAvailabilityMutation = useToggleStaffAvailabilityMutation()
   const startConversationMutation = useStartStaffConversationMutation()
+
+  // تهيئة WebSocket
+  const authToken = window.localStorage.getItem('auth_token')
+  useInitEcho(authToken)
+  useChatListRealtime('user', user?.id ?? null)
+  useChatRealtime(activeConversation?.id ?? null)
 
   const conversations = conversationsQuery.data?.data ?? []
   const messages = messagesQuery.data?.pages?.flatMap((p) => p.data) ?? []

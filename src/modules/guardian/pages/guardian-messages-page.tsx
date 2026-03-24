@@ -25,7 +25,8 @@ import {
     useGuardianContactsQuery,
     useStartGuardianConversationMutation,
 } from '@/modules/chat/hooks'
-import { isGuardianAuthenticated } from '@/services/api/guardian-client'
+import { isGuardianAuthenticated, getGuardianToken } from '@/services/api/guardian-client'
+import { useInitEcho, useChatRealtime, useChatListRealtime } from '@/modules/chat/services/chat-realtime'
 import type { Conversation, ChatContact } from '@/modules/chat/types'
 
 type MainTab = 'notifications' | 'chat'
@@ -155,10 +156,16 @@ function ChatTab() {
     const markReadMutation = useMarkGuardianReadMutation(activeConversation?.id ?? 0)
     const startConversationMutation = useStartGuardianConversationMutation()
 
+    // تهيئة WebSocket
+    useInitEcho(getGuardianToken())
+    const guardianId = conversationsQuery.data?.data?.[0]?.guardian_id ?? null
+    useChatListRealtime('guardian', guardianId)
+    useChatRealtime(activeConversation?.id ?? null)
+
     const conversations = conversationsQuery.data?.data ?? []
     const messages = messagesQuery.data?.pages?.flatMap((p) => p.data) ?? []
     const sortedMessages = [...messages].reverse()
-    const guardianId = conversations[0]?.guardian_id ?? 0
+    const myGuardianId = conversations[0]?.guardian_id ?? 0
 
     useEffect(() => {
         if (sortedMessages.length > 0 && sortedMessages.length !== prevMsgCountRef.current) {
@@ -229,7 +236,7 @@ function ChatTab() {
                 {/* الرسائل - هذا يتمرر */}
                 <div className="flex-1 overflow-y-auto bg-slate-50 px-3 py-3 space-y-2 border-x border-slate-200">
                     {sortedMessages.map((msg) => {
-                        const isOwn = msg.sender_type === 'guardian' && msg.sender_id === guardianId
+                        const isOwn = msg.sender_type === 'guardian' && msg.sender_id === myGuardianId
                         const time = new Date(msg.created_at).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
 
                         if (msg.type === 'system') {
