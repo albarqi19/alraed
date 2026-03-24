@@ -19,7 +19,7 @@ import {
 } from '@/modules/chat/hooks'
 
 export default function AdminChatSettingsPage() {
-  const { toast } = useToast()
+  const toast = useToast()
 
   // Settings
   const settingsQuery = useChatSettingsQuery()

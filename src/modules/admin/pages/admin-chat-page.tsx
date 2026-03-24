@@ -73,7 +73,7 @@ export default function AdminChatPage() {
   const contactsQuery = useAdminContactsQuery()
   const startConversationMutation = useStartAdminConversationMutation()
   const startStaffConversationMutation = useStartAdminStaffConversationMutation()
-  const sendMessageMutation = useSendAdminMessageMutation(activeConversation?.id ?? 0)
+  const sendMessageMutation = useSendAdminMessageMutation(activeConversation?.id ?? -1)
 
   // Mutations
   const closeMutation = useCloseConversationMutation()
@@ -260,9 +260,11 @@ export default function AdminChatPage() {
                     {activeConversation.status !== 'active' && (
                       <DropdownMenuItem onClick={() => reopenMutation.mutate(activeConversation.id)}><RotateCcw className="h-4 w-4 ml-2" /> إعادة فتح</DropdownMenuItem>
                     )}
-                    <DropdownMenuItem onClick={() => blockMutation.mutate({ guardianId: activeConversation.guardian_id })} className="text-destructive">
+                    {activeConversation.guardian_id && (
+                    <DropdownMenuItem onClick={() => blockMutation.mutate({ guardianId: activeConversation.guardian_id! })} className="text-destructive">
                       <Lock className="h-4 w-4 ml-2" /> حظر ولي الأمر
                     </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>

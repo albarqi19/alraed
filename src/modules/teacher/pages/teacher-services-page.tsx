@@ -99,7 +99,7 @@ export function TeacherServicesPage() {
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false)
   const navigate = useNavigate()
 
-  const handleServiceClick = (serviceId: string, serviceName: string, to?: string) => {
+  const handleServiceClick = (_serviceId: string, serviceName: string, to?: string) => {
     if (to) {
       navigate(to)
       return

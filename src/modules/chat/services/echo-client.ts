@@ -4,9 +4,9 @@ import Pusher from 'pusher-js'
 // تأكد من تعريف Pusher عالمياً لـ Laravel Echo
 ;(window as any).Pusher = Pusher
 
-let echoInstance: Echo | null = null
+let echoInstance: any = null
 
-export function createEchoInstance(token: string): Echo {
+export function createEchoInstance(token: string) {
   if (echoInstance) {
     return echoInstance
   }
@@ -15,8 +15,8 @@ export function createEchoInstance(token: string): Echo {
     broadcaster: 'reverb',
     key: import.meta.env.VITE_REVERB_APP_KEY ?? 'app-key',
     wsHost: import.meta.env.VITE_REVERB_HOST ?? window.location.hostname,
-    wsPort: import.meta.env.VITE_REVERB_PORT ?? 8080,
-    wssPort: import.meta.env.VITE_REVERB_PORT ?? 8080,
+    wsPort: Number(import.meta.env.VITE_REVERB_PORT ?? 8080),
+    wssPort: Number(import.meta.env.VITE_REVERB_PORT ?? 8080),
     forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
     enabledTransports: ['ws', 'wss'],
     authEndpoint: `${import.meta.env.VITE_API_BASE_URL ?? 'https://api.brqq.site/api'}/broadcasting/auth`,
@@ -30,7 +30,7 @@ export function createEchoInstance(token: string): Echo {
   return echoInstance
 }
 
-export function getEchoInstance(): Echo | null {
+export function getEchoInstance(): any {
   return echoInstance
 }
 

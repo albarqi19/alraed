@@ -10,7 +10,7 @@ type ServiceCard = {
   iconColor: string
   iconBg: string
   accentBar: string
-  to: string
+  to?: string
 }
 
 const MY_SERVICES: ServiceCard[] = [

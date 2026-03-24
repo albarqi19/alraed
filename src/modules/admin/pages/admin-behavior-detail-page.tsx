@@ -365,8 +365,8 @@ export function AdminBehaviorDetailPage() {
                         }}
                         disabled={isProcedureMutating}
                         className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${procedure.completed
-                            ? 'border-emerald-400 bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
-                            : 'border-slate-200 text-slate-500 hover:border-primary hover:text-primary'
+                          ? 'border-emerald-400 bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                          : 'border-slate-200 text-slate-500 hover:border-primary hover:text-primary'
                           }`}
                       >
                         {isProcedureMutating ? (
@@ -415,8 +415,8 @@ export function AdminBehaviorDetailPage() {
                               <li
                                 key={task.id}
                                 className={`flex items-start gap-3 rounded-xl border px-3 py-2 text-sm transition ${task.completed
-                                    ? 'border-emerald-200 bg-emerald-50/70'
-                                    : 'border-slate-200 bg-white/80'
+                                  ? 'border-emerald-200 bg-emerald-50/70'
+                                  : 'border-slate-200 bg-white/80'
                                   }`}
                               >
                                 <button
@@ -444,8 +444,8 @@ export function AdminBehaviorDetailPage() {
                                   <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted">
                                     <span
                                       className={`rounded-full px-2 py-0.5 font-semibold ${task.mandatory
-                                          ? 'bg-rose-50 text-rose-600'
-                                          : 'bg-sky-50 text-sky-700'
+                                        ? 'bg-rose-50 text-rose-600'
+                                        : 'bg-sky-50 text-sky-700'
                                         }`}
                                     >
                                       {task.mandatory ? 'إلزامية' : 'اختيارية'}
