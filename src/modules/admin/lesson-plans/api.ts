@@ -132,9 +132,18 @@ export async function fetchWeekGrades(weekId: number): Promise<string[]> {
   return unwrapResponse(data, 'تعذر تحميل الصفوف')
 }
 
-export function downloadWeekPdf(weekId: number, grade: string): void {
-  const baseUrl = apiClient.defaults.baseURL ?? ''
-  const token = localStorage.getItem('token') ?? ''
-  const url = `${baseUrl}/admin/lesson-plans/week/${weekId}/pdf?grade=${encodeURIComponent(grade)}&token=${encodeURIComponent(token)}`
-  window.open(url, '_blank')
+export async function downloadWeekPdf(weekId: number, grade: string): Promise<void> {
+  const response = await apiClient.get(
+    `/admin/lesson-plans/week/${weekId}/pdf`,
+    { params: { grade }, responseType: 'blob' },
+  )
+  const blob = new Blob([response.data], { type: 'application/pdf' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `الخطة-الأسبوعية-أسبوع-${weekId}-${grade}.pdf`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
