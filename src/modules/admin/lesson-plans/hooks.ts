@@ -6,6 +6,11 @@ import {
   approveLessonPlan,
   approveAllWeekPlans,
   rejectLessonPlan,
+  fetchLessonPlanSettings,
+  updateLessonPlanSettings,
+  sendPlansToParents,
+  fetchWeekGrades,
+  type LessonPlanSettings,
 } from './api'
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -75,5 +80,60 @@ export function useRejectPlanMutation() {
     onError: (error) => {
       toast({ type: 'error', title: getErrorMessage(error, 'تعذر رفض الخطة') })
     },
+  })
+}
+
+// ═══════════ الإعدادات ═══════════
+
+export function useLessonPlanSettings() {
+  return useQuery({
+    queryKey: ['admin', 'lesson-plans', 'settings'],
+    queryFn: fetchLessonPlanSettings,
+    staleTime: 60 * 1000,
+  })
+}
+
+export function useUpdateLessonPlanSettingsMutation() {
+  const queryClient = useQueryClient()
+  const toast = useToast()
+
+  return useMutation({
+    mutationFn: (settings: LessonPlanSettings) => updateLessonPlanSettings(settings),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'lesson-plans', 'settings'] })
+      toast({ type: 'success', title: 'تم حفظ الإعدادات' })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر حفظ الإعدادات') })
+    },
+  })
+}
+
+// ═══════════ إرسال لأولياء الأمور ═══════════
+
+export function useSendToParentsMutation() {
+  const queryClient = useQueryClient()
+  const toast = useToast()
+
+  return useMutation({
+    mutationFn: (weekId: number) => sendPlansToParents(weekId),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'lesson-plans'] })
+      toast({ type: 'success', title: data.message ?? 'تم جدولة الإرسال' })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر إرسال الخطط') })
+    },
+  })
+}
+
+// ═══════════ الصفوف ═══════════
+
+export function useWeekGrades(weekId: number | undefined) {
+  return useQuery({
+    queryKey: ['admin', 'lesson-plans', 'week-grades', weekId],
+    queryFn: () => fetchWeekGrades(weekId!),
+    enabled: !!weekId,
+    staleTime: 30 * 1000,
   })
 }

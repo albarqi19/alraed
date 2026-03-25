@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   ArrowRight, Settings, MessageCircle, User, Search, X, Plus,
   Archive, Lock, RotateCcw, Trash2, UserPlus,
@@ -54,6 +54,8 @@ export default function AdminChatPage() {
   const [showNewChat, setShowNewChat] = useState(false)
   const [contactSearch, setContactSearch] = useState('')
   const [messageText, setMessageText] = useState('')
+  const bottomRef = useRef<HTMLDivElement>(null)
+  const prevMsgCountRef = useRef(0)
 
   // Queries
   const conversationsQuery = useAdminConversationsQuery({
@@ -93,6 +95,17 @@ export default function AdminChatPage() {
   const stats = statsQuery.data
   const settings = settingsQuery.data
   const sortedMessages = [...messages].reverse()
+
+  // Scroll to bottom
+  useEffect(() => {
+    if (sortedMessages.length > 0 && sortedMessages.length !== prevMsgCountRef.current) {
+      const behavior = prevMsgCountRef.current === 0 ? 'instant' as ScrollBehavior : 'smooth'
+      bottomRef.current?.scrollIntoView({ behavior })
+      prevMsgCountRef.current = sortedMessages.length
+    }
+  }, [sortedMessages.length])
+
+  useEffect(() => { prevMsgCountRef.current = 0 }, [activeConversation?.id])
 
   // هل المحادثة تخص الإدارة الحالية (يمكنه الكتابة)
   const isOwnConversation = activeConversation?.participant_id === adminUser?.id
@@ -297,6 +310,7 @@ export default function AdminChatPage() {
                     </div>
                   )
                 })}
+                <div ref={bottomRef} />
               </div>
 
               {/* الإدارة تكتب فقط في محادثاتها */}

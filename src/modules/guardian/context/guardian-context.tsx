@@ -110,13 +110,28 @@ interface GuardianProviderProps {
 }
 
 export function GuardianProvider({ children: childrenProp }: GuardianProviderProps) {
+    // Load session synchronously to avoid login form flash
+    const initialSession = loadSession()
+    const initialChildren = initialSession?.children ?? []
+    const initialChildIndex = initialSession?.activeChildIndex ?? 0
+    const initialChild = initialChildren[initialChildIndex] ?? null
+
     // Multi-child session state
-    const [storedChildren, setStoredChildren] = useState<StoredChild[]>([])
-    const [activeChildIndex, setActiveChildIndex] = useState(0)
+    const [storedChildren, setStoredChildren] = useState<StoredChild[]>(initialChildren)
+    const [activeChildIndex, setActiveChildIndex] = useState(initialChildIndex)
     const [showAddChildForm, setShowAddChildForm] = useState(false)
 
     // Current student summary (derived from active child)
-    const [studentSummary, setStudentSummary] = useState<GuardianStudentSummary | null>(null)
+    const [studentSummary, setStudentSummary] = useState<GuardianStudentSummary | null>(
+        initialChild ? {
+            student_id: 0,
+            name: initialChild.name,
+            grade: initialChild.grade,
+            class_name: initialChild.class_name,
+            parent_name: initialChild.parent_name ?? '',
+            parent_phone: initialChild.parent_phone ?? '',
+        } : null
+    )
 
     // Login form state
     const [nationalIdInput, setNationalIdInput] = useState('')
@@ -139,28 +154,6 @@ export function GuardianProvider({ children: childrenProp }: GuardianProviderPro
 
     const guardianSettings = settingsQuery.data ?? null
     const storeOverview = storeOverviewQuery.data ?? null
-
-    // Restore session from localStorage on mount
-    useEffect(() => {
-        const session = loadSession()
-        if (session && session.children.length > 0) {
-            setStoredChildren(session.children)
-            setActiveChildIndex(session.activeChildIndex)
-
-            // Set student summary from stored data
-            const child = session.children[session.activeChildIndex]
-            if (child) {
-                setStudentSummary({
-                    student_id: 0, // Will be fetched if needed
-                    name: child.name,
-                    grade: child.grade,
-                    class_name: child.class_name,
-                    parent_name: child.parent_name ?? '',
-                    parent_phone: child.parent_phone ?? '',
-                })
-            }
-        }
-    }, [])
 
     // Save session to localStorage whenever children or activeIndex changes
     useEffect(() => {

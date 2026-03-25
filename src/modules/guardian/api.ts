@@ -276,7 +276,7 @@ export interface GuardianLessonPlan {
 export interface GuardianLessonPlansData {
   plans: GuardianLessonPlan[]
   week: { id: number; week_number: number; date_range: string } | null
-  weeks: Array<{ id: number; week_number: number; date_range: string; is_current: boolean }>
+  weeks: Array<{ id: number; week_number: number; start_date: string; end_date: string; date_range: string; is_current: boolean }>
   student: { name: string; grade: string }
 }
 

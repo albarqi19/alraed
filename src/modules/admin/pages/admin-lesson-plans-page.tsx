@@ -1,11 +1,17 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import clsx from 'classnames'
 import {
-  BookOpenCheck, CheckCircle2, Loader2, X, ChevronDown,
-  ClipboardList, Clock, UserCheck, FileX2, Users,
+  BookOpenCheck, CheckCircle2, Loader2, X, ChevronDown, ChevronUp,
+  ClipboardList, Clock, UserCheck, FileX2, Users, Settings, Download,
+  Mail, Save, MessageSquare,
 } from 'lucide-react'
-import { useWeeksSummary, useWeekTeachers, useApprovePlanMutation, useApproveAllMutation } from '../lesson-plans/hooks'
-import type { WeekSummary, TeacherWeekPlan } from '../lesson-plans/api'
+import {
+  useWeeksSummary, useWeekTeachers, useApprovePlanMutation, useApproveAllMutation,
+  useLessonPlanSettings, useUpdateLessonPlanSettingsMutation, useSendToParentsMutation,
+  useWeekGrades,
+} from '../lesson-plans/hooks'
+import { downloadWeekPdf } from '../lesson-plans/api'
+import type { WeekSummary, TeacherWeekPlan, LessonPlanSettings } from '../lesson-plans/api'
 
 const STATUS_COLORS: Record<string, string> = {
   not_submitted: 'bg-slate-100 text-slate-400',
@@ -22,9 +28,18 @@ const STATUS_LABELS: Record<string, string> = {
   rejected: 'مرفوض',
 }
 
+const DAY_OPTIONS = [
+  { value: 'sunday', label: 'الأحد' },
+  { value: 'monday', label: 'الإثنين' },
+  { value: 'tuesday', label: 'الثلاثاء' },
+  { value: 'wednesday', label: 'الأربعاء' },
+  { value: 'thursday', label: 'الخميس' },
+]
+
 export function AdminLessonPlansPage() {
   const { data: weeks, isLoading } = useWeeksSummary()
   const [selectedWeekId, setSelectedWeekId] = useState<number | undefined>()
+  const [showSettings, setShowSettings] = useState(false)
 
   // إحصائيات إجمالية
   const totals = useMemo(() => {
@@ -49,43 +64,41 @@ export function AdminLessonPlansPage() {
   return (
     <div className="space-y-8">
       {/* ═══════════ Header ═══════════ */}
-      <header className="flex items-center gap-4">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-teal-500 shadow-lg shadow-cyan-500/20">
-          <BookOpenCheck className="h-6 w-6 text-white" />
+      <header className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-teal-500 shadow-lg shadow-cyan-500/20">
+            <BookOpenCheck className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">الخطط الأسبوعية</h1>
+            <p className="text-sm text-slate-500">متابعة واعتماد خطط المعلمين</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">الخطط الأسبوعية</h1>
-          <p className="text-sm text-slate-500">متابعة واعتماد خطط المعلمين</p>
-        </div>
+        <button
+          type="button"
+          onClick={() => setShowSettings(!showSettings)}
+          className={clsx(
+            'flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition',
+            showSettings
+              ? 'bg-cyan-600 text-white shadow-sm'
+              : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50',
+          )}
+        >
+          <Settings className="h-4 w-4" />
+          الإعدادات
+        </button>
       </header>
+
+      {/* ═══════════ Settings Panel ═══════════ */}
+      {showSettings && <SettingsPanel />}
 
       {/* ═══════════ Stats Cards ═══════════ */}
       {!isLoading && weeks?.length ? (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <StatCard
-            title="المعلمين"
-            value={totals.teachers}
-            icon={Users}
-            color="sky"
-          />
-          <StatCard
-            title="إجمالي الخطط"
-            value={totals.plans}
-            icon={ClipboardList}
-            color="violet"
-          />
-          <StatCard
-            title="بانتظار الاعتماد"
-            value={totals.pending}
-            icon={Clock}
-            color="amber"
-          />
-          <StatCard
-            title="معتمدة"
-            value={totals.approved}
-            icon={UserCheck}
-            color="emerald"
-          />
+          <StatCard title="المعلمين" value={totals.teachers} icon={Users} color="sky" />
+          <StatCard title="إجمالي الخطط" value={totals.plans} icon={ClipboardList} color="violet" />
+          <StatCard title="بانتظار الاعتماد" value={totals.pending} icon={Clock} color="amber" />
+          <StatCard title="معتمدة" value={totals.approved} icon={UserCheck} color="emerald" />
         </div>
       ) : null}
 
@@ -131,6 +144,120 @@ export function AdminLessonPlansPage() {
   )
 }
 
+// ═══════════ لوحة الإعدادات ═══════════
+
+function SettingsPanel() {
+  const { data: settings, isLoading } = useLessonPlanSettings()
+  const updateMutation = useUpdateLessonPlanSettingsMutation()
+
+  const [form, setForm] = useState<LessonPlanSettings>({
+    reminder_enabled: false,
+    reminder_day: 'wednesday',
+    reminder_time: '10:00',
+    reminder_message: 'عزيزي المعلم/ة، نذكرك بتقديم الخطة الأسبوعية قبل نهاية الأسبوع.',
+  })
+
+  useEffect(() => {
+    if (settings) setForm(settings)
+  }, [settings])
+
+  if (isLoading) {
+    return (
+      <div className="animate-pulse rounded-2xl bg-white border border-slate-200 p-6">
+        <div className="h-6 w-40 rounded bg-slate-100" />
+        <div className="mt-4 space-y-3">
+          <div className="h-10 rounded-lg bg-slate-100" />
+          <div className="h-10 rounded-lg bg-slate-100" />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="flex items-center gap-3 mb-5">
+        <MessageSquare className="h-5 w-5 text-cyan-600" />
+        <h3 className="text-base font-bold text-slate-900">إعدادات تذكير المعلمين بالواتساب</h3>
+      </div>
+
+      <div className="space-y-4">
+        {/* التفعيل */}
+        <label className="flex items-center gap-3 cursor-pointer">
+          <div className="relative">
+            <input
+              type="checkbox"
+              checked={form.reminder_enabled}
+              onChange={(e) => setForm({ ...form, reminder_enabled: e.target.checked })}
+              className="sr-only peer"
+            />
+            <div className="h-6 w-11 rounded-full bg-slate-200 peer-checked:bg-cyan-600 transition" />
+            <div className="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5" />
+          </div>
+          <span className="text-sm font-medium text-slate-700">تفعيل تذكير المعلمين الذين لم يقدموا الخطة</span>
+        </label>
+
+        {form.reminder_enabled && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 pr-14">
+            {/* اليوم */}
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-slate-600">يوم الإرسال</label>
+              <select
+                value={form.reminder_day}
+                onChange={(e) => setForm({ ...form, reminder_day: e.target.value })}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+              >
+                {DAY_OPTIONS.map((d) => (
+                  <option key={d.value} value={d.value}>{d.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* الوقت */}
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-slate-600">وقت الإرسال</label>
+              <input
+                type="time"
+                value={form.reminder_time}
+                onChange={(e) => setForm({ ...form, reminder_time: e.target.value })}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+              />
+            </div>
+
+            {/* نص الرسالة */}
+            <div className="sm:col-span-3">
+              <label className="mb-1.5 block text-xs font-medium text-slate-600">نص الرسالة</label>
+              <textarea
+                value={form.reminder_message}
+                onChange={(e) => setForm({ ...form, reminder_message: e.target.value })}
+                rows={2}
+                maxLength={500}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400 resize-none"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* زر الحفظ */}
+        <div className="flex justify-end pt-2">
+          <button
+            type="button"
+            onClick={() => updateMutation.mutate(form)}
+            disabled={updateMutation.isPending}
+            className="flex items-center gap-2 rounded-xl bg-cyan-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-cyan-700 disabled:opacity-50 transition"
+          >
+            {updateMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            حفظ الإعدادات
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ═══════════ بطاقة إحصائية ═══════════
 
 const COLOR_MAP = {
@@ -160,6 +287,7 @@ function StatCard({
 // ═══════════ بطاقة الأسبوع ═══════════
 
 function WeekCard({ week, onOpen }: { week: WeekSummary; onOpen: () => void }) {
+  const [showGrades, setShowGrades] = useState(false)
   const total = week.total_teachers
   const submitted = week.plans_count
   const { approved_count, pending_count, draft_count, rejected_count } = week
@@ -170,55 +298,105 @@ function WeekCard({ week, onOpen }: { week: WeekSummary; onOpen: () => void }) {
   const pRejected = total > 0 ? (rejected_count / total) * 100 : 0
 
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className={clsx(
-        'group flex flex-col rounded-2xl border bg-white p-5 text-right shadow-sm transition-all hover:shadow-md',
-        week.is_current ? 'border-cyan-300 ring-2 ring-cyan-100' : 'border-slate-200 hover:border-cyan-200',
-        week.is_past && submitted === 0 && 'opacity-60',
+    <div className={clsx(
+      'relative flex flex-col rounded-2xl border bg-white p-5 text-right shadow-sm transition-all hover:shadow-md',
+      week.is_current ? 'border-cyan-300 ring-2 ring-cyan-100' : 'border-slate-200 hover:border-cyan-200',
+      week.is_past && submitted === 0 && 'opacity-60',
+    )}>
+      <button type="button" onClick={onOpen} className="flex-1 text-right">
+        {/* العنوان */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-base font-bold text-slate-900">الأسبوع {week.week_number}</span>
+            {week.is_current && (
+              <span className="rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-bold text-cyan-700">الحالي</span>
+            )}
+          </div>
+          <span className="text-xs text-slate-400">{week.date_range}</span>
+        </div>
+
+        {/* شريط التسليم متعدد الألوان */}
+        <div className="mt-3 space-y-1">
+          <div className="flex items-center justify-between text-[11px] text-slate-500">
+            <span>التسليم</span>
+            <span className="font-semibold text-slate-700">{submitted} / {total}</span>
+          </div>
+          <div className="flex h-2 overflow-hidden rounded-full bg-slate-100">
+            {pApproved > 0 && (
+              <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${pApproved}%` }} />
+            )}
+            {pPending > 0 && (
+              <div className="h-full bg-amber-400 transition-all duration-500" style={{ width: `${pPending}%` }} />
+            )}
+            {pRejected > 0 && (
+              <div className="h-full bg-rose-500 transition-all duration-500" style={{ width: `${pRejected}%` }} />
+            )}
+          </div>
+        </div>
+
+        {/* مربعات الأرقام */}
+        <div className="mt-3 flex gap-1.5">
+          <MiniStat value={approved_count} label="معتمد" bg="bg-emerald-50" text="text-emerald-700" border="border-emerald-200" />
+          <MiniStat value={pending_count} label="بانتظار" bg="bg-amber-50" text="text-amber-700" border="border-amber-200" />
+          {rejected_count > 0 && (
+            <MiniStat value={rejected_count} label="مرفوض" bg="bg-rose-50" text="text-rose-700" border="border-rose-200" />
+          )}
+          <MiniStat value={draft_count} label="مسودة" bg="bg-slate-50" text="text-slate-500" border="border-slate-200" />
+        </div>
+      </button>
+
+      {/* زر تنزيل PDF */}
+      {approved_count > 0 && (
+        <div className="relative mt-3 pt-3 border-t border-slate-100">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setShowGrades(!showGrades) }}
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 transition"
+          >
+            <Download className="h-3.5 w-3.5" />
+            تحميل PDF
+            {showGrades ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          </button>
+
+          {showGrades && (
+            <GradeDropdown weekId={week.id} onClose={() => setShowGrades(false)} />
+          )}
+        </div>
       )}
-    >
-      {/* العنوان */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-base font-bold text-slate-900">الأسبوع {week.week_number}</span>
-          {week.is_current && (
-            <span className="rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-bold text-cyan-700">الحالي</span>
-          )}
-        </div>
-        <span className="text-xs text-slate-400">{week.date_range}</span>
-      </div>
+    </div>
+  )
+}
 
-      {/* شريط التسليم متعدد الألوان */}
-      <div className="mt-3 space-y-1">
-        <div className="flex items-center justify-between text-[11px] text-slate-500">
-          <span>التسليم</span>
-          <span className="font-semibold text-slate-700">{submitted} / {total}</span>
-        </div>
-        <div className="flex h-2 overflow-hidden rounded-full bg-slate-100">
-          {pApproved > 0 && (
-            <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${pApproved}%` }} />
-          )}
-          {pPending > 0 && (
-            <div className="h-full bg-amber-400 transition-all duration-500" style={{ width: `${pPending}%` }} />
-          )}
-          {pRejected > 0 && (
-            <div className="h-full bg-rose-500 transition-all duration-500" style={{ width: `${pRejected}%` }} />
-          )}
-        </div>
-      </div>
+// ═══════════ قائمة الصفوف للتنزيل ═══════════
 
-      {/* مربعات الأرقام */}
-      <div className="mt-3 flex gap-1.5">
-        <MiniStat value={approved_count} label="معتمد" bg="bg-emerald-50" text="text-emerald-700" border="border-emerald-200" />
-        <MiniStat value={pending_count} label="بانتظار" bg="bg-amber-50" text="text-amber-700" border="border-amber-200" />
-        {rejected_count > 0 && (
-          <MiniStat value={rejected_count} label="مرفوض" bg="bg-rose-50" text="text-rose-700" border="border-rose-200" />
-        )}
-        <MiniStat value={draft_count} label="مسودة" bg="bg-slate-50" text="text-slate-500" border="border-slate-200" />
-      </div>
-    </button>
+function GradeDropdown({ weekId, onClose }: { weekId: number; onClose: () => void }) {
+  const { data: grades, isLoading } = useWeekGrades(weekId)
+
+  return (
+    <div className="absolute left-0 right-0 z-20 mt-1 rounded-lg border border-slate-200 bg-white p-2 shadow-lg">
+      {isLoading ? (
+        <div className="flex justify-center py-3">
+          <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+        </div>
+      ) : !grades?.length ? (
+        <p className="py-2 text-center text-xs text-slate-400">لا توجد صفوف</p>
+      ) : (
+        <div className="space-y-1">
+          <p className="px-2 pb-1 text-[10px] font-medium text-slate-400">اختر الصف:</p>
+          {grades.map((grade) => (
+            <button
+              key={grade}
+              type="button"
+              onClick={() => { downloadWeekPdf(weekId, grade); onClose() }}
+              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs font-medium text-slate-700 hover:bg-cyan-50 hover:text-cyan-700 transition"
+            >
+              <Download className="h-3 w-3" />
+              {grade}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -243,8 +421,10 @@ function WeekDetailModal({
   const { data: teachers, isLoading } = useWeekTeachers(weekId)
   const approveMutation = useApprovePlanMutation()
   const approveAllMutation = useApproveAllMutation()
+  const sendToParentsMutation = useSendToParentsMutation()
 
   const pendingCount = teachers?.reduce((sum, t) => sum + t.pending_count, 0) ?? 0
+  const hasApproved = (week?.approved_count ?? 0) > 0
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center">
@@ -263,7 +443,7 @@ function WeekDetailModal({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {pendingCount > 0 && (
+            {pendingCount > 0 ? (
               <button
                 type="button"
                 onClick={() => approveAllMutation.mutate(weekId)}
@@ -277,7 +457,21 @@ function WeekDetailModal({
                 )}
                 اعتماد الجميع ({pendingCount})
               </button>
-            )}
+            ) : hasApproved ? (
+              <button
+                type="button"
+                onClick={() => sendToParentsMutation.mutate(weekId)}
+                disabled={sendToParentsMutation.isPending}
+                className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
+              >
+                {sendToParentsMutation.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Mail className="h-3.5 w-3.5" />
+                )}
+                إرسال لأولياء الأمور
+              </button>
+            ) : null}
             <button type="button" onClick={onClose} className="rounded-xl p-2 hover:bg-slate-100">
               <X className="h-5 w-5 text-slate-400" />
             </button>

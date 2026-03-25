@@ -64,22 +64,22 @@ export function GuardianFormsPage() {
     <div className="space-y-4">
       {/* Header */}
       <div className="text-center">
-        <h2 className="text-xl font-bold text-slate-900">النماذج الإلكترونية</h2>
-        <p className="mt-1 text-sm text-slate-500">النماذج المطلوب تعبئتها</p>
+        <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">النماذج الإلكترونية</h2>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">النماذج المطلوب تعبئتها</p>
       </div>
 
       {/* Loading */}
       {formsQuery.isFetching && (
         <div className="space-y-3">
           {[...Array(3)].map((_, index) => (
-            <div key={index} className="h-20 animate-pulse rounded-2xl bg-slate-100" />
+            <div key={index} className="h-20 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-700" />
           ))}
         </div>
       )}
 
       {/* Error */}
       {formsQuery.isError && (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-center text-sm text-rose-700">
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 dark:bg-rose-950 p-4 text-center text-sm text-rose-700 dark:text-rose-400">
           {resolveErrorMessage(formsQuery.error, 'تعذر تحميل النماذج. يرجى المحاولة لاحقاً.')}
         </div>
       )}
@@ -88,7 +88,7 @@ export function GuardianFormsPage() {
       {formsQuery.isSuccess && forms.length > 0 && (
         <div className="space-y-4">
           {/* Alert */}
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-950 p-4 text-sm text-amber-800 dark:text-amber-200">
             <span className="font-bold">{forms.length}</span> {forms.length > 1 ? 'نماذج' : 'نموذج'} بانتظار تعبئتك
           </div>
 
@@ -102,28 +102,28 @@ export function GuardianFormsPage() {
                   key={form.id}
                   onClick={() => setSelectedFormId(form.id)}
                   className={`w-full rounded-2xl border p-4 text-right transition ${isActive
-                      ? 'border-indigo-400 bg-indigo-50 shadow-md'
-                      : 'border-slate-200 bg-white hover:border-indigo-200 hover:bg-indigo-50/50'
+                      ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-950 shadow-md'
+                      : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-indigo-200 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/50'
                     }`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isActive ? 'bg-indigo-100' : 'bg-slate-100'}`}>
-                      <FileText className={`h-5 w-5 ${isActive ? 'text-indigo-600' : 'text-slate-400'}`} />
+                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isActive ? 'bg-indigo-100 dark:bg-indigo-900' : 'bg-slate-100 dark:bg-slate-700'}`}>
+                      <FileText className={`h-5 w-5 ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'}`} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`font-semibold ${isActive ? 'text-indigo-700' : 'text-slate-900'}`}>
+                      <p className={`font-semibold ${isActive ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-900 dark:text-slate-100'}`}>
                         {form.title}
                       </p>
                       {form.description && (
-                        <p className="text-xs text-slate-500 line-clamp-1">{form.description}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">{form.description}</p>
                       )}
-                      <p className="mt-1 flex items-center gap-1 text-xs text-slate-400">
+                      <p className="mt-1 flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
                         <Calendar className="h-3 w-3" />
                         متاح حتى {formatDate(form.end_at)}
                       </p>
                     </div>
                     {isActive && (
-                      <CheckCircle className="h-5 w-5 text-indigo-500" />
+                      <CheckCircle className="h-5 w-5 text-indigo-500 dark:text-indigo-400" />
                     )}
                   </div>
                 </button>
@@ -133,21 +133,21 @@ export function GuardianFormsPage() {
 
           {/* Selected form details */}
           {selectedForm && currentNationalId && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h3 className="text-lg font-bold text-slate-900">{selectedForm.title}</h3>
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{selectedForm.title}</h3>
               {selectedForm.description && (
-                <p className="mt-2 text-sm text-slate-500">{selectedForm.description}</p>
+                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{selectedForm.description}</p>
               )}
               <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600">
+                <span className="rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700 px-3 py-1 text-slate-600 dark:text-slate-400">
                   يبدأ: {formatDate(selectedForm.start_at)}
                 </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600">
+                <span className="rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700 px-3 py-1 text-slate-600 dark:text-slate-400">
                   ينتهي: {formatDate(selectedForm.end_at)}
                 </span>
               </div>
 
-              <div className="mt-4 border-t border-slate-100 pt-4">
+              <div className="mt-4 border-t border-slate-100 dark:border-slate-700 pt-4">
                 <GuardianFormRenderer
                   form={selectedForm}
                   nationalId={currentNationalId}
@@ -161,12 +161,12 @@ export function GuardianFormsPage() {
 
       {/* Empty state */}
       {formsQuery.isSuccess && forms.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center">
-          <FileText className="mx-auto h-12 w-12 text-slate-300" />
-          <p className="mt-3 text-sm text-slate-500">
+        <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 p-8 text-center">
+          <FileText className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-500" />
+          <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
             لا توجد نماذج مطلوبة حالياً
           </p>
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
             سيتم إشعارك عند وجود نماذج جديدة
           </p>
         </div>

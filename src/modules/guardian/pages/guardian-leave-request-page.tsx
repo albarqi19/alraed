@@ -30,10 +30,10 @@ const STATUS_LABELS = {
 } as const
 
 const STATUS_STYLES = {
-  pending: 'bg-amber-50 text-amber-700',
-  approved: 'bg-emerald-50 text-emerald-700',
-  rejected: 'bg-rose-50 text-rose-700',
-  cancelled: 'bg-slate-100 text-slate-500',
+  pending: 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400',
+  approved: 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-500',
+  rejected: 'bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-400',
+  cancelled: 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400',
 } as const
 
 type StatusKey = keyof typeof STATUS_LABELS
@@ -237,7 +237,7 @@ function StatusBadge({ status }: { status: StatusKey }) {
 function RequestsList({ requests }: { requests: GuardianLeaveRequestRecord[] }) {
   if (!requests.length) {
     return (
-      <div className="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-6 text-center text-sm text-muted">
+      <div className="rounded-3xl border border-dashed border-slate-200 dark:border-slate-600 bg-white/70 dark:bg-slate-800/70 p-6 text-center text-sm text-muted">
         لا توجد طلبات سابقة، يمكنك إرسال طلب جديد الآن.
       </div>
     )
@@ -246,26 +246,26 @@ function RequestsList({ requests }: { requests: GuardianLeaveRequestRecord[] }) 
   return (
     <div className="space-y-4">
       {requests.map((request) => (
-        <article key={request.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <article key={request.id} className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
           <header className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <h3 className="text-sm font-semibold text-slate-900">طلب رقم #{request.id}</h3>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">طلب رقم #{request.id}</h3>
             <StatusBadge status={request.status as StatusKey} />
           </header>
 
-          <p className="text-sm text-slate-700">{request.reason}</p>
+          <p className="text-sm text-slate-700 dark:text-slate-300">{request.reason}</p>
 
-          <dl className="mt-4 grid gap-3 text-xs text-slate-600 md:grid-cols-3">
+          <dl className="mt-4 grid gap-3 text-xs text-slate-600 dark:text-slate-400 md:grid-cols-3">
             <div>
-              <dt className="font-semibold text-slate-500">موعد الانصراف</dt>
-              <dd className="mt-1 text-slate-800">{formatDateTime(request.expected_pickup_time)}</dd>
+              <dt className="font-semibold text-slate-500 dark:text-slate-400">موعد الانصراف</dt>
+              <dd className="mt-1 text-slate-800 dark:text-slate-200">{formatDateTime(request.expected_pickup_time)}</dd>
             </div>
             <div>
-              <dt className="font-semibold text-slate-500">تاريخ التقديم</dt>
-              <dd className="mt-1 text-slate-800">{formatDateTime(request.submitted_at)}</dd>
+              <dt className="font-semibold text-slate-500 dark:text-slate-400">تاريخ التقديم</dt>
+              <dd className="mt-1 text-slate-800 dark:text-slate-200">{formatDateTime(request.submitted_at)}</dd>
             </div>
             <div>
-              <dt className="font-semibold text-slate-500">قرار الإدارة</dt>
-              <dd className="mt-1 text-slate-800">{request.decision_notes ? request.decision_notes : 'بانتظار القرار'}</dd>
+              <dt className="font-semibold text-slate-500 dark:text-slate-400">قرار الإدارة</dt>
+              <dd className="mt-1 text-slate-800 dark:text-slate-200">{request.decision_notes ? request.decision_notes : 'بانتظار القرار'}</dd>
             </div>
           </dl>
 
@@ -652,23 +652,23 @@ function GuardianLeaveRequestPageBase({
     } else if (formValues.guardian_name.trim().length < 3) {
       errors.guardian_name = 'اسم ولي الأمر يجب أن يكون 3 أحرف على الأقل'
     }
-    
+
     if (!formValues.guardian_phone.trim()) {
       errors.guardian_phone = 'هذا الحقل مطلوب'
     } else if (!/^05\d{8}$/.test(formValues.guardian_phone.trim())) {
       errors.guardian_phone = 'رقم الجوال يجب أن يبدأ بـ 05 ويتكون من 10 أرقام'
     }
-    
+
     if (!formValues.reason.trim()) {
       errors.reason = 'يرجى كتابة سبب الاستئذان'
     } else if (formValues.reason.trim().length < 5) {
       errors.reason = 'سبب الاستئذان يجب أن يكون 5 أحرف على الأقل'
     }
-    
+
     if (!formValues.pickup_person_name.trim()) {
       errors.pickup_person_name = 'يرجى إدخال اسم الشخص الذي سيستلم الطالب'
     }
-    
+
     if (!formValues.expected_pickup_time) {
       errors.expected_pickup_time = 'حدد موعد الانصراف المتوقع'
     }
@@ -921,23 +921,23 @@ function GuardianLeaveRequestPageBase({
         {!currentNationalId ? (
           <div className="glass-card mx-auto max-w-md space-y-5 sm:space-y-6">
             <div className="text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100">
-                <i className="bi bi-person-badge text-3xl text-indigo-600" />
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900">
+                <i className="bi bi-person-badge text-3xl text-indigo-600 dark:text-indigo-400" />
               </div>
-              <h2 className="text-xl font-bold text-slate-900">مرحباً بك في بوابة ولي الأمر</h2>
-              <p className="mt-2 text-sm text-slate-600">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">مرحباً بك في بوابة ولي الأمر</h2>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
                 أدخل رقم هوية الطالب وآخر 4 أرقام من الجوال المسجل
               </p>
             </div>
 
             <form className="space-y-4" onSubmit={handleLookupSubmit}>
               <div>
-                <label className="block text-right text-xs font-semibold text-slate-600 mb-1">رقم هوية الطالب</label>
+                <label className="block text-right text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">رقم هوية الطالب</label>
                 <input
                   type="text"
                   inputMode="numeric"
                   maxLength={10}
-                  className={`w-full rounded-2xl border px-4 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${formErrors.national_id ? 'border-rose-300' : 'border-slate-200'}`}
+                  className={`w-full rounded-2xl border px-4 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-500 ${formErrors.national_id ? 'border-rose-300' : 'border-slate-200 dark:border-slate-600'}`}
                   placeholder="أدخل رقم هوية الطالب (10 أرقام)"
                   value={nationalIdInput}
                   onChange={(event) => setNationalIdInput(event.target.value.replace(/\D/g, ''))}
@@ -945,18 +945,18 @@ function GuardianLeaveRequestPageBase({
                 />
               </div>
               <div>
-                <label className="block text-right text-xs font-semibold text-slate-600 mb-1">آخر 4 أرقام من جوال ولي الأمر</label>
+                <label className="block text-right text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">آخر 4 أرقام من جوال ولي الأمر</label>
                 <input
                   type="text"
                   inputMode="numeric"
                   maxLength={4}
-                  className={`w-full rounded-2xl border px-4 py-2.5 text-sm text-center tracking-[0.3em] shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${formErrors.national_id ? 'border-rose-300' : 'border-slate-200'}`}
+                  className={`w-full rounded-2xl border px-4 py-2.5 text-sm text-center tracking-[0.3em] shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-500 ${formErrors.national_id ? 'border-rose-300' : 'border-slate-200 dark:border-slate-600'}`}
                   placeholder="••••"
                   value={phoneLast4Input}
                   onChange={(event) => setPhoneLast4Input(event.target.value.replace(/\D/g, ''))}
                   disabled={lookupMutation.isPending}
                 />
-                <p className="mt-1 text-center text-xs text-slate-400">الرقم المسجل في بيانات الطالب</p>
+                <p className="mt-1 text-center text-xs text-slate-400 dark:text-slate-500">الرقم المسجل في بيانات الطالب</p>
               </div>
               <button
                 type="submit"
@@ -965,7 +965,7 @@ function GuardianLeaveRequestPageBase({
               >
                 {lookupMutation.isPending ? 'جاري التحقق...' : 'دخول'}
               </button>
-              {formErrors.national_id ? <p className="text-xs text-rose-600 text-center">{formErrors.national_id}</p> : null}
+              {formErrors.national_id ? <p className="text-xs text-rose-600 dark:text-rose-400 text-center">{formErrors.national_id}</p> : null}
             </form>
           </div>
         ) : (
@@ -974,7 +974,7 @@ function GuardianLeaveRequestPageBase({
 
             <div className="glass-card space-y-4 sm:space-y-5">
             <header className="space-y-1 text-right">
-              <h2 className="text-xl font-semibold text-slate-900">اختر الخدمة المطلوبة</h2>
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">اختر الخدمة المطلوبة</h2>
               <p className="text-xs text-muted">يمكنك إرسال طلب استئذان، تعبئة النماذج الإلكترونية، تفعيل المناداة الآلية، أو استبدال نقاط الطالب من المتجر الرقمي.</p>
             </header>
 
@@ -984,8 +984,8 @@ function GuardianLeaveRequestPageBase({
                 onClick={() => onPortalSectionChange('leave-request')}
                 className={`rounded-2xl border px-4 py-3 text-right transition ${
                   activePortalSection === 'leave-request'
-                    ? 'border-indigo-500 bg-indigo-50/60 text-indigo-600 shadow-sm'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-indigo-50/40'
+                    ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-indigo-200 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/40'
                 }`}
               >
                 <div className="flex items-center justify-between gap-3">
@@ -1002,8 +1002,8 @@ function GuardianLeaveRequestPageBase({
                 onClick={() => onPortalSectionChange('auto-call')}
                 className={`rounded-2xl border px-4 py-3 text-right transition ${
                   activePortalSection === 'auto-call'
-                    ? 'border-indigo-500 bg-indigo-50/60 text-indigo-600 shadow-sm'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-indigo-50/40'
+                    ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-indigo-200 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/40'
                 }`}
               >
                 <div className="flex items-center justify-between gap-3">
@@ -1020,8 +1020,8 @@ function GuardianLeaveRequestPageBase({
                 onClick={() => onPortalSectionChange('forms')}
                 className={`rounded-2xl border px-4 py-3 text-right transition ${
                   activePortalSection === 'forms'
-                    ? 'border-indigo-500 bg-indigo-50/60 text-indigo-600 shadow-sm'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-indigo-50/40'
+                    ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-indigo-200 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/40'
                 }`}
               >
                 <div className="flex items-center justify-between gap-3">
@@ -1046,8 +1046,8 @@ function GuardianLeaveRequestPageBase({
               onClick={() => onPortalSectionChange('store')}
               className={`w-full rounded-2xl border px-4 py-3 text-right transition ${
                 activePortalSection === 'store'
-                  ? 'border-indigo-500 bg-indigo-50/60 text-indigo-600 shadow-sm'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-indigo-50/40'
+                  ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                  : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-indigo-200 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/40'
               }`}
             >
               <div className="flex items-center justify-between gap-3">
@@ -1060,14 +1060,14 @@ function GuardianLeaveRequestPageBase({
             </button>
 
             {activeSectionHint ? (
-              <p className="rounded-2xl border border-indigo-100 bg-indigo-50/60 px-4 py-2 text-xs font-semibold text-indigo-700">
+              <p className="rounded-2xl border border-indigo-100 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-950/60 px-4 py-2 text-xs font-semibold text-indigo-700 dark:text-indigo-300">
                 {activeSectionHint}
               </p>
             ) : null}
           </div>
 
           {activePortalSection === 'none' ? (
-            <div className="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-6 text-center text-sm text-muted">
+            <div className="rounded-3xl border border-dashed border-slate-200 dark:border-slate-600 bg-white/70 dark:bg-slate-800/70 p-6 text-center text-sm text-muted">
               يرجى اختيار الخدمة التي ترغب بمتابعتها.
             </div>
           ) : null}
@@ -1076,71 +1076,71 @@ function GuardianLeaveRequestPageBase({
             <div
               ref={leaveSectionRef}
               className={`scroll-mt-32 transition-shadow duration-500 ${
-                highlightSection === 'leave-request' ? 'rounded-[28px] ring-2 ring-indigo-200 ring-offset-2 ring-offset-white shadow-lg' : ''
+                highlightSection === 'leave-request' ? 'rounded-[28px] ring-2 ring-indigo-200 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 shadow-lg' : ''
               }`}
             >
               <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
               <form className="glass-card space-y-4 sm:space-y-5" onSubmit={handleSubmit}>
                 <header className="space-y-1">
-                  <h2 className="text-xl font-semibold text-slate-900">إرسال طلب جديد</h2>
+                  <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">إرسال طلب جديد</h2>
                   <p className="text-xs text-muted">يرجى تعبئة جميع الحقول الإلزامية لإرسال الطلب.</p>
                 </header>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-600">سبب الاستئذان *</label>
+                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">سبب الاستئذان *</label>
                   <textarea
-                    className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${formErrors.reason ? 'border-rose-300' : 'border-slate-200'}`}
+                    className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-500 ${formErrors.reason ? 'border-rose-300' : 'border-slate-200 dark:border-slate-600'}`}
                     rows={4}
                     value={formValues.reason}
                     onChange={(event) => handleFormChange('reason', event.target.value)}
                     placeholder="مثال: موعد طبي عاجل"
                     disabled={submitMutation.isPending}
                   />
-                  {formErrors.reason ? <p className="text-xs text-rose-600">{formErrors.reason}</p> : null}
+                  {formErrors.reason ? <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.reason}</p> : null}
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-600">اسم ولي الأمر *</label>
+                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">اسم ولي الأمر *</label>
                     <input
                       type="text"
-                      className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${formErrors.guardian_name ? 'border-rose-300' : 'border-slate-200'}`}
+                      className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-500 ${formErrors.guardian_name ? 'border-rose-300' : 'border-slate-200 dark:border-slate-600'}`}
                       value={formValues.guardian_name}
                       onChange={(event) => handleFormChange('guardian_name', event.target.value)}
                       disabled={submitMutation.isPending}
                     />
-                    {formErrors.guardian_name ? <p className="text-xs text-rose-600">{formErrors.guardian_name}</p> : null}
+                    {formErrors.guardian_name ? <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.guardian_name}</p> : null}
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-600">هاتف ولي الأمر *</label>
+                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">هاتف ولي الأمر *</label>
                     <input
                       type="tel"
-                      className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${formErrors.guardian_phone ? 'border-rose-300' : 'border-slate-200'}`}
+                      className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-500 ${formErrors.guardian_phone ? 'border-rose-300' : 'border-slate-200 dark:border-slate-600'}`}
                       value={formValues.guardian_phone}
                       onChange={(event) => handleFormChange('guardian_phone', event.target.value)}
                       disabled={submitMutation.isPending}
                     />
-                    {formErrors.guardian_phone ? <p className="text-xs text-rose-600">{formErrors.guardian_phone}</p> : null}
+                    {formErrors.guardian_phone ? <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.guardian_phone}</p> : null}
                   </div>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-600">اسم المستلم *</label>
+                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">اسم المستلم *</label>
                     <input
                       type="text"
-                      className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${formErrors.pickup_person_name ? 'border-rose-300' : 'border-slate-200'}`}
+                      className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-500 ${formErrors.pickup_person_name ? 'border-rose-300' : 'border-slate-200 dark:border-slate-600'}`}
                       value={formValues.pickup_person_name}
                       onChange={(event) => handleFormChange('pickup_person_name', event.target.value)}
                       disabled={submitMutation.isPending}
                     />
-                    {formErrors.pickup_person_name ? <p className="text-xs text-rose-600">{formErrors.pickup_person_name}</p> : null}
+                    {formErrors.pickup_person_name ? <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.pickup_person_name}</p> : null}
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-600">صلة القرابة</label>
+                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">صلة القرابة</label>
                     <input
                       type="text"
-                      className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      className="w-full rounded-2xl border border-slate-200 dark:border-slate-600 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
                       value={formValues.pickup_person_relation}
                       onChange={(event) => handleFormChange('pickup_person_relation', event.target.value)}
                       disabled={submitMutation.isPending}
@@ -1150,31 +1150,31 @@ function GuardianLeaveRequestPageBase({
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-600">هاتف المستلم</label>
+                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">هاتف المستلم</label>
                     <input
                       type="tel"
-                      className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      className="w-full rounded-2xl border border-slate-200 dark:border-slate-600 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
                       value={formValues.pickup_person_phone}
                       onChange={(event) => handleFormChange('pickup_person_phone', event.target.value)}
                       disabled={submitMutation.isPending}
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-600">موعد الانصراف المتوقع *</label>
+                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">موعد الانصراف المتوقع *</label>
                     <input
                       type="datetime-local"
-                      className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${formErrors.expected_pickup_time ? 'border-rose-300' : 'border-slate-200'}`}
+                      className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-500 ${formErrors.expected_pickup_time ? 'border-rose-300' : 'border-slate-200 dark:border-slate-600'}`}
                       value={formValues.expected_pickup_time}
                       onChange={(event) => handleFormChange('expected_pickup_time', event.target.value)}
                       disabled={submitMutation.isPending}
                     />
                     {formErrors.expected_pickup_time ? (
-                      <p className="text-xs text-rose-600">{formErrors.expected_pickup_time}</p>
+                      <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.expected_pickup_time}</p>
                     ) : null}
                   </div>
                 </div>
 
-                <footer className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-100 pt-4">
+                <footer className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-700 pt-4">
                   <button
                     type="submit"
                     className="rounded-2xl bg-emerald-600 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
@@ -1187,14 +1187,14 @@ function GuardianLeaveRequestPageBase({
 
               <aside className="glass-card space-y-4 sm:space-y-5">
                 <header>
-                  <h2 className="text-lg font-semibold text-slate-900">الطلبات السابقة</h2>
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">الطلبات السابقة</h2>
                   <p className="text-xs text-muted">يمكنك متابعة حالة طلبات الاستئذان السابقة.</p>
                 </header>
 
                 {isLoadingRequests ? (
                   <p className="text-sm text-muted">جاري تحميل الطلبات...</p>
                 ) : requestsErrorMessage ? (
-                  <p className="text-sm text-rose-600">{requestsErrorMessage}</p>
+                  <p className="text-sm text-rose-600 dark:text-rose-400">{requestsErrorMessage}</p>
                 ) : (
                   <RequestsList requests={requests} />
                 )}
@@ -1207,31 +1207,31 @@ function GuardianLeaveRequestPageBase({
             <div
               ref={formsSectionRef}
               className={`scroll-mt-32 transition-shadow duration-500 ${
-                highlightSection === 'forms' ? 'rounded-[28px] ring-2 ring-indigo-200 ring-offset-2 ring-offset-white shadow-lg' : ''
+                highlightSection === 'forms' ? 'rounded-[28px] ring-2 ring-indigo-200 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 shadow-lg' : ''
               }`}
             >
               <div className="glass-card space-y-5 sm:space-y-6">
                 <header className="space-y-1 text-right">
-                  <h2 className="text-xl font-semibold text-slate-900">النماذج الإلكترونية الموجّهة لطالبك</h2>
+                  <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">النماذج الإلكترونية الموجّهة لطالبك</h2>
                   <p className="text-xs text-muted">
                     راجع النماذج المرتبطة بالطالب وعبئها إلكترونياً. تُحفظ الردود مباشرة لدى المدرسة.
                   </p>
                 </header>
 
-                <div className="rounded-3xl border border-indigo-100 bg-indigo-50/70 p-4 text-sm text-indigo-700">
+                <div className="rounded-3xl border border-indigo-100 dark:border-indigo-800 bg-indigo-50/70 dark:bg-indigo-950/70 p-4 text-sm text-indigo-700 dark:text-indigo-300">
                   <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="text-right">
-                      <p className="text-xs font-semibold text-indigo-600">اسم الطالب</p>
-                      <p className="text-sm font-semibold text-indigo-900">{studentSummary?.name}</p>
+                      <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">اسم الطالب</p>
+                      <p className="text-sm font-semibold text-indigo-900 dark:text-indigo-100">{studentSummary?.name}</p>
                     </div>
-                    <div className="rounded-2xl bg-white/70 px-4 py-2 text-xs font-semibold text-indigo-600 shadow-sm">
+                    <div className="rounded-2xl bg-white/70 dark:bg-slate-800/70 px-4 py-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400 shadow-sm">
                       رقم الهوية: {currentNationalId}
                     </div>
                   </div>
                 </div>
 
                 {formsErrorMessage ? (
-                  <div className="rounded-3xl border border-rose-200 bg-rose-50/80 p-4 text-center text-sm text-rose-700">
+                  <div className="rounded-3xl border border-rose-200 dark:border-rose-800 bg-rose-50/80 dark:bg-rose-950/80 p-4 text-center text-sm text-rose-700 dark:text-rose-400">
                     {formsErrorMessage}
                   </div>
                 ) : null}
@@ -1239,20 +1239,20 @@ function GuardianLeaveRequestPageBase({
                 {formsLoading ? (
                   <div className="space-y-3">
                     {[...Array(3)].map((_, index) => (
-                      <div key={index} className="h-16 animate-pulse rounded-3xl bg-slate-100" />
+                      <div key={index} className="h-16 animate-pulse rounded-3xl bg-slate-100 dark:bg-slate-700" />
                     ))}
                   </div>
                 ) : null}
 
                 {!formsLoading && forms.length === 0 ? (
-                  <div className="rounded-3xl border border-slate-200 bg-white p-5 text-center text-sm text-muted">
+                  <div className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 text-center text-sm text-muted">
                     لا توجد نماذج مطلوبة حالياً لهذا الطالب. سيتم إشعارك هنا عند وصول نموذج جديد.
                   </div>
                 ) : null}
 
                 {forms.length ? (
                   <>
-                    <section className="rounded-3xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-800">
+                    <section className="rounded-3xl border border-amber-200 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/70 p-4 text-sm text-amber-800 dark:text-amber-200">
                       لديك <span className="font-bold">{forms.length}</span> {forms.length > 1 ? 'نماذج' : 'نموذج'} بانتظار الرد.
                     </section>
 
@@ -1267,19 +1267,19 @@ function GuardianLeaveRequestPageBase({
                               onClick={() => setSelectedFormId(form.id)}
                               className={`relative w-full rounded-3xl border px-4 py-4 text-right transition ${
                                 isActive
-                                  ? 'border-indigo-400 bg-white shadow-md'
-                                  : 'border-slate-200 bg-white/60 hover:border-indigo-200 hover:bg-white'
+                                  ? 'border-indigo-400 bg-white dark:bg-slate-800 shadow-md'
+                                  : 'border-slate-200 dark:border-slate-700 bg-white/60 dark:bg-slate-800/60 hover:border-indigo-200 hover:bg-white dark:hover:bg-slate-800'
                               }`}
                             >
                               <div className="flex items-start justify-between gap-3">
                                 <div className="space-y-1">
-                                  <p className="text-sm font-semibold text-slate-900">{form.title}</p>
+                                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{form.title}</p>
                                   {form.description ? (
                                     <p className="text-xs text-muted line-clamp-2">{form.description}</p>
                                   ) : null}
-                                  <p className="text-[11px] text-slate-400">متاح حتى {formatDate(form.end_at)}</p>
+                                  <p className="text-[11px] text-slate-400 dark:text-slate-500">متاح حتى {formatDate(form.end_at)}</p>
                                 </div>
-                                <span className={`text-base ${isActive ? 'text-emerald-500' : 'text-slate-300'}`}>
+                                <span className={`text-base ${isActive ? 'text-emerald-500 dark:text-emerald-400' : 'text-slate-300 dark:text-slate-500'}`}>
                                   <i className={isActive ? 'bi-check-circle-fill' : 'bi-circle'} />
                                 </span>
                               </div>
@@ -1291,20 +1291,20 @@ function GuardianLeaveRequestPageBase({
                       <main className="space-y-4">
                         {selectedForm ? (
                           <>
-                            <header className="rounded-3٣ border border-slate-200 bg-white p-5 shadow-sm">
-                              <h3 className="text-2xl font-bold text-slate-900">{selectedForm.title}</h3>
+                            <header className="rounded-3٣ border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
+                              <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{selectedForm.title}</h3>
                               {selectedForm.description ? (
                                 <p className="mt-2 text-sm text-muted">{selectedForm.description}</p>
                               ) : null}
-                              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                                <span className="rounded-full border border-slate-200 px-3 py-1">
+                              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                                <span className="rounded-full border border-slate-200 dark:border-slate-700 px-3 py-1">
                                   يبدأ: {formatDate(selectedForm.start_at)}
                                 </span>
-                                <span className="rounded-full border border-slate-200 px-3 py-1">
+                                <span className="rounded-full border border-slate-200 dark:border-slate-700 px-3 py-1">
                                   ينتهي: {formatDate(selectedForm.end_at)}
                                 </span>
                                 {selectedForm.allow_multiple_submissions ? (
-                                  <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 font-semibold text-emerald-700">
+                                  <span className="rounded-full border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950 px-3 py-1 font-semibold text-emerald-700 dark:text-emerald-500">
                                     يسمح بأكثر من رد واحد
                                   </span>
                                 ) : null}
@@ -1320,7 +1320,7 @@ function GuardianLeaveRequestPageBase({
                             ) : null}
                           </>
                         ) : (
-                          <div className="rounded-3٣ border border-dashed border-slate-200 bg-slate-50/60 p-6 text-center text-sm text-muted">
+                          <div className="rounded-3٣ border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50/60 dark:bg-slate-700/60 p-6 text-center text-sm text-muted">
                             اختر نموذجاً من القائمة لبدء تعبئته.
                           </div>
                         )}
@@ -1336,18 +1336,18 @@ function GuardianLeaveRequestPageBase({
             <section
               ref={autoCallSectionRef}
               className={`glass-card space-y-4 sm:space-y-5 scroll-mt-32 transition-shadow duration-500 ${
-                highlightSection === 'auto-call' ? 'ring-2 ring-indigo-200 ring-offset-2 ring-offset-white shadow-lg' : ''
+                highlightSection === 'auto-call' ? 'ring-2 ring-indigo-200 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 shadow-lg' : ''
               }`}
             >
               <header className="space-y-1">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <h2 className="text-lg font-semibold text-slate-900">النداء الآلي لاستلام الطالب</h2>
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">النداء الآلي لاستلام الطالب</h2>
                     <p className="text-xs text-muted">يتم عرض اسم الطالب على شاشة الاستقبال حالاً.</p>
                   </div>
-                  <Megaphone className="h-5 w-5 text-indigo-500" />
+                  <Megaphone className="h-5 w-5 text-indigo-500 dark:text-indigo-400" />
                 </div>
-                <p className="text-xs text-slate-500">المدرسة المرتبطة: {guardianSettings?.school_name ?? (autoCallSchoolId ? `مدرسة رقم ${autoCallSchoolId}` : 'مدرسة غير محددة')}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">المدرسة المرتبطة: {guardianSettings?.school_name ?? (autoCallSchoolId ? `مدرسة رقم ${autoCallSchoolId}` : 'مدرسة غير محددة')}</p>
               </header>
 
               {settingsQuery.isLoading || (autoCall?.loading?.settings ?? false) ? (
@@ -1356,22 +1356,22 @@ function GuardianLeaveRequestPageBase({
                   <span>جاري تحميل الإعدادات...</span>
                 </div>
               ) : !autoCallEnabled ? (
-                <div className="rounded-2xl border border-dashed border-amber-200 bg-amber-50/60 p-4 text-sm text-amber-800">
+                <div className="rounded-2xl border border-dashed border-amber-200 dark:border-amber-700 bg-amber-50/60 dark:bg-amber-950/60 p-4 text-sm text-amber-800 dark:text-amber-200">
                   {autoCallDisabledReason ?? 'خدمة النداء متوقفة حالياً. يرجى التواصل مع إدارة المدرسة.'}
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 text-xs text-slate-600">
-                    <p className="font-semibold text-slate-500">أوقات السماح</p>
-                    <p className="mt-1 text-sm text-slate-700">{autoCallWindowDescription}</p>
+                  <div className="rounded-2xl border border-slate-100 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-700/60 p-4 text-xs text-slate-600 dark:text-slate-400">
+                    <p className="font-semibold text-slate-500 dark:text-slate-400">أوقات السماح</p>
+                    <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">{autoCallWindowDescription}</p>
                   </div>
 
                   {geofence ? (
-                    <div className="flex items-start gap-2 rounded-2xl border border-slate-100 bg-slate-50/60 p-3 text-xs text-slate-600">
-                      <MapPin className="mt-0.5 h-4 w-4 text-rose-500" />
+                    <div className="flex items-start gap-2 rounded-2xl border border-slate-100 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-700/60 p-3 text-xs text-slate-600 dark:text-slate-400">
+                      <MapPin className="mt-0.5 h-4 w-4 text-rose-500 dark:text-rose-400" />
                       <div>
-                        <p className="font-semibold text-slate-500">موقع المدرسة</p>
-                        <p className="mt-1 text-sm text-slate-700">
+                        <p className="font-semibold text-slate-500 dark:text-slate-400">موقع المدرسة</p>
+                        <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">
                           يجب أن تكون ضمن مسافة {Math.round(geofence.radiusMeters)} م حول الموقع المحدد لإرسال مناداة.
                         </p>
                       </div>
@@ -1379,10 +1379,10 @@ function GuardianLeaveRequestPageBase({
                   ) : null}
 
                   {guardianBlocked ? (
-                    <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4 text-sm text-rose-700">
+                    <div className="rounded-2xl border border-rose-200 dark:border-rose-800 bg-rose-50/70 dark:bg-rose-950/70 p-4 text-sm text-rose-700 dark:text-rose-400">
                       لقد تم إيقاف خدمة المناداة لهذا الحساب بسبب عدم تأكيد الاستلام في مرات سابقة.
                       {guardianStrikeStatus?.blockedUntil ? (
-                        <span className="block text-xs text-rose-600">
+                        <span className="block text-xs text-rose-600 dark:text-rose-400">
                           يمكنك المحاولة بعد {new Date(guardianStrikeStatus.blockedUntil).toLocaleString('ar-SA')}.
                         </span>
                       ) : null}
@@ -1391,17 +1391,17 @@ function GuardianLeaveRequestPageBase({
 
                   {activeAutoCalls.length ? (
                     <div className="space-y-3">
-                      <p className="text-sm font-semibold text-slate-700">النداءات الحالية</p>
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">النداءات الحالية</p>
                       <ul className="space-y-2">
                         {activeAutoCalls.map((call) => (
-                          <li key={call.id} className="flex flex-col gap-2 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-3 text-xs text-slate-700">
+                          <li key={call.id} className="flex flex-col gap-2 rounded-2xl border border-indigo-100 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-950/60 p-3 text-xs text-slate-700 dark:text-slate-300">
                             <div className="flex items-center justify-between gap-2">
-                              <span className="font-semibold text-indigo-900">{call.studentName}</span>
-                              <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] text-indigo-600">
+                              <span className="font-semibold text-indigo-900 dark:text-indigo-100">{call.studentName}</span>
+                              <span className="rounded-full bg-indigo-100 dark:bg-indigo-900 px-2 py-0.5 text-[11px] text-indigo-600 dark:text-indigo-400">
                                 {call.status === 'announcing' ? 'جاري النداء' : 'بانتظار النداء'}
                               </span>
                             </div>
-                            <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-600">
+                            <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-600 dark:text-slate-400">
                               <span>عدد مرات النداء: {call.announcedCount}</span>
                               <span>تم الإنشاء عند {formatDateTime(call.createdAt)}</span>
                             </div>
@@ -1421,13 +1421,13 @@ function GuardianLeaveRequestPageBase({
                   ) : null}
 
                   {studentAcknowledgements.length > 0 || historyIsLoading ? (
-                    <div className="space-y-2 rounded-2xl border border-slate-100 bg-white p-3 text-xs text-slate-600">
+                    <div className="space-y-2 rounded-2xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-xs text-slate-600 dark:text-slate-400">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                          <p className="text-sm font-semibold text-slate-700">آخر من تم استلامهم</p>
+                          <CheckCircle2 className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
+                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">آخر من تم استلامهم</p>
                         </div>
-                        {historyIsLoading ? <Loader2 className="h-4 w-4 animate-spin text-slate-400" /> : null}
+                        {historyIsLoading ? <Loader2 className="h-4 w-4 animate-spin text-slate-400 dark:text-slate-500" /> : null}
                       </div>
                       {studentAcknowledgements.length === 0 && !historyIsLoading ? (
                         <p className="text-xs text-muted">لم يتم تسجيل عمليات استلام لهذا الطالب حتى الآن.</p>
@@ -1437,12 +1437,12 @@ function GuardianLeaveRequestPageBase({
                           {studentAcknowledgements.map((entry) => {
                             const resolvedAt = entry.resolvedAt ?? entry.acknowledgedAt ?? entry.createdAt
                             return (
-                              <li key={entry.id} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-3 py-2">
-                                <div className="text-right text-slate-700">
+                              <li key={entry.id} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 dark:bg-slate-700 px-3 py-2">
+                                <div className="text-right text-slate-700 dark:text-slate-300">
                                   <p className="text-sm font-semibold">{entry.studentName}</p>
                                   <p className="text-[11px] text-muted">{entry.classLabel ?? '—'}</p>
                                 </div>
-                                <span className="text-[11px] font-semibold text-emerald-600">{formatDateTime(resolvedAt)}</span>
+                                <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-500">{formatDateTime(resolvedAt)}</span>
                               </li>
                             )
                           })}
@@ -1466,30 +1466,30 @@ function GuardianLeaveRequestPageBase({
                   </button>
 
                   {!isInsideTimeWindow && autoCallEnabled ? (
-                    <p className="text-xs text-amber-600">
+                    <p className="text-xs text-amber-600 dark:text-amber-400">
                       النداء متاح فقط خلال الفترات المحددة. {autoCallWindowDescription}
                     </p>
                   ) : null}
 
                   {hasActiveAutoCall ? (
-                    <p className="text-xs text-indigo-600">يوجد نداء جاري لهذا الطالب. يرجى الانتظار حتى يتم الاستلام.</p>
+                    <p className="text-xs text-indigo-600 dark:text-indigo-400">يوجد نداء جاري لهذا الطالب. يرجى الانتظار حتى يتم الاستلام.</p>
                   ) : null}
 
                   {autoCallError ? (
-                    <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-3 text-xs text-rose-700">
+                    <div className="rounded-2xl border border-rose-200 dark:border-rose-800 bg-rose-50/70 dark:bg-rose-950/70 p-3 text-xs text-rose-700 dark:text-rose-400">
                       {autoCallError}
                     </div>
                   ) : null}
 
                   {guardianStrikeStatus ? (
-                    <div className="rounded-2xl border border-slate-100 bg-white p-3 text-xs text-slate-600">
-                      <p className="font-semibold text-slate-500">سجل المخالفات</p>
-                      <p className="mt-1 text-sm text-slate-700">
+                    <div className="rounded-2xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-xs text-slate-600 dark:text-slate-400">
+                      <p className="font-semibold text-slate-500 dark:text-slate-400">سجل المخالفات</p>
+                      <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">
                         عدد المخالفات: {guardianStrikeStatus.strikeCount}
                         {autoCall?.settings?.maxStrikesBeforeBlock ? ` / الحد المسموح ${autoCall.settings.maxStrikesBeforeBlock}` : ''}
                       </p>
                       {guardianStrikeStatus.lastStrikeReason ? (
-                        <p className="mt-1 text-xs text-slate-500">آخر سبب: {guardianStrikeStatus.lastStrikeReason}</p>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">آخر سبب: {guardianStrikeStatus.lastStrikeReason}</p>
                       ) : null}
                     </div>
                   ) : null}
@@ -1502,7 +1502,7 @@ function GuardianLeaveRequestPageBase({
             <div
               ref={storeSectionRef}
               className={`scroll-mt-32 transition-shadow duration-500 ${
-                highlightSection === 'store' ? 'rounded-[28px] ring-2 ring-indigo-200 ring-offset-2 ring-offset-white shadow-lg' : ''
+                highlightSection === 'store' ? 'rounded-[28px] ring-2 ring-indigo-200 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 shadow-lg' : ''
               }`}
             >
               <GuardianStoreSection

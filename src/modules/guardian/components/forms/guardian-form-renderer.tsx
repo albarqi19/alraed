@@ -317,7 +317,7 @@ export function GuardianFormRenderer({ form, nationalId, onSubmitted }: Guardian
 
   if (hasUnsupportedFields) {
     return (
-      <div className="rounded-3xl border border-amber-200 bg-amber-50/70 p-6 text-sm text-amber-800">
+      <div className="rounded-3xl border border-amber-200 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950 p-6 text-sm text-amber-800 dark:text-amber-200">
         بعض الحقول في هذا النموذج تستخدم أنواعاً غير مدعومة في واجهة ولي الأمر حالياً. يرجى التواصل مع إدارة المدرسة لتحديث النموذج.
       </div>
     )
@@ -329,7 +329,7 @@ export function GuardianFormRenderer({ form, nationalId, onSubmitted }: Guardian
     <form className="space-y-5" onSubmit={handleSubmit}>
       <section className="space-y-4">
         {visibleFields.length === 0 ? (
-          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-6 text-center text-sm text-muted">
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-700 p-6 text-center text-sm text-muted">
             لا توجد حقول متاحة في هذا النموذج حالياً.
           </div>
         ) : (
@@ -349,9 +349,9 @@ export function GuardianFormRenderer({ form, nationalId, onSubmitted }: Guardian
         )}
       </section>
 
-      <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+      <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 dark:border-slate-700 pt-4">
         {completed ? (
-          <p className="flex items-center gap-2 text-sm font-semibold text-emerald-600">
+          <p className="flex items-center gap-2 text-sm font-semibold text-emerald-600 dark:text-emerald-500">
             <i className="bi bi-check-circle-fill text-lg" />
             تم إرسال النموذج بنجاح.
           </p>
@@ -364,7 +364,7 @@ export function GuardianFormRenderer({ form, nationalId, onSubmitted }: Guardian
             <button
               type="button"
               onClick={handleResetForNewSubmission}
-              className="rounded-full border border-slate-300 px-5 py-2 text-xs font-semibold text-slate-600 transition hover:border-slate-400 hover:text-slate-700"
+              className="rounded-full border border-slate-300 dark:border-slate-600 px-5 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 transition hover:border-slate-400 dark:hover:border-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
               disabled={submitMutation.isPending}
             >
               إرسال رد جديد
@@ -428,7 +428,7 @@ function GuardianFieldControl({
             type={inputType}
             value={textValue}
             onChange={(event) => onChange(event.target.value)}
-            className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            className="w-full rounded-2xl border border-slate-200 dark:border-slate-600 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
             disabled={disabled}
           />
         )
@@ -440,7 +440,7 @@ function GuardianFieldControl({
             type="number"
             value={numericValue}
             onChange={(event) => onChange(event.target.value)}
-            className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            className="w-full rounded-2xl border border-slate-200 dark:border-slate-600 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
             disabled={disabled}
           />
         )
@@ -451,7 +451,7 @@ function GuardianFieldControl({
             value={typeof value === 'string' ? value : value == null ? '' : String(value)}
             onChange={(event) => onChange(event.target.value)}
             rows={4}
-            className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            className="w-full rounded-2xl border border-slate-200 dark:border-slate-600 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
             disabled={disabled}
           />
         )
@@ -462,7 +462,7 @@ function GuardianFieldControl({
           <select
             value={selectValue}
             onChange={(event) => onChange(event.target.value)}
-            className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            className="w-full rounded-2xl border border-slate-200 dark:border-slate-600 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
             disabled={disabled}
           >
             <option value="">اختر خياراً</option>
@@ -489,12 +489,12 @@ function GuardianFieldControl({
                 return (
                   <label
                     key={option.value}
-                    className="flex items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm"
+                    className="flex items-center justify-between gap-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm shadow-sm"
                   >
-                    <span className="font-semibold text-slate-700">{option.label}</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">{option.label}</span>
                     <input
                       type="checkbox"
-                      className="h-4 w-4 rounded border border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      className="h-4 w-4 rounded border border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500"
                       checked={checked}
                       disabled={disabled}
                       onChange={(event) => {
@@ -522,13 +522,13 @@ function GuardianFieldControl({
             {options.map((option) => (
               <label
                 key={option.value}
-                className="flex items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm"
+                className="flex items-center justify-between gap-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm shadow-sm"
               >
-                <span className="font-semibold text-slate-700">{option.label}</span>
+                <span className="font-semibold text-slate-700 dark:text-slate-300">{option.label}</span>
                 <input
                   type="radio"
                   name={field.field_key}
-                  className="h-4 w-4 border border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  className="h-4 w-4 border border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500"
                   checked={radioValue === option.value}
                   disabled={disabled}
                   onChange={() => onChange(option.value)}
@@ -549,8 +549,8 @@ function GuardianFieldControl({
               onClick={() => onChange(true)}
               className={`flex-1 rounded-2xl border px-4 py-2 text-sm font-semibold shadow-sm transition ${
                 boolValue
-                  ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
-                  : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-200 hover:text-emerald-600'
+                  ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
+                  : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:border-emerald-200 hover:text-emerald-600 dark:hover:text-emerald-500'
               }`}
               disabled={disabled}
             >
@@ -561,8 +561,8 @@ function GuardianFieldControl({
               onClick={() => onChange(false)}
               className={`flex-1 rounded-2xl border px-4 py-2 text-sm font-semibold shadow-sm transition ${
                 value === false
-                  ? 'border-rose-400 bg-rose-50 text-rose-700'
-                  : 'border-slate-200 bg-white text-slate-600 hover:border-rose-200 hover:text-rose-600'
+                  ? 'border-rose-400 bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300'
+                  : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:border-rose-200 hover:text-rose-600 dark:hover:text-rose-400'
               }`}
               disabled={disabled}
             >
@@ -575,7 +575,7 @@ function GuardianFieldControl({
         {
           const currentRating = Number(value ?? 0)
         return (
-          <div className="flex items-center justify-between gap-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+          <div className="flex items-center justify-between gap-1 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 shadow-sm">
             {[...Array(ratingMax)].map((_, index) => {
               const ratingValue = index + 1
               const active = currentRating >= ratingValue
@@ -584,7 +584,7 @@ function GuardianFieldControl({
                   type="button"
                   key={ratingValue}
                   onClick={() => onChange(ratingValue)}
-                  className={`text-lg transition ${active ? 'text-amber-500' : 'text-slate-300 hover:text-amber-400'}`}
+                  className={`text-lg transition ${active ? 'text-amber-500' : 'text-slate-300 dark:text-slate-500 hover:text-amber-400'}`}
                   disabled={disabled}
                 >
                   <i className="bi bi-star-fill" />
@@ -601,11 +601,11 @@ function GuardianFieldControl({
               type="file"
               multiple={maxFiles > 1}
               onChange={(event) => onFileChange(event.target.files)}
-              className="block w-full text-sm text-slate-600 file:me-4 file:rounded-full file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-indigo-700"
+              className="block w-full text-sm text-slate-600 dark:text-slate-400 file:me-4 file:rounded-full file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-indigo-700"
               disabled={disabled}
             />
             {files && files.length > 0 ? (
-              <ul className="space-y-1 text-xs text-slate-500">
+              <ul className="space-y-1 text-xs text-slate-500 dark:text-slate-400">
                 {files.map((file) => (
                   <li key={file.name} className="flex items-center gap-2">
                     <i className="bi bi-paperclip" /> {file.name}
@@ -625,13 +625,13 @@ function GuardianFieldControl({
         )
       case 'section_break':
         return (
-          <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-600">
+          <p className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50/70 dark:bg-slate-700 px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
             {field.description || '---'}
           </p>
         )
       default:
         return (
-          <p className="rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm text-rose-600">
+          <p className="rounded-2xl border border-rose-200 dark:border-rose-800 bg-rose-50/80 dark:bg-rose-950 px-4 py-3 text-sm text-rose-600 dark:text-rose-400">
             هذا الحقل غير مدعوم في الواجهة الحالية.
           </p>
         )
@@ -639,10 +639,10 @@ function GuardianFieldControl({
   }
 
   return (
-    <article className="space-y-3 rounded-3xl border border-slate-200 bg-white px-4 py-5 shadow-sm">
+    <article className="space-y-3 rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-5 shadow-sm">
       <header className="space-y-1 text-right">
         <div className="flex items-center justify-between gap-3">
-          <h3 className="text-base font-semibold text-slate-900">{field.label}</h3>
+          <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">{field.label}</h3>
           {field.is_required ? (
             <span className="text-xs font-semibold text-rose-500">مطلوب</span>
           ) : null}
@@ -655,9 +655,9 @@ function GuardianFieldControl({
       <div>{renderInput()}</div>
 
       {field.helper_text ? (
-        <p className="text-[11px] text-slate-400">{field.helper_text}</p>
+        <p className="text-[11px] text-slate-400 dark:text-slate-500">{field.helper_text}</p>
       ) : null}
-      {error ? <p className="text-xs text-rose-600">{error}</p> : null}
+      {error ? <p className="text-xs text-rose-600 dark:text-rose-400">{error}</p> : null}
     </article>
   )
 }
@@ -744,10 +744,10 @@ function SignaturePad({ value, disabled = false, onChange }: SignaturePadProps) 
 
   return (
     <div className="space-y-3">
-      <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/80 p-2">
+      <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-600 bg-slate-50/80 dark:bg-slate-700 p-2">
         <canvas
           ref={canvasRef}
-          className="h-44 w-full touch-manipulation rounded-xl bg-white"
+          className="h-44 w-full touch-manipulation rounded-xl bg-white dark:bg-slate-800"
           onPointerDown={startDrawing}
           onPointerMove={draw}
           onPointerUp={endDrawing}
@@ -758,7 +758,7 @@ function SignaturePad({ value, disabled = false, onChange }: SignaturePadProps) 
         <button
           type="button"
           onClick={clearSignature}
-          className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
+          className="rounded-full border border-slate-200 dark:border-slate-700 px-4 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 transition hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-700 dark:hover:text-slate-300"
           disabled={disabled}
         >
           مسح التوقيع

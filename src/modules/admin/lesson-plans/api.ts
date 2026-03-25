@@ -85,3 +85,56 @@ export async function rejectLessonPlan(
   )
   return unwrapResponse(data, 'تعذر رفض الخطة')
 }
+
+// ═══════════ الإعدادات ═══════════
+
+export interface LessonPlanSettings {
+  reminder_enabled: boolean
+  reminder_day: string
+  reminder_time: string
+  reminder_message: string
+}
+
+export async function fetchLessonPlanSettings(): Promise<LessonPlanSettings> {
+  const { data } = await apiClient.get<ApiResponse<LessonPlanSettings>>(
+    '/admin/lesson-plans/settings',
+  )
+  return unwrapResponse(data, 'تعذر تحميل الإعدادات')
+}
+
+export async function updateLessonPlanSettings(
+  settings: LessonPlanSettings,
+): Promise<void> {
+  const { data } = await apiClient.post<ApiResponse<void>>(
+    '/admin/lesson-plans/settings',
+    settings,
+  )
+  unwrapResponse(data, 'تعذر حفظ الإعدادات')
+}
+
+// ═══════════ إرسال لأولياء الأمور ═══════════
+
+export async function sendPlansToParents(
+  weekId: number,
+): Promise<{ message: string }> {
+  const { data } = await apiClient.post<ApiResponse<{ message: string }>>(
+    `/admin/lesson-plans/week/${weekId}/send-to-parents`,
+  )
+  return unwrapResponse(data, 'تعذر إرسال الخطط')
+}
+
+// ═══════════ الصفوف + PDF ═══════════
+
+export async function fetchWeekGrades(weekId: number): Promise<string[]> {
+  const { data } = await apiClient.get<ApiResponse<string[]>>(
+    `/admin/lesson-plans/week/${weekId}/grades`,
+  )
+  return unwrapResponse(data, 'تعذر تحميل الصفوف')
+}
+
+export function downloadWeekPdf(weekId: number, grade: string): void {
+  const baseUrl = apiClient.defaults.baseURL ?? ''
+  const token = localStorage.getItem('token') ?? ''
+  const url = `${baseUrl}/admin/lesson-plans/week/${weekId}/pdf?grade=${encodeURIComponent(grade)}&token=${encodeURIComponent(token)}`
+  window.open(url, '_blank')
+}

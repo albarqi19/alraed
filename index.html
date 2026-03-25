@@ -39,8 +39,18 @@
       var isDark = mode === 'dark' ||
         (mode === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
       if (isDark) document.documentElement.classList.add('teacher-prefers-dark');
+
+      // Guardian dark mode: auto-detect system preference
+      if (window.location.pathname.indexOf('/guardian/') !== -1) {
+        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          document.documentElement.classList.add('dark');
+        }
+      }
     })();
   </script>
+  <style>
+    html.dark body { background-color: #0f172a !important; }
+  </style>
 </head>
 
 <body>

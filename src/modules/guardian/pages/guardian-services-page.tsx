@@ -15,6 +15,7 @@ import {
     Send,
     Bell,
     BookOpenCheck,
+    Download,
 } from 'lucide-react'
 import { useGuardianContext } from '../context/guardian-context'
 import {
@@ -42,48 +43,48 @@ const SERVICES: ServiceItem[] = [
         title: 'طلب استئذان',
         description: 'تقديم طلب استئذان للطالب',
         icon: ClipboardCheck,
-        color: 'text-indigo-600',
-        bgColor: 'bg-indigo-100',
+        color: 'text-indigo-600 dark:text-indigo-400',
+        bgColor: 'bg-indigo-100 dark:bg-indigo-900',
     },
     {
         id: 'auto-call',
         title: 'النداء الآلي',
         description: 'طلب مناداة فورية للطالب',
         icon: Megaphone,
-        color: 'text-emerald-600',
-        bgColor: 'bg-emerald-100',
+        color: 'text-emerald-600 dark:text-emerald-500',
+        bgColor: 'bg-emerald-100 dark:bg-emerald-900',
     },
     {
         id: 'points',
         title: 'النقاط',
         description: 'عرض رصيد النقاط والمعاملات',
         icon: Star,
-        color: 'text-amber-600',
-        bgColor: 'bg-amber-100',
+        color: 'text-amber-600 dark:text-amber-400',
+        bgColor: 'bg-amber-100 dark:bg-amber-900',
     },
     {
         id: 'behavior',
         title: 'السلوك',
         description: 'متابعة سجل السلوك',
         icon: UserCheck,
-        color: 'text-sky-600',
-        bgColor: 'bg-sky-100',
+        color: 'text-sky-600 dark:text-sky-400',
+        bgColor: 'bg-sky-100 dark:bg-sky-900',
     },
     {
         id: 'attendance',
         title: 'المواظبة',
         description: 'سجل الحضور والغياب',
         icon: Clock,
-        color: 'text-rose-600',
-        bgColor: 'bg-rose-100',
+        color: 'text-rose-600 dark:text-rose-400',
+        bgColor: 'bg-rose-100 dark:bg-rose-950',
     },
     {
         id: 'lesson-plans',
         title: 'الخطط الأسبوعية',
         description: 'خطط الدروس المعتمدة',
         icon: BookOpenCheck,
-        color: 'text-cyan-600',
-        bgColor: 'bg-cyan-100',
+        color: 'text-cyan-600 dark:text-cyan-400',
+        bgColor: 'bg-cyan-100 dark:bg-cyan-900',
     },
 ]
 
@@ -101,14 +102,14 @@ function AbsenceExcuseAlert({
 }) {
     return (
         <div
-            className="relative overflow-hidden rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-4 shadow-lg"
+            className="relative overflow-hidden rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 dark:border-amber-800 dark:from-amber-950 dark:to-orange-950 p-4 shadow-lg"
             style={{
                 animation: 'bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
             }}
         >
             {/* Animated Background Pulse */}
             <div
-                className="absolute inset-0 bg-gradient-to-r from-amber-100/50 to-orange-100/50"
+                className="absolute inset-0 bg-gradient-to-r from-amber-100/50 to-orange-100/50 dark:from-amber-900/30 dark:to-orange-900/30"
                 style={{
                     animation: 'pulse 2s ease-in-out infinite',
                 }}
@@ -127,10 +128,10 @@ function AbsenceExcuseAlert({
                 </div>
 
                 <div className="flex-1 min-w-0">
-                    <h4 className="font-bold text-amber-900">
+                    <h4 className="font-bold text-amber-900 dark:text-amber-200">
                         {count === 1 ? 'يوجد غياب يحتاج لتقديم عذر' : `يوجد ${count} أيام غياب تحتاج لتقديم عذر`}
                     </h4>
-                    <p className="mt-1 text-sm text-amber-700">
+                    <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
                         يمكنك تقديم العذر مع المستندات المطلوبة قبل انتهاء المهلة
                     </p>
 
@@ -149,7 +150,7 @@ function AbsenceExcuseAlert({
                         <button
                             type="button"
                             onClick={onDismiss}
-                            className="rounded-xl bg-white/80 px-3 py-2 text-sm font-medium text-amber-700 transition hover:bg-white active:scale-95"
+                            className="rounded-xl bg-white/80 dark:bg-slate-700/80 px-3 py-2 text-sm font-medium text-amber-700 dark:text-amber-300 transition hover:bg-white active:scale-95"
                         >
                             لاحقاً
                         </button>
@@ -160,7 +161,7 @@ function AbsenceExcuseAlert({
                 <button
                     type="button"
                     onClick={onDismiss}
-                    className="absolute top-2 left-2 flex h-6 w-6 items-center justify-center rounded-full text-amber-400 transition hover:bg-amber-100 hover:text-amber-600"
+                    className="absolute top-2 left-2 flex h-6 w-6 items-center justify-center rounded-full text-amber-400 transition hover:bg-amber-100 hover:text-amber-600 dark:text-amber-500 dark:hover:bg-amber-900 dark:hover:text-amber-300"
                 >
                     <X className="h-4 w-4" />
                 </button>
@@ -250,8 +251,8 @@ export function GuardianServicesPage() {
             )}
 
             <div className="text-center">
-                <h2 className="text-xl font-bold text-slate-900">الخدمات</h2>
-                <p className="mt-1 text-sm text-slate-500">اختر الخدمة المطلوبة</p>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">الخدمات</h2>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">اختر الخدمة المطلوبة</p>
             </div>
 
             <div className="space-y-3">
@@ -262,16 +263,16 @@ export function GuardianServicesPage() {
                             key={service.id}
                             type="button"
                             onClick={() => setActiveSheet(service.id as ServiceSheetType)}
-                            className="flex w-full items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 text-right shadow-sm transition hover:border-slate-300 hover:shadow-md"
+                            className="flex w-full items-center gap-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 text-right shadow-sm transition hover:border-slate-300 hover:shadow-md"
                         >
                             <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${service.bgColor}`}>
                                 <Icon className={`h-6 w-6 ${service.color}`} />
                             </div>
                             <div className="flex-1">
-                                <p className="font-bold text-slate-900">{service.title}</p>
-                                <p className="text-sm text-slate-500">{service.description}</p>
+                                <p className="font-bold text-slate-900 dark:text-slate-100">{service.title}</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">{service.description}</p>
                             </div>
-                            <i className="bi bi-chevron-left text-slate-300" />
+                            <i className="bi bi-chevron-left text-slate-300 dark:text-slate-500" />
                         </button>
                     )
                 })}
@@ -327,9 +328,9 @@ function LeaveRequestSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () =
         <BottomSheet title="طلب استئذان" onClose={onClose}>
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                    <label className="mb-1 block text-sm font-semibold text-slate-700">سبب الاستئذان *</label>
+                    <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">سبب الاستئذان *</label>
                     <textarea
-                        className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                         rows={3}
                         value={formValues.reason}
                         onChange={(e) => setFormValues(prev => ({ ...prev, reason: e.target.value }))}
@@ -338,20 +339,20 @@ function LeaveRequestSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                     />
                 </div>
                 <div>
-                    <label className="mb-1 block text-sm font-semibold text-slate-700">اسم المستلم *</label>
+                    <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">اسم المستلم *</label>
                     <input
                         type="text"
-                        className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                         value={formValues.pickup_person_name}
                         onChange={(e) => setFormValues(prev => ({ ...prev, pickup_person_name: e.target.value }))}
                         required
                     />
                 </div>
                 <div>
-                    <label className="mb-1 block text-sm font-semibold text-slate-700">موعد الانصراف *</label>
+                    <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">موعد الانصراف *</label>
                     <input
                         type="datetime-local"
-                        className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                         value={formValues.expected_pickup_time}
                         onChange={(e) => setFormValues(prev => ({ ...prev, expected_pickup_time: e.target.value }))}
                         required
@@ -368,11 +369,11 @@ function LeaveRequestSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () =
 
             {requestsQuery.data && requestsQuery.data.length > 0 && (
                 <div className="mt-6">
-                    <h4 className="mb-3 text-sm font-bold text-slate-700">الطلبات السابقة</h4>
+                    <h4 className="mb-3 text-sm font-bold text-slate-700 dark:text-slate-300">الطلبات السابقة</h4>
                     <div className="space-y-2">
                         {requestsQuery.data.slice(0, 3).map((req) => (
-                            <div key={req.id} className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
-                                <span className="text-sm text-slate-600">{req.reason}</span>
+                            <div key={req.id} className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-700 px-4 py-3">
+                                <span className="text-sm text-slate-600 dark:text-slate-400">{req.reason}</span>
                                 <StatusBadge status={req.status} />
                             </div>
                         ))}
@@ -392,17 +393,17 @@ function AutoCallSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     return (
         <BottomSheet title="النداء الآلي" onClose={onClose}>
             <div className="space-y-4">
-                <div className="rounded-2xl bg-emerald-50 p-4 text-center">
+                <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-950 p-4 text-center">
                     <Megaphone className="mx-auto mb-2 h-12 w-12 text-emerald-500" />
-                    <p className="font-semibold text-emerald-700">طلب مناداة فورية</p>
-                    <p className="mt-1 text-sm text-emerald-600">
+                    <p className="font-semibold text-emerald-700 dark:text-emerald-300">طلب مناداة فورية</p>
+                    <p className="mt-1 text-sm text-emerald-600 dark:text-emerald-500">
                         سيتم عرض اسم الطالب على شاشة الاستقبال
                     </p>
                 </div>
 
-                <div className="rounded-xl bg-slate-50 p-4">
-                    <p className="text-sm text-slate-600">الطالب: <strong>{studentSummary?.name}</strong></p>
-                    <p className="text-sm text-slate-600">الصف: <strong>{studentSummary?.grade} - {studentSummary?.class_name}</strong></p>
+                <div className="rounded-xl bg-slate-50 dark:bg-slate-700 p-4">
+                    <p className="text-sm text-slate-600 dark:text-slate-400">الطالب: <strong>{studentSummary?.name}</strong></p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">الصف: <strong>{studentSummary?.grade} - {studentSummary?.class_name}</strong></p>
                 </div>
 
                 <button
@@ -412,7 +413,7 @@ function AutoCallSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                     طلب المناداة الآن
                 </button>
 
-                <p className="text-center text-xs text-slate-400">
+                <p className="text-center text-xs text-slate-400 dark:text-slate-500">
                     * يجب أن تكون بالقرب من المدرسة لتفعيل هذه الخدمة
                 </p>
             </div>
@@ -437,21 +438,21 @@ function PointsSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
                 </div>
 
                 <div className="grid grid-cols-3 gap-3">
-                    <div className="rounded-xl bg-emerald-50 p-3 text-center">
-                        <p className="text-lg font-bold text-emerald-600">{points?.lifetime_rewards ?? 0}</p>
-                        <p className="text-xs text-slate-500">مكتسبة</p>
+                    <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950 p-3 text-center">
+                        <p className="text-lg font-bold text-emerald-600 dark:text-emerald-500">{points?.lifetime_rewards ?? 0}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">مكتسبة</p>
                     </div>
-                    <div className="rounded-xl bg-rose-50 p-3 text-center">
-                        <p className="text-lg font-bold text-rose-600">{points?.lifetime_violations ?? 0}</p>
-                        <p className="text-xs text-slate-500">مخصومة</p>
+                    <div className="rounded-xl bg-rose-50 dark:bg-rose-950 p-3 text-center">
+                        <p className="text-lg font-bold text-rose-600 dark:text-rose-400">{points?.lifetime_violations ?? 0}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">مخصومة</p>
                     </div>
-                    <div className="rounded-xl bg-indigo-50 p-3 text-center">
-                        <p className="text-lg font-bold text-indigo-600">{points?.lifetime_redemptions ?? 0}</p>
-                        <p className="text-xs text-slate-500">مستبدلة</p>
+                    <div className="rounded-xl bg-indigo-50 dark:bg-indigo-950 p-3 text-center">
+                        <p className="text-lg font-bold text-indigo-600 dark:text-indigo-400">{points?.lifetime_redemptions ?? 0}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">مستبدلة</p>
                     </div>
                 </div>
 
-                <p className="text-center text-sm text-slate-500">
+                <p className="text-center text-sm text-slate-500 dark:text-slate-400">
                     يمكنك استبدال النقاط من المتجر الإلكتروني
                 </p>
             </div>
@@ -476,40 +477,40 @@ function BehaviorSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
             <div className="space-y-4">
                 {/* Summary stats */}
                 <div className="grid grid-cols-3 gap-3">
-                    <div className="rounded-2xl bg-slate-50 p-3 text-center">
-                        <p className="text-2xl font-bold text-slate-700">{data?.total ?? 0}</p>
-                        <p className="text-xs text-slate-500">إجمالي</p>
+                    <div className="rounded-2xl bg-slate-50 dark:bg-slate-700 p-3 text-center">
+                        <p className="text-2xl font-bold text-slate-700 dark:text-slate-300">{data?.total ?? 0}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">إجمالي</p>
                     </div>
-                    <div className="rounded-2xl bg-amber-50 p-3 text-center">
-                        <p className="text-2xl font-bold text-amber-600">{data?.pending ?? 0}</p>
-                        <p className="text-xs text-slate-500">قيد المعالجة</p>
+                    <div className="rounded-2xl bg-amber-50 dark:bg-amber-950 p-3 text-center">
+                        <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{data?.pending ?? 0}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">قيد المعالجة</p>
                     </div>
-                    <div className="rounded-2xl bg-emerald-50 p-3 text-center">
-                        <p className="text-2xl font-bold text-emerald-600">{data?.completed ?? 0}</p>
-                        <p className="text-xs text-slate-500">مكتمل</p>
+                    <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-950 p-3 text-center">
+                        <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-500">{data?.completed ?? 0}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">مكتمل</p>
                     </div>
                 </div>
 
                 {/* Loading */}
                 {isLoading && (
                     <div className="py-8 text-center">
-                        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-indigo-100 border-t-indigo-500" />
-                        <p className="mt-2 text-sm text-slate-500">جاري التحميل...</p>
+                        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-indigo-100 border-t-indigo-500 dark:border-indigo-900 dark:border-t-indigo-400" />
+                        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">جاري التحميل...</p>
                     </div>
                 )}
 
                 {/* Violations list */}
                 {!isLoading && violations.length === 0 && (
-                    <div className="rounded-2xl border border-dashed border-slate-200 py-8 text-center">
+                    <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 py-8 text-center">
                         <CheckCircle className="mx-auto h-12 w-12 text-emerald-300" />
-                        <p className="mt-2 text-sm text-slate-500">لا توجد مخالفات مسجلة ✨</p>
+                        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">لا توجد مخالفات مسجلة ✨</p>
                     </div>
                 )}
 
                 {!isLoading && violations.length > 0 && (
                     <div className="space-y-3">
                         {violations.map((v) => (
-                            <div key={v.id} className="rounded-2xl border border-slate-200 bg-white">
+                            <div key={v.id} className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                                 <button
                                     type="button"
                                     onClick={() => setExpandedId(expandedId === v.id ? null : v.id)}
@@ -521,42 +522,42 @@ function BehaviorSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                                         </span>
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="font-semibold text-slate-900 line-clamp-2">{v.violation_type}</p>
+                                        <p className="font-semibold text-slate-900 dark:text-slate-100 line-clamp-2">{v.violation_type}</p>
                                         <div className="flex items-center gap-2 mt-1">
                                             <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${getStatusColor(v.status)}`}>
                                                 {v.status_label}
                                             </span>
-                                            <span className="text-xs text-slate-400">
+                                            <span className="text-xs text-slate-400 dark:text-slate-500">
                                                 {new Date(v.incident_date).toLocaleDateString('ar-SA')}
                                             </span>
                                         </div>
                                     </div>
-                                    <ChevronDown className={`h-5 w-5 text-slate-400 transition ${expandedId === v.id ? 'rotate-180' : ''}`} />
+                                    <ChevronDown className={`h-5 w-5 text-slate-400 dark:text-slate-500 transition ${expandedId === v.id ? 'rotate-180' : ''}`} />
                                 </button>
 
                                 {/* Expanded details */}
                                 {expandedId === v.id && (
-                                    <div className="border-t border-slate-100 p-4 space-y-3">
+                                    <div className="border-t border-slate-100 dark:border-slate-700 p-4 space-y-3">
                                         {/* Basic info */}
                                         <div className="grid grid-cols-2 gap-2 text-sm">
-                                            <div className="rounded-lg bg-slate-50 p-2">
-                                                <span className="text-slate-500">الدرجة:</span>
+                                            <div className="rounded-lg bg-slate-50 dark:bg-slate-700 p-2">
+                                                <span className="text-slate-500 dark:text-slate-400">الدرجة:</span>
                                                 <span className="mr-1 font-semibold">{v.degree_label}</span>
                                             </div>
-                                            <div className="rounded-lg bg-slate-50 p-2">
-                                                <span className="text-slate-500">الرقم:</span>
+                                            <div className="rounded-lg bg-slate-50 dark:bg-slate-700 p-2">
+                                                <span className="text-slate-500 dark:text-slate-400">الرقم:</span>
                                                 <span className="mr-1 font-mono text-xs">{v.code}</span>
                                             </div>
                                         </div>
 
                                         {/* Violation Type in details */}
-                                        <div className="text-sm rounded-lg bg-slate-50 p-3">
-                                            <p className="font-semibold text-slate-700 mb-1">نوع المخالفة:</p>
-                                            <p className="text-slate-600">{v.violation_type}</p>
+                                        <div className="text-sm rounded-lg bg-slate-50 dark:bg-slate-700 p-3">
+                                            <p className="font-semibold text-slate-700 dark:text-slate-300 mb-1">نوع المخالفة:</p>
+                                            <p className="text-slate-600 dark:text-slate-400">{v.violation_type}</p>
                                         </div>
 
                                         {/* Location & Reporter */}
-                                        <div className="flex flex-wrap gap-2 text-xs text-slate-500">
+                                        <div className="flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-400">
                                             {v.location && <span>📍 {v.location}</span>}
                                             <span>👤 {v.reported_by}</span>
                                             {v.incident_time && <span>🕐 {v.incident_time}</span>}
@@ -566,12 +567,12 @@ function BehaviorSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                                         {v.procedures_count > 0 && (
                                             <div className="mt-3">
                                                 <div className="flex items-center justify-between mb-2">
-                                                    <span className="text-sm font-semibold text-slate-700">الإجراءات المتخذة</span>
-                                                    <span className="text-xs text-slate-500">
+                                                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">الإجراءات المتخذة</span>
+                                                    <span className="text-xs text-slate-500 dark:text-slate-400">
                                                         {v.procedures_completed}/{v.procedures_count}
                                                     </span>
                                                 </div>
-                                                <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                                                <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
                                                     <div
                                                         className="h-full rounded-full bg-indigo-500 transition-all"
                                                         style={{ width: `${v.procedures_progress}%` }}
@@ -581,7 +582,7 @@ function BehaviorSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                                                 {/* Procedures list */}
                                                 <div className="mt-3 space-y-2">
                                                     {v.procedures.map((proc, idx) => (
-                                                        <div key={idx} className={`rounded-lg p-2 text-sm ${proc.completed ? 'bg-emerald-50' : 'bg-slate-50'}`}>
+                                                        <div key={idx} className={`rounded-lg p-2 text-sm ${proc.completed ? 'bg-emerald-50 dark:bg-emerald-950' : 'bg-slate-50 dark:bg-slate-700'}`}>
                                                             <div className="flex items-center gap-2">
                                                                 {proc.completed ? (
                                                                     <CheckCircle className="h-4 w-4 text-emerald-500" />
@@ -591,7 +592,7 @@ function BehaviorSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                                                                 <span className="font-medium">المرحلة {proc.repetition}</span>
                                                             </div>
                                                             {proc.tasks.length > 0 && (
-                                                                <ul className="mt-1 mr-6 text-xs text-slate-500 space-y-0.5">
+                                                                <ul className="mt-1 mr-6 text-xs text-slate-500 dark:text-slate-400 space-y-0.5">
                                                                     {proc.tasks.map((task, tIdx) => (
                                                                         <li key={tIdx} className="flex items-center gap-1">
                                                                             {task.completed ? '✅' : '⏳'} {task.title}
@@ -618,23 +619,23 @@ function BehaviorSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
 // Helper functions for behavior colors
 function getDegreeColor(degree: number): { bg: string; text: string } {
     const colors: Record<number, { bg: string; text: string }> = {
-        1: { bg: 'bg-yellow-100', text: 'text-yellow-700' },
-        2: { bg: 'bg-orange-100', text: 'text-orange-700' },
-        3: { bg: 'bg-red-100', text: 'text-red-700' },
-        4: { bg: 'bg-rose-100', text: 'text-rose-700' },
-        5: { bg: 'bg-rose-200', text: 'text-rose-800' },
+        1: { bg: 'bg-yellow-100 dark:bg-yellow-950', text: 'text-yellow-700 dark:text-yellow-400' },
+        2: { bg: 'bg-orange-100 dark:bg-orange-950', text: 'text-orange-700 dark:text-orange-400' },
+        3: { bg: 'bg-red-100 dark:bg-red-950', text: 'text-red-700 dark:text-red-400' },
+        4: { bg: 'bg-rose-100 dark:bg-rose-950', text: 'text-rose-700 dark:text-rose-400' },
+        5: { bg: 'bg-rose-200 dark:bg-rose-900', text: 'text-rose-800 dark:text-rose-300' },
     }
-    return colors[degree] ?? { bg: 'bg-slate-100', text: 'text-slate-700' }
+    return colors[degree] ?? { bg: 'bg-slate-100 dark:bg-slate-700', text: 'text-slate-700 dark:text-slate-300' }
 }
 
 function getStatusColor(status: string): string {
     const colors: Record<string, string> = {
-        pending: 'bg-amber-100 text-amber-700',
-        in_progress: 'bg-blue-100 text-blue-700',
-        completed: 'bg-emerald-100 text-emerald-700',
-        closed: 'bg-slate-100 text-slate-600',
+        pending: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-400',
+        in_progress: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-400',
+        completed: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-400',
+        closed: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400',
     }
-    return colors[status] ?? 'bg-slate-100 text-slate-600'
+    return colors[status] ?? 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400'
 }
 
 // ============ Attendance Sheet (with Excuse Submission) ============
@@ -669,17 +670,17 @@ function AttendanceSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                 {/* Stats Summary */}
                 {stats && (
                     <div className="grid grid-cols-3 gap-2">
-                        <div className="rounded-xl bg-rose-50 p-3 text-center">
-                            <p className="text-xl font-bold text-rose-600">{stats.total_absences}</p>
-                            <p className="text-xs text-slate-500">أيام غياب</p>
+                        <div className="rounded-xl bg-rose-50 dark:bg-rose-950 p-3 text-center">
+                            <p className="text-xl font-bold text-rose-600 dark:text-rose-400">{stats.total_absences}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">أيام غياب</p>
                         </div>
-                        <div className="rounded-xl bg-emerald-50 p-3 text-center">
-                            <p className="text-xl font-bold text-emerald-600">{stats.approved}</p>
-                            <p className="text-xs text-slate-500">أعذار مقبولة</p>
+                        <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950 p-3 text-center">
+                            <p className="text-xl font-bold text-emerald-600 dark:text-emerald-500">{stats.approved}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">أعذار مقبولة</p>
                         </div>
-                        <div className="rounded-xl bg-amber-50 p-3 text-center">
-                            <p className="text-xl font-bold text-amber-600">{stats.can_submit}</p>
-                            <p className="text-xs text-slate-500">بانتظار العذر</p>
+                        <div className="rounded-xl bg-amber-50 dark:bg-amber-950 p-3 text-center">
+                            <p className="text-xl font-bold text-amber-600 dark:text-amber-400">{stats.can_submit}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">بانتظار العذر</p>
                         </div>
                     </div>
                 )}
@@ -687,16 +688,16 @@ function AttendanceSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                 {/* Loading State */}
                 {isLoading && (
                     <div className="py-8 text-center">
-                        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-indigo-100 border-t-indigo-500" />
-                        <p className="mt-2 text-sm text-slate-500">جاري التحميل...</p>
+                        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-indigo-100 border-t-indigo-500 dark:border-indigo-900 dark:border-t-indigo-400" />
+                        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">جاري التحميل...</p>
                     </div>
                 )}
 
                 {/* Empty State */}
                 {!isLoading && absences.length === 0 && (
-                    <div className="rounded-2xl border border-dashed border-slate-200 py-8 text-center">
+                    <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 py-8 text-center">
                         <CheckCircle className="mx-auto h-12 w-12 text-emerald-300" />
-                        <p className="mt-2 text-sm text-slate-500">لا توجد أيام غياب مسجلة</p>
+                        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">لا توجد أيام غياب مسجلة</p>
                     </div>
                 )}
 
@@ -744,13 +745,13 @@ function AbsenceItem({
         if (!absence.excuse) {
             if (absence.can_submit_excuse) {
                 return (
-                    <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">
+                    <span className="rounded-full bg-amber-100 dark:bg-amber-900 px-2 py-1 text-xs font-medium text-amber-700 dark:text-amber-400">
                         بانتظار العذر ({absence.days_remaining} يوم)
                     </span>
                 )
             }
             return (
-                <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-500">
+                <span className="rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-1 text-xs font-medium text-slate-500 dark:text-slate-400">
                     انتهت مدة التقديم
                 </span>
             )
@@ -758,35 +759,35 @@ function AbsenceItem({
 
         if (!absence.excuse.is_submitted) {
             return (
-                <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">
+                <span className="rounded-full bg-amber-100 dark:bg-amber-900 px-2 py-1 text-xs font-medium text-amber-700 dark:text-amber-400">
                     بانتظار العذر
                 </span>
             )
         }
 
         const statusStyles: Record<string, string> = {
-            pending: 'bg-yellow-100 text-yellow-700',
-            approved: 'bg-emerald-100 text-emerald-700',
-            rejected: 'bg-rose-100 text-rose-700',
+            pending: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-400',
+            approved: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-400',
+            rejected: 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400',
         }
 
         return (
-            <span className={`rounded-full px-2 py-1 text-xs font-medium ${statusStyles[absence.excuse.status] ?? 'bg-slate-100 text-slate-600'}`}>
+            <span className={`rounded-full px-2 py-1 text-xs font-medium ${statusStyles[absence.excuse.status] ?? 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400'}`}>
                 {absence.excuse.status_label}
             </span>
         )
     }
 
     return (
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
             <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-100">
-                        <AlertCircle className="h-5 w-5 text-rose-600" />
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-100 dark:bg-rose-950">
+                        <AlertCircle className="h-5 w-5 text-rose-600 dark:text-rose-400" />
                     </div>
                     <div>
-                        <p className="font-semibold text-slate-800">{absence.date_formatted}</p>
-                        <p className="text-xs text-slate-500">{absence.date_hijri || absence.date}</p>
+                        <p className="font-semibold text-slate-800 dark:text-slate-200">{absence.date_formatted}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{absence.date_hijri || absence.date}</p>
                     </div>
                 </div>
                 {getStatusBadge()}
@@ -794,13 +795,13 @@ function AbsenceItem({
 
             {/* Show excuse details if submitted */}
             {absence.excuse?.is_submitted && (
-                <div className="mt-3 rounded-lg bg-slate-50 p-3 text-sm">
-                    <p className="text-slate-600">{absence.excuse.excuse_text}</p>
+                <div className="mt-3 rounded-lg bg-slate-50 dark:bg-slate-700 p-3 text-sm">
+                    <p className="text-slate-600 dark:text-slate-400">{absence.excuse.excuse_text}</p>
                     {absence.excuse.has_file && (
                         <p className="mt-1 text-xs text-blue-600">📎 يوجد ملف مرفق</p>
                     )}
                     {absence.excuse.review_notes && (
-                        <p className="mt-2 text-xs text-slate-500">
+                        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                             <strong>ملاحظات المراجع:</strong> {absence.excuse.review_notes}
                         </p>
                     )}
@@ -897,16 +898,16 @@ function ExcuseFormModal({
             onClick={onClose}
         >
             <div
-                className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white shadow-2xl"
+                className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white dark:bg-slate-800 shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white px-5 py-4">
-                    <h3 className="text-lg font-bold text-slate-900">تقديم عذر غياب</h3>
+                <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-4">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">تقديم عذر غياب</h3>
                     <button
                         type="button"
                         onClick={onClose}
-                        className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 dark:text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300"
                     >
                         <X className="h-5 w-5" />
                     </button>
@@ -914,14 +915,14 @@ function ExcuseFormModal({
 
                 <form onSubmit={handleSubmit} className="p-5 space-y-4">
                     {/* Absence Info */}
-                    <div className="rounded-xl bg-slate-50 p-4">
-                        <p className="text-sm text-slate-500">تاريخ الغياب</p>
-                        <p className="font-semibold text-slate-800">{absence.date_formatted}</p>
+                    <div className="rounded-xl bg-slate-50 dark:bg-slate-700 p-4">
+                        <p className="text-sm text-slate-500 dark:text-slate-400">تاريخ الغياب</p>
+                        <p className="font-semibold text-slate-800 dark:text-slate-200">{absence.date_formatted}</p>
                         {absence.date_hijri && (
-                            <p className="text-xs text-slate-500">{absence.date_hijri}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">{absence.date_hijri}</p>
                         )}
                         {absence.days_remaining > 0 && (
-                            <p className="mt-1 text-xs text-amber-600">
+                            <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
                                 متبقي {absence.days_remaining} يوم لتقديم العذر
                             </p>
                         )}
@@ -929,14 +930,14 @@ function ExcuseFormModal({
 
                     {/* Parent Name (Optional) */}
                     <div>
-                        <label className="mb-1 block text-sm font-semibold text-slate-700">
-                            اسم ولي الأمر <span className="text-slate-400">(اختياري)</span>
+                        <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                            اسم ولي الأمر <span className="text-slate-400 dark:text-slate-500">(اختياري)</span>
                         </label>
                         <input
                             type="text"
                             value={guardianName}
                             onChange={(e) => setGuardianName(e.target.value)}
-                            className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                             placeholder="أدخل اسمك"
                             disabled={isSubmitting}
                         />
@@ -944,7 +945,7 @@ function ExcuseFormModal({
 
                     {/* Excuse Text */}
                     <div>
-                        <label className="mb-1 block text-sm font-semibold text-slate-700">
+                        <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">
                             سبب الغياب <span className="text-red-500">*</span>
                         </label>
                         <textarea
@@ -952,7 +953,7 @@ function ExcuseFormModal({
                             onChange={(e) => setExcuseText(e.target.value)}
                             rows={4}
                             className={`w-full rounded-xl border px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none ${
-                                errors.excuse_text ? 'border-red-300' : 'border-slate-200'
+                                errors.excuse_text ? 'border-red-300' : 'border-slate-200 dark:border-slate-700'
                             }`}
                             placeholder="اكتب سبب غياب الطالب بالتفصيل..."
                             disabled={isSubmitting}
@@ -964,21 +965,21 @@ function ExcuseFormModal({
 
                     {/* File Upload */}
                     <div>
-                        <label className="mb-1 block text-sm font-semibold text-slate-700">
+                        <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">
                             مرفق (صورة أو مستند) <span className="text-red-500">*</span>
                         </label>
-                        <div className="mb-2 rounded-lg bg-blue-50 border border-blue-200 p-2 text-xs text-blue-700">
+                        <div className="mb-2 rounded-lg bg-blue-50 border border-blue-200 p-2 text-xs text-blue-700 dark:bg-blue-900 dark:border-blue-800 dark:text-blue-400">
                             📎 يجب إرفاق صورة أو مستند يثبت سبب الغياب
                         </div>
 
                         {!file ? (
                             <label className={`flex flex-col items-center justify-center w-full h-28 border-2 border-dashed rounded-xl cursor-pointer transition ${
-                                errors.file ? 'border-red-300 bg-red-50' : 'border-slate-300 bg-slate-50 hover:bg-slate-100'
+                                errors.file ? 'border-red-300 bg-red-50' : 'border-slate-300 bg-slate-50 dark:border-slate-600 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600'
                             }`}>
                                 <div className="flex flex-col items-center justify-center py-4">
-                                    <Upload className="h-6 w-6 mb-1 text-slate-400" />
-                                    <p className="text-sm text-slate-500">اضغط لرفع ملف</p>
-                                    <p className="text-xs text-slate-400">JPG, PNG أو PDF (حد 5 ميجا)</p>
+                                    <Upload className="h-6 w-6 mb-1 text-slate-400 dark:text-slate-500" />
+                                    <p className="text-sm text-slate-500 dark:text-slate-400">اضغط لرفع ملف</p>
+                                    <p className="text-xs text-slate-400 dark:text-slate-500">JPG, PNG أو PDF (حد 5 ميجا)</p>
                                 </div>
                                 <input
                                     ref={fileInputRef}
@@ -990,18 +991,18 @@ function ExcuseFormModal({
                                 />
                             </label>
                         ) : (
-                            <div className="flex items-center justify-between rounded-xl bg-blue-50 border border-blue-200 p-3">
+                            <div className="flex items-center justify-between rounded-xl bg-blue-50 border border-blue-200 p-3 dark:bg-blue-900 dark:border-blue-800">
                                 <div className="flex items-center gap-2">
                                     <FileText className="h-5 w-5 text-blue-500" />
                                     <div>
-                                        <p className="text-sm font-medium text-slate-800 truncate max-w-[180px]">{file.name}</p>
-                                        <p className="text-xs text-slate-500">{(file.size / 1024).toFixed(1)} KB</p>
+                                        <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate max-w-[180px]">{file.name}</p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">{(file.size / 1024).toFixed(1)} KB</p>
                                     </div>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={removeFile}
-                                    className="p-1.5 text-red-500 hover:bg-red-100 rounded-lg transition"
+                                    className="p-1.5 text-red-500 hover:bg-red-100 dark:hover:bg-red-900 rounded-lg transition"
                                     disabled={isSubmitting}
                                 >
                                     <Trash2 className="h-4 w-4" />
@@ -1053,21 +1054,21 @@ function BottomSheet({
             onClick={onClose}
         >
             <div
-                className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl"
+                className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white dark:bg-slate-800 shadow-2xl sm:rounded-3xl"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Handle for mobile */}
                 <div className="flex justify-center py-3 sm:hidden">
-                    <div className="h-1 w-12 rounded-full bg-slate-300" />
+                    <div className="h-1 w-12 rounded-full bg-slate-300 dark:bg-slate-500" />
                 </div>
 
                 {/* Header */}
-                <div className="flex items-center justify-between border-b border-slate-100 px-5 pb-4 pt-2 sm:pt-4">
-                    <h3 className="text-lg font-bold text-slate-900">{title}</h3>
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 px-5 pb-4 pt-2 sm:pt-4">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{title}</h3>
                     <button
                         type="button"
                         onClick={onClose}
-                        className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 dark:text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300"
                     >
                         <X className="h-5 w-5" />
                     </button>
@@ -1085,10 +1086,10 @@ function BottomSheet({
 // ============ Status Badge ============
 function StatusBadge({ status }: { status: string }) {
     const styles: Record<string, string> = {
-        pending: 'bg-amber-100 text-amber-700',
-        approved: 'bg-emerald-100 text-emerald-700',
-        rejected: 'bg-rose-100 text-rose-700',
-        cancelled: 'bg-slate-100 text-slate-500',
+        pending: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-400',
+        approved: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-400',
+        rejected: 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400',
+        cancelled: 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400',
     }
 
     const labels: Record<string, string> = {
@@ -1099,7 +1100,7 @@ function StatusBadge({ status }: { status: string }) {
     }
 
     return (
-        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${styles[status] ?? 'bg-slate-100 text-slate-600'}`}>
+        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${styles[status] ?? 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400'}`}>
             {labels[status] ?? status}
         </span>
     )
@@ -1110,13 +1111,68 @@ function StatusBadge({ status }: { status: string }) {
 function LessonPlansSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
     const { currentNationalId } = useGuardianContext()
     const [selectedWeekId, setSelectedWeekId] = useState<number | undefined>()
+    const [autoSelected, setAutoSelected] = useState(false)
     const { data, isLoading } = useGuardianLessonPlansQuery(currentNationalId, selectedWeekId)
+
+    // اختيار الأسبوع التلقائي: الحالي أو القادم إذا انتهى الحالي
+    useEffect(() => {
+        if (!data?.weeks?.length || autoSelected) return
+        const today = new Date().toISOString().slice(0, 10)
+        const currentWeek = data.weeks.find((w) => w.is_current)
+        if (currentWeek && currentWeek.end_date >= today) {
+            setSelectedWeekId(currentWeek.id)
+        } else {
+            // الأسبوع الحالي انتهى، ابحث عن القادم
+            const nextWeek = data.weeks
+                .filter((w) => w.start_date > today)
+                .sort((a, b) => a.week_number - b.week_number)[0]
+            setSelectedWeekId(nextWeek?.id ?? currentWeek?.id)
+        }
+        setAutoSelected(true)
+    }, [data?.weeks, autoSelected])
 
     if (!isOpen) return null
 
     const plans = data?.plans ?? []
     const weeks = data?.weeks ?? []
     const currentWeek = data?.week
+
+    const handlePrintPdf = () => {
+        if (!plans.length || !data) return
+        const studentName = data.student?.name ?? ''
+        const studentGrade = data.student?.grade ?? ''
+        const weekNum = currentWeek?.week_number ?? ''
+        const dateRange = currentWeek?.date_range ?? ''
+
+        let rows = ''
+        plans.forEach((plan, idx) => {
+            const sessions = plan.sessions ?? []
+            if (sessions.length === 0) {
+                rows += `<tr><td>${idx + 1}</td><td>${plan.subject_name}</td><td>-</td><td>-</td><td>-</td></tr>`
+                return
+            }
+            sessions.forEach((s, i) => {
+                rows += '<tr>'
+                if (i === 0) {
+                    rows += `<td rowspan="${sessions.length}">${idx + 1}</td>`
+                    rows += `<td rowspan="${sessions.length}">${plan.subject_name}</td>`
+                }
+                rows += `<td>${s.session_number}</td>`
+                rows += `<td style="text-align:right;padding-right:6px">${s.topic || '-'}</td>`
+                rows += `<td style="text-align:right;padding-right:6px">${s.homework || '-'}</td>`
+                rows += '</tr>'
+            })
+        })
+
+        const html = `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>الخطة الأسبوعية</title><style>@page{margin:8mm;size:A4}*{font-family:Arial,Tahoma,sans-serif;direction:rtl}body{font-size:9pt;line-height:1.3;margin:0;padding:0}.header{text-align:center;margin-bottom:8px;border-bottom:1px solid #333;padding-bottom:6px}.header h3{font-size:11pt;margin:2px 0}.header p{font-size:9pt;margin:1px 0;color:#333}table{width:100%;border-collapse:collapse;margin-top:6px}th,td{border:1px solid #333;padding:3px 4px;text-align:center;vertical-align:middle;font-size:8pt}th{background:#f0f0f0;font-weight:bold}</style></head><body><div class="header"><h3>${studentName} - ${studentGrade}</h3><p>الخطة الأسبوعية - الأسبوع ${weekNum} (${dateRange})</p></div><table><thead><tr><th style="width:20px">م</th><th style="width:70px">المادة</th><th style="width:25px">الحصة</th><th>الموضوع</th><th style="width:80px">الواجب</th></tr></thead><tbody>${rows}</tbody></table></body></html>`
+
+        const w = window.open('', '_blank')
+        if (w) {
+            w.document.write(html)
+            w.document.close()
+            setTimeout(() => w.print(), 300)
+        }
+    }
 
     return (
         <BottomSheet title="الخطط الأسبوعية" onClose={onClose}>
@@ -1133,8 +1189,8 @@ function LessonPlansSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                                     (selectedWeekId ?? currentWeek?.id) === week.id
                                         ? 'bg-cyan-600 text-white'
                                         : week.is_current
-                                          ? 'bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200'
-                                          : 'bg-white text-slate-600 ring-1 ring-slate-200'
+                                          ? 'bg-cyan-50 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-400 ring-1 ring-cyan-200 dark:ring-cyan-800'
+                                          : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 ring-1 ring-slate-200 dark:ring-slate-700'
                                 }`}
                             >
                                 أسبوع {week.week_number}
@@ -1143,11 +1199,23 @@ function LessonPlansSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                     </div>
                 )}
 
-                {/* Student Info */}
+                {/* Student Info + PDF Button */}
                 {data?.student && (
-                    <div className="rounded-xl bg-cyan-50 p-3 text-center">
-                        <p className="text-sm font-medium text-cyan-800">{data.student.name}</p>
-                        <p className="text-xs text-cyan-600">{data.student.grade}</p>
+                    <div className="flex items-center justify-between rounded-xl bg-cyan-50 dark:bg-cyan-950 p-3">
+                        <div className="text-center flex-1">
+                            <p className="text-sm font-medium text-cyan-800 dark:text-cyan-300">{data.student.name}</p>
+                            <p className="text-xs text-cyan-600 dark:text-cyan-400">{data.student.grade}</p>
+                        </div>
+                        {plans.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={handlePrintPdf}
+                                className="flex items-center gap-1.5 rounded-lg bg-cyan-600 px-3 py-2 text-[11px] font-medium text-white hover:bg-cyan-700 transition shrink-0"
+                            >
+                                <Download className="h-3.5 w-3.5" />
+                                PDF
+                            </button>
+                        )}
                     </div>
                 )}
 
@@ -1157,43 +1225,43 @@ function LessonPlansSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                     </div>
                 ) : plans.length === 0 ? (
                     <div className="py-8 text-center">
-                        <BookOpenCheck className="mx-auto h-10 w-10 text-slate-300" />
-                        <p className="mt-3 text-sm text-slate-500">لا توجد خطط معتمدة لهذا الأسبوع</p>
+                        <BookOpenCheck className="mx-auto h-10 w-10 text-slate-300 dark:text-slate-500" />
+                        <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">لا توجد خطط معتمدة لهذا الأسبوع</p>
                     </div>
                 ) : (
                     <div className="space-y-3">
                         {plans.map((plan) => (
-                            <div key={plan.id} className="rounded-xl border border-slate-200 bg-white">
+                            <div key={plan.id} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                                 {/* Subject Header */}
                                 <div className="flex items-center gap-2 border-b px-4 py-3">
-                                    <BookOpenCheck className="h-4 w-4 text-cyan-600" />
-                                    <span className="text-sm font-bold text-slate-900">{plan.subject_name}</span>
+                                    <BookOpenCheck className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+                                    <span className="text-sm font-bold text-slate-900 dark:text-slate-100">{plan.subject_name}</span>
                                     <span className="text-[10px] text-muted">({plan.teacher_name})</span>
                                 </div>
                                 {/* Sessions */}
-                                <div className="divide-y divide-slate-100">
+                                <div className="divide-y divide-slate-100 dark:divide-slate-700">
                                     {plan.sessions.map((session) => (
                                         <div key={session.session_number} className="px-4 py-2.5">
                                             <div className="flex items-center gap-2">
-                                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-cyan-100 text-[10px] font-bold text-cyan-700">
+                                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-cyan-100 dark:bg-cyan-900 text-[10px] font-bold text-cyan-700 dark:text-cyan-400">
                                                     {session.session_number}
                                                 </span>
-                                                <span className="text-xs font-medium text-slate-800">
+                                                <span className="text-xs font-medium text-slate-800 dark:text-slate-200">
                                                     {session.topic}
                                                 </span>
                                             </div>
                                             {session.lesson_title && (
-                                                <p className="mt-1 mr-7 text-[11px] text-slate-600">
+                                                <p className="mt-1 mr-7 text-[11px] text-slate-600 dark:text-slate-400">
                                                     {session.lesson_title}
                                                 </p>
                                             )}
                                             {session.objectives && (
-                                                <p className="mt-0.5 mr-7 text-[11px] text-slate-500">
+                                                <p className="mt-0.5 mr-7 text-[11px] text-slate-500 dark:text-slate-400">
                                                     <span className="font-medium">الأهداف:</span> {session.objectives}
                                                 </p>
                                             )}
                                             {session.homework && (
-                                                <p className="mt-0.5 mr-7 text-[11px] text-cyan-700 font-medium">
+                                                <p className="mt-0.5 mr-7 text-[11px] text-cyan-700 dark:text-cyan-400 font-medium">
                                                     الواجب: {session.homework}
                                                 </p>
                                             )}

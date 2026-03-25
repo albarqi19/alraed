@@ -162,6 +162,11 @@ export default function TeacherChatPage() {
       {activeConversation ? (
         <>
           {/* الرسائل - هذا فقط يتمرر */}
+          {activeConversation.context_type !== 'staff' && (
+            <div className="shrink-0 text-center py-1.5 bg-amber-50/80 dark:bg-amber-900/10">
+              <p className="text-[10px] text-amber-600/70 dark:text-amber-400/50">🔒 هذه المحادثة تخضع لإشراف إدارة المدرسة</p>
+            </div>
+          )}
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
             {sortedMessages.map((msg) => {
               const isOwn = msg.sender_type === 'user' && msg.sender_id === user?.id
