@@ -1118,15 +1118,14 @@ function LessonPlansSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
     useEffect(() => {
         if (!data?.weeks?.length || autoSelected) return
         const today = new Date().toISOString().slice(0, 10)
-        const currentWeek = data.weeks.find((w) => w.is_current)
-        if (currentWeek && currentWeek.end_date >= today) {
-            setSelectedWeekId(currentWeek.id)
+        const current = data.weeks.find((w) => w.is_current)
+        if (current && current.end_date >= today) {
+            setSelectedWeekId(current.id)
         } else {
-            // الأسبوع الحالي انتهى، ابحث عن القادم
-            const nextWeek = data.weeks
+            const next = data.weeks
                 .filter((w) => w.start_date > today)
                 .sort((a, b) => a.week_number - b.week_number)[0]
-            setSelectedWeekId(nextWeek?.id ?? currentWeek?.id)
+            setSelectedWeekId(next?.id ?? current?.id ?? data.weeks[data.weeks.length - 1]?.id)
         }
         setAutoSelected(true)
     }, [data?.weeks, autoSelected])
@@ -1137,83 +1136,91 @@ function LessonPlansSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
     const weeks = data?.weeks ?? []
     const currentWeek = data?.week
 
-    const handlePrintPdf = () => {
+    const handleDownloadPdf = async () => {
         if (!plans.length || !data) return
-        const studentName = data.student?.name ?? ''
-        const studentGrade = data.student?.grade ?? ''
         const weekNum = currentWeek?.week_number ?? ''
         const dateRange = currentWeek?.date_range ?? ''
+        const grade = data.student?.grade ?? ''
 
-        let rows = ''
-        plans.forEach((plan, idx) => {
-            const sessions = plan.sessions ?? []
-            if (sessions.length === 0) {
-                rows += `<tr><td>${idx + 1}</td><td>${plan.subject_name}</td><td>-</td><td>-</td><td>-</td></tr>`
-                return
-            }
-            sessions.forEach((s, i) => {
-                rows += '<tr>'
-                if (i === 0) {
-                    rows += `<td rowspan="${sessions.length}">${idx + 1}</td>`
-                    rows += `<td rowspan="${sessions.length}">${plan.subject_name}</td>`
-                }
-                rows += `<td>${s.session_number}</td>`
-                rows += `<td style="text-align:right;padding-right:6px">${s.topic || '-'}</td>`
-                rows += `<td style="text-align:right;padding-right:6px">${s.homework || '-'}</td>`
-                rows += '</tr>'
-            })
-        })
+        // بناء HTML مؤقت لتحويله إلى PDF
+        const container = document.createElement('div')
+        container.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;padding:20px;background:#fff;font-family:Arial,Tahoma,sans-serif;direction:rtl;'
+        container.innerHTML = `
+            <div style="text-align:center;border-bottom:1px solid #333;padding-bottom:8px;margin-bottom:10px">
+                <div style="font-size:13pt;font-weight:bold;margin-bottom:2px">الخطة الأسبوعية - الأسبوع ${weekNum}</div>
+                <div style="font-size:9pt;color:#333">${dateRange} | ${grade}</div>
+            </div>
+            <table style="width:100%;border-collapse:collapse;font-size:8pt">
+                <thead>
+                    <tr>
+                        <th style="border:1px solid #333;padding:4px;background:#f0f0f0;width:20px">م</th>
+                        <th style="border:1px solid #333;padding:4px;background:#f0f0f0;width:80px">المادة</th>
+                        <th style="border:1px solid #333;padding:4px;background:#f0f0f0;width:25px">الحصة</th>
+                        <th style="border:1px solid #333;padding:4px;background:#f0f0f0">الموضوع</th>
+                        <th style="border:1px solid #333;padding:4px;background:#f0f0f0;width:90px">الواجب</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${plans.map((plan, idx) => {
+                        const sessions = plan.sessions ?? []
+                        if (!sessions.length) return `<tr><td style="border:1px solid #333;padding:3px">${idx+1}</td><td style="border:1px solid #333;padding:3px">${plan.subject_name}</td><td style="border:1px solid #333;padding:3px">-</td><td style="border:1px solid #333;padding:3px">-</td><td style="border:1px solid #333;padding:3px">-</td></tr>`
+                        return sessions.map((s, i) =>
+                            `<tr>${i === 0 ? `<td style="border:1px solid #333;padding:3px;vertical-align:middle" rowspan="${sessions.length}">${idx+1}</td><td style="border:1px solid #333;padding:3px;vertical-align:middle" rowspan="${sessions.length}">${plan.subject_name}</td>` : ''}<td style="border:1px solid #333;padding:3px;text-align:center">${s.session_number}</td><td style="border:1px solid #333;padding:3px;text-align:right">${s.topic || '-'}</td><td style="border:1px solid #333;padding:3px;text-align:right">${s.homework || '-'}</td></tr>`
+                        ).join('')
+                    }).join('')}
+                </tbody>
+            </table>`
+        document.body.appendChild(container)
 
-        const html = `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>الخطة الأسبوعية</title><style>@page{margin:8mm;size:A4}*{font-family:Arial,Tahoma,sans-serif;direction:rtl}body{font-size:9pt;line-height:1.3;margin:0;padding:0}.header{text-align:center;margin-bottom:8px;border-bottom:1px solid #333;padding-bottom:6px}.header h3{font-size:11pt;margin:2px 0}.header p{font-size:9pt;margin:1px 0;color:#333}table{width:100%;border-collapse:collapse;margin-top:6px}th,td{border:1px solid #333;padding:3px 4px;text-align:center;vertical-align:middle;font-size:8pt}th{background:#f0f0f0;font-weight:bold}</style></head><body><div class="header"><h3>${studentName} - ${studentGrade}</h3><p>الخطة الأسبوعية - الأسبوع ${weekNum} (${dateRange})</p></div><table><thead><tr><th style="width:20px">م</th><th style="width:70px">المادة</th><th style="width:25px">الحصة</th><th>الموضوع</th><th style="width:80px">الواجب</th></tr></thead><tbody>${rows}</tbody></table></body></html>`
-
-        const w = window.open('', '_blank')
-        if (w) {
-            w.document.write(html)
-            w.document.close()
-            setTimeout(() => w.print(), 300)
+        try {
+            const { default: html2canvas } = await import('html2canvas')
+            const { jsPDF } = await import('jspdf')
+            const canvas = await html2canvas(container, { scale: 2, useCORS: true })
+            const imgData = canvas.toDataURL('image/jpeg', 0.95)
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+            const pdfW = pdf.internal.pageSize.getWidth()
+            const pdfH = (canvas.height * pdfW) / canvas.width
+            pdf.addImage(imgData, 'JPEG', 0, 0, pdfW, pdfH)
+            pdf.save(`الخطة-الأسبوعية-أسبوع-${weekNum}.pdf`)
+        } catch {
+            // fallback: طباعة
+            window.print()
+        } finally {
+            document.body.removeChild(container)
         }
     }
 
     return (
         <BottomSheet title="الخطط الأسبوعية" onClose={onClose}>
             <div className="space-y-4">
-                {/* Week Selector */}
+                {/* Week Selector + PDF */}
                 {weeks.length > 0 && (
-                    <div className="flex gap-2 overflow-x-auto pb-1">
-                        {weeks.map((week) => (
-                            <button
-                                key={week.id}
-                                type="button"
-                                onClick={() => setSelectedWeekId(week.id)}
-                                className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                                    (selectedWeekId ?? currentWeek?.id) === week.id
-                                        ? 'bg-cyan-600 text-white'
-                                        : week.is_current
-                                          ? 'bg-cyan-50 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-400 ring-1 ring-cyan-200 dark:ring-cyan-800'
-                                          : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 ring-1 ring-slate-200 dark:ring-slate-700'
-                                }`}
-                            >
-                                أسبوع {week.week_number}
-                            </button>
-                        ))}
-                    </div>
-                )}
-
-                {/* Student Info + PDF Button */}
-                {data?.student && (
-                    <div className="flex items-center justify-between rounded-xl bg-cyan-50 dark:bg-cyan-950 p-3">
-                        <div className="text-center flex-1">
-                            <p className="text-sm font-medium text-cyan-800 dark:text-cyan-300">{data.student.name}</p>
-                            <p className="text-xs text-cyan-600 dark:text-cyan-400">{data.student.grade}</p>
+                    <div className="flex items-center gap-2">
+                        <div className="flex gap-2 overflow-x-auto pb-1 flex-1">
+                            {weeks.map((week) => (
+                                <button
+                                    key={week.id}
+                                    type="button"
+                                    onClick={() => setSelectedWeekId(week.id)}
+                                    className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                                        (selectedWeekId ?? currentWeek?.id) === week.id
+                                            ? 'bg-cyan-600 text-white'
+                                            : week.is_current
+                                              ? 'bg-cyan-50 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-400 ring-1 ring-cyan-200 dark:ring-cyan-800'
+                                              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 ring-1 ring-slate-200 dark:ring-slate-700'
+                                    }`}
+                                >
+                                    {week.week_number}
+                                </button>
+                            ))}
                         </div>
                         {plans.length > 0 && (
                             <button
                                 type="button"
-                                onClick={handlePrintPdf}
-                                className="flex items-center gap-1.5 rounded-lg bg-cyan-600 px-3 py-2 text-[11px] font-medium text-white hover:bg-cyan-700 transition shrink-0"
+                                onClick={handleDownloadPdf}
+                                className="flex items-center gap-1 shrink-0 rounded-lg bg-cyan-600 px-2.5 py-1.5 text-[11px] font-medium text-white hover:bg-cyan-700 transition"
                             >
                                 <Download className="h-3.5 w-3.5" />
-                                PDF
                             </button>
                         )}
                     </div>
