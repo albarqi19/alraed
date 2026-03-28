@@ -8,6 +8,7 @@ import { MoodTrackerSheet } from '../mood/components/mood-tracker-sheet'
 import { useTodayMoodQuery, useSubmitMoodMutation } from '../mood/hooks'
 import type { MoodType } from '../mood/types'
 import { useTeacherDarkMode } from '../hooks/use-teacher-dark-mode'
+import { AndroidAppBanner } from '../components/android-app-banner'
 
 const navItems = [
   { to: '/teacher/dashboard', label: 'الرئيسية', exact: true, icon: 'bi-house' },
@@ -192,6 +193,9 @@ export function TeacherShell() {
         onSelect={handleMoodSelect}
         onSkip={handleMoodSkip}
       />
+
+      {/* بانر تحميل تطبيق أندرويد */}
+      <AndroidAppBanner />
     </div>
     </div>
   )
