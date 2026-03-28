@@ -1161,13 +1161,6 @@ export function AdminTeacherAttendancePage() {
               </button>
               <button
                 type="button"
-                onClick={() => setIsRemoteDayModalOpen(true)}
-                className="rounded-xl bg-purple-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-purple-700"
-              >
-                <i className="bi bi-laptop ml-1" /> تحويل الدوام
-              </button>
-              <button
-                type="button"
                 onClick={handleBulkInquiryOpen}
                 className="button-secondary text-sm shadow-sm"
                 disabled={delayAnalytics.delayedCount === 0}

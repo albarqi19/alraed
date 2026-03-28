@@ -208,7 +208,7 @@ function TeacherFormDialog({ open, onClose, onSubmit, isSubmitting, teacher }: T
 
           <div className="grid gap-2 text-right">
             <label htmlFor="teacher-phone" className="text-sm font-medium text-slate-800">
-              رقم الجوال (اختياري)
+              رقم الجوال
             </label>
             <input
               id="teacher-phone"

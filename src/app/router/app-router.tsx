@@ -117,7 +117,7 @@ import {
   GuidanceReferralsPage,
   GuidanceReferralDetailsPage,
 } from '@/modules/guidance/pages'
-import AdminFCMTestPage from '@/modules/admin/pages/admin-fcm-test-page'
+import AdminAppNotificationsPage from '@/modules/admin/pages/admin-app-notifications-page'
 import { AdminScheduleSimulatorPage } from '@/modules/admin/pages/admin-schedule-simulator-page'
 import { AdminEvaluationSettingsPage } from '@/modules/admin/pages/admin-evaluation-settings-page'
 import { AdminDelayActionsPage } from '@/modules/admin/delay-actions'
@@ -295,7 +295,7 @@ const appRoutes = [
           { path: 'referrals/behavioral', element: <AdminReferralsPage /> },
           { path: 'referrals/:id', element: <AdminReferralDetailPage /> },
           { path: 'parent-replies', element: <AdminParentRepliesPage /> },
-          { path: 'fcm-test', element: <AdminFCMTestPage /> },
+          { path: 'app-notifications', element: <AdminAppNotificationsPage /> },
           { path: 'schedule-simulator', element: <AdminScheduleSimulatorPage /> },
           { path: 'evaluation-settings', element: <AdminEvaluationSettingsPage /> },
           { path: 'notebook', element: <NotebookWorkspacePage /> },

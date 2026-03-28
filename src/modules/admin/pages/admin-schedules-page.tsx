@@ -103,6 +103,7 @@ interface QuickAddPrayerFormValue {
 interface QuickAddScheduleFormValues {
   scheduleName: string
   semesterType: ScheduleType
+  targetLevel: string
   periodDuration: string
   firstPeriodStart: string
   numberOfPeriods: string
@@ -141,6 +142,7 @@ interface QuickNormalizedPrayer {
 interface QuickNormalizedValues {
   scheduleName: string
   semesterType: ScheduleType
+  targetLevel: string
   periodDuration: number
   firstPeriodStart: string
   numberOfPeriods: number
@@ -167,6 +169,7 @@ interface QuickScheduleGenerationResult {
 interface QuickPreviewData {
   scheduleName: string
   semesterType: ScheduleType
+  targetLevel: string
   entries: QuickScheduleEntry[]
   periodsPayload: ScheduleFormSubmitPayload['periods']
   totalDuration: number
@@ -269,6 +272,7 @@ function createInitialQuickFormValues(): QuickAddScheduleFormValues {
   return {
     scheduleName: '',
     semesterType: 'winter',
+    targetLevel: '',
     periodDuration: '45',
     firstPeriodStart: '07:30',
     numberOfPeriods: '7',
@@ -486,6 +490,7 @@ function normalizeQuickFormValues(
     data: {
       scheduleName,
       semesterType,
+      targetLevel: values.targetLevel.trim(),
       periodDuration,
       firstPeriodStart,
       numberOfPeriods,
@@ -1584,6 +1589,7 @@ export function AdminSchedulesPage() {
     setQuickPreviewData({
       scheduleName: data.scheduleName,
       semesterType: data.semesterType,
+      targetLevel: data.targetLevel,
       entries: generated.entries,
       periodsPayload: generated.payload,
       totalDuration: generated.totalDuration,
@@ -1599,7 +1605,7 @@ export function AdminSchedulesPage() {
     const payload: ScheduleFormSubmitPayload = {
       name: quickPreviewData.scheduleName,
       type: quickPreviewData.semesterType,
-      target_level: null,
+      target_level: quickPreviewData.targetLevel || null,
       description: null,
       periods: quickPreviewData.periodsPayload,
     }
@@ -1608,6 +1614,7 @@ export function AdminSchedulesPage() {
       onSuccess: (createdSchedule) => {
         setSelectedScheduleId(createdSchedule.id)
         setIsQuickPreviewOpen(false)
+        setIsQuickAddOpen(false)
         setQuickPreviewData(null)
         setQuickSuccessMessage('تم إنشاء الجدول بنجاح.')
         resetQuickForm()
@@ -1745,21 +1752,14 @@ export function AdminSchedulesPage() {
               إدارة الجداول الزمنية للحصص الدراسية، إنشاء توقيتات جديدة، وتفعيل الجدول المعتمد للفصول.
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setIsQuickAddOpen(true)}
-              className="button-secondary"
-              aria-expanded={isQuickAddOpen}
-              aria-controls="quick-add-section"
-              disabled={createScheduleMutation.isPending}
-            >
-              <i className="bi bi-lightning-charge-fill" /> الإضافة السريعة
-            </button>
-            <button type="button" onClick={handleCreate} className="button-primary" disabled={isMutating}>
-              <i className="bi bi-plus-lg" /> إنشاء جدول يدوي
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setIsQuickAddOpen(true)}
+            className="button-primary"
+            disabled={createScheduleMutation.isPending}
+          >
+            <i className="bi bi-plus-lg" /> إضافة توقيت
+          </button>
         </div>
         {schedulesQuery.isError ? (
           <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4 text-sm text-rose-700">
@@ -1775,45 +1775,41 @@ export function AdminSchedulesPage() {
         ) : null}
       </header>
 
-      <section
-        id="quick-add-section"
-        className="rounded-3xl border border-slate-100 bg-white/80 p-6 shadow-sm space-y-6"
-      >
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div className="space-y-1 text-right">
-            <h2 className="text-xl font-semibold text-slate-900">الإضافة السريعة</h2>
-            <p className="text-sm text-muted">
-              كوّن جدولًا زمنيًا كاملًا خلال دقائق عبر تعبئة الحقول الأساسية وإضافة الفسح وأوقات الصلاة حسب الحاجة.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setIsQuickAddOpen((prev) => !prev)}
-            className="button-secondary"
-            aria-expanded={isQuickAddOpen}
-            aria-controls="quick-add-form"
-            disabled={createScheduleMutation.isPending}
-          >
-            {isQuickAddOpen ? 'إخفاء النموذج' : 'عرض النموذج'}
-          </button>
-        </header>
+      {isQuickAddOpen ? (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-12 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget && !createScheduleMutation.isPending) { setIsQuickAddOpen(false); resetQuickForm() } }}>
+          <div className="relative w-full max-w-3xl rounded-3xl border border-slate-100 bg-white p-6 shadow-2xl space-y-6">
+            <header className="flex flex-wrap items-center justify-between gap-3">
+              <div className="space-y-1 text-right">
+                <h2 className="text-xl font-semibold text-slate-900">إضافة توقيت</h2>
+                <p className="text-sm text-muted">
+                  كوّن جدولًا زمنيًا كاملًا خلال دقائق عبر تعبئة الحقول الأساسية وإضافة الفسح وأوقات الصلاة حسب الحاجة.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setIsQuickAddOpen(false); resetQuickForm() }}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                disabled={createScheduleMutation.isPending}
+              >
+                <i className="bi bi-x-lg" />
+              </button>
+            </header>
 
-        {quickSuccessMessage ? (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-sm font-semibold text-emerald-700">
-            {quickSuccessMessage}
-          </div>
-        ) : null}
+            {quickSuccessMessage ? (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-sm font-semibold text-emerald-700">
+                {quickSuccessMessage}
+              </div>
+            ) : null}
 
-        {isQuickAddOpen ? (
-          <form
-            id="quick-add-form"
-            className="space-y-6"
-            onSubmit={(event) => {
-              event.preventDefault()
-              handleQuickPreview()
-            }}
-            noValidate
-          >
+            <form
+              id="quick-add-form"
+              className="space-y-6"
+              onSubmit={(event) => {
+                event.preventDefault()
+                handleQuickPreview()
+              }}
+              noValidate
+            >
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               <div className="grid gap-2 text-right">
                 <label htmlFor="quick-schedule-name" className="text-sm font-medium text-slate-800">
@@ -1865,6 +1861,22 @@ export function AdminSchedulesPage() {
                   <span className="text-xs font-medium text-rose-600">{quickFormErrors.semesterType}</span>
                 ) : null}
                 <p className="text-xs text-muted">اختر التوقيت المناسب للخطة (شتوي أو صيفي).</p>
+              </div>
+
+              <div className="grid gap-2 text-right">
+                <label htmlFor="quick-target-level" className="text-sm font-medium text-slate-800">
+                  المرحلة الدراسية <span className="text-xs text-muted font-normal">(اختياري)</span>
+                </label>
+                <input
+                  id="quick-target-level"
+                  type="text"
+                  value={quickFormValues.targetLevel}
+                  onChange={(event) => setQuickFormValues((prev) => ({ ...prev, targetLevel: event.target.value }))}
+                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                  placeholder="مثال: العليا أو الدنيا"
+                  disabled={createScheduleMutation.isPending}
+                />
+                <p className="text-xs text-muted">حدد المرحلة إذا كان التوقيت يخص مرحلة معينة.</p>
               </div>
 
               <div className="grid gap-2 text-right">
@@ -2157,13 +2169,10 @@ export function AdminSchedulesPage() {
                 معاينة الجدول
               </button>
             </div>
-          </form>
-        ) : (
-          <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/70 px-4 py-6 text-sm text-muted">
-            فعّل الإضافة السريعة لملء جدول كامل اعتمادًا على عدد الحصص والفسح وأوقات الصلاة التي تختارها.
+            </form>
           </div>
-        )}
-      </section>
+        </div>
+      ) : null}
 
       <section className="glass-card space-y-6">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

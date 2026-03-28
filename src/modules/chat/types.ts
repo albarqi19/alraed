@@ -36,6 +36,7 @@ export interface Conversation {
     grade: string
     class_name: string
   }
+  participant_title?: string | null
 }
 
 // ─── Message ────────────────────────────────────

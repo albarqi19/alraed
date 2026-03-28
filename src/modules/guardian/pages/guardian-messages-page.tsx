@@ -13,6 +13,7 @@ import {
     Plus,
     Send,
     MessageCircle,
+    Search,
 } from 'lucide-react'
 import { useGuardianContext } from '../context/guardian-context'
 import { useGuardianMessagesQuery } from '../hooks'
@@ -35,48 +36,70 @@ type MessageFilter = 'school' | 'teacher' | 'absence' | 'late'
 export function GuardianMessagesPage() {
     const { currentNationalId, guardianSettings } = useGuardianContext()
     const [mainTab, setMainTab] = useState<MainTab>('notifications')
+    const [topOffset, setTopOffset] = useState(58)
+    const [chatOpen, setChatOpen] = useState(false)
+
+    // قياس ارتفاع الهيدر العلوي الفعلي
+    useEffect(() => {
+        const header = document.querySelector('header.sticky')
+        if (header) {
+            const updateHeight = () => setTopOffset(header.getBoundingClientRect().height)
+            updateHeight()
+            const observer = new ResizeObserver(updateHeight)
+            observer.observe(header)
+            return () => observer.disconnect()
+        }
+    }, [])
+
+    // منع scroll الصفحة الأم
+    useEffect(() => {
+        const main = document.querySelector('main')
+        if (main) {
+            main.style.overflow = 'hidden'
+            return () => { main.style.overflow = '' }
+        }
+    }, [])
 
     return (
-        <div className="space-y-4">
-            {/* Header */}
-            <div className="text-center">
-                <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">التواصل</h2>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">الإشعارات والمحادثات</p>
-            </div>
+        <div className="fixed inset-x-0 bottom-[56px] z-30 flex flex-col bg-slate-50 dark:bg-slate-900" style={{ top: topOffset }}>
+            {/* Tabs ثابتة - تختفي عند فتح محادثة */}
+            {!chatOpen && (
+                <div className="shrink-0 px-4 pt-3 pb-2 bg-slate-50 dark:bg-slate-900">
+                    <div className="flex gap-2 bg-slate-100 dark:bg-slate-700 rounded-2xl p-1">
+                        <button
+                            onClick={() => setMainTab('notifications')}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition ${
+                                mainTab === 'notifications' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400'
+                            }`}
+                        >
+                            <MessageSquare className="h-4 w-4" />
+                            الإشعارات
+                        </button>
+                        <button
+                            onClick={() => setMainTab('chat')}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition ${
+                                mainTab === 'chat' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400'
+                            }`}
+                        >
+                            <MessageCircle className="h-4 w-4" />
+                            المحادثات
+                        </button>
+                    </div>
+                </div>
+            )}
 
-            {/* Main Tabs */}
-            <div className="flex gap-2 bg-slate-100 dark:bg-slate-700 rounded-2xl p-1">
-                <button
-                    onClick={() => setMainTab('notifications')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition ${
-                        mainTab === 'notifications' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400'
-                    }`}
-                >
-                    <MessageSquare className="h-4 w-4" />
-                    الإشعارات
-                </button>
-                <button
-                    onClick={() => setMainTab('chat')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition ${
-                        mainTab === 'chat' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400'
-                    }`}
-                >
-                    <MessageCircle className="h-4 w-4" />
-                    المحادثات
-                </button>
-            </div>
-
+            {/* المحتوى يتمرر */}
             {mainTab === 'notifications' ? (
                 <NotificationsTab nationalId={currentNationalId} guardianSettings={guardianSettings} />
             ) : (
-                <ChatTab />
+                <ChatTab onChatOpenChange={setChatOpen} />
             )}
         </div>
     )
 }
 
 // ============================================================
-// TAB 1: الإشعارات (الرسائل القديمة)
+// TAB 1: الإشعارات
 // ============================================================
 function NotificationsTab({ nationalId, guardianSettings }: { nationalId: string | null; guardianSettings: any }) {
     const messagesQuery = useGuardianMessagesQuery(nationalId)
@@ -99,53 +122,57 @@ function NotificationsTab({ nationalId, guardianSettings }: { nationalId: string
     }), [messages])
 
     return (
-        <>
-            <div className="flex gap-2 overflow-x-auto pb-2">
-                <FilterButton active={activeFilter === 'school'} onClick={() => setActiveFilter('school')} label="المدرسة" icon={<School className="h-4 w-4" />} count={messageCounts.school} />
-                <FilterButton active={activeFilter === 'teacher'} onClick={() => setActiveFilter('teacher')} label="المعلمين" icon={<User className="h-4 w-4" />} count={messageCounts.teacher} />
-                <FilterButton active={activeFilter === 'absence'} onClick={() => setActiveFilter('absence')} label="الغياب" icon={<AlertTriangle className="h-4 w-4" />} count={messageCounts.absence} />
-                <FilterButton active={activeFilter === 'late'} onClick={() => setActiveFilter('late')} label="التأخر" icon={<Clock className="h-4 w-4" />} count={messageCounts.late} />
+        <div className="flex-1 overflow-y-auto">
+            <div className="px-4 space-y-3 pb-4">
+                {/* فلاتر */}
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                    <FilterButton active={activeFilter === 'school'} onClick={() => setActiveFilter('school')} label="المدرسة" icon={<School className="h-4 w-4" />} count={messageCounts.school} />
+                    <FilterButton active={activeFilter === 'teacher'} onClick={() => setActiveFilter('teacher')} label="المعلمين" icon={<User className="h-4 w-4" />} count={messageCounts.teacher} />
+                    <FilterButton active={activeFilter === 'absence'} onClick={() => setActiveFilter('absence')} label="الغياب" icon={<AlertTriangle className="h-4 w-4" />} count={messageCounts.absence} />
+                    <FilterButton active={activeFilter === 'late'} onClick={() => setActiveFilter('late')} label="التأخر" icon={<Clock className="h-4 w-4" />} count={messageCounts.late} />
+                </div>
+
+                {isLoading && (
+                    <div className="flex items-center justify-center py-12">
+                        <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+                        <span className="mr-2 text-sm text-slate-500 dark:text-slate-400">جاري تحميل الرسائل...</span>
+                    </div>
+                )}
+
+                {!isLoading && (
+                    <div className="space-y-3">
+                        {filteredMessages.length === 0 ? (
+                            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 p-8 text-center">
+                                <MessageSquare className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-500" />
+                                <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">{messages.length === 0 ? 'لا توجد رسائل' : 'لا توجد رسائل في هذا التصنيف'}</p>
+                            </div>
+                        ) : filteredMessages.map((message) => (
+                            <MessageCard key={message.id} message={message} isExpanded={expandedMessage === message.id} onToggle={() => setExpandedMessage(expandedMessage === message.id ? null : message.id)} />
+                        ))}
+                    </div>
+                )}
+
+                {guardianSettings?.school_phone && (
+                    <div className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
+                        <a href={`tel:${guardianSettings.school_phone}`} className="flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-950 py-3 text-sm font-semibold text-emerald-700 dark:text-emerald-300 transition hover:bg-emerald-100">
+                            <Phone className="h-4 w-4" /> الاتصال بالمدرسة
+                        </a>
+                    </div>
+                )}
             </div>
-
-            {isLoading && (
-                <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
-                    <span className="mr-2 text-sm text-slate-500 dark:text-slate-400">جاري تحميل الرسائل...</span>
-                </div>
-            )}
-
-            {!isLoading && (
-                <div className="space-y-3">
-                    {filteredMessages.length === 0 ? (
-                        <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 p-8 text-center">
-                            <MessageSquare className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-500" />
-                            <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">{messages.length === 0 ? 'لا توجد رسائل' : 'لا توجد رسائل في هذا التصنيف'}</p>
-                        </div>
-                    ) : filteredMessages.map((message) => (
-                        <MessageCard key={message.id} message={message} isExpanded={expandedMessage === message.id} onToggle={() => setExpandedMessage(expandedMessage === message.id ? null : message.id)} />
-                    ))}
-                </div>
-            )}
-
-            {guardianSettings?.school_phone && (
-                <div className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
-                    <a href={`tel:${guardianSettings.school_phone}`} className="flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-950 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100">
-                        <Phone className="h-4 w-4" /> الاتصال بالمدرسة
-                    </a>
-                </div>
-            )}
-        </>
+        </div>
     )
 }
 
 // ============================================================
 // TAB 2: المحادثات
 // ============================================================
-function ChatTab() {
+function ChatTab({ onChatOpenChange }: { onChatOpenChange: (open: boolean) => void }) {
     const authenticated = isGuardianAuthenticated()
     const [activeConversation, setActiveConversation] = useState<Conversation | null>(null)
     const [messageText, setMessageText] = useState('')
     const [showContacts, setShowContacts] = useState(false)
+    const [searchQuery, setSearchQuery] = useState('')
     const bottomRef = useRef<HTMLDivElement>(null)
     const prevMsgCountRef = useRef(0)
 
@@ -163,9 +190,15 @@ function ChatTab() {
     useChatRealtime(activeConversation?.id ?? null)
 
     const conversations = conversationsQuery.data?.data ?? []
-    const messages = messagesQuery.data?.pages?.flatMap((p) => p.data) ?? []
-    const sortedMessages = [...messages].reverse()
+    const chatMessages = messagesQuery.data?.pages?.flatMap((p) => p.data) ?? []
+    const sortedMessages = [...chatMessages].reverse()
     const myGuardianId = conversations[0]?.guardian_id ?? 0
+
+    const filteredConversations = conversations.filter((c) => {
+        if (!searchQuery) return true
+        const s = searchQuery.toLowerCase()
+        return c.participant?.name?.toLowerCase().includes(s) || c.student?.name?.toLowerCase().includes(s) || c.last_message_preview?.toLowerCase().includes(s)
+    })
 
     useEffect(() => {
         if (sortedMessages.length > 0 && sortedMessages.length !== prevMsgCountRef.current) {
@@ -176,6 +209,19 @@ function ChatTab() {
     }, [sortedMessages.length])
 
     useEffect(() => { prevMsgCountRef.current = 0 }, [activeConversation?.id])
+
+    // إبلاغ الأب عند فتح/إغلاق محادثة
+    useEffect(() => {
+        onChatOpenChange(!!activeConversation)
+    }, [activeConversation, onChatOpenChange])
+
+    function getTimeLabel(dateStr: string | null) {
+        if (!dateStr) return ''
+        const d = new Date(dateStr)
+        const today = new Date()
+        if (d.toDateString() === today.toDateString()) return d.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
+        return d.toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' })
+    }
 
     function handleSend() {
         const trimmed = messageText.trim()
@@ -192,58 +238,63 @@ function ChatTab() {
 
     if (!authenticated) {
         return (
-            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 p-8 text-center">
-                <MessageCircle className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-500" />
-                <p className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-300">سجّل الدخول مجدداً لتفعيل المحادثات</p>
-                <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">أعد الدخول ببيانات الطالب لاستخدام المحادثات</p>
+            <div className="flex-1 flex items-center justify-center px-4">
+                <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 p-8 text-center w-full">
+                    <MessageCircle className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-500" />
+                    <p className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-300">سجّل الدخول مجدداً لتفعيل المحادثات</p>
+                    <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">أعد الدخول ببيانات الطالب لاستخدام المحادثات</p>
+                </div>
             </div>
         )
     }
 
-    // التحقق من أن الدردشة معطّلة (403)
     const chatDisabled = conversationsQuery.error && (conversationsQuery.error as any)?.response?.status === 403
 
     if (chatDisabled) {
         return (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-950 p-8 text-center">
-                <div className="mx-auto h-14 w-14 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center">
-                    <MessageCircle className="h-7 w-7 text-amber-500" />
+            <div className="flex-1 flex items-center justify-center px-4">
+                <div className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950 p-8 text-center w-full">
+                    <div className="mx-auto h-14 w-14 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center">
+                        <MessageCircle className="h-7 w-7 text-amber-500" />
+                    </div>
+                    <p className="mt-3 text-sm font-semibold text-amber-800 dark:text-amber-200">المحادثات غير متاحة حالياً</p>
+                    <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">تم تعطيل خدمة المحادثات من قبل إدارة المدرسة</p>
                 </div>
-                <p className="mt-3 text-sm font-semibold text-amber-800 dark:text-amber-200">المحادثات غير متاحة حالياً</p>
-                <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">تم تعطيل خدمة المحادثات من قبل إدارة المدرسة</p>
             </div>
         )
     }
 
-    // عرض محادثة مفتوحة
+    // ===== محادثة مفتوحة =====
     if (activeConversation) {
         return (
-            <div className="flex flex-col" style={{ height: 'calc(100vh - 280px)', minHeight: '300px' }}>
+            <div className="flex-1 flex flex-col min-h-0">
                 {/* Header ثابت */}
-                <div className="shrink-0 flex items-center gap-3 rounded-t-2xl bg-white dark:bg-slate-800 p-3 border border-slate-200 dark:border-slate-700">
-                    <button onClick={() => { setActiveConversation(null); prevMsgCountRef.current = 0 }} className="grid h-8 w-8 place-items-center rounded-lg bg-slate-100 dark:bg-slate-700">
-                        <ArrowRight className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                <header className="shrink-0 flex items-center gap-3 bg-white dark:bg-slate-800 px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+                    <button onClick={() => { setActiveConversation(null); prevMsgCountRef.current = 0 }} className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400">
+                        <ArrowRight className="h-4 w-4" />
                     </button>
-                    <div className="h-9 w-9 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center shrink-0">
+                    <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center shrink-0">
                         <User className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                     </div>
                     <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm text-slate-900 dark:text-slate-100 truncate">{activeConversation.participant?.name}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{activeConversation.student?.name}</p>
+                        <p className="font-semibold text-sm text-slate-900 dark:text-slate-100 truncate">{activeConversation.participant_title || activeConversation.participant?.name}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{activeConversation.participant?.name}</p>
                     </div>
-                </div>
+                </header>
 
-                {/* الرسائل - هذا يتمرر */}
-                <div className="shrink-0 text-center py-1.5 bg-amber-50/80 dark:bg-amber-950/80 border-x border-slate-200 dark:border-slate-700">
+                {/* إشعار الإشراف */}
+                <div className="shrink-0 text-center py-1.5 bg-amber-50/80 dark:bg-amber-950/80">
                     <p className="text-[10px] text-amber-600/70 dark:text-amber-400/70">🔒 هذه المحادثة تخضع لإشراف إدارة المدرسة</p>
                 </div>
-                <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-700 px-3 py-3 space-y-2 border-x border-slate-200 dark:border-slate-700">
+
+                {/* الرسائل - هذا فقط يتمرر */}
+                <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
                     {sortedMessages.map((msg) => {
                         const isOwn = msg.sender_type === 'guardian' && msg.sender_id === myGuardianId
                         const time = new Date(msg.created_at).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
 
                         if (msg.type === 'system') {
-                            return <div key={msg.id} className="flex justify-center my-2"><div className="bg-slate-200/70 dark:bg-slate-600/70 text-slate-500 dark:text-slate-400 text-xs px-3 py-1.5 rounded-full text-center">{msg.body}</div></div>
+                            return <div key={msg.id} className="flex justify-center my-3"><div className="bg-slate-200/70 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 text-xs px-4 py-1.5 rounded-full text-center">{msg.body}</div></div>
                         }
 
                         return (
@@ -263,23 +314,29 @@ function ChatTab() {
                     <div ref={bottomRef} />
                 </div>
 
-                {/* حقل الإدخال - ثابت أسفل */}
+                {/* حقل الإدخال ثابت أسفل */}
                 {activeConversation.status === 'active' ? (
-                    <div className="shrink-0 flex items-end gap-2 p-3 bg-white dark:bg-slate-800 rounded-b-2xl border border-slate-200 dark:border-slate-700">
-                        <textarea
-                            value={messageText}
-                            onChange={(e) => setMessageText(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
-                            placeholder="اكتب رسالتك..."
-                            rows={1}
-                            className="flex-1 min-h-[40px] max-h-[80px] resize-none rounded-xl bg-slate-100 dark:bg-slate-700 text-sm px-3 py-2.5 border-0 focus:ring-2 focus:ring-indigo-500/30 outline-none"
-                        />
-                        <button onClick={handleSend} disabled={!messageText.trim() || sendMessageMutation.isPending} className="shrink-0 h-10 w-10 rounded-full bg-indigo-500 hover:bg-indigo-600 disabled:bg-slate-300 dark:disabled:bg-slate-600 text-white flex items-center justify-center transition">
-                            <Send className="h-4 w-4 rotate-180" />
-                        </button>
+                    <div className="shrink-0 bg-white dark:bg-slate-800 px-4 py-3 border-t border-slate-200 dark:border-slate-700">
+                        <div className="flex items-end gap-2">
+                            <textarea
+                                value={messageText}
+                                onChange={(e) => setMessageText(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+                                placeholder="اكتب رسالتك..."
+                                rows={1}
+                                className="flex-1 min-h-[42px] max-h-[100px] resize-none rounded-2xl bg-slate-100 dark:bg-slate-700/50 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 px-4 py-2.5 border-0 focus:ring-2 focus:ring-indigo-500/30 outline-none"
+                            />
+                            <button
+                                onClick={handleSend}
+                                disabled={!messageText.trim() || sendMessageMutation.isPending}
+                                className="shrink-0 h-[42px] w-[42px] rounded-full bg-indigo-500 hover:bg-indigo-600 disabled:bg-slate-300 dark:disabled:bg-slate-600 text-white flex items-center justify-center transition"
+                            >
+                                <Send className="h-4 w-4 rotate-180" />
+                            </button>
+                        </div>
                     </div>
                 ) : (
-                    <div className="shrink-0 p-3 text-center text-sm text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 rounded-b-2xl border border-slate-200 dark:border-slate-700">
+                    <div className="shrink-0 py-3 text-center text-sm text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
                         هذه المحادثة {activeConversation.status === 'closed' ? 'مغلقة' : 'مؤرشفة'}
                     </div>
                 )}
@@ -287,66 +344,96 @@ function ChatTab() {
         )
     }
 
-    // قائمة المحادثات
+    // ===== قائمة المحادثات =====
     return (
-        <>
-            {conversationsQuery.isLoading ? (
-                <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+        <div className="flex-1 flex flex-col min-h-0">
+            {/* بحث ثابت */}
+            <div className="shrink-0 px-4 pb-3">
+                <div className="relative">
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <input
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="بحث في المحادثات..."
+                        className="w-full pr-10 pl-3 py-2.5 rounded-2xl bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 outline-none"
+                    />
                 </div>
-            ) : conversations.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 p-8 text-center">
-                    <MessageCircle className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-500" />
-                    <p className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-300">لا توجد محادثات بعد</p>
-                    <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">ابدأ محادثة مع معلم أو الإدارة</p>
-                    <button onClick={() => setShowContacts(true)} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700">
-                        <Plus className="h-4 w-4" /> محادثة جديدة
-                    </button>
-                </div>
-            ) : (
-                <div className="space-y-2">
-                    {conversations.map((conv) => (
-                        <button
-                            key={conv.id}
-                            onClick={() => {
-                                setActiveConversation(conv)
-                                if (conv.guardian_unread_count > 0) markReadMutation.mutate()
-                            }}
-                            className={`w-full flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-slate-800 border transition active:bg-slate-50 dark:active:bg-slate-700 ${
-                                conv.guardian_unread_count > 0 ? 'border-indigo-200 bg-indigo-50/30 dark:bg-indigo-950/30' : 'border-slate-200 dark:border-slate-700'
-                            }`}
-                        >
-                            <div className="h-11 w-11 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center shrink-0">
-                                <User className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                            </div>
-                            <div className="flex-1 min-w-0 text-right">
-                                <div className="flex items-center justify-between gap-2">
-                                    <span className="font-semibold text-sm text-slate-900 dark:text-slate-100 truncate">{conv.participant?.name}</span>
-                                    <span className="text-[11px] text-slate-400 dark:text-slate-500 shrink-0">
-                                        {conv.last_message_at && new Date(conv.last_message_at).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between gap-2 mt-0.5">
-                                    <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{conv.last_message_preview ?? conv.student?.name}</span>
-                                    {conv.guardian_unread_count > 0 && (
-                                        <span className="shrink-0 bg-indigo-500 text-white text-[10px] font-bold rounded-full h-5 min-w-5 flex items-center justify-center px-1.5">{conv.guardian_unread_count}</span>
-                                    )}
-                                </div>
-                            </div>
-                        </button>
-                    ))}
+            </div>
 
-                    <button onClick={() => setShowContacts(true)} className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-600 text-sm font-semibold text-slate-500 dark:text-slate-400 transition hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300">
-                        <Plus className="h-4 w-4" /> محادثة جديدة
-                    </button>
-                </div>
+            {/* القائمة - تتمرر */}
+            <div className="flex-1 overflow-y-auto">
+                {conversationsQuery.isLoading ? (
+                    <div className="flex items-center justify-center py-16">
+                        <Loader2 className="h-7 w-7 animate-spin text-indigo-500" />
+                    </div>
+                ) : filteredConversations.length === 0 && !searchQuery ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-slate-400 dark:text-slate-500 gap-3 px-4">
+                        <MessageCircle className="h-12 w-12" />
+                        <p className="text-sm font-medium">لا توجد محادثات بعد</p>
+                        <p className="text-xs">ابدأ محادثة مع معلم أو الإدارة</p>
+                        <button
+                            onClick={() => setShowContacts(true)}
+                            className="mt-2 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700"
+                        >
+                            <Plus className="h-4 w-4" /> محادثة جديدة
+                        </button>
+                    </div>
+                ) : filteredConversations.length === 0 && searchQuery ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-slate-400 dark:text-slate-500 gap-2">
+                        <Search className="h-10 w-10" />
+                        <p className="text-sm">لا توجد نتائج لـ "{searchQuery}"</p>
+                    </div>
+                ) : (
+                    <>
+                        {filteredConversations.map((conv) => (
+                            <button
+                                key={conv.id}
+                                onClick={() => {
+                                    setActiveConversation(conv)
+                                    if (conv.guardian_unread_count > 0) markReadMutation.mutate()
+                                }}
+                                className={`w-full flex items-center gap-3 px-4 py-3 text-right transition-colors active:bg-slate-100 dark:active:bg-slate-700/50 ${
+                                    conv.guardian_unread_count > 0 ? 'bg-indigo-50/40 dark:bg-indigo-950/30' : ''
+                                }`}
+                            >
+                                <div className="shrink-0 h-12 w-12 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
+                                    <User className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className={`font-semibold text-sm truncate ${conv.guardian_unread_count > 0 ? 'text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300'}`}>{conv.participant_title || conv.participant?.name}</span>
+                                        <span className="text-[11px] text-slate-400 dark:text-slate-500 shrink-0">
+                                            {getTimeLabel(conv.last_message_at)}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-2 mt-0.5">
+                                        <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{conv.last_message_preview ?? conv.participant?.name}</span>
+                                        {conv.guardian_unread_count > 0 && (
+                                            <span className="shrink-0 bg-indigo-500 text-white text-[10px] font-bold rounded-full h-5 min-w-5 flex items-center justify-center px-1.5">{conv.guardian_unread_count}</span>
+                                        )}
+                                    </div>
+                                </div>
+                            </button>
+                        ))}
+                    </>
+                )}
+            </div>
+
+            {/* زر عائم */}
+            {filteredConversations.length > 0 && (
+                <button
+                    onClick={() => setShowContacts(true)}
+                    className="fixed bottom-[76px] left-5 h-14 w-14 rounded-full bg-indigo-500 hover:bg-indigo-600 text-white shadow-lg shadow-indigo-500/25 flex items-center justify-center transition-all active:scale-95 z-40"
+                >
+                    <Plus className="h-6 w-6" />
+                </button>
             )}
 
             {/* نافذة اختيار جهة اتصال */}
             {showContacts && (
-                <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4" onClick={() => setShowContacts(false)}>
-                    <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl max-h-[70vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-between p-4 shrink-0">
+                <div className="fixed inset-0 bg-black/40 dark:bg-black/60 z-50 flex items-center justify-center px-4" onClick={() => setShowContacts(false)}>
+                    <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl max-h-[70vh] flex flex-col shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700 shrink-0">
                             <h3 className="font-bold text-slate-900 dark:text-slate-100">محادثة جديدة</h3>
                             <button onClick={() => setShowContacts(false)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-full">
                                 <ArrowRight className="h-5 w-5 text-slate-500 dark:text-slate-400 rotate-180" />
@@ -364,12 +451,12 @@ function ChatTab() {
                                     disabled={startConversationMutation.isPending}
                                     className="w-full flex items-center gap-3 p-3 rounded-2xl active:bg-slate-50 dark:active:bg-slate-700 text-right transition"
                                 >
-                                    <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center shrink-0">
+                                    <div className="h-11 w-11 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center shrink-0">
                                         <User className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                                     </div>
                                     <div className="min-w-0">
-                                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{contact.name}</p>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{contact.role_label}{contact.student ? ` · ${contact.student.name}` : ''}</p>
+                                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{contact.subject_name || contact.role_label}</p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{contact.name}</p>
                                     </div>
                                 </button>
                             ))}
@@ -377,7 +464,7 @@ function ChatTab() {
                     </div>
                 </div>
             )}
-        </>
+        </div>
     )
 }
 
@@ -403,7 +490,7 @@ function MessageCard({ message, isExpanded, onToggle }: { message: GuardianMessa
     const Icon = style.icon
 
     return (
-        <div className={`rounded-2xl border bg-white dark:bg-slate-800 shadow-sm transition ${message.is_read ? 'border-slate-200 dark:border-slate-700' : 'border-indigo-200 bg-indigo-50/30 dark:bg-indigo-950/30'}`}>
+        <div className={`rounded-2xl border bg-white dark:bg-slate-800 shadow-sm transition ${message.is_read ? 'border-slate-200 dark:border-slate-700' : 'border-indigo-200 dark:border-indigo-800 bg-indigo-50/30 dark:bg-indigo-950/30'}`}>
             <button type="button" onClick={onToggle} className="flex w-full items-center gap-3 p-4 text-right">
                 <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${style.bg}`}>
                     <Icon className={`h-5 w-5 ${style.color}`} />
