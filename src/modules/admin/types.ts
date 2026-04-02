@@ -659,6 +659,8 @@ export interface TeacherAttendanceDelayRecord {
   absence_recorded_at?: string | null
   absence_notes?: string | null
   absence_source?: string | null
+  faris_sync_status?: 'matched' | 'no_leave' | 'pending_leave' | null
+  faris_leave_type?: string | null
   user?: {
     id: number
     name: string

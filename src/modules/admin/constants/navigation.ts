@@ -52,6 +52,7 @@ import {
   ScanLine, // أيقونة حضور البوابة
   Printer, // أيقونة طباعة الباركود
   Laptop, // أيقونة الدوام عن بعد
+  Link2, // أيقونة ربط فارس
 } from 'lucide-react'
 
 export interface AdminNavItem {
@@ -97,6 +98,7 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
       { to: '/admin/madrasati-report', label: 'تقرير مدرستي', icon: BarChart3, permission: 'admin.madrasati-report' },
       { to: '/admin/remote-attendance', label: 'متابعة الدوام عن بعد', icon: Laptop, permission: 'admin.remote-attendance' },
       { to: '/admin/lesson-plans', label: 'الخطط الأسبوعية', icon: BookOpenCheck, permission: 'admin.lesson-plans' },
+      { to: '/admin/faris', label: 'ربط فارس', icon: Link2, permission: 'admin.faris' },
     ],
   },
   {

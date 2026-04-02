@@ -132,6 +132,7 @@ import { AdminBarcodePrintPage } from '@/modules/admin/pages/admin-barcode-print
 import { AdminPeriodAttendancePage } from '@/modules/admin/pages/admin-period-attendance-page'
 import AdminRemoteAttendancePage from '@/modules/admin/pages/admin-remote-attendance-page'
 import { AdminLessonPlansPage } from '@/modules/admin/pages/admin-lesson-plans-page'
+import AdminFarisPage from '@/modules/admin/pages/admin-faris-page'
 import { NotebookWorkspacePage } from '@/modules/notebook/pages/notebook-workspace-page'
 import { GuideViewerPage } from '@/modules/notebook/pages/guide-viewer-page'
 import { PrivacyPolicyPage } from '@/modules/core/pages/privacy-policy-page'
@@ -258,6 +259,7 @@ const appRoutes = [
           { path: 'period-attendance', element: <AdminPeriodAttendancePage /> },
           { path: 'remote-attendance', element: <AdminRemoteAttendancePage /> },
           { path: 'lesson-plans', element: <AdminLessonPlansPage /> },
+          { path: 'faris', element: <AdminFarisPage /> },
           { path: 'behavior', element: <AdminBehaviorPage /> },
           { path: 'behavior/:violationId', element: <AdminBehaviorDetailPage /> },
           { path: 'behavior/plans', element: <AdminBehaviorPlansPage /> },

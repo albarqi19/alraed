@@ -780,6 +780,8 @@ function normalizeTeacherAttendanceDelayRecord(raw: unknown): TeacherAttendanceD
     absence_recorded_at: absenceRecordedAt,
     absence_notes: absenceNotes,
     absence_source: absenceSource,
+    faris_sync_status: typeof raw.faris_sync_status === 'string' ? raw.faris_sync_status as 'matched' | 'no_leave' | 'pending_leave' : null,
+    faris_leave_type: typeof raw.faris_leave_type === 'string' ? raw.faris_leave_type : null,
     user,
     delay_inquiry: normalizeTeacherDelayInquiryRecord(raw.delay_inquiry),
   }

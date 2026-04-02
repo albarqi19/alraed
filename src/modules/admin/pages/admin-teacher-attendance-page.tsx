@@ -1365,21 +1365,38 @@ export function AdminTeacherAttendancePage() {
                           </td>
                           <td className="border border-slate-200/60 px-4 py-2 align-top">
                             <div className="space-y-2">
-                              {delay.delay_status !== 'delayed' ? (
+                              {delay.delay_status !== 'delayed' && !isAbsent ? (
                                 <DelayStatusBadge status={delay.delay_status} label={delay.delay_status_label} />
                               ) : null}
                               {isAbsent ? (
                                 <>
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-[10px] text-muted">سبب الغياب:</span>
-                                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${hasCustomAbsenceReason
-                                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                      : 'bg-red-50 text-red-600 border border-red-200'
-                                      }`}>
-                                      {hasCustomAbsenceReason && <i className="bi bi-check-circle-fill text-[9px]" />}
-                                      {absenceActionLabel}
+                                  {delay.faris_sync_status === 'matched' ? (
+                                    <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
+                                      <i className="bi bi-check-circle-fill text-[10px]" />
+                                      {delay.faris_leave_type || 'مطابق فارس'}
                                     </span>
-                                  </div>
+                                  ) : delay.faris_sync_status === 'pending_leave' ? (
+                                    <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700 border border-amber-200">
+                                      <i className="bi bi-hourglass-split text-[10px]" />
+                                      طلب معلق في فارس
+                                    </span>
+                                  ) : delay.faris_sync_status === 'no_leave' ? (
+                                    <span className="inline-flex items-center gap-1 rounded-md bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-600 border border-red-200">
+                                      <i className="bi bi-x-circle text-[10px]" />
+                                      لا يوجد إجازة في فارس
+                                    </span>
+                                  ) : (
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[10px] text-muted">سبب الغياب:</span>
+                                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${hasCustomAbsenceReason
+                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                        : 'bg-red-50 text-red-600 border border-red-200'
+                                        }`}>
+                                        {hasCustomAbsenceReason && <i className="bi bi-check-circle-fill text-[9px]" />}
+                                        {absenceActionLabel}
+                                      </span>
+                                    </div>
+                                  )}
                                   {delay.absence_notes ? (
                                     <p className={`text-[11px] ${hasCustomAbsenceReason ? 'text-emerald-500' : 'text-muted'}`}>ملاحظات: {delay.absence_notes}</p>
                                   ) : null}
@@ -1443,7 +1460,7 @@ export function AdminTeacherAttendancePage() {
                                     disabled={isUpdatingStatus}
                                     title={absenceActionLabel}
                                   >
-                                    {hasCustomAbsenceReason ? <i className="bi bi-pencil-square" /> : <i className="bi bi-plus" />} السبب
+                                    {hasCustomAbsenceReason ? <><i className="bi bi-pencil-square" /> {absenceActionLabel}</> : <><i className="bi bi-plus" /> السبب</>}
                                   </button>
                                 </div>
                               ) : (
