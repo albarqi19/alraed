@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
+import { Plus, X, Search, RefreshCw, Trash2, Edit2, AlertCircle, LayoutGrid, CheckCircle2, Clock, Calendar } from 'lucide-react'
 import {
   useActivateScheduleMutation,
   useApplyScheduleToMultipleClassesMutation,
@@ -627,16 +628,17 @@ function generateQuickSchedule(values: QuickNormalizedValues): QuickScheduleGene
   }
 }
 
-function ScheduleStatusBadge({ isActive }: { isActive: boolean }) {
-  const tone = isActive
-    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-    : 'bg-slate-100 text-slate-500 border border-slate-200'
-
-  return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${tone}`}>
-      <span className={`h-2 w-2 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-      {isActive ? 'مفعل' : 'غير مفعل'}
+function ScheduleStatusBadge({ isActive, showLabel = false }: { isActive: boolean; showLabel?: boolean }) {
+  return showLabel ? (
+    <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-bold ${isActive ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+      {isActive ? 'مفعل' : 'معطل'}
     </span>
+  ) : (
+    <span
+      title={isActive ? 'مفعل' : 'غير مفعل'}
+      className={`h-2 w-2 rounded-full flex-shrink-0 ${isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}
+    />
   )
 }
 
@@ -807,7 +809,7 @@ function ScheduleFormDialog({ open, onClose, onSubmit, isSubmitting, schedule, t
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" role="dialog" aria-modal>
-      <div className="relative flex h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-white shadow-xl">
+      <div className="relative flex h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-md bg-white shadow-xl">
         <header className="flex items-center justify-between border-b border-slate-100 px-6 py-5 text-right">
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-widest text-teal-600">
@@ -843,7 +845,7 @@ function ScheduleFormDialog({ open, onClose, onSubmit, isSubmitting, schedule, t
                   type="text"
                   value={values.name}
                   onChange={(event) => handleChange('name', event.target.value)}
-                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                  className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
                   placeholder="مثال: التوقيت الشتوي"
                   disabled={isSubmitting}
                   autoFocus
@@ -859,7 +861,7 @@ function ScheduleFormDialog({ open, onClose, onSubmit, isSubmitting, schedule, t
                   id="schedule-type"
                   value={values.type}
                   onChange={(event) => handleChange('type', event.target.value as ScheduleType)}
-                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                  className="rounded-md border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
                   disabled={isSubmitting}
                 >
                   {Object.entries(scheduleTypeLabels).map(([value, label]) => (
@@ -881,7 +883,7 @@ function ScheduleFormDialog({ open, onClose, onSubmit, isSubmitting, schedule, t
                   type="text"
                   value={values.target_level}
                   onChange={(event) => handleChange('target_level', event.target.value)}
-                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                  className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
                   placeholder="مثال: الابتدائية"
                   disabled={isSubmitting}
                 />
@@ -899,7 +901,7 @@ function ScheduleFormDialog({ open, onClose, onSubmit, isSubmitting, schedule, t
                       setSelectedTemplateKey(event.target.value)
                       handleApplyTemplate(event.target.value)
                     }}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                    className="w-full h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
                     disabled={isSubmitting || !templates || templates.length === 0}
                   >
                     <option value="">اختر قالبًا</option>
@@ -921,7 +923,7 @@ function ScheduleFormDialog({ open, onClose, onSubmit, isSubmitting, schedule, t
                   id="schedule-description"
                   value={values.description}
                   onChange={(event) => handleChange('description', event.target.value)}
-                  className="min-h-[110px] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                  className="min-h-[110px] h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
                   placeholder="تفاصيل إضافية عن الجدول أو ملاحظات للمعلمين"
                   disabled={isSubmitting}
                 />
@@ -944,7 +946,7 @@ function ScheduleFormDialog({ open, onClose, onSubmit, isSubmitting, schedule, t
                       periods: [...prev.periods, createEmptyPeriod(getNextPeriodNumber(prev.periods))],
                     }))
                   }
-                  className="button-primary"
+                  className="inline-flex items-center gap-2 rounded-md bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 transition"
                   disabled={isSubmitting}
                 >
                   إضافة فترة
@@ -952,7 +954,7 @@ function ScheduleFormDialog({ open, onClose, onSubmit, isSubmitting, schedule, t
               </div>
 
               {errors.periods ? (
-                <div className="rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-xs font-semibold text-rose-700">
+                <div className="rounded-md border border-rose-200 bg-rose-50/80 px-4 py-3 text-xs font-semibold text-rose-700">
                   {errors.periods}
                 </div>
               ) : null}
@@ -963,7 +965,7 @@ function ScheduleFormDialog({ open, onClose, onSubmit, isSubmitting, schedule, t
                   return (
                     <article
                       key={period.key}
-                      className="rounded-3xl border border-slate-200 bg-white/80 p-4 shadow-sm transition hover:border-teal-200"
+                      className="rounded-md border border-slate-200 bg-white/80 p-4 shadow-sm transition hover:border-teal-200"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <h4 className="text-sm font-semibold text-slate-700">الفترة رقم {index + 1}</h4>
@@ -997,11 +999,11 @@ function ScheduleFormDialog({ open, onClose, onSubmit, isSubmitting, schedule, t
                             min={1}
                             value={period.period_number}
                             onChange={(event) => handlePeriodChange(period.key, 'period_number', event.target.value)}
-                            className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                            className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
                             disabled={isSubmitting}
                           />
                           {periodError.period_number ? (
-                            <span className="text-[11px] font-medium text-rose-600">{periodError.period_number}</span>
+                            <span className="text-xs font-medium text-rose-600">{periodError.period_number}</span>
                           ) : null}
                         </div>
 
@@ -1011,7 +1013,7 @@ function ScheduleFormDialog({ open, onClose, onSubmit, isSubmitting, schedule, t
                             type="text"
                             value={period.period_name}
                             onChange={(event) => handlePeriodChange(period.key, 'period_name', event.target.value)}
-                            className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                            className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
                             placeholder="مثال: الحصة الأولى"
                             disabled={isSubmitting}
                           />
@@ -1023,11 +1025,11 @@ function ScheduleFormDialog({ open, onClose, onSubmit, isSubmitting, schedule, t
                             type="time"
                             value={period.start_time}
                             onChange={(event) => handlePeriodChange(period.key, 'start_time', event.target.value)}
-                            className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                            className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
                             disabled={isSubmitting}
                           />
                           {periodError.start_time ? (
-                            <span className="text-[11px] font-medium text-rose-600">{periodError.start_time}</span>
+                            <span className="text-xs font-medium text-rose-600">{periodError.start_time}</span>
                           ) : null}
                         </div>
 
@@ -1037,11 +1039,11 @@ function ScheduleFormDialog({ open, onClose, onSubmit, isSubmitting, schedule, t
                             type="time"
                             value={period.end_time}
                             onChange={(event) => handlePeriodChange(period.key, 'end_time', event.target.value)}
-                            className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                            className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
                             disabled={isSubmitting}
                           />
                           {periodError.end_time ? (
-                            <span className="text-[11px] font-medium text-rose-600">{periodError.end_time}</span>
+                            <span className="text-xs font-medium text-rose-600">{periodError.end_time}</span>
                           ) : null}
                         </div>
                       </div>
@@ -1054,7 +1056,7 @@ function ScheduleFormDialog({ open, onClose, onSubmit, isSubmitting, schedule, t
                             min={0}
                             value={period.break_duration}
                             onChange={(event) => handlePeriodChange(period.key, 'break_duration', event.target.value)}
-                            className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                            className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
                             placeholder="مثال: 15"
                             disabled={isSubmitting}
                           />
@@ -1067,11 +1069,11 @@ function ScheduleFormDialog({ open, onClose, onSubmit, isSubmitting, schedule, t
             </section>
           </div>
 
-          <footer className="flex shrink-0 items-center justify-end gap-3 border-t border-slate-100 bg-slate-50/70 px-6 py-4">
-            <button type="button" onClick={onClose} className="button-secondary" disabled={isSubmitting}>
+          <footer className="flex shrink-0 items-center justify-end gap-3 border-t border-slate-200 bg-slate-50/70 px-6 py-4">
+            <button type="button" onClick={onClose} className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 transition" disabled={isSubmitting}>
               إلغاء
             </button>
-            <button type="submit" className="button-primary" disabled={isSubmitting}>
+            <button type="submit" className="inline-flex items-center gap-2 rounded-md bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 transition" disabled={isSubmitting}>
               {isSubmitting ? 'جاري الحفظ...' : schedule ? 'حفظ التعديلات' : 'إنشاء الجدول'}
             </button>
           </footer>
@@ -1086,7 +1088,7 @@ function ConfirmDeleteDialog({ open, schedule, isSubmitting, onCancel, onConfirm
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" role="alertdialog">
-      <div className="w-full max-w-md rounded-3xl bg-white p-6 text-right shadow-xl">
+      <div className="w-full max-w-md rounded-md bg-white p-6 text-right shadow-xl">
         <header className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-widest text-rose-600">حذف جدول زمني</p>
           <h2 className="text-xl font-semibold text-slate-900">هل تريد حذف {schedule.name}؟</h2>
@@ -1095,10 +1097,10 @@ function ConfirmDeleteDialog({ open, schedule, isSubmitting, onCancel, onConfirm
           </p>
         </header>
         <footer className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <button type="button" onClick={onCancel} className="button-secondary" disabled={isSubmitting}>
+          <button type="button" onClick={onCancel} className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 transition" disabled={isSubmitting}>
             تراجع
           </button>
-          <button type="button" onClick={onConfirm} className="button-primary" disabled={isSubmitting}>
+          <button type="button" onClick={onConfirm} className="inline-flex items-center gap-2 rounded-md bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 transition" disabled={isSubmitting}>
             {isSubmitting ? 'جارٍ الحذف...' : 'تأكيد الحذف'}
           </button>
         </footer>
@@ -1124,7 +1126,7 @@ function QuickSchedulePreviewModal({ open, data, onClose, onConfirm, isSubmittin
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" role="dialog" aria-modal>
-      <div className="relative flex w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-white shadow-xl">
+      <div className="relative flex w-full max-w-4xl flex-col overflow-hidden rounded-md bg-white shadow-xl">
         <header className="flex flex-col gap-2 border-b border-slate-100 px-6 py-5 text-right">
           <p className="text-xs font-semibold uppercase tracking-widest text-sky-600">معاينة الجدول الزمني</p>
           <h2 className="text-2xl font-bold text-slate-900">{data.scheduleName}</h2>
@@ -1139,16 +1141,16 @@ function QuickSchedulePreviewModal({ open, data, onClose, onConfirm, isSubmittin
             </span>
           </div>
           {requiresWarning ? (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-xs font-semibold text-amber-700">
+            <div className="rounded-md border border-amber-200 bg-amber-50/80 px-4 py-3 text-xs font-semibold text-amber-700">
               تنبيه: مدة الجدول تتجاوز 8 ساعات. تأكد من مناسبة الجدول للفترة الدراسية.
             </div>
           ) : null}
         </header>
 
         <div className="flex-1 overflow-auto px-6 py-6">
-          <div className="overflow-x-auto rounded-3xl border border-slate-200">
+          <div className="overflow-x-auto rounded-md border border-slate-200">
             <table className="w-full min-w-[600px] table-fixed text-right text-sm">
-              <thead className="bg-slate-50/80 text-xs uppercase tracking-wide text-slate-500">
+              <thead className="bg-slate-50 border-y border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-500">
                 <tr>
                   <th className="px-4 py-3 font-semibold">رقم الفترة</th>
                   <th className="px-4 py-3 font-semibold">النوع</th>
@@ -1159,7 +1161,7 @@ function QuickSchedulePreviewModal({ open, data, onClose, onConfirm, isSubmittin
               </thead>
               <tbody>
                 {data.entries.map((entry) => (
-                  <tr key={entry.sequence} className="border-t border-slate-100">
+                  <tr key={entry.sequence} className="border-t border-slate-200">
                     <td className="px-4 py-3 text-sm font-semibold text-slate-800">{entry.sequence}</td>
                     <td className="px-4 py-3 text-sm text-slate-600">
                       <span
@@ -1182,18 +1184,18 @@ function QuickSchedulePreviewModal({ open, data, onClose, onConfirm, isSubmittin
           </div>
         </div>
 
-        <footer className="flex items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/70 px-6 py-4">
+        <footer className="flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50/70 px-6 py-4">
           <div className="space-y-1 text-xs text-muted">
             <p>تحقق من توزيع الحصص والفسحات قبل حفظ الجدول.</p>
             {errorMessage ? (
-              <p className="rounded-2xl border border-rose-200 bg-rose-50/70 px-3 py-2 text-rose-700">{errorMessage}</p>
+              <p className="rounded-md border border-rose-200 bg-rose-50/70 px-3 py-2 text-rose-700">{errorMessage}</p>
             ) : null}
           </div>
           <div className="flex items-center gap-3">
-            <button type="button" onClick={onClose} className="button-secondary" disabled={isSubmitting}>
+            <button type="button" onClick={onClose} className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 transition" disabled={isSubmitting}>
               تعديل المدخلات
             </button>
-            <button type="button" onClick={onConfirm} className="button-primary" disabled={isSubmitting}>
+            <button type="button" onClick={onConfirm} className="inline-flex items-center gap-2 rounded-md bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 transition" disabled={isSubmitting}>
               {isSubmitting ? 'جاري الحفظ...' : 'حفظ الجدول'}
             </button>
           </div>
@@ -1215,7 +1217,7 @@ function QuickSchedulePreviewModal({ open, data, onClose, onConfirm, isSubmittin
 
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
-    <div className="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-16 text-center">
+    <div className="rounded-md border border-dashed border-slate-200 bg-white/70 p-16 text-center">
       <p className="text-lg font-semibold text-slate-700">لا توجد جداول زمنية حتى الآن</p>
       <p className="mt-2 text-sm text-muted">ابدأ بإنشاء جدول جديد أو استيراد قالب من النظام القديم.</p>
       <button type="button" onClick={onCreate} className="button-primary mt-6">
@@ -1284,7 +1286,7 @@ function ApplyScheduleToClassesDialog({ open, schedule, isSubmitting, onCancel, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" role="dialog" aria-modal>
-      <div className="relative flex w-full max-w-4xl flex-col rounded-3xl bg-white shadow-xl" style={{ maxHeight: '85vh' }}>
+      <div className="relative flex w-full max-w-4xl flex-col rounded-md bg-white shadow-xl" style={{ maxHeight: '85vh' }}>
         <header className="shrink-0 border-b border-slate-100 px-6 py-5 text-right">
           <p className="text-xs font-semibold uppercase tracking-widest text-sky-600">تطبيق الجدول على الفصول</p>
           <h2 className="mt-1 text-xl font-bold text-slate-900">{schedule.name}</h2>
@@ -1320,7 +1322,7 @@ function ApplyScheduleToClassesDialog({ open, schedule, isSubmitting, onCancel, 
                   return (
                     <label
                       key={key}
-                      className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition ${
+                      className={`flex cursor-pointer items-center gap-3 rounded-md border px-4 py-3 transition ${
                         isChecked
                           ? 'border-teal-300 bg-teal-50/50'
                           : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50'
@@ -1341,7 +1343,7 @@ function ApplyScheduleToClassesDialog({ open, schedule, isSubmitting, onCancel, 
                             <span className="text-muted">{classItem.grade}</span>
                           </div>
                           {isAlreadyApplied && (
-                            <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                            <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
                               مطبق
                             </span>
                           )}
@@ -1355,14 +1357,14 @@ function ApplyScheduleToClassesDialog({ open, schedule, isSubmitting, onCancel, 
           )}
         </div>
 
-        <footer className="shrink-0 flex items-center justify-end gap-3 border-t border-slate-100 bg-slate-50/70 px-6 py-4">
-          <button type="button" onClick={onCancel} className="button-secondary" disabled={isSubmitting}>
+        <footer className="shrink-0 flex items-center justify-end gap-3 border-t border-slate-200 bg-slate-50/70 px-6 py-4">
+          <button type="button" onClick={onCancel} className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 transition" disabled={isSubmitting}>
             إلغاء
           </button>
           <button
             type="button"
             onClick={handleSubmit}
-            className="button-primary"
+            className="inline-flex items-center gap-2 rounded-md bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 transition"
             disabled={isSubmitting || selectedClasses.size === 0}
           >
             {isSubmitting ? 'جاري التطبيق...' : `تطبيق على ${selectedClasses.size} فصل`}
@@ -1641,16 +1643,18 @@ export function AdminSchedulesPage() {
 
   const filteredSchedules = useMemo(() => {
     const term = searchTerm.trim().toLowerCase()
-    return schedules.filter((schedule) => {
-      const matchesQuery = term
-        ? [schedule.name, schedule.target_level ?? '', schedule.description ?? '']
-            .map((value) => value?.toLowerCase?.() ?? '')
-            .some((value) => value.includes(term))
-        : true
-      const matchesStatus =
-        statusFilter === 'all' ? true : statusFilter === 'active' ? schedule.is_active : !schedule.is_active
-      return matchesQuery && matchesStatus
-    })
+    return schedules
+      .filter((schedule) => {
+        const matchesQuery = term
+          ? [schedule.name, schedule.target_level ?? '', schedule.description ?? '']
+              .map((value) => value?.toLowerCase?.() ?? '')
+              .some((value) => value.includes(term))
+          : true
+        const matchesStatus =
+          statusFilter === 'all' ? true : statusFilter === 'active' ? schedule.is_active : !schedule.is_active
+        return matchesQuery && matchesStatus
+      })
+      .sort((a, b) => Number(b.is_active) - Number(a.is_active))
   }, [schedules, searchTerm, statusFilter])
 
   useEffect(() => {
@@ -1668,10 +1672,10 @@ export function AdminSchedulesPage() {
     const archived = total - active
     const totalPeriods = schedules.reduce((count, schedule) => count + (schedule.periods?.length ?? 0), 0)
     return [
-      { label: 'إجمالي الجداول', value: total },
-      { label: 'جداول مفعلة', value: active },
-      { label: 'جداول غير مفعلة', value: archived },
-      { label: 'عدد الفترات المسجلة', value: totalPeriods },
+      { label: 'إجمالي الجداول', value: total, theme: 'bg-sky-50 border-sky-100', valueClass: 'text-sky-900', labelClass: 'text-sky-700' },
+      { label: 'جداول مفعلة', value: active, theme: 'bg-emerald-50 border-emerald-100', valueClass: 'text-emerald-900', labelClass: 'text-emerald-700' },
+      { label: 'جداول غير مفعلة', value: archived, theme: 'bg-slate-50 border-slate-200', valueClass: 'text-slate-700', labelClass: 'text-slate-500' },
+      { label: 'عدد الفترات المسجلة', value: totalPeriods, theme: 'bg-amber-50 border-amber-100', valueClass: 'text-amber-900', labelClass: 'text-amber-700' },
     ]
   }, [schedules])
 
@@ -1743,33 +1747,33 @@ export function AdminSchedulesPage() {
     createScheduleMutation.isPending || updateScheduleMutation.isPending || activateScheduleMutation.isPending || deactivateScheduleMutation.isPending
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-4">
       <header className="space-y-2">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="space-y-1 text-right">
-            <h1 className="text-3xl font-bold text-slate-900">الخطط الزمنية</h1>
-            <p className="text-sm text-muted">
-              إدارة الجداول الزمنية للحصص الدراسية، إنشاء توقيتات جديدة، وتفعيل الجدول المعتمد للفصول.
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">الخطط الزمنية</h1>
+            <p className="text-sm text-slate-500 mt-1">
+              إدارة الجداول الزمنية للحصص الدراسية وتفعيل الجدول المعتمد للفصول
             </p>
           </div>
           <button
             type="button"
             onClick={() => setIsQuickAddOpen(true)}
-            className="button-primary"
+            className="inline-flex items-center gap-1.5 rounded-md bg-teal-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-teal-700"
             disabled={createScheduleMutation.isPending}
           >
-            <i className="bi bi-plus-lg" /> إضافة توقيت
+            <Plus className="h-3.5 w-3.5" /> إضافة توقيت
           </button>
         </div>
         {schedulesQuery.isError ? (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4 text-sm text-rose-700">
+          <div className="rounded-md border border-rose-200 bg-rose-50/70 p-4 text-sm text-rose-700">
             حدث خطأ أثناء تحميل الجداول الزمنية.
             <button
               type="button"
               onClick={() => schedulesQuery.refetch()}
               className="mr-3 inline-flex items-center gap-2 rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 transition hover:border-rose-300"
             >
-              <i className="bi bi-arrow-repeat" /> إعادة المحاولة
+              <RefreshCw className="h-4 w-4" /> إعادة المحاولة
             </button>
           </div>
         ) : null}
@@ -1777,7 +1781,7 @@ export function AdminSchedulesPage() {
 
       {isQuickAddOpen ? (
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-12 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget && !createScheduleMutation.isPending) { setIsQuickAddOpen(false); resetQuickForm() } }}>
-          <div className="relative w-full max-w-3xl rounded-3xl border border-slate-100 bg-white p-6 shadow-2xl space-y-6">
+          <div className="relative w-full max-w-3xl rounded-md border border-slate-100 bg-white p-6 shadow-2xl space-y-6">
             <header className="flex flex-wrap items-center justify-between gap-3">
               <div className="space-y-1 text-right">
                 <h2 className="text-xl font-semibold text-slate-900">إضافة توقيت</h2>
@@ -1791,12 +1795,12 @@ export function AdminSchedulesPage() {
                 className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
                 disabled={createScheduleMutation.isPending}
               >
-                <i className="bi bi-x-lg" />
+                <X className="h-4 w-4" />
               </button>
             </header>
 
             {quickSuccessMessage ? (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-sm font-semibold text-emerald-700">
+              <div className="rounded-md border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-sm font-semibold text-emerald-700">
                 {quickSuccessMessage}
               </div>
             ) : null}
@@ -1820,7 +1824,7 @@ export function AdminSchedulesPage() {
                   type="text"
                   value={quickFormValues.scheduleName}
                   onChange={(event) => handleQuickScheduleNameChange(event.target.value)}
-                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                  className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
                   placeholder="مثال: الجدول الدراسي للفصل الأول"
                   disabled={createScheduleMutation.isPending}
                   required
@@ -1872,7 +1876,7 @@ export function AdminSchedulesPage() {
                   type="text"
                   value={quickFormValues.targetLevel}
                   onChange={(event) => setQuickFormValues((prev) => ({ ...prev, targetLevel: event.target.value }))}
-                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                  className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
                   placeholder="مثال: العليا أو الدنيا"
                   disabled={createScheduleMutation.isPending}
                 />
@@ -1890,7 +1894,7 @@ export function AdminSchedulesPage() {
                   max={120}
                   value={quickFormValues.periodDuration}
                   onChange={(event) => handleQuickPeriodDurationChange(event.target.value)}
-                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                  className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
                   placeholder="45"
                   disabled={createScheduleMutation.isPending}
                   required
@@ -1910,7 +1914,7 @@ export function AdminSchedulesPage() {
                   type="time"
                   value={quickFormValues.firstPeriodStart}
                   onChange={(event) => handleQuickFirstPeriodStartChange(event.target.value)}
-                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                  className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
                   disabled={createScheduleMutation.isPending}
                   required
                 />
@@ -1931,7 +1935,7 @@ export function AdminSchedulesPage() {
                   max={12}
                   value={quickFormValues.numberOfPeriods}
                   onChange={(event) => handleQuickNumberOfPeriodsChange(event.target.value)}
-                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                  className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
                   placeholder="7"
                   disabled={createScheduleMutation.isPending}
                   required
@@ -1958,17 +1962,17 @@ export function AdminSchedulesPage() {
                 <button
                   type="button"
                   onClick={handleAddBreak}
-                  className="button-secondary"
+                  className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 transition"
                   disabled={!quickFormValues.breaksEnabled || createScheduleMutation.isPending}
                 >
-                  <i className="bi bi-plus" /> إضافة فسحة أخرى
+                  <Plus className="h-4 w-4" /> إضافة فسحة أخرى
                 </button>
               </div>
               <p className="text-xs text-muted">
                 استخدم هذا الخيار لإدراج فترات استراحة بين الحصص. سيتم ضبط توقيت الحصص التالية تلقائيًا.
               </p>
               {quickFormErrors.breaks ? (
-                <div className="rounded-2xl border border-rose-200 bg-rose-50/70 px-3 py-2 text-xs font-semibold text-rose-700">
+                <div className="rounded-md border border-rose-200 bg-rose-50/70 px-3 py-2 text-xs font-semibold text-rose-700">
                   {quickFormErrors.breaks}
                 </div>
               ) : null}
@@ -1979,7 +1983,7 @@ export function AdminSchedulesPage() {
                     return (
                       <article
                         key={item.id}
-                        className="rounded-3xl border border-slate-200 bg-white/80 p-4 shadow-sm transition hover:border-teal-200"
+                        className="rounded-md border border-slate-200 bg-white/80 p-4 shadow-sm transition hover:border-teal-200"
                       >
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <h4 className="text-sm font-semibold text-slate-700">فسحة رقم {index + 1}</h4>
@@ -2001,12 +2005,12 @@ export function AdminSchedulesPage() {
                               max={12}
                               value={item.afterPeriod}
                               onChange={(event) => handleBreakFieldChange(item.id, 'afterPeriod', event.target.value)}
-                              className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                              className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
                               placeholder="3"
                               disabled={createScheduleMutation.isPending}
                             />
                             {itemErrors.afterPeriod ? (
-                              <span className="text-[11px] font-medium text-rose-600">{itemErrors.afterPeriod}</span>
+                              <span className="text-xs font-medium text-rose-600">{itemErrors.afterPeriod}</span>
                             ) : null}
                           </div>
                           <div className="grid gap-2 text-right">
@@ -2017,12 +2021,12 @@ export function AdminSchedulesPage() {
                               max={120}
                               value={item.duration}
                               onChange={(event) => handleBreakFieldChange(item.id, 'duration', event.target.value)}
-                              className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                              className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
                               placeholder="15"
                               disabled={createScheduleMutation.isPending}
                             />
                             {itemErrors.duration ? (
-                              <span className="text-[11px] font-medium text-rose-600">{itemErrors.duration}</span>
+                              <span className="text-xs font-medium text-rose-600">{itemErrors.duration}</span>
                             ) : null}
                           </div>
                         </div>
@@ -2048,15 +2052,15 @@ export function AdminSchedulesPage() {
                 <button
                   type="button"
                   onClick={handleAddPrayer}
-                  className="button-secondary"
+                  className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 transition"
                   disabled={!quickFormValues.prayersEnabled || createScheduleMutation.isPending}
                 >
-                  <i className="bi bi-plus" /> إضافة وقت صلاة
+                  <Plus className="h-4 w-4" /> إضافة وقت صلاة
                 </button>
               </div>
               <p className="text-xs text-muted">يمكنك تحديد أكثر من وقت صلاة مع اسم المدة والموقع في الجدول.</p>
               {quickFormErrors.prayers ? (
-                <div className="rounded-2xl border border-rose-200 bg-rose-50/70 px-3 py-2 text-xs font-semibold text-rose-700">
+                <div className="rounded-md border border-rose-200 bg-rose-50/70 px-3 py-2 text-xs font-semibold text-rose-700">
                   {quickFormErrors.prayers}
                 </div>
               ) : null}
@@ -2067,7 +2071,7 @@ export function AdminSchedulesPage() {
                     return (
                       <article
                         key={item.id}
-                        className="rounded-3xl border border-slate-200 bg-white/80 p-4 shadow-sm transition hover:border-teal-200"
+                        className="rounded-md border border-slate-200 bg-white/80 p-4 shadow-sm transition hover:border-teal-200"
                       >
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <h4 className="text-sm font-semibold text-slate-700">وقت صلاة رقم {index + 1}</h4>
@@ -2089,12 +2093,12 @@ export function AdminSchedulesPage() {
                               max={12}
                               value={item.afterPeriod}
                               onChange={(event) => handlePrayerFieldChange(item.id, 'afterPeriod', event.target.value)}
-                              className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                              className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
                               placeholder="4"
                               disabled={createScheduleMutation.isPending}
                             />
                             {itemErrors.afterPeriod ? (
-                              <span className="text-[11px] font-medium text-rose-600">{itemErrors.afterPeriod}</span>
+                              <span className="text-xs font-medium text-rose-600">{itemErrors.afterPeriod}</span>
                             ) : null}
                           </div>
                           <div className="grid gap-2 text-right">
@@ -2105,12 +2109,12 @@ export function AdminSchedulesPage() {
                               max={120}
                               value={item.duration}
                               onChange={(event) => handlePrayerFieldChange(item.id, 'duration', event.target.value)}
-                              className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                              className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
                               placeholder="20"
                               disabled={createScheduleMutation.isPending}
                             />
                             {itemErrors.duration ? (
-                              <span className="text-[11px] font-medium text-rose-600">{itemErrors.duration}</span>
+                              <span className="text-xs font-medium text-rose-600">{itemErrors.duration}</span>
                             ) : null}
                           </div>
                           <div className="md:col-span-2 grid gap-2 text-right">
@@ -2119,12 +2123,12 @@ export function AdminSchedulesPage() {
                               type="text"
                               value={item.name}
                               onChange={(event) => handlePrayerFieldChange(item.id, 'name', event.target.value)}
-                              className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                              className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
                               placeholder="مثال: صلاة الظهر"
                               disabled={createScheduleMutation.isPending}
                             />
                             {itemErrors.name ? (
-                              <span className="text-[11px] font-medium text-rose-600">{itemErrors.name}</span>
+                              <span className="text-xs font-medium text-rose-600">{itemErrors.name}</span>
                             ) : null}
                           </div>
                         </div>
@@ -2136,13 +2140,13 @@ export function AdminSchedulesPage() {
             </section>
 
             {quickFormErrors.overlap ? (
-              <div className="rounded-2xl border border-rose-200 bg-rose-50/70 px-3 py-2 text-xs font-semibold text-rose-700">
+              <div className="rounded-md border border-rose-200 bg-rose-50/70 px-3 py-2 text-xs font-semibold text-rose-700">
                 {quickFormErrors.overlap}
               </div>
             ) : null}
 
             {quickTotalDuration !== null ? (
-              <div className="rounded-3xl border border-slate-100 bg-slate-50/70 px-4 py-3 text-sm text-slate-700">
+              <div className="rounded-md border border-slate-100 bg-slate-50/70 px-4 py-3 text-sm text-slate-700">
                 إجمالي الزمن المتوقع: <span className="font-semibold text-slate-900">{formatDurationLabel(quickTotalDuration)}</span>
                 {quickTotalDuration > 480 ? (
                   <span className="mt-2 block text-xs font-semibold text-amber-600">
@@ -2156,14 +2160,14 @@ export function AdminSchedulesPage() {
               <button
                 type="button"
                 onClick={resetQuickForm}
-                className="button-secondary"
+                className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 transition"
                 disabled={createScheduleMutation.isPending}
               >
                 إعادة تعيين
               </button>
               <button
                 type="submit"
-                className="button-primary"
+                className="inline-flex items-center gap-2 rounded-md bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 transition"
                 disabled={!quickFormIsReady || createScheduleMutation.isPending}
               >
                 معاينة الجدول
@@ -2174,40 +2178,44 @@ export function AdminSchedulesPage() {
         </div>
       ) : null}
 
-      <section className="glass-card space-y-6">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="rounded-md border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map((item) => (
-            <article key={item.label} className="rounded-2xl border border-slate-100 bg-white/70 p-4 text-right shadow-sm">
-              <p className="text-xs font-semibold text-muted">{item.label}</p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">{item.value.toLocaleString('ar-SA')}</p>
+            <article key={item.label} className={`rounded-md shadow-sm overflow-hidden border ${item.theme}`}>
+              <div className={`flex items-center justify-between px-3 py-2 border-b border-inherit bg-white/40`}>
+                <p className={`text-xs font-bold ${item.labelClass}`}>{item.label}</p>
+              </div>
+              <div className="px-3 py-3">
+                <p className={`text-xl font-bold ${item.valueClass}`}>{item.value.toLocaleString('en-US')}</p>
+              </div>
             </article>
           ))}
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[320px,1fr]">
-          <aside className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">قائمة الجداول</h2>
-              <span className="rounded-full bg-teal-100 px-3 py-1 text-xs font-semibold text-teal-700">
+        <div className="grid gap-3 lg:grid-cols-[280px,1fr]">
+          <aside className="space-y-2">
+            <div className="flex items-center justify-between py-1">
+              <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider">قائمة الجداول</h2>
+              <span className="rounded bg-teal-100 px-2 py-0.5 text-xs font-bold text-teal-700">
                 {filteredSchedules.length}
               </span>
             </div>
 
-            <div className="space-y-3 text-sm">
-              <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
-                <i className="bi bi-search text-slate-400" />
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 rounded border border-slate-300 bg-white px-2.5 py-1.5 focus-within:border-teal-500 focus-within:ring-1 focus-within:ring-teal-500">
+                <Search className="h-3.5 w-3.5 text-slate-400" />
                 <input
                   type="search"
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder="ابحث بالاسم أو الوصف"
-                  className="w-full border-none bg-transparent text-sm text-slate-700 outline-none"
+                  placeholder="ابحث بالاسم..."
+                  className="w-full border-none bg-transparent text-xs text-slate-700 outline-none"
                 />
               </div>
               <select
                 value={statusFilter}
                 onChange={(event) => setStatusFilter(event.target.value as ScheduleStatusFilter)}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm focus:border-teal-500 focus:outline-none"
+                className="w-full rounded border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 focus:border-teal-500 focus:outline-none"
               >
                 <option value="all">جميع الحالات</option>
                 <option value="active">مفعلة</option>
@@ -2215,13 +2223,13 @@ export function AdminSchedulesPage() {
               </select>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-1">
               {schedulesQuery.isLoading ? (
                 Array.from({ length: 4 }).map((_, index) => (
-                  <div key={index} className="h-20 animate-pulse rounded-3xl bg-slate-100" />
+                  <div key={index} className="h-12 animate-pulse rounded bg-slate-100" />
                 ))
               ) : filteredSchedules.length === 0 ? (
-                <div className="rounded-3xl border border-dashed border-slate-200 bg-white/60 p-6 text-center text-sm text-muted">
+                <div className="rounded border border-dashed border-slate-200 bg-white/60 p-4 text-center text-xs text-muted">
                   لا توجد جداول مطابقة للبحث.
                 </div>
               ) : (
@@ -2232,16 +2240,16 @@ export function AdminSchedulesPage() {
                       key={schedule.id}
                       type="button"
                       onClick={() => setSelectedScheduleId(schedule.id)}
-                      className={`w-full rounded-3xl border px-4 py-4 text-right transition focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${
+                      className={`w-full rounded border px-3 py-2 text-right transition focus:outline-none focus:ring-1 focus:ring-teal-500 ${
                         isSelected
                           ? 'border-teal-500 bg-teal-50 text-teal-900 shadow-sm'
-                          : 'border-transparent bg-white/80 hover:border-teal-300 hover:bg-white'
+                          : 'border-transparent bg-white/80 hover:border-teal-200 hover:bg-white'
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <div className="space-y-1">
-                          <p className="text-sm font-semibold text-slate-900">{schedule.name}</p>
-                          <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
+                        <div className="space-y-0.5 min-w-0">
+                          <p className="text-xs font-bold text-slate-800 truncate">{schedule.name}</p>
+                          <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
                             <ScheduleTypeBadge type={schedule.type ?? 'custom'} />
                             {schedule.target_level ? <span>{schedule.target_level}</span> : null}
                             <span>{schedule.periods?.length ?? 0} فترة</span>
@@ -2256,102 +2264,87 @@ export function AdminSchedulesPage() {
             </div>
           </aside>
 
-          <div className="rounded-3xl border border-slate-100 bg-white/80 p-6 shadow-sm">
+          <div className="rounded-md border border-slate-100 bg-white/80 p-4 shadow-sm">
             {selectedSchedule ? (
-              <div className="space-y-6">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div className="space-y-2 text-right">
-                    <h2 className="text-2xl font-bold text-slate-900">{selectedSchedule.name}</h2>
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted md:justify-end">
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-3">
+                  <div className="space-y-1.5 text-right">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-base font-bold text-slate-900">{selectedSchedule.name}</h2>
+                      <ScheduleStatusBadge isActive={selectedSchedule.is_active} showLabel />
+                      {selectedSchedule.description ? (
+                        <span className="text-xs text-slate-500 border-r border-slate-200 pr-2">{selectedSchedule.description}</span>
+                      ) : null}
+                      <span className="text-xs text-slate-400">{formatDateTime(selectedSchedule.updated_at ?? selectedSchedule.created_at)}</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
                       <ScheduleTypeBadge type={selectedSchedule.type ?? 'custom'} />
-                      <ScheduleStatusBadge isActive={selectedSchedule.is_active} />
                       {selectedSchedule.target_level ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-600">
+                        <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">
                           {selectedSchedule.target_level}
                         </span>
                       ) : null}
                     </div>
-                    <dl className="grid gap-2 text-xs text-muted">
-                      <div className="flex items-center gap-2">
-                        <dt className="font-semibold text-slate-600">تاريخ الإنشاء:</dt>
-                        <dd>{formatDateTime(selectedSchedule.created_at)}</dd>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <dt className="font-semibold text-slate-600">آخر تحديث:</dt>
-                        <dd>{formatDateTime(selectedSchedule.updated_at ?? selectedSchedule.created_at)}</dd>
-                      </div>
-                    </dl>
-                    {selectedSchedule.description ? (
-                      <p className="rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3 text-xs text-slate-600">
-                        {selectedSchedule.description}
-                      </p>
-                    ) : null}
                   </div>
-                  <div className="hidden md:flex flex-col gap-2 sm:flex-row">
+                  <div className="hidden md:flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => handleEdit(selectedSchedule)}
-                      className="button-secondary"
+                      className="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
                       disabled={isMutating}
                     >
-                      تعديل
+                      <Edit2 className="h-3.5 w-3.5" /> تعديل
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        setScheduleToApply(selectedSchedule)
-                        setIsApplyToClassesModalOpen(true)
-                      }}
-                      className="button-secondary"
+                      onClick={() => { setScheduleToApply(selectedSchedule); setIsApplyToClassesModalOpen(true) }}
+                      className="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
                       disabled={isMutating}
                     >
-                      <i className="bi bi-grid-3x3-gap-fill" /> تطبيق
+                      <LayoutGrid className="h-3.5 w-3.5" /> تطبيق
                     </button>
                     {selectedSchedule.is_active ? (
                       <button
                         type="button"
                         onClick={() => deactivateScheduleMutation.mutate(selectedSchedule.id)}
-                        className="button-secondary"
+                        className="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
                         disabled={deactivateScheduleMutation.isPending}
                       >
-                        {deactivateScheduleMutation.isPending && selectedScheduleId === selectedSchedule.id
-                          ? 'جاري التعطيل...'
-                          : 'تعطيل الجدول'}
+                        {deactivateScheduleMutation.isPending ? '...' : 'تعطيل'}
                       </button>
                     ) : (
                       <button
                         type="button"
                         onClick={() => handleActivate(selectedSchedule)}
-                        className="button-primary"
+                        className="inline-flex items-center gap-1.5 rounded border border-teal-600 bg-teal-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-teal-700 transition"
                         disabled={activateScheduleMutation.isPending}
                       >
-                        {activateScheduleMutation.isPending && selectedScheduleId === selectedSchedule.id
-                          ? 'جاري التفعيل...'
-                          : 'تفعيل الجدول'}
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        {activateScheduleMutation.isPending ? '...' : 'تفعيل'}
                       </button>
                     )}
                     <button
                       type="button"
                       onClick={() => setScheduleToDelete(selectedSchedule)}
-                      className="button-secondary"
+                      className="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition"
                       disabled={deleteScheduleMutation.isPending}
                     >
-                      حذف
+                      <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 </div>
 
                 {/* جدول الفترات - للشاشات الكبيرة */}
-                <div className="hidden md:block overflow-x-auto rounded-3xl border border-slate-200">
-                  <table className="w-full min-w-[640px] table-fixed text-right text-sm">
-                    <thead className="bg-slate-50/80 text-xs uppercase tracking-wide text-slate-500">
-                      <tr>
-                        <th className="px-4 py-3 font-semibold">رقم الفترة</th>
-                        <th className="px-4 py-3 font-semibold">الاسم</th>
-                        <th className="px-4 py-3 font-semibold">النوع</th>
-                        <th className="px-4 py-3 font-semibold">وقت البداية</th>
-                        <th className="px-4 py-3 font-semibold">وقت النهاية</th>
-                        <th className="px-4 py-3 font-semibold">المدة (دقيقة)</th>
+                <div className="hidden md:block overflow-hidden rounded border border-slate-200">
+                  <table className="w-full min-w-[560px] table-fixed text-right text-xs">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-500">
+                      <tr className="divide-x divide-x-reverse divide-slate-200">
+                        <th className="px-3 py-2">#</th>
+                        <th className="px-3 py-2">الاسم</th>
+                        <th className="px-3 py-2">النوع</th>
+                        <th className="px-3 py-2">البداية</th>
+                        <th className="px-3 py-2">النهاية</th>
+                        <th className="px-3 py-2">المدة (د)</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2360,30 +2353,26 @@ export function AdminSchedulesPage() {
                         const end = formatTime(period.end_time)
                         const duration = period.break_duration ?? ''
                         return (
-                          <tr key={`${period.period_number}-${period.start_time}`} className="border-t border-slate-100">
-                            <td className="px-4 py-3 text-sm font-semibold text-slate-800">{period.period_number}</td>
-                            <td className="px-4 py-3 text-sm text-slate-600">{period.period_name ?? '—'}</td>
-                            <td className="px-4 py-3 text-xs font-semibold">
+                          <tr key={`${period.period_number}-${period.start_time}`} className="border-t border-slate-100 divide-x divide-x-reverse divide-slate-100 hover:bg-slate-50/50">
+                            <td className="px-3 py-1.5 font-bold text-slate-700">{period.period_number}</td>
+                            <td className="px-3 py-1.5 text-slate-600">{period.period_name ?? '—'}</td>
+                            <td className="px-3 py-1.5">
                               {period.is_break ? (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-amber-700">
-                                  فسحة
-                                </span>
+                                <span className="inline-flex items-center rounded bg-amber-100 px-1.5 py-0.5 text-xs font-bold text-amber-700">فسحة</span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-emerald-700">
-                                  حصة دراسية
-                                </span>
+                                <span className="inline-flex items-center rounded bg-emerald-100 px-1.5 py-0.5 text-xs font-bold text-emerald-700">حصة</span>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-sm text-slate-600">{start || '—'}</td>
-                            <td className="px-4 py-3 text-sm text-slate-600">{end || '—'}</td>
-                            <td className="px-4 py-3 text-sm text-slate-600">{duration ? duration : period.is_break ? '—' : 'حسب الفترة'}</td>
+                            <td className="px-3 py-1.5 font-mono text-slate-600">{start || '—'}</td>
+                            <td className="px-3 py-1.5 font-mono text-slate-600">{end || '—'}</td>
+                            <td className="px-3 py-1.5 text-slate-600">{duration || '—'}</td>
                           </tr>
                         )
                       })}
                       {(selectedSchedule.periods ?? []).length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted">
-                            لا توجد فترات مسجلة لهذا الجدول حاليًا.
+                          <td colSpan={6} className="px-3 py-6 text-center text-xs text-muted">
+                            لا توجد فترات مسجلة لهذا الجدول.
                           </td>
                         </tr>
                       ) : null}
@@ -2398,7 +2387,7 @@ export function AdminSchedulesPage() {
                     const end = formatTime(period.end_time)
                     const duration = period.break_duration ?? ''
                     return (
-                      <div key={`${period.period_number}-${period.start_time}`} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                      <div key={`${period.period_number}-${period.start_time}`} className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
                         <div className="flex items-start justify-between mb-3">
                           <div>
                             <span className="font-semibold text-teal-600">الفترة {period.period_number}</span>
@@ -2432,15 +2421,14 @@ export function AdminSchedulesPage() {
                     )
                   })}
                   {(selectedSchedule.periods ?? []).length === 0 && (
-                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-muted">
+                    <div className="rounded-md border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-muted">
                       لا توجد فترات مسجلة لهذا الجدول حاليًا.
                     </div>
                   )}
                 </div>
 
-                <p className="text-xs text-muted">
-                  يمكن تطبيق هذا الجدول على فصل محدد من خلال صفحة «جداول الفصول»، حيث يتم ضبط أوقات الحصص تلقائيًا لكل
-                  فترة.
+                <p className="text-xs text-muted border-t border-slate-100 pt-2">
+                  لتطبيق هذا الجدول على فصل محدد استخدم زر «تطبيق» أعلاه.
                 </p>
               </div>
             ) : schedulesQuery.isLoading ? (
