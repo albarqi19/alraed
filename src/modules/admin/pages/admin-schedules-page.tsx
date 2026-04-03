@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Plus, X, Search, RefreshCw, Trash2, Edit2, AlertCircle, LayoutGrid, CheckCircle2, Clock, Calendar } from 'lucide-react'
+import { Plus, X, Search, RefreshCw, Trash2, Edit2, LayoutGrid, CheckCircle2 } from 'lucide-react'
 import {
   useActivateScheduleMutation,
   useApplyScheduleToMultipleClassesMutation,
