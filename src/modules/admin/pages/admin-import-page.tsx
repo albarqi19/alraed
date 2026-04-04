@@ -9,53 +9,61 @@ import {
 import type { ImportStudentsPreview, ImportSummary, ImportTeachersSummary } from '../types'
 import { useToast } from '@/shared/feedback/use-toast'
 import { TimeTableImportDialog } from '../components/timetable-import-dialog'
+import {
+  UploadCloud,
+  Download,
+  RefreshCw,
+  CheckSquare,
+  AlertTriangle,
+  Trash2,
+  Users,
+  GraduationCap,
+  Calendar,
+  Puzzle,
+  ChevronLeft,
+  FileUp,
+} from 'lucide-react'
 
-interface PlatformImportButtonProps {
-  platform: 'noor' | 'madrasati'
+// ─── Platform Import Button ────────────────────────────────────────────────
+function PlatformImportButton({
+  label,
+  logo,
+  onClick,
+}: {
   label: string
   logo: string
   onClick: () => void
-}
-
-function PlatformImportButton({ label, logo, onClick }: Omit<PlatformImportButtonProps, 'platform'>) {
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group flex items-center gap-3 rounded-2xl border-2 border-slate-200 bg-white p-4 shadow-sm transition-all hover:border-teal-400 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+      className="group flex items-center gap-3 rounded-md border border-slate-200 bg-white p-3 text-right transition hover:border-teal-300 hover:bg-teal-50/20 hover:shadow-sm"
     >
-      <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-2 ring-2 ring-slate-100 transition-all group-hover:ring-teal-400">
+      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded bg-white p-1 ring-1 ring-slate-200 transition group-hover:ring-teal-300">
         <img src={logo} alt={label} className="h-full w-full object-contain" />
       </div>
-      <p className="text-base font-bold text-slate-900">{label}</p>
+      <p className="text-sm font-bold text-slate-800 group-hover:text-teal-700 flex-1">{label}</p>
+      <ChevronLeft className="h-4 w-4 text-slate-300 transition-transform group-hover:-translate-x-0.5 group-hover:text-teal-500" />
     </button>
   )
 }
 
+// ─── Extension Detector ────────────────────────────────────────────────────
 function ExtensionDetector() {
   const [isInstalled, setIsInstalled] = useState<boolean | null>(null)
-  const CHROME_STORE_URL = 'https://chromewebstore.google.com/detail/الرَّائِد-مساعد-استيراد-ا/kglcgomelgkhgaefhjmakcfalfdficll'
+  const CHROME_STORE_URL =
+    'https://chromewebstore.google.com/detail/الرَّائِد-مساعد-استيراد-ا/kglcgomelgkhgaefhjmakcfalfdficll'
 
   useEffect(() => {
-    // الاستماع لرسائل من الإضافة
     const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'ALRAED_EXTENSION_DETECTED') {
-        setIsInstalled(true)
-      }
+      if (event.data?.type === 'ALRAED_EXTENSION_DETECTED') setIsInstalled(true)
     }
-
     window.addEventListener('message', handleMessage)
-
-    // إرسال طلب كشف الإضافة
     window.postMessage({ type: 'ALRAED_DETECT_EXTENSION' }, '*')
-
-    // إذا لم نتلقى رد خلال 1 ثانية، اعتبر الإضافة غير مثبتة
     const timeout = setTimeout(() => {
-      if (isInstalled === null) {
-        setIsInstalled(false)
-      }
+      if (isInstalled === null) setIsInstalled(false)
     }, 1000)
-
     return () => {
       window.removeEventListener('message', handleMessage)
       clearTimeout(timeout)
@@ -63,136 +71,157 @@ function ExtensionDetector() {
   }, [isInstalled])
 
   if (isInstalled === null) {
-    // حالة التحميل
     return (
-      <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
-        <div className="h-8 w-8 animate-pulse rounded-lg bg-slate-200" />
-        <p className="text-sm text-muted">جاري الكشف عن الإضافة...</p>
+      <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5">
+        <div className="h-5 w-5 animate-pulse rounded bg-slate-200" />
+        <p className="text-xs text-slate-400">جاري الكشف عن الإضافة...</p>
       </div>
     )
   }
 
   if (isInstalled) {
-    // الإضافة مثبتة
     return (
-      <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 px-4 py-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50">
-          <span className="text-lg font-bold text-slate-900">R</span>
+      <div className="flex items-center gap-2.5 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2.5">
+        <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded bg-white text-sm font-bold text-slate-900 ring-1 ring-emerald-200">
+          R
         </div>
-        <div className="flex-1 text-right">
-          <p className="text-sm font-semibold text-emerald-700">إضافة الرَّائِد مُثبّتة ✓</p>
-          <p className="text-xs text-emerald-600">يمكنك الآن استيراد البيانات بسهولة</p>
+        <div>
+          <p className="text-xs font-bold text-emerald-700">إضافة الرَّائِد مُثبّتة ✓</p>
+          <p className="text-[11px] text-emerald-600">يمكنك الآن الاستيراد التلقائي</p>
         </div>
       </div>
     )
   }
 
-  // الإضافة غير مثبتة
   return (
-    <div className="flex items-center gap-3 rounded-2xl border-2 border-amber-300 bg-amber-50/80 p-4">
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100">
-        <span className="text-xl font-bold text-slate-900">R</span>
+    <div className="flex items-center gap-3 rounded-md border border-amber-200 bg-amber-50/60 px-3 py-2.5">
+      <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded bg-white text-sm font-bold text-slate-900 ring-1 ring-amber-200">
+        R
       </div>
-      <div className="flex-1 text-right">
-        <p className="text-sm font-bold text-slate-900">احصل على إضافة الاستيراد التلقائي</p>
-        <p className="text-xs text-muted">قم بتثبيت الإضافة لاستيراد البيانات مباشرة من نور ومدرستي</p>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-bold text-slate-800">إضافة الاستيراد التلقائي</p>
+        <p className="text-[11px] text-amber-700">ثبّت الإضافة للاستيراد المباشر من نور ومدرستي</p>
       </div>
       <a
         href={CHROME_STORE_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="button-primary flex items-center gap-2 whitespace-nowrap text-sm"
+        className="inline-flex flex-shrink-0 items-center gap-1 rounded border border-amber-300 bg-white px-2.5 py-1 text-xs font-bold text-amber-700 transition hover:bg-amber-50"
       >
-        <i className="bi bi-download" />
-        تحميل الإضافة
+        <Download className="h-3 w-3" /> تحميل
       </a>
     </div>
   )
 }
 
-interface UploadCardProps {
-  title: string
-  description: string
+// ─── Upload Card ───────────────────────────────────────────────────────────
+function UploadCard({
+  onFileSelected,
+  isLoading,
+  accept,
+  helper,
+  fileName,
+}: {
   onFileSelected: (file: File) => void
   isLoading: boolean
   accept?: string
   helper?: string
-}
-
-function UploadCard({ title, description, onFileSelected, isLoading, accept, helper }: UploadCardProps) {
+  fileName?: string | null
+}) {
   const inputId = useId()
 
   return (
-    <div className="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-6 text-right shadow-sm">
-      <div className="space-y-2">
-        <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-        <p className="text-sm text-muted">{description}</p>
-      </div>
-      <div className="mt-6">
-        <label
-          htmlFor={inputId}
-          className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-3xl border border-slate-200 bg-slate-50/70 px-6 py-10 text-center transition hover:border-teal-300 hover:bg-teal-50/60 ${
-            isLoading ? 'pointer-events-none opacity-70' : ''
+    <label
+      htmlFor={inputId}
+      className={`flex cursor-pointer items-center gap-4 rounded-md border px-4 py-3 transition ${fileName
+        ? 'border-teal-300 bg-teal-50/40 hover:bg-teal-50'
+        : 'border-dashed border-slate-300 bg-slate-50/60 hover:border-teal-300 hover:bg-teal-50/20'
+        } ${isLoading ? 'pointer-events-none opacity-60' : ''}`}
+    >
+      <input
+        id={inputId}
+        type="file"
+        accept={accept ?? '.xlsx,.xls,.csv'}
+        onChange={(event) => {
+          const file = event.target.files?.[0]
+          if (!file) return
+          onFileSelected(file)
+          event.target.value = ''
+        }}
+        className="hidden"
+        disabled={isLoading}
+      />
+      <span
+        className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition ${fileName ? 'bg-teal-100 text-teal-600' : 'bg-slate-100 text-slate-400'
           }`}
-        >
-          <input
-            id={inputId}
-            type="file"
-            accept={accept ?? '.xlsx,.xls,.csv'}
-            onChange={(event) => {
-              const file = event.target.files?.[0]
-              if (!file) return
-              onFileSelected(file)
-              event.target.value = ''
-            }}
-            className="hidden"
-            disabled={isLoading}
-          />
-          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-teal-100 text-teal-600">
-            <i className="bi bi-cloud-arrow-up text-2xl" />
-          </span>
-          <div className="space-y-1">
-            <p className="text-sm font-semibold text-slate-800">
-              {isLoading ? 'جارٍ رفع الملف...' : 'اضغط هنا أو اسحب الملف لإسقاطه'}
-            </p>
-            <p className="text-xs text-muted">{helper ?? 'يدعم ملفات Excel و CSV'}</p>
-          </div>
-        </label>
+      >
+        {isLoading ? (
+          <RefreshCw className="h-4 w-4 animate-spin" />
+        ) : (
+          <FileUp className="h-4 w-4" />
+        )}
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-slate-700 truncate">
+          {isLoading ? 'جارٍ معالجة الملف...' : fileName ? fileName : 'اضغط لاختيار ملف'}
+        </p>
+        <p className="text-[11px] text-slate-400 mt-0.5">{helper ?? 'يدعم Excel و CSV'}</p>
       </div>
-    </div>
+      {!fileName && !isLoading && (
+        <span className="flex-shrink-0 rounded border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:text-teal-700">
+          اختيار
+        </span>
+      )}
+    </label>
   )
 }
 
-function StatBadge({ label, value, tone = 'default' }: { label: string; value: number | string; tone?: 'default' | 'success' | 'warn' | 'danger' }) {
+// ─── Stat Badge ────────────────────────────────────────────────────────────
+function StatBadge({
+  label,
+  value,
+  tone = 'default',
+}: {
+  label: string
+  value: number | string
+  tone?: 'default' | 'success' | 'warn' | 'danger'
+}) {
   const toneStyles: Record<typeof tone, string> = {
-    default: 'bg-slate-100 text-slate-700 border border-slate-200',
-    success: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-    warn: 'bg-amber-50 text-amber-700 border border-amber-200',
-    danger: 'bg-rose-50 text-rose-700 border border-rose-200',
+    default: 'bg-slate-50 text-slate-700 border-slate-200',
+    success: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    warn: 'bg-amber-50 text-amber-700 border-amber-200',
+    danger: 'bg-rose-50 text-rose-700 border-rose-200',
   }
 
   return (
-    <div className={`rounded-2xl px-4 py-3 text-right shadow-sm ${toneStyles[tone]}`}>
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1 text-xl font-bold">{typeof value === 'number' ? value.toLocaleString('ar-SA') : value}</p>
+    <div className={`rounded-md border px-3 py-2 ${toneStyles[tone]}`}>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+      <p className="mt-0.5 text-xl font-bold tabular-nums">
+        {typeof value === 'number' ? value.toLocaleString('en-US') : value}
+      </p>
     </div>
   )
 }
 
+// ─── Student Preview Summary ───────────────────────────────────────────────
 function StudentPreviewSummary({ preview }: { preview: ImportStudentsPreview }) {
   const stats = useMemo(
     () => [
-      { label: 'إجمالي السجلات', value: preview.total_students },
-      { label: 'طلاب جدد', value: preview.new_students_count, tone: 'success' as const },
-      { label: 'طلاب بحاجة لتحديث', value: preview.students_with_changes, tone: 'warn' as const },
-      { label: 'مرشحون للحذف', value: preview.to_be_deleted_count, tone: 'danger' as const },
-      { label: 'أخطاء في الملف', value: preview.errors_count, tone: preview.errors_count > 0 ? ('danger' as const) : ('default' as const) },
+      { label: 'إجمالي', value: preview.total_students },
+      { label: 'جدد', value: preview.new_students_count, tone: 'success' as const },
+      { label: 'تحديث', value: preview.students_with_changes, tone: 'warn' as const },
+      { label: 'حذف', value: preview.to_be_deleted_count, tone: 'danger' as const },
+      {
+        label: 'أخطاء',
+        value: preview.errors_count,
+        tone: preview.errors_count > 0 ? ('danger' as const) : ('default' as const),
+      },
     ],
     [preview],
   )
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+    <div className="grid grid-cols-5 gap-2">
       {stats.map((item) => (
         <StatBadge key={item.label} label={item.label} value={item.value} tone={item.tone} />
       ))}
@@ -200,6 +229,7 @@ function StudentPreviewSummary({ preview }: { preview: ImportStudentsPreview }) 
   )
 }
 
+// ─── Student Preview Details ───────────────────────────────────────────────
 function StudentPreviewDetails({ preview }: { preview: ImportStudentsPreview }) {
   const hasUpdates = preview.students_with_changes > 0
   const hasNew = preview.new_students_count > 0
@@ -211,283 +241,340 @@ function StudentPreviewDetails({ preview }: { preview: ImportStudentsPreview }) 
   const deletedStudents = preview.to_be_deleted.slice(0, 5)
 
   return (
-    <div className="space-y-6">
-      {hasErrors ? (
-        <article className="rounded-3xl border border-rose-200 bg-rose-50/80 p-5 text-right">
-          <header className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-rose-600">أخطاء حرجة</p>
-              <h3 className="text-lg font-semibold text-rose-700">راجع البيانات التالية قبل المتابعة</h3>
-            </div>
-            <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-600">
+    <div className="space-y-3">
+      {hasErrors && (
+        <article className="rounded-md border border-rose-200 bg-rose-50/60 p-3">
+          <header className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />
+            <h3 className="text-xs font-bold text-rose-700">أخطاء حرجة — راجع البيانات</h3>
+            <span className="mr-auto rounded bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-600 border border-rose-200">
               {preview.errors.length}
             </span>
           </header>
-          <ul className="mt-4 space-y-2 text-xs font-semibold text-rose-700">
+          <ul className="space-y-1 text-xs text-rose-700">
             {preview.errors.map((error, index) => (
-              <li key={`${error}-${index}`} className="rounded-2xl bg-white/80 px-4 py-2">
+              <li key={`${error}-${index}`} className="rounded bg-white/80 px-3 py-1.5 border border-rose-100">
                 {error}
               </li>
             ))}
           </ul>
         </article>
-      ) : null}
+      )}
 
-      {hasNew ? (
-        <section className="space-y-3">
-          <header className="flex items-center justify-between gap-3">
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-widest text-emerald-600">طلاب جدد</p>
-              <h3 className="text-lg font-semibold text-slate-900">سيتم إضافة {preview.new_students_count.toLocaleString('ar-SA')} طالبًا</h3>
-            </div>
-            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
-              {preview.new_students_count.toLocaleString('ar-SA')}
-            </span>
-          </header>
-          <div className="overflow-x-auto rounded-3xl border border-slate-200">
-            <table className="min-w-[640px] table-fixed text-right text-sm">
-              <thead className="bg-emerald-50/80 text-xs uppercase text-emerald-700">
+      {hasNew && (
+        <section className="space-y-1.5">
+          <div className="flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            <h3 className="text-xs font-bold text-slate-700">
+              طلاب جدد ({preview.new_students_count.toLocaleString('en-US')})
+            </h3>
+          </div>
+          <div className="overflow-x-auto rounded-md border border-slate-200">
+            <table className="min-w-[480px] table-fixed text-right text-xs">
+              <thead className="bg-emerald-50 text-emerald-700 border-b border-emerald-100">
                 <tr>
-                  <th className="px-4 py-3 font-semibold">الاسم</th>
-                  <th className="px-4 py-3 font-semibold">هوية الطالب</th>
-                  <th className="px-4 py-3 font-semibold">الصف</th>
-                  <th className="px-4 py-3 font-semibold">الفصل</th>
-                  <th className="px-4 py-3 font-semibold">هاتف ولي الأمر</th>
+                  <th className="px-3 py-2 font-semibold">الاسم</th>
+                  <th className="px-3 py-2 font-semibold">الهوية</th>
+                  <th className="px-3 py-2 font-semibold">الصف</th>
+                  <th className="px-3 py-2 font-semibold">الفصل</th>
+                  <th className="px-3 py-2 font-semibold">هاتف ولي الأمر</th>
                 </tr>
               </thead>
               <tbody>
                 {newStudents.map((student) => (
-                  <tr key={`${student.national_id}-${student.name}`} className="border-t border-slate-100">
-                    <td className="px-4 py-3 text-slate-700">{student.name}</td>
-                    <td className="px-4 py-3 text-slate-600">{student.national_id ?? '—'}</td>
-                    <td className="px-4 py-3 text-slate-600">{student.grade}</td>
-                    <td className="px-4 py-3 text-slate-600">{student.class_name}</td>
-                    <td className="px-4 py-3 text-slate-600">{student.parent_phone ?? '—'}</td>
+                  <tr
+                    key={`new-${student.national_id}-${student.name}`}
+                    className="border-t border-slate-100 hover:bg-slate-50"
+                  >
+                    <td className="px-3 py-2 text-slate-700 font-medium">{student.name}</td>
+                    <td className="px-3 py-2 text-slate-400 font-mono">{student.national_id ?? '—'}</td>
+                    <td className="px-3 py-2 text-slate-500">{student.grade}</td>
+                    <td className="px-3 py-2 text-slate-500">{student.class_name}</td>
+                    <td className="px-3 py-2 text-slate-400">{student.parent_phone ?? '—'}</td>
                   </tr>
                 ))}
-                {preview.new_students_count > newStudents.length ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-3 text-center text-xs text-muted">
-                      تم إخفاء {preview.new_students_count - newStudents.length} طالب من القائمة
+                {preview.new_students_count > newStudents.length && (
+                  <tr className="bg-slate-50">
+                    <td colSpan={5} className="px-3 py-2 text-center text-[11px] text-slate-400">
+                      + {(preview.new_students_count - newStudents.length).toLocaleString('en-US')} طالب إضافي
                     </td>
                   </tr>
-                ) : null}
+                )}
               </tbody>
             </table>
           </div>
         </section>
-      ) : null}
+      )}
 
-      {hasUpdates ? (
-        <section className="space-y-3">
-          <header className="flex items-center justify-between gap-3">
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-widest text-amber-600">تعديلات مقترحة</p>
-              <h3 className="text-lg font-semibold text-slate-900">
-                سيتم تحديث {preview.students_with_changes.toLocaleString('ar-SA')} سجلًا قائمًا
-              </h3>
-            </div>
-            <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
-              {preview.students_with_changes.toLocaleString('ar-SA')}
-            </span>
-          </header>
-
-          <div className="space-y-3">
+      {hasUpdates && (
+        <section className="space-y-1.5">
+          <div className="flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+            <h3 className="text-xs font-bold text-slate-700">
+              تعديلات مقترحة ({preview.students_with_changes.toLocaleString('en-US')})
+            </h3>
+          </div>
+          <div className="space-y-2">
             {updatedStudents.map((item) => (
-              <article key={item.id} className="rounded-3xl border border-amber-200 bg-white/80 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="space-y-1 text-right">
-                    <h4 className="text-sm font-semibold text-slate-800">{item.current_data.name}</h4>
-                    <p className="text-xs text-muted">
+              <article key={item.id} className="rounded-md border border-amber-200 bg-amber-50/30 p-3">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">{item.current_data.name}</p>
+                    <p className="text-[11px] text-slate-400">
                       {item.current_data.grade} / {item.current_data.class_name}
                     </p>
                   </div>
                   {item.attendance_count ? (
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">
-                      سجلات حضور: {item.attendance_count.toLocaleString('ar-SA')}
+                    <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">
+                      {item.attendance_count.toLocaleString('en-US')} سجل
                     </span>
                   ) : null}
                 </div>
-                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <div className="grid gap-1.5 sm:grid-cols-2">
                   {Object.entries(item.changes).map(([field, change]) => (
-                    <div key={field} className="rounded-2xl border border-slate-100 bg-slate-50/70 px-3 py-2 text-xs">
-                      <p className="font-semibold text-slate-600">{field}</p>
-                      <div className="mt-1 space-y-1 text-[11px] text-slate-500">
-                        <p>القيمة الحالية: {change.old ?? '—'}</p>
-                        <p>القيمة الجديدة: {change.new ?? '—'}</p>
-                      </div>
+                    <div
+                      key={field}
+                      className="rounded border border-slate-200 bg-white px-2 py-1.5 text-[11px]"
+                    >
+                      <p className="font-semibold text-slate-500 mb-0.5">{field}</p>
+                      <span className="text-rose-500 line-through">{change.old ?? '—'}</span>
+                      <span className="mx-1 text-slate-300">→</span>
+                      <span className="text-emerald-600 font-semibold">{change.new ?? '—'}</span>
                     </div>
                   ))}
                 </div>
               </article>
             ))}
-            {preview.students_with_changes > updatedStudents.length ? (
-              <p className="rounded-2xl border border-dashed border-amber-200 bg-amber-50/60 px-4 py-2 text-center text-xs text-amber-700">
-                يوجد {preview.students_with_changes - updatedStudents.length} سجل إضافي لن يتم عرضه هنا.
+            {preview.students_with_changes > updatedStudents.length && (
+              <p className="rounded border border-dashed border-amber-200 bg-amber-50/40 px-3 py-2 text-center text-xs text-amber-600">
+                + {(preview.students_with_changes - updatedStudents.length).toLocaleString('en-US')} سجل إضافي
               </p>
-            ) : null}
+            )}
           </div>
         </section>
-      ) : null}
+      )}
 
-      {hasDeletes ? (
-        <section className="space-y-3">
-          <header className="flex items-center justify-between gap-3">
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-widest text-rose-600">حذف محتمل</p>
-              <h3 className="text-lg font-semibold text-slate-900">
-                سيتم حذف {preview.to_be_deleted_count.toLocaleString('ar-SA')} سجلًا غير موجود في الملف
-              </h3>
-            </div>
-            <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700">
-              {preview.to_be_deleted_count.toLocaleString('ar-SA')}
-            </span>
-          </header>
-          <div className="overflow-x-auto rounded-3xl border border-rose-200">
-            <table className="min-w-[540px] table-fixed text-right text-sm">
-              <thead className="bg-rose-50/70 text-xs uppercase text-rose-700">
+      {hasDeletes && (
+        <section className="space-y-1.5">
+          <div className="flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+            <h3 className="text-xs font-bold text-slate-700">
+              مرشحون للحذف ({preview.to_be_deleted_count.toLocaleString('en-US')})
+            </h3>
+          </div>
+          <div className="overflow-x-auto rounded-md border border-rose-200">
+            <table className="min-w-[400px] table-fixed text-right text-xs">
+              <thead className="bg-rose-50 text-rose-700 border-b border-rose-100">
                 <tr>
-                  <th className="px-4 py-3 font-semibold">الاسم</th>
-                  <th className="px-4 py-3 font-semibold">الصف</th>
-                  <th className="px-4 py-3 font-semibold">الفصل</th>
-                  <th className="px-4 py-3 font-semibold">آخر تحديث</th>
+                  <th className="px-3 py-2 font-semibold">الاسم</th>
+                  <th className="px-3 py-2 font-semibold">الصف</th>
+                  <th className="px-3 py-2 font-semibold">الفصل</th>
+                  <th className="px-3 py-2 font-semibold">آخر تحديث</th>
                 </tr>
               </thead>
               <tbody>
                 {deletedStudents.map((student) => (
-                  <tr key={`${student.id}-${student.name}`} className="border-t border-rose-100">
-                    <td className="px-4 py-3 text-slate-700">{student.name}</td>
-                    <td className="px-4 py-3 text-slate-600">{student.grade}</td>
-                    <td className="px-4 py-3 text-slate-600">{student.class_name}</td>
-                    <td className="px-4 py-3 text-slate-500">{student.updated_at ? new Date(student.updated_at).toLocaleDateString('ar-SA') : '—'}</td>
-                  </tr>
-                ))}
-                {preview.to_be_deleted_count > deletedStudents.length ? (
-                  <tr>
-                    <td colSpan={4} className="px-4 py-3 text-center text-xs text-muted">
-                      يوجد {preview.to_be_deleted_count - deletedStudents.length} سجلات إضافية مرشحة للحذف.
+                  <tr
+                    key={`del-${student.id}-${student.name}`}
+                    className="border-t border-rose-100 hover:bg-rose-50/40"
+                  >
+                    <td className="px-3 py-2 text-slate-700">{student.name}</td>
+                    <td className="px-3 py-2 text-slate-500">{student.grade}</td>
+                    <td className="px-3 py-2 text-slate-500">{student.class_name}</td>
+                    <td className="px-3 py-2 text-slate-400">
+                      {student.updated_at
+                        ? new Date(student.updated_at).toLocaleDateString('ar-SA')
+                        : '—'}
                     </td>
                   </tr>
-                ) : null}
+                ))}
+                {preview.to_be_deleted_count > deletedStudents.length && (
+                  <tr className="bg-rose-50/40">
+                    <td colSpan={4} className="px-3 py-2 text-center text-[11px] text-rose-400">
+                      + {(preview.to_be_deleted_count - deletedStudents.length).toLocaleString('en-US')} سجل إضافي
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
         </section>
-      ) : null}
+      )}
     </div>
   )
 }
 
+// ─── Import Summary Card ───────────────────────────────────────────────────
 function ImportSummaryCard({ summary, title }: { summary: ImportSummary; title: string }) {
   const items = [
-    summary.new_count !== undefined ? { label: 'سجلات جديدة', value: summary.new_count, tone: 'success' as const } : null,
-    summary.updated_count !== undefined ? { label: 'تم تحديثها', value: summary.updated_count, tone: 'warn' as const } : null,
-    summary.deleted_count !== undefined ? { label: 'تم حذفها', value: summary.deleted_count, tone: 'danger' as const } : null,
-    summary.skipped_count !== undefined ? { label: 'تم تجاهلها', value: summary.skipped_count, tone: 'default' as const } : null,
-    summary.duplicates_in_file !== undefined && summary.duplicates_in_file > 0 ? { label: 'مكررات في الملف', value: summary.duplicates_in_file, tone: 'warn' as const } : null,
-    summary.errors_count !== undefined ? { label: 'أخطاء', value: summary.errors_count, tone: 'danger' as const } : null,
-  ].filter(Boolean) as Array<{ label: string; value: number; tone: 'default' | 'success' | 'warn' | 'danger' }>
+    summary.new_count !== undefined
+      ? { label: 'سجلات جديدة', value: summary.new_count, tone: 'success' as const }
+      : null,
+    summary.updated_count !== undefined
+      ? { label: 'تم تحديثها', value: summary.updated_count, tone: 'warn' as const }
+      : null,
+    summary.deleted_count !== undefined
+      ? { label: 'تم حذفها', value: summary.deleted_count, tone: 'danger' as const }
+      : null,
+    summary.skipped_count !== undefined
+      ? { label: 'تم تجاهلها', value: summary.skipped_count, tone: 'default' as const }
+      : null,
+    summary.duplicates_in_file !== undefined && summary.duplicates_in_file > 0
+      ? { label: 'مكررات', value: summary.duplicates_in_file, tone: 'warn' as const }
+      : null,
+    summary.errors_count !== undefined
+      ? { label: 'أخطاء', value: summary.errors_count, tone: 'danger' as const }
+      : null,
+  ].filter(Boolean) as Array<{
+    label: string
+    value: number
+    tone: 'default' | 'success' | 'warn' | 'danger'
+  }>
 
   return (
-    <article className="space-y-4 rounded-3xl border border-teal-200 bg-teal-50/70 p-5 text-right">
-      <header>
-        <p className="text-xs font-semibold uppercase tracking-widest text-teal-600">ملخص العملية</p>
-        <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-        {summary.message ? <p className="mt-1 text-sm text-muted">{summary.message}</p> : null}
+    <article className="rounded-md border border-teal-200 bg-teal-50/40 p-4 space-y-3">
+      <header className="flex items-center gap-2 border-b border-teal-100 pb-3">
+        <CheckSquare className="h-4 w-4 text-teal-600" />
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-teal-600">ملخص العملية</p>
+          <h3 className="text-sm font-bold text-slate-800">{title}</h3>
+        </div>
+        {summary.message && (
+          <p className="mr-auto text-xs text-slate-400">{summary.message}</p>
+        )}
       </header>
-      {items.length > 0 ? (
-        <div className="grid gap-3 sm:grid-cols-2">
+
+      {items.length > 0 && (
+        <div className="grid gap-2 grid-cols-3">
           {items.map((item) => (
             <StatBadge key={item.label} label={item.label} value={item.value} tone={item.tone} />
           ))}
         </div>
-      ) : null}
+      )}
 
-      {/* Deleted Students Section */}
-      {summary.deleted_students && summary.deleted_students.length > 0 ? (
-        <section className="space-y-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
+      {summary.deleted_students && summary.deleted_students.length > 0 && (
+        <section className="rounded-md border border-rose-200 bg-white p-3 space-y-2">
           <header className="flex items-center gap-2">
-            <span className="text-2xl">⚠️</span>
-            <h4 className="text-base font-semibold text-rose-900">
+            <Trash2 className="h-3.5 w-3.5 text-rose-600" />
+            <h4 className="text-xs font-bold text-rose-800">
               طلاب تم حذفهم ({summary.deleted_students.length})
             </h4>
           </header>
-          <div className="overflow-hidden rounded-lg border border-rose-200 bg-white">
-            <table className="w-full text-sm text-right">
-              <thead className="bg-rose-100 text-rose-900">
+          <div className="overflow-x-auto rounded border border-rose-100">
+            <table className="w-full text-xs text-right">
+              <thead className="bg-rose-50 text-rose-700">
                 <tr>
-                  <th className="px-3 py-2 font-semibold">الاسم</th>
-                  <th className="px-3 py-2 font-semibold">رقم الهوية</th>
-                  <th className="px-3 py-2 font-semibold">الصف</th>
-                  <th className="px-3 py-2 font-semibold">الفصل</th>
+                  <th className="px-3 py-1.5 font-semibold">الاسم</th>
+                  <th className="px-3 py-1.5 font-semibold">رقم الهوية</th>
+                  <th className="px-3 py-1.5 font-semibold">الصف</th>
+                  <th className="px-3 py-1.5 font-semibold">الفصل</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-rose-100">
                 {summary.deleted_students.map((student) => (
-                  <tr key={student.id} className="hover:bg-rose-50/50 transition-colors">
-                    <td className="px-3 py-2 text-slate-800">{student.name}</td>
-                    <td className="px-3 py-2 text-slate-600 font-mono text-xs">{student.national_id}</td>
-                    <td className="px-3 py-2 text-slate-600">{student.grade}</td>
-                    <td className="px-3 py-2 text-slate-600">{student.class_name}</td>
+                  <tr key={student.id} className="hover:bg-rose-50/50">
+                    <td className="px-3 py-1.5 text-slate-700">{student.name}</td>
+                    <td className="px-3 py-1.5 text-slate-400 font-mono">{student.national_id}</td>
+                    <td className="px-3 py-1.5 text-slate-500">{student.grade}</td>
+                    <td className="px-3 py-1.5 text-slate-500">{student.class_name}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <p className="text-xs text-rose-700 font-medium">
-            ℹ️ هؤلاء الطلاب لم يكونوا موجودين في الملف المرفوع وتم حذفهم من النظام
-          </p>
+          <p className="text-[11px] text-rose-500">لم يكونوا في الملف المرفوع وتم حذفهم من النظام</p>
         </section>
-      ) : null}
+      )}
 
-      {/* Warnings Section */}
-      {summary.warnings && summary.warnings.length > 0 ? (
-        <section className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-4">
-          <header className="flex items-center gap-2">
-            <span className="text-xl">💡</span>
-            <h4 className="text-sm font-semibold text-amber-900">
-              تنبيهات ({summary.warnings.length})
-            </h4>
+      {summary.warnings && summary.warnings.length > 0 && (
+        <section className="rounded-md border border-amber-200 bg-amber-50/40 p-3 space-y-1.5">
+          <header className="flex items-center gap-1.5">
+            <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+            <h4 className="text-xs font-bold text-amber-800">تنبيهات ({summary.warnings.length})</h4>
           </header>
-          <ul className="space-y-1.5 text-xs text-amber-800">
+          <ul className="space-y-1 text-xs text-amber-700">
             {summary.warnings.map((warning, index) => (
-              <li key={index} className="rounded-lg bg-white/80 px-3 py-2 border border-amber-100">
+              <li key={index} className="rounded bg-white/80 px-3 py-1.5 border border-amber-100">
                 {warning}
               </li>
             ))}
           </ul>
         </section>
-      ) : null}
+      )}
 
-      {/* Errors Section */}
-      {summary.errors && summary.errors.length > 0 ? (
-        <ul className="space-y-2 text-xs font-semibold text-rose-700">
+      {summary.errors && summary.errors.length > 0 && (
+        <ul className="space-y-1 text-xs text-rose-700">
           {summary.errors.map((error, index) => (
-            <li key={`${error}-${index}`} className="rounded-2xl bg-white/80 px-4 py-2">
+            <li key={`${error}-${index}`} className="rounded bg-white/80 px-3 py-1.5 border border-rose-100">
               {error}
             </li>
           ))}
         </ul>
-      ) : null}
+      )}
     </article>
   )
 }
 
+// ─── Tab Types ─────────────────────────────────────────────────────────────
+type TabId = 'people' | 'schedules' | 'platforms'
+
+interface TabDef {
+  id: TabId
+  label: string
+  subLabel: string
+  icon: React.ReactNode
+  dotColor: string
+}
+
+const TABS: TabDef[] = [
+  {
+    id: 'people',
+    label: 'الطلاب والمعلمون',
+    subLabel: 'استيراد البيانات',
+    icon: (
+      <span className="flex items-center -space-x-1 rtl:space-x-reverse">
+        <GraduationCap className="h-3.5 w-3.5" />
+        <Users className="h-3.5 w-3.5" />
+      </span>
+    ),
+    dotColor: 'bg-teal-500',
+  },
+  {
+    id: 'schedules',
+    label: 'الجداول',
+    subLabel: 'aSc TimeTable',
+    icon: <Calendar className="h-3.5 w-3.5" />,
+    dotColor: 'bg-emerald-500',
+  },
+  {
+    id: 'platforms',
+    label: 'المنصات',
+    subLabel: 'نور · مدرستي',
+    icon: <Puzzle className="h-3.5 w-3.5" />,
+    dotColor: 'bg-amber-500',
+  },
+]
+
+// ─── Main Page ─────────────────────────────────────────────────────────────
 export function AdminImportPage() {
   const showToast = useToast()
+  const [activeTab, setActiveTab] = useState<TabId>('people')
+
+  // Students state
   const [studentFile, setStudentFile] = useState<File | null>(null)
   const [studentPreview, setStudentPreview] = useState<ImportStudentsPreview | null>(null)
-  const [studentOptions, setStudentOptions] = useState<{ update_existing: boolean; delete_missing: boolean }>(
-    () => ({ update_existing: true, delete_missing: false }),
-  )
+  const [studentOptions, setStudentOptions] = useState(() => ({
+    update_existing: true,
+    delete_missing: false,
+  }))
   const [studentError, setStudentError] = useState<string | null>(null)
   const [studentImportSummary, setStudentImportSummary] = useState<ImportSummary | null>(null)
 
+  // Teachers state
   const [teacherFile, setTeacherFile] = useState<File | null>(null)
   const [teacherSummary, setTeacherSummary] = useState<ImportTeachersSummary | null>(null)
   const [teacherError, setTeacherError] = useState<string | null>(null)
 
-  // TimeTable Import Dialog
   const [isTimeTableDialogOpen, setIsTimeTableDialogOpen] = useState(false)
 
   const previewStudentsMutation = usePreviewImportStudentsMutation()
@@ -503,9 +590,7 @@ export function AdminImportPage() {
     const formData = new FormData()
     formData.append('file', file)
     previewStudentsMutation.mutate(formData, {
-      onSuccess: (data) => {
-        setStudentPreview(data)
-      },
+      onSuccess: (data) => setStudentPreview(data),
       onError: () => {
         setStudentPreview(null)
         setStudentError('تعذر قراءة الملف. تأكد من البنية وامتداد الملف.')
@@ -519,11 +604,9 @@ export function AdminImportPage() {
       setStudentError('يرجى إجراء المعاينة أولاً قبل الاستيراد.')
       return
     }
-
     setStudentError(null)
     const formData = new FormData()
     formData.append('file', studentFile)
-
     importStudentsMutation.mutate(
       {
         formData,
@@ -533,12 +616,9 @@ export function AdminImportPage() {
         },
       },
       {
-        onSuccess: (summary) => {
-          setStudentImportSummary(summary)
-        },
-        onError: () => {
-          setStudentError('حدث خطأ أثناء تنفيذ الاستيراد. حاول مجددًا أو راجع ملف البيانات.')
-        },
+        onSuccess: (summary) => setStudentImportSummary(summary),
+        onError: () =>
+          setStudentError('حدث خطأ أثناء تنفيذ الاستيراد. حاول مجددًا.'),
       },
     )
   }
@@ -557,19 +637,12 @@ export function AdminImportPage() {
     setTeacherError(null)
     const formData = new FormData()
     formData.append('file', teacherFile)
-
     importTeachersMutation.mutate(formData, {
-      onSuccess: (summary) => {
-        setTeacherSummary(summary)
-      },
-      onError: () => {
-        setTeacherError('تعذر استيراد البيانات. تأكد من القالب أو أعد المحاولة لاحقًا.')
-      },
+      onSuccess: (summary) => setTeacherSummary(summary),
+      onError: () =>
+        setTeacherError('تعذر استيراد البيانات. تأكد من القالب أو أعد المحاولة.'),
     })
   }
-
-  const isStudentBusy = previewStudentsMutation.isPending || importStudentsMutation.isPending
-  const isTeacherBusy = importTeachersMutation.isPending
 
   const handlePlatformImport = (platform: 'noor' | 'madrasati') => {
     showToast({
@@ -579,302 +652,397 @@ export function AdminImportPage() {
     })
   }
 
+  const isStudentBusy = previewStudentsMutation.isPending || importStudentsMutation.isPending
+  const isTeacherBusy = importTeachersMutation.isPending
+
   return (
-    <section className="space-y-8">
-      <header className="space-y-2">
-        <h1 className="text-3xl font-bold text-slate-900">استيراد البيانات</h1>
-        <p className="text-sm text-muted">
-          قم برفع ملفات Excel أو CSV للطلاب والمعلمين مع معاينة ذكية قبل التنفيذ وخيارات مخصصة للتحديث والحذف.
-        </p>
+    <section className="space-y-4">
+      {/* ── Page Header ── */}
+      <header className="flex flex-wrap items-end justify-between gap-2 border-b border-slate-200 pb-3">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">استيراد البيانات</h1>
+          <p className="text-sm text-slate-500 mt-0.5">
+            رفع ملفات Excel أو CSV مع معاينة ذكية قبل التنفيذ
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5">
+          <UploadCloud className="h-3.5 w-3.5 text-slate-400" />
+          <span className="text-xs font-semibold text-slate-500">يدعم XLSX · CSV · XML</span>
+        </div>
       </header>
 
-      {/* Platform Import Buttons */}
-      <div className="glass-card">
-        <header className="mb-6">
-          <p className="text-xs font-semibold uppercase tracking-widest text-teal-600">استيراد سريع</p>
-          <h2 className="text-xl font-bold text-slate-900">استيراد من المنصات التعليمية</h2>
-          <p className="mt-1 text-sm text-muted">
-            اختر المنصة التي تريد الاستيراد منها لتحميل البيانات مباشرة
-          </p>
-        </header>
-
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <ExtensionDetector />
-          <PlatformImportButton
-            label="استيراد من نظام نور"
-            logo="https://noor.moe.gov.sa/Noor/images/home_login/noor_logo.png"
-            onClick={() => handlePlatformImport('noor')}
-          />
-          <PlatformImportButton
-            label="استيراد من منصة مدرستي"
-            logo="https://object.moe.gov.sa/nasaq/edu/files/logo-2-638593241344546491.png"
-            onClick={() => handlePlatformImport('madrasati')}
-          />
-        </div>
+      {/* ── Improved Tab Navigation (Pill Style) ── */}
+      <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-100/70 p-1">
+        {TABS.map((tab) => {
+          const isActive = activeTab === tab.id
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`relative flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-all ${isActive
+                ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80'
+                : 'text-slate-500 hover:text-slate-700'
+                }`}
+            >
+              {/* Active dot indicator */}
+              {isActive && (
+                <span className={`absolute right-2 top-2 h-1.5 w-1.5 rounded-full ${tab.dotColor}`} />
+              )}
+              <span className={isActive ? 'text-slate-600' : 'text-slate-400'}>{tab.icon}</span>
+              <span className="hidden sm:inline">{tab.label}</span>
+              <span className="sm:hidden">{tab.label.split(' و')[0]}</span>
+            </button>
+          )
+        })}
       </div>
 
-      {/* TimeTable Import Section */}
-      <div className="glass-card">
-        <header className="mb-6">
-          <p className="text-xs font-semibold uppercase tracking-widest text-emerald-600">جداول الحصص</p>
-          <h2 className="text-xl font-bold text-slate-900">استيراد من TimeTable</h2>
-          <p className="mt-1 text-sm text-muted">
-            استيراد جداول الحصص من برنامج aSc TimeTable مع مطابقة ذكية للمعلمين والمواد
-          </p>
-        </header>
+      {/* ══════════════════════════════════════════════════════════════
+          TAB: الطلاب والمعلمون — Side by Side
+      ══════════════════════════════════════════════════════════════ */}
+      {activeTab === 'people' && (
+        <div className="grid gap-4 lg:grid-cols-2">
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <div className="flex-1 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100">
-                <i className="bi bi-calendar3 text-xl text-emerald-600" />
+          {/* ── Students Column ── */}
+          <div className="rounded-lg border border-slate-200 bg-white shadow-sm flex flex-col">
+            {/* Header */}
+            <header className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 bg-slate-50/50 rounded-t-lg">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-teal-50 border border-teal-200">
+                  <GraduationCap className="h-3.5 w-3.5 text-teal-600" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-teal-600">الطلاب</p>
+                  <h2 className="text-sm font-bold text-slate-800 leading-tight">استيراد ملفات الطلاب</h2>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="font-semibold text-slate-900">aSc TimeTable</p>
-                <p className="text-xs text-muted">ملفات XML من برنامج الجداول</p>
+              <button
+                type="button"
+                onClick={() => downloadStudentsTemplateMutation.mutate()}
+                disabled={downloadStudentsTemplateMutation.isPending}
+                className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:text-teal-700"
+              >
+                <Download className="h-3 w-3" /> قالب
+              </button>
+            </header>
+
+            {/* Body */}
+            <div className="flex-1 p-4 space-y-3">
+              <p className="text-xs text-slate-400">
+                المعاينة لا تحدث بيانات — راجع النتائج ثم نفّذ الاستيراد.
+              </p>
+
+              <UploadCard
+                onFileSelected={handleStudentFileSelected}
+                isLoading={previewStudentsMutation.isPending}
+                helper="XLSX / CSV · حتى 10MB"
+                fileName={studentFile?.name}
+              />
+
+              {studentError && (
+                <div className="flex items-center gap-2 rounded-md border border-rose-200 bg-rose-50/60 px-3 py-2.5 text-xs font-semibold text-rose-700">
+                  <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+                  {studentError}
+                </div>
+              )}
+
+              {studentPreview && (
+                <section className="space-y-3">
+                  <StudentPreviewSummary preview={studentPreview} />
+
+                  {/* Options */}
+                  <div className="rounded-md border border-slate-200 bg-slate-50/50 p-3 space-y-2">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                      خيارات التنفيذ
+                    </p>
+                    <div className="space-y-1.5">
+                      <label className="flex items-start gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 cursor-pointer hover:border-teal-200 transition text-xs">
+                        <input
+                          type="checkbox"
+                          className="mt-0.5 h-3.5 w-3.5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                          checked={studentOptions.update_existing}
+                          onChange={(e) =>
+                            setStudentOptions((prev) => ({ ...prev, update_existing: e.target.checked }))
+                          }
+                          disabled={isStudentBusy}
+                        />
+                        <div>
+                          <p className="font-bold text-slate-700">تحديث السجلات الموجودة</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">تحديث بيانات الطلاب الحاليين وفق الملف</p>
+                        </div>
+                      </label>
+                      <label className="flex items-start gap-2 rounded-md border border-rose-200 bg-rose-50/30 px-3 py-2 cursor-pointer hover:border-rose-300 transition text-xs">
+                        <input
+                          type="checkbox"
+                          className="mt-0.5 h-3.5 w-3.5 rounded border-rose-300 text-rose-600 focus:ring-rose-500"
+                          checked={studentOptions.delete_missing}
+                          onChange={(e) =>
+                            setStudentOptions((prev) => ({ ...prev, delete_missing: e.target.checked }))
+                          }
+                          disabled={isStudentBusy}
+                        />
+                        <div>
+                          <p className="font-bold text-slate-700">حذف السجلات غير الموجودة</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">تأكد أن الملف يحتوي على جميع الطلاب</p>
+                        </div>
+                      </label>
+                    </div>
+                    <div className="flex items-center justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => { setStudentPreview(null); setStudentImportSummary(null); setStudentFile(null) }}
+                        disabled={isStudentBusy}
+                        className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition"
+                      >
+                        <RefreshCw className="h-3 w-3" /> إعادة
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleStudentImport}
+                        disabled={isStudentBusy || !studentPreview}
+                        className="inline-flex items-center gap-1 rounded bg-teal-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-teal-700 disabled:opacity-50 transition"
+                      >
+                        <UploadCloud className="h-3 w-3" />
+                        {importStudentsMutation.isPending ? 'جارٍ التنفيذ...' : 'تنفيذ الاستيراد'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <StudentPreviewDetails preview={studentPreview} />
+                </section>
+              )}
+
+              {studentImportSummary && (
+                <ImportSummaryCard summary={studentImportSummary} title="نتائج استيراد الطلاب" />
+              )}
+            </div>
+          </div>
+
+          {/* ── Teachers Column ── */}
+          <div className="rounded-lg border border-slate-200 bg-white shadow-sm flex flex-col">
+            {/* Header */}
+            <header className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 bg-slate-50/50 rounded-t-lg">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-indigo-50 border border-indigo-200">
+                  <Users className="h-3.5 w-3.5 text-indigo-600" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-indigo-600">المعلمون</p>
+                  <h2 className="text-sm font-bold text-slate-800 leading-tight">استيراد ملفات المعلمين</h2>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => downloadTeachersTemplateMutation.mutate()}
+                disabled={downloadTeachersTemplateMutation.isPending}
+                className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-indigo-300 hover:text-indigo-700"
+              >
+                <Download className="h-3 w-3" /> قالب
+              </button>
+            </header>
+
+            {/* Body */}
+            <div className="flex-1 p-4 space-y-3">
+              <p className="text-xs text-slate-400">
+                سيتم إنشاء الحسابات الجديدة وإرجاع كلمات المرور المؤقتة إن وُجدت.
+              </p>
+
+              <UploadCard
+                onFileSelected={handleTeacherFileSelected}
+                isLoading={isTeacherBusy}
+                helper="الاسم · الهوية · البريد · الجوال · التخصص"
+                fileName={teacherFile?.name}
+              />
+
+              {teacherError && (
+                <div className="flex items-center gap-2 rounded-md border border-rose-200 bg-rose-50/60 px-3 py-2.5 text-xs font-semibold text-rose-700">
+                  <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+                  {teacherError}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => { setTeacherFile(null); setTeacherSummary(null) }}
+                  disabled={isTeacherBusy}
+                  className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition"
+                >
+                  <RefreshCw className="h-3 w-3" /> إعادة تعيين
+                </button>
+                <button
+                  type="button"
+                  onClick={handleTeacherImport}
+                  disabled={isTeacherBusy || !teacherFile}
+                  className="inline-flex items-center gap-1 rounded bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-700 disabled:opacity-50 transition"
+                >
+                  <UploadCloud className="h-3 w-3" />
+                  {isTeacherBusy ? 'جارٍ الاستيراد...' : 'تنفيذ الاستيراد'}
+                </button>
+              </div>
+
+              {teacherSummary && (
+                <div className="space-y-3">
+                  <ImportSummaryCard summary={teacherSummary} title="نتائج استيراد المعلمين" />
+
+                  {teacherSummary.credentials && teacherSummary.credentials.length > 0 && (
+                    <article className="rounded-md border border-slate-200 bg-white p-4 space-y-3">
+                      <header className="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                            حسابات جديدة
+                          </p>
+                          <h3 className="text-sm font-bold text-slate-800">كلمات المرور المؤقتة</h3>
+                        </div>
+                        <span className="rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-bold text-slate-500">
+                          {teacherSummary.credentials.length.toLocaleString('en-US')}
+                        </span>
+                      </header>
+                      <div className="overflow-x-auto rounded-md border border-slate-200">
+                        <table className="min-w-[300px] table-fixed text-right text-xs">
+                          <thead className="bg-slate-50 border-b border-slate-200">
+                            <tr>
+                              <th className="px-3 py-2 font-semibold text-slate-500">رقم الهوية</th>
+                              <th className="px-3 py-2 font-semibold text-slate-500">كلمة المرور</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {teacherSummary.credentials.map((credential) => (
+                              <tr
+                                key={`${credential.national_id}-${credential.password}`}
+                                className="border-t border-slate-100 hover:bg-slate-50"
+                              >
+                                <td className="px-3 py-2 text-slate-700">{credential.national_id}</td>
+                                <td className="px-3 py-2 text-slate-500 font-mono">{credential.password}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <p className="text-[11px] text-slate-400">
+                        رقم الهوية يُستخدم كاسم مستخدم، ويمكن تغيير كلمة المرور بعد أول دخول.
+                      </p>
+                    </article>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════
+          TAB: الجداول
+      ══════════════════════════════════════════════════════════════ */}
+      {activeTab === 'schedules' && (
+        <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
+          <header className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 bg-slate-50/50 rounded-t-lg">
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-50 border border-emerald-200">
+                <Calendar className="h-3.5 w-3.5 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-600">جداول الحصص</p>
+                <h2 className="text-sm font-bold text-slate-800">استيراد من aSc TimeTable</h2>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsTimeTableDialogOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-700"
+            >
+              <UploadCloud className="h-3.5 w-3.5" /> استيراد جدول
+            </button>
+          </header>
+
+          <div className="p-4 space-y-4">
+            <p className="text-xs text-slate-500">
+              استيراد جداول الحصص من برنامج aSc TimeTable بصيغة XML مع مطابقة ذكية للمعلمين والمواد.
+            </p>
+
+            <div className="flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md bg-emerald-100">
+                <Calendar className="h-5 w-5 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-slate-800">aSc TimeTable XML</p>
+                <p className="text-xs text-slate-400">ملفات XML بترميز windows-1256 (عربي)</p>
+              </div>
+            </div>
+
+            <div className="rounded-md border border-slate-200 bg-slate-50/50 p-4">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-2">مميزات الاستيراد</p>
+              <ul className="space-y-1.5 text-xs text-slate-600">
+                {[
+                  'دعم ملفات XML بترميز windows-1256 (العربية)',
+                  'مطابقة ذكية للمعلمين والمواد مع النظام',
+                  'تحويل أسماء الفصول تلقائياً (أول 1 → الصف الأول / 1)',
+                  'إمكانية استبدال الحصص القديمة أو الإضافة عليها',
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-2">
+                    <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-emerald-500" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════
+          TAB: المنصات
+      ══════════════════════════════════════════════════════════════ */}
+      {activeTab === 'platforms' && (
+        <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
+          <header className="flex items-center gap-2 border-b border-slate-100 px-4 py-3 bg-slate-50/50 rounded-t-lg">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-amber-50 border border-amber-200">
+              <Puzzle className="h-3.5 w-3.5 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-amber-600">استيراد سريع</p>
+              <h2 className="text-sm font-bold text-slate-800">الاستيراد من المنصات التعليمية</h2>
+            </div>
+          </header>
+
+          <div className="p-4 space-y-3">
+            <p className="text-xs text-slate-500">
+              اختر المنصة للاستيراد المباشر — يتطلب تثبيت إضافة الرَّائِد على Chrome.
+            </p>
+
+            <ExtensionDetector />
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <PlatformImportButton
+                label="استيراد من نظام نور"
+                logo="https://noor.moe.gov.sa/Noor/images/home_login/noor_logo.png"
+                onClick={() => handlePlatformImport('noor')}
+              />
+              <PlatformImportButton
+                label="استيراد من منصة مدرستي"
+                logo="https://object.moe.gov.sa/nasaq/edu/files/logo-2-638593241344546491.png"
+                onClick={() => handlePlatformImport('madrasati')}
+              />
+            </div>
+
+            <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50/40 p-3">
+              <AlertTriangle className="h-4 w-4 flex-shrink-0 text-amber-500 mt-0.5" />
+              <div>
+                <p className="text-xs font-bold text-amber-800">يتطلب إضافة المتصفح</p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  للاستيراد التلقائي من المنصات يجب تثبيت إضافة الرَّائِد على متصفح Google Chrome
+                </p>
               </div>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setIsTimeTableDialogOpen(true)}
-            className="button-primary flex items-center gap-2 whitespace-nowrap"
-          >
-            <i className="bi bi-upload" />
-            استيراد جدول
-          </button>
         </div>
+      )}
 
-        <div className="mt-4 rounded-2xl border border-slate-200 bg-white/70 p-4">
-          <h3 className="text-sm font-semibold text-slate-700 mb-2">مميزات الاستيراد:</h3>
-          <ul className="text-xs text-muted space-y-1 list-disc list-inside">
-            <li>دعم ملفات XML بترميز windows-1256 (العربية)</li>
-            <li>مطابقة ذكية للمعلمين والمواد مع النظام</li>
-            <li>تحويل أسماء الفصول تلقائياً (أول 1 → الصف الأول / 1)</li>
-            <li>إمكانية استبدال الحصص القديمة أو الإضافة عليها</li>
-          </ul>
-        </div>
-      </div>
-
-      {/* TimeTable Import Dialog */}
+      {/* ── TimeTable Dialog ── */}
       <TimeTableImportDialog
         isOpen={isTimeTableDialogOpen}
         onClose={() => setIsTimeTableDialogOpen(false)}
       />
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Students Import Section */}
-        <section className="glass-card space-y-6 flex flex-col h-full min-h-[600px]">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-right">
-            <p className="text-xs font-semibold uppercase tracking-widest text-teal-600">الطلاب</p>
-            <h2 className="text-2xl font-bold text-slate-900">استيراد ملفات الطلاب</h2>
-            <p className="mt-1 text-sm text-muted">
-              تجري المعاينة دون أي تغييرات، تأكد من النتائج ثم نفذ الاستيراد مع خياراتك المفضلة.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => downloadStudentsTemplateMutation.mutate()}
-            className="button-secondary"
-            disabled={downloadStudentsTemplateMutation.isPending}
-          >
-            <i className="bi bi-download" /> تنزيل قالب الطلاب
-          </button>
-        </header>
-
-        <UploadCard
-          title="رفع ملف الطلاب"
-          description="استخدم الملف المُصدّر من نور أو من النظام الحالي لضمان توافق الحقول."
-          onFileSelected={handleStudentFileSelected}
-          isLoading={previewStudentsMutation.isPending}
-          helper="يدعم XLSX / CSV حتى حجم 10MB"
-        />
-
-        {studentError ? (
-          <div className="rounded-3xl border border-rose-200 bg-rose-50/70 px-5 py-4 text-sm font-semibold text-rose-700">
-            {studentError}
-          </div>
-        ) : null}
-
-        {studentPreview ? (
-          <section className="space-y-6">
-            <StudentPreviewSummary preview={studentPreview} />
-
-            <div className="rounded-3xl border border-slate-200 bg-white/70 p-5">
-              <h3 className="text-base font-semibold text-slate-900">خيارات التنفيذ</h3>
-              <p className="mt-1 text-xs text-muted">
-                تفعيل الخيارات التالية يؤثر على كيفية تطبيق النتائج أثناء الاستيراد النهائي.
-              </p>
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-                  <input
-                    type="checkbox"
-                    className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                    checked={studentOptions.update_existing}
-                    onChange={(event) =>
-                      setStudentOptions((prev) => ({ ...prev, update_existing: event.target.checked }))
-                    }
-                    disabled={isStudentBusy}
-                  />
-                  <div className="space-y-1 text-right">
-                    <p className="text-sm font-semibold text-slate-800">تحديث السجلات الموجودة</p>
-                    <p className="text-xs text-muted">
-                      يحدّث بيانات الطلاب الحاليين طبقًا للملف، مع عرض الحقول المتغيرة قبل التنفيذ.
-                    </p>
-                  </div>
-                </label>
-                <label className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50/60 p-4">
-                  <input
-                    type="checkbox"
-                    className="mt-1 h-4 w-4 rounded border-rose-300 text-rose-600 focus:ring-rose-500"
-                    checked={studentOptions.delete_missing}
-                    onChange={(event) =>
-                      setStudentOptions((prev) => ({ ...prev, delete_missing: event.target.checked }))
-                    }
-                    disabled={isStudentBusy}
-                  />
-                  <div className="space-y-1 text-right">
-                    <p className="text-sm font-semibold text-slate-800">حذف السجلات غير الموجودة في الملف</p>
-                    <p className="text-xs text-muted">
-                      يستخدم للمواءمة الكاملة مع الملف المرفوع. تأكد من أن الملف يحتوي على جميع الطلاب قبل التفعيل.
-                    </p>
-                  </div>
-                </label>
-              </div>
-
-              <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStudentPreview(null)
-                    setStudentImportSummary(null)
-                    setStudentFile(null)
-                  }}
-                  className="button-secondary"
-                  disabled={isStudentBusy}
-                >
-                  إعادة المعاينة
-                </button>
-                <button
-                  type="button"
-                  onClick={handleStudentImport}
-                  className="button-primary"
-                  disabled={isStudentBusy || !studentPreview}
-                >
-                  {importStudentsMutation.isPending ? 'جارٍ تنفيذ الاستيراد...' : 'تنفيذ الاستيراد الآن'}
-                </button>
-              </div>
-            </div>
-
-            <StudentPreviewDetails preview={studentPreview} />
-          </section>
-        ) : null}
-
-        {studentImportSummary ? (
-          <ImportSummaryCard summary={studentImportSummary} title="نتائج استيراد الطلاب" />
-        ) : null}
-      </section>
-
-      {/* Teachers Import Section */}
-      <section className="glass-card space-y-6 flex flex-col h-full min-h-[600px]">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-right">
-            <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">المعلمون</p>
-            <h2 className="text-2xl font-bold text-slate-900">استيراد ملفات المعلمين</h2>
-            <p className="mt-1 text-sm text-muted">
-              سيتم إنشاء الحسابات الجديدة وإرجاع كلمات المرور المؤقتة إن وُجدت.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => downloadTeachersTemplateMutation.mutate()}
-            className="button-secondary"
-            disabled={downloadTeachersTemplateMutation.isPending}
-          >
-            <i className="bi bi-download" /> تنزيل قالب المعلمين
-          </button>
-        </header>
-
-        <UploadCard
-          title="رفع ملف المعلمين"
-          description="يدعم القالب المعتمد مع أعمدة الاسم، الهوية، البريد، رقم الجوال، والتخصص."
-          onFileSelected={handleTeacherFileSelected}
-          isLoading={isTeacherBusy}
-        />
-
-        {teacherError ? (
-          <div className="rounded-3xl border border-rose-200 bg-rose-50/70 px-5 py-4 text-sm font-semibold text-rose-700">
-            {teacherError}
-          </div>
-        ) : null}
-
-        <div className="flex flex-wrap items-center justify-end gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              setTeacherFile(null)
-              setTeacherSummary(null)
-            }}
-            className="button-secondary"
-            disabled={isTeacherBusy}
-          >
-            إعادة تعيين
-          </button>
-          <button
-            type="button"
-            onClick={handleTeacherImport}
-            className="button-primary"
-            disabled={isTeacherBusy || !teacherFile}
-          >
-            {isTeacherBusy ? 'جارٍ استيراد المعلمين...' : 'تنفيذ الاستيراد'}
-          </button>
-        </div>
-
-        {teacherSummary ? (
-          <div className="space-y-6">
-            <ImportSummaryCard summary={teacherSummary} title="نتائج استيراد المعلمين" />
-            {teacherSummary.credentials && teacherSummary.credentials.length > 0 ? (
-              <article className="rounded-3xl border border-slate-200 bg-white/70 p-5">
-                <header className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">حسابات جديدة</p>
-                    <h3 className="text-lg font-semibold text-slate-900">كلمات المرور المؤقتة</h3>
-                    <p className="text-xs text-muted">
-                      سلم هذه البيانات للمعلمين الجدد ليتمكنوا من الدخول وتغيير كلمة المرور لاحقًا.
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">
-                    {teacherSummary.credentials.length.toLocaleString('ar-SA')}
-                  </span>
-                </header>
-                <div className="mt-4 overflow-x-auto rounded-3xl border border-slate-200">
-                  <table className="min-w-[420px] table-fixed text-right text-sm">
-                    <thead className="bg-slate-50/80 text-xs uppercase text-slate-500">
-                      <tr>
-                        <th className="px-4 py-3 font-semibold">رقم الهوية / المستخدم</th>
-                        <th className="px-4 py-3 font-semibold">كلمة المرور المؤقتة</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {teacherSummary.credentials.map((credential) => (
-                        <tr key={`${credential.national_id}-${credential.password}`} className="border-t border-slate-100">
-                          <td className="px-4 py-3 text-slate-700">{credential.national_id}</td>
-                          <td className="px-4 py-3 text-slate-600 font-mono">{credential.password}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <p className="mt-3 text-xs text-muted">
-                  يتم استخدام رقم الهوية كاسم مستخدم افتراضي، ويمكن للمعلم تغيير كلمة المرور بعد تسجيل الدخول الأول.
-                </p>
-              </article>
-            ) : null}
-          </div>
-        ) : null}
-      </section>
-      </div>
     </section>
   )
 }
