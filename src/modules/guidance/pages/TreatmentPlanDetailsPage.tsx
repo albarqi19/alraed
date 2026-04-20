@@ -11,11 +11,14 @@ import type {
 const STATUS_LABELS: Record<TreatmentPlanStatus, string> = {
   draft: 'مسودة',
   active: 'نشطة',
-  suspended: 'معلقة',
+  suspended: 'موقوفة',
   completed: 'مكتملة',
   cancelled: 'ملغاة',
-  on_hold: 'معلقة',
+  on_hold: 'معلقة مؤقتاً',
 }
+
+// القيم التي يقبلها الباكند عند التحديث
+const UPDATABLE_STATUSES: TreatmentPlanStatus[] = ['active', 'completed', 'on_hold', 'cancelled']
 
 const GOAL_STATUS_LABELS: Record<GoalStatus, string> = {
   not_started: 'لم تبدأ',
@@ -49,7 +52,7 @@ export function TreatmentPlanDetailsPage() {
   })
 
   const [evaluationData, setEvaluationData] = useState<TreatmentEvaluationFormData>({
-    evaluation: '',
+    key_findings: '',
     evaluation_date: new Date().toISOString().split('T')[0],
   })
 
@@ -70,14 +73,14 @@ export function TreatmentPlanDetailsPage() {
   }
 
   const handleAddEvaluation = async () => {
-    if (!planId || !evaluationData.evaluation?.trim()) {
-      alert('يرجى إدخال نص التقييم')
+    if (!planId || !evaluationData.key_findings?.trim()) {
+      alert('يرجى إدخال نتائج التقييم')
       return
     }
 
     try {
       await addEvaluation.mutateAsync({ planId, data: evaluationData })
-      setEvaluationData({ evaluation: '', evaluation_date: new Date().toISOString().split('T')[0] })
+      setEvaluationData({ key_findings: '', evaluation_date: new Date().toISOString().split('T')[0] })
       setShowEvaluationForm(false)
     } catch (error) {
       console.error('Failed to add evaluation:', error)
@@ -89,17 +92,15 @@ export function TreatmentPlanDetailsPage() {
     if (!planId) return
 
     try {
-      // TODO: This needs proper API implementation to update goal status
-      // For now, we're passing required fields but not updating status
       await updateGoal.mutateAsync({ 
         planId, 
         goalId, 
         data: { 
           goal: plan?.goals?.find(g => g.id === goalId)?.goal || '', 
-          measurable_criteria: plan?.goals?.find(g => g.id === goalId)?.measurable_criteria || ''
+          measurable_criteria: plan?.goals?.find(g => g.id === goalId)?.measurable_criteria || '',
+          status,
         } 
       })
-      console.log('Goal status would be updated to:', status)
     } catch (error) {
       console.error('Failed to update goal status:', error)
       alert('فشل تحديث حالة الهدف')
@@ -110,8 +111,6 @@ export function TreatmentPlanDetailsPage() {
     if (!planId || !plan) return
 
     try {
-      // TODO: This needs proper API implementation to update plan status
-      // For now, we're passing required fields but not updating status
       await updatePlan.mutateAsync({ 
         planId, 
         data: { 
@@ -119,10 +118,10 @@ export function TreatmentPlanDetailsPage() {
           problem_type: plan.problem_type, 
           problem_description: plan.problem_description, 
           start_date: plan.start_date, 
-          end_date: plan.end_date 
+          end_date: plan.end_date,
+          status,
         } 
       })
-      console.log('Plan status would be updated to:', status)
     } catch (error) {
       console.error('Failed to update plan status:', error)
       alert('فشل تحديث حالة الخطة')
@@ -183,9 +182,15 @@ export function TreatmentPlanDetailsPage() {
                 onChange={(e) => handleUpdatePlanStatus(e.target.value as TreatmentPlanStatus)}
                 className="px-3 py-1 rounded-full text-sm font-medium border-2 border-indigo-200 focus:ring-2 focus:ring-indigo-500 outline-none"
               >
-                {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                {/* إذا كانت الحالة الحالية غير قابلة للتحديث (مثل draft/suspended) اعرضها كخيار disabled */}
+                {!UPDATABLE_STATUSES.includes(plan.status) && (
+                  <option value={plan.status} disabled>
+                    {STATUS_LABELS[plan.status]}
+                  </option>
+                )}
+                {UPDATABLE_STATUSES.map((value) => (
                   <option key={value} value={value}>
-                    {label}
+                    {STATUS_LABELS[value]}
                   </option>
                 ))}
               </select>
@@ -352,10 +357,10 @@ export function TreatmentPlanDetailsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">التقييم</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">النتائج الرئيسية</label>
                   <textarea
-                    value={evaluationData.evaluation}
-                    onChange={(e) => setEvaluationData({ ...evaluationData, evaluation: e.target.value })}
+                    value={evaluationData.key_findings}
+                    onChange={(e) => setEvaluationData({ ...evaluationData, key_findings: e.target.value })}
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none"
                   />
@@ -386,7 +391,7 @@ export function TreatmentPlanDetailsPage() {
                     <p className="text-xs text-gray-500 mb-1">
                       {new Date(evaluation.evaluation_date).toLocaleDateString('ar-SA')}
                     </p>
-                    <p className="text-sm text-gray-700">{evaluation.evaluation}</p>
+                    <p className="text-sm text-gray-700">{evaluation.key_findings}</p>
                   </div>
                 ))}
               </div>

@@ -64,7 +64,7 @@ export function AdminTreatmentPlanDetailsPage() {
   const [followupData, setFollowupData] = useState<TreatmentFollowupFormData>({
     notes: '',
     followup_date: new Date().toISOString().split('T')[0],
-    type: 'عامة',
+    type: 'ملاحظة',
     student_progress: '',
     observations: '',
     recommendations: '',
@@ -93,7 +93,7 @@ export function AdminTreatmentPlanDetailsPage() {
       setFollowupData({
         notes: '',
         followup_date: new Date().toISOString().split('T')[0],
-        type: 'عامة',
+        type: 'ملاحظة',
         student_progress: '',
         observations: '',
         recommendations: '',

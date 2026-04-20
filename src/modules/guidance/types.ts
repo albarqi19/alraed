@@ -210,6 +210,7 @@ export interface TreatmentPlanFormData {
   problem_description: string
   start_date: string
   end_date?: string | null
+  status?: TreatmentPlanStatus
   goals?: {
     goal: string
     measurable_criteria: string
@@ -223,6 +224,7 @@ export interface TreatmentPlanFormData {
 export interface TreatmentGoalFormData {
   goal: string
   measurable_criteria: string
+  status?: GoalStatus
   interventions?: {
     intervention_type: InterventionType
     description: string
@@ -241,7 +243,6 @@ export interface TreatmentFollowupFormData {
 
 export interface TreatmentEvaluationFormData {
   evaluation_type?: string
-  evaluation?: string
   evaluation_date: string
   overall_effectiveness?: string
   overall_progress_percentage?: number
