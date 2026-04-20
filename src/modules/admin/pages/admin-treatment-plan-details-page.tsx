@@ -335,9 +335,11 @@ export function AdminTreatmentPlanDetailsPage() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">نوع المتابعة</label>
                       <select value={followupData.type} onChange={(e) => setFollowupData({ ...followupData, type: e.target.value })} className="w-full px-4 py-2 border rounded-lg">
-                        <option value="عامة">عامة</option>
-                        <option value="دورية">دورية</option>
-                        <option value="طارئة">طارئة</option>
+                        <option value="ملاحظة">ملاحظة</option>
+                        <option value="جلسة">جلسة</option>
+                        <option value="اتصال">اتصال</option>
+                        <option value="زيارة">زيارة</option>
+                        <option value="تقرير">تقرير</option>
                       </select>
                     </div>
                   </div>
@@ -347,7 +349,14 @@ export function AdminTreatmentPlanDetailsPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">تقدم الطالب</label>
-                    <textarea value={followupData.student_progress} onChange={(e) => setFollowupData({ ...followupData, student_progress: e.target.value })} rows={2} className="w-full px-4 py-2 border rounded-lg resize-none" placeholder="صف تقدم الطالب..." />
+                    <select value={followupData.student_progress ?? ''} onChange={(e) => setFollowupData({ ...followupData, student_progress: e.target.value || undefined })} className="w-full px-4 py-2 border rounded-lg">
+                      <option value="">-- اختر --</option>
+                      <option value="ممتاز">ممتاز</option>
+                      <option value="جيد">جيد</option>
+                      <option value="متوسط">متوسط</option>
+                      <option value="ضعيف">ضعيف</option>
+                      <option value="لا يوجد تقدم">لا يوجد تقدم</option>
+                    </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">التوصيات</label>
