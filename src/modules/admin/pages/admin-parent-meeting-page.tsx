@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Search, Printer, CheckCircle2, AlertCircle, RefreshCw, Loader2, Users, User, BookOpen, XCircle, Clock } from 'lucide-react'
 import { apiClient } from '@/services/api/client'
 
@@ -85,11 +86,51 @@ interface PairingState {
   error: string | null
 }
 
+interface TodayAttendanceResponse {
+  total_count: number
+  attendances: TodayAttendance[]
+}
+
+interface PrinterStatusResponse {
+  connected: boolean
+  name: string | null
+  printers: PrinterInfo[]
+}
+
+const parentMeetingQueryKeys = {
+  all: ['admin', 'parent-meeting'] as const,
+  today: () => [...parentMeetingQueryKeys.all, 'today'] as const,
+  printers: () => [...parentMeetingQueryKeys.all, 'printers'] as const,
+}
+
+const ACTIVE_PRINT_STATUSES = new Set(['pending', 'assigned', 'printing'])
+
+async function fetchTodayAttendance(): Promise<TodayAttendanceResponse> {
+  const res = await apiClient.get('/admin/parent-meeting/today')
+
+  return {
+    total_count: res.data?.data?.total_count ?? 0,
+    attendances: res.data?.data?.attendances ?? [],
+  }
+}
+
+async function fetchPrinterStatus(): Promise<PrinterStatusResponse> {
+  const res = await apiClient.get('/admin/parent-meeting/printers')
+  const data = res.data?.data
+
+  return {
+    connected: data?.agent_connected ?? false,
+    name: data?.agent_name ?? null,
+    printers: data?.printers ?? [],
+  }
+}
+
 // ══════════════════════════════════════════
 // Main Page
 // ══════════════════════════════════════════
 
 export function AdminParentMeetingPage() {
+  const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<StudentSearchResult[]>([])
   const [searching, setSearching] = useState(false)
@@ -99,16 +140,56 @@ export function AdminParentMeetingPage() {
   const [guardianPhone, setGuardianPhone] = useState('')
   const [registering, setRegistering] = useState(false)
   const [registerResult, setRegisterResult] = useState<RegisterResponse | null>(null)
-  const [todayList, setTodayList] = useState<TodayAttendance[]>([])
-  const [todayCount, setTodayCount] = useState(0)
-  const [loadingToday, setLoadingToday] = useState(false)
   const [showPrinterModal, setShowPrinterModal] = useState(false)
-  const [printerInfo, setPrinterInfo] = useState<{ connected: boolean; name: string | null; printers: PrinterInfo[] } | null>(null)
   const [pairingState, setPairingState] = useState<PairingState>({ loading: false, code: null, expiresAt: null, agentName: null, error: null })
   const [pairingCopied, setPairingCopied] = useState(false)
   const [buttonLocked, setButtonLocked] = useState(false)
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const printerPollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const todayQuery = useQuery<TodayAttendanceResponse>({
+    queryKey: parentMeetingQueryKeys.today(),
+    queryFn: fetchTodayAttendance,
+    refetchInterval: (query) => {
+      const data = query.state.data
+      const hasActiveJobs = data?.attendances?.some((attendance) => ACTIVE_PRINT_STATUSES.has(attendance.print_status)) ?? false
+
+      return hasActiveJobs ? 3000 : false
+    },
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
+  })
+
+  const todayList = todayQuery.data?.attendances ?? []
+  const todayCount = todayQuery.data?.total_count ?? 0
+  const loadingToday = todayQuery.isLoading
+  const hasActivePrintJobs = todayList.some((attendance) => ACTIVE_PRINT_STATUSES.has(attendance.print_status))
+
+  const printerQuery = useQuery<PrinterStatusResponse>({
+    queryKey: parentMeetingQueryKeys.printers(),
+    queryFn: fetchPrinterStatus,
+    refetchInterval: (query) => {
+      const isConnected = query.state.data?.connected ?? false
+
+      if (hasActivePrintJobs) {
+        return 4000
+      }
+
+      if (!showPrinterModal) {
+        return false
+      }
+
+      if (pairingState.loading || Boolean(pairingState.code) || !isConnected) {
+        return 4000
+      }
+
+      return false
+    },
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
+    staleTime: 2000,
+  })
+
+  const printerInfo = printerQuery.data ?? null
 
   // بحث debounced
   const handleSearch = useCallback((q: string) => {
@@ -161,7 +242,10 @@ export function AdminParentMeetingPage() {
         guardian_phone: guardianPhone.trim() || undefined,
       })
       setRegisterResult(res.data?.data)
-      loadToday()
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: parentMeetingQueryKeys.today() }),
+        queryClient.invalidateQueries({ queryKey: parentMeetingQueryKeys.printers() }),
+      ])
       // قفل الزر 3 ثواني (حماية double-tap)
       setTimeout(() => setButtonLocked(false), 3000)
     } catch (e: any) {
@@ -172,70 +256,18 @@ export function AdminParentMeetingPage() {
     setRegistering(false)
   }
 
-  // سجل اليوم
-  const loadToday = async () => {
-    setLoadingToday(true)
-    try {
-      const res = await apiClient.get('/admin/parent-meeting/today')
-      setTodayList(res.data?.data?.attendances ?? [])
-      setTodayCount(res.data?.data?.total_count ?? 0)
-    } catch { /* silent */ }
-    setLoadingToday(false)
-  }
-
   // إعادة طباعة
   const handleReprint = async (id: number) => {
     try {
       await apiClient.post(`/admin/parent-meeting/reprint/${id}`)
-      loadToday()
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: parentMeetingQueryKeys.today() }),
+        queryClient.invalidateQueries({ queryKey: parentMeetingQueryKeys.printers() }),
+      ])
     } catch (e: any) {
       alert(e?.response?.data?.message ?? 'فشلت إعادة الطباعة')
     }
   }
-
-  // حالة الطابعات
-  const loadPrinterStatus = async () => {
-    try {
-      const res = await apiClient.get('/admin/parent-meeting/printers')
-      const data = res.data?.data
-      setPrinterInfo({
-        connected: data?.agent_connected ?? false,
-        name: data?.agent_name,
-        printers: data?.printers ?? [],
-      })
-    } catch { /* silent */ }
-  }
-
-  const stopPrinterPolling = useCallback(() => {
-    if (printerPollingRef.current) {
-      clearInterval(printerPollingRef.current)
-      printerPollingRef.current = null
-    }
-  }, [])
-
-  const startPrinterPolling = useCallback(() => {
-    stopPrinterPolling()
-    printerPollingRef.current = setInterval(async () => {
-      try {
-        const res = await apiClient.get('/admin/parent-meeting/printers')
-        const data = res.data?.data
-        const nextPrinterInfo = {
-          connected: data?.agent_connected ?? false,
-          name: data?.agent_name,
-          printers: data?.printers ?? [],
-        }
-
-        setPrinterInfo(nextPrinterInfo)
-
-        if (nextPrinterInfo.connected) {
-          setPairingState((prev) => ({ ...prev, error: null }))
-          stopPrinterPolling()
-        }
-      } catch {
-        // keep polling silently while the agent is being paired
-      }
-    }, 4000)
-  }, [stopPrinterPolling])
 
   const getReusablePrintAgent = async (): Promise<PrintAgentInfo | null> => {
     const res = await apiClient.get('/admin/print-agents')
@@ -246,9 +278,10 @@ export function AdminParentMeetingPage() {
   const handlePrinterButtonClick = async () => {
     setShowPrinterModal(true)
     setPairingCopied(false)
-    await loadPrinterStatus()
+    const printerStatusResult = await printerQuery.refetch()
+    const currentPrinterInfo = printerStatusResult.data ?? printerQuery.data
 
-    if (printerInfo?.connected) {
+    if (currentPrinterInfo?.connected) {
       return
     }
 
@@ -281,7 +314,7 @@ export function AdminParentMeetingPage() {
         })
       }
 
-      startPrinterPolling()
+      await queryClient.invalidateQueries({ queryKey: parentMeetingQueryKeys.printers() })
     } catch (error: any) {
       setPairingState({
         loading: false,
@@ -306,16 +339,18 @@ export function AdminParentMeetingPage() {
   }
 
   useEffect(() => {
-    loadToday()
-    loadPrinterStatus()
+    if (printerInfo?.connected) {
+      setPairingState((prev) => (prev.error ? { ...prev, error: null } : prev))
+    }
+  }, [printerInfo?.connected])
 
+  useEffect(() => {
     return () => {
-      stopPrinterPolling()
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current)
       }
     }
-  }, [stopPrinterPolling])
+  }, [])
 
   return (
     <div className="min-h-screen space-y-6">
@@ -556,11 +591,11 @@ export function AdminParentMeetingPage() {
             </span>
           </div>
           <button
-            onClick={loadToday}
-            disabled={loadingToday}
+            onClick={() => todayQuery.refetch()}
+            disabled={todayQuery.isFetching}
             className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${loadingToday ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${todayQuery.isFetching ? 'animate-spin' : ''}`} />
             تحديث
           </button>
         </div>
@@ -607,11 +642,11 @@ export function AdminParentMeetingPage() {
 
       {/* Printer Modal */}
       {showPrinterModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => { stopPrinterPolling(); setShowPrinterModal(false) }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowPrinterModal(false)}>
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-slate-900">🖨️ حالة الطابعات</h3>
-              <button onClick={() => { stopPrinterPolling(); setShowPrinterModal(false) }} className="text-slate-400 hover:text-slate-600">
+              <button onClick={() => setShowPrinterModal(false)} className="text-slate-400 hover:text-slate-600">
                 <XCircle className="h-5 w-5" />
               </button>
             </div>
