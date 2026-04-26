@@ -139,6 +139,7 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
     items: [
       { to: '/admin/student-cases', label: 'الحالات الطلابية', icon: ClipboardList, permission: 'admin.student-cases' },
       { to: '/admin/treatment-plans', label: 'الخطط العلاجية', icon: Target, permission: 'admin.treatment-plans' },
+      { to: '/admin/parent-meeting', label: 'اجتماع أولياء الأمور', icon: HeartHandshake },
       { to: '/admin/activities', label: 'إدارة الأنشطة', icon: Sparkles, permission: 'admin.activities' },
       { to: '/admin/points-program', label: 'برنامج نقاطي', icon: Award, permission: 'admin.points-program' },
       { to: '/admin/e-store', label: 'المتجر الالكتروني', icon: ShoppingCart, permission: 'admin.e-store' },
