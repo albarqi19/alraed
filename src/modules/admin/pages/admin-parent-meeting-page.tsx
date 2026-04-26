@@ -92,6 +92,7 @@ interface TodayAttendanceResponse {
 }
 
 interface PrinterStatusResponse {
+  agentId: number | null
   connected: boolean
   name: string | null
   printers: PrinterInfo[]
@@ -119,6 +120,7 @@ async function fetchPrinterStatus(): Promise<PrinterStatusResponse> {
   const data = res.data?.data
 
   return {
+    agentId: data?.agent_id ?? null,
     connected: data?.agent_connected ?? false,
     name: data?.agent_name ?? null,
     printers: data?.printers ?? [],
@@ -144,6 +146,7 @@ export function AdminParentMeetingPage() {
   const [pairingState, setPairingState] = useState<PairingState>({ loading: false, code: null, expiresAt: null, agentName: null, error: null })
   const [pairingCopied, setPairingCopied] = useState(false)
   const [buttonLocked, setButtonLocked] = useState(false)
+  const [disconnectingPrinter, setDisconnectingPrinter] = useState(false)
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const todayQuery = useQuery<TodayAttendanceResponse>({
@@ -323,6 +326,35 @@ export function AdminParentMeetingPage() {
         agentName: null,
         error: error?.response?.data?.message ?? 'تعذر توليد كود الربط',
       })
+    }
+  }
+
+  const handleDisconnectPrinter = async () => {
+    const agentId = printerInfo?.agentId
+
+    if (!agentId || disconnectingPrinter) {
+      return
+    }
+
+    const confirmed = window.confirm('سيتم فصل الربط مع وكيل الطباعة الحالي. هل تريد المتابعة؟')
+    if (!confirmed) {
+      return
+    }
+
+    setDisconnectingPrinter(true)
+
+    try {
+      await apiClient.post(`/admin/print-agents/${agentId}/revoke`)
+      setPairingCopied(false)
+      setPairingState({ loading: false, code: null, expiresAt: null, agentName: null, error: null })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: parentMeetingQueryKeys.printers() }),
+        queryClient.invalidateQueries({ queryKey: parentMeetingQueryKeys.today() }),
+      ])
+    } catch (error: any) {
+      alert(error?.response?.data?.message ?? 'تعذر فصل الربط مع وكيل الطباعة')
+    } finally {
+      setDisconnectingPrinter(false)
     }
   }
 
@@ -650,6 +682,29 @@ export function AdminParentMeetingPage() {
                 <XCircle className="h-5 w-5" />
               </button>
             </div>
+
+            {printerInfo?.agentId ? (
+              <div className="mb-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleDisconnectPrinter}
+                  disabled={disconnectingPrinter}
+                  className="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {disconnectingPrinter ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      جاري الفصل...
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="h-3.5 w-3.5" />
+                      فصل الربط
+                    </>
+                  )}
+                </button>
+              </div>
+            ) : null}
 
             {!printerInfo ? (
               <div className="flex items-center justify-center py-8">
