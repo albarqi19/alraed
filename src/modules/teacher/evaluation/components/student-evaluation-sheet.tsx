@@ -693,7 +693,7 @@ export function StudentEvaluationSheet({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm"
             onClick={onClose}
           />
 
@@ -704,7 +704,7 @@ export function StudentEvaluationSheet({
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={springConfig}
-            className={`fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-3xl bg-white dark:bg-slate-800 shadow-2xl transition-[max-height] duration-300 ${showReport ? 'max-h-[92vh]' : 'max-h-[85vh]'}`}
+            className={`fixed inset-x-0 bottom-0 z-[60] flex flex-col rounded-t-3xl bg-white dark:bg-slate-800 shadow-2xl transition-[max-height] duration-300 ${showReport ? 'max-h-[92vh]' : 'max-h-[85vh]'}`}
           >
             {/* Handle bar */}
             <div className="flex justify-center pt-3">
