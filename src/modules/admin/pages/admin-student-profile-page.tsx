@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   MessageSquare,
   Phone,
+  Printer,
   Search,
   User,
   UserCog,
@@ -18,6 +19,8 @@ import {
   useStudentsQuery,
   useWhatsappHistoryQuery,
 } from '../hooks'
+import { Button } from '@/components/ui/button'
+import { StudentReportPrintDialog } from '../components/student-report-print-dialog'
 import { academicCalendarApi, type AcademicSemesterSummary } from '@/services/api/academic-calendar'
 import type {
   AttendanceReportStudentAttendance,
@@ -103,6 +106,7 @@ export function AdminStudentProfilePage() {
   const [customRange, setCustomRange] = useState<{ start: string; end: string }>({ start: '', end: '' })
   const [activeSection, setActiveSection] = useState<SectionKey>('overview')
   const [selectedMessage, setSelectedMessage] = useState<WhatsappHistoryItem | null>(null)
+  const [printDialogOpen, setPrintDialogOpen] = useState(false)
 
   // جلب بيانات الفصول الدراسية
   const semestersQuery = useQuery({
@@ -484,6 +488,15 @@ export function AdminStudentProfilePage() {
                       </div>
                       <div className="font-mono font-medium text-slate-900" dir="ltr">{selectedStudent.parent_phone || '—'}</div>
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPrintDialogOpen(true)}
+                      className="gap-2 self-start"
+                    >
+                      <Printer className="h-4 w-4" />
+                      طباعة تقرير شامل
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -1066,6 +1079,12 @@ export function AdminStudentProfilePage() {
           )}
         </div>
       </div>
+
+      <StudentReportPrintDialog
+        student={selectedStudent}
+        open={printDialogOpen}
+        onOpenChange={setPrintDialogOpen}
+      />
     </section>
   )
 }
