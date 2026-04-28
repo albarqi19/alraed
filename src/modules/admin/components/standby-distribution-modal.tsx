@@ -56,7 +56,25 @@ type AbsentTeacher = {
     distribution_status?: 'not_distributed' | 'distributed' | 'arrived'
     distribution_info?: string
     current_delay_status?: string
+    is_manual?: boolean
 }
+
+const ABSENCE_REASONS: Array<{ value: string; label: string }> = [
+    { value: 'unjustified', label: 'غير مبرر' },
+    { value: 'sick_leave', label: 'إجازة مرضية' },
+    { value: 'emergency_leave', label: 'إجازة اضطرارية' },
+    { value: 'annual_leave', label: 'إجازة عادية' },
+    { value: 'exceptional_leave', label: 'إجازة استثنائية' },
+    { value: 'delegated', label: 'مكلف' },
+    { value: 'training_course', label: 'دورة تدريبية' },
+    { value: 'workshop', label: 'ورشة عمل' },
+    { value: 'companion_leave', label: 'إجازة مرافقة' },
+    { value: 'bereavement_leave', label: 'إجازة وفاة' },
+    { value: 'paternity_leave', label: 'إجازة وضع للأب' },
+    { value: 'maternity_leave', label: 'إجازة أمومة' },
+    { value: 'remote_work', label: 'عمل عن بُعد' },
+    { value: 'pending', label: 'قيد المراجعة' },
+]
 
 type DailyAbsencesResponse = {
     success: boolean
@@ -122,6 +140,16 @@ async function fetchAllStaff(): Promise<AllStaffResponse> {
     return data
 }
 
+async function markTeacherPresent(payload: { teacher_id: number; date: string; reason: string }): Promise<{ success: boolean; data: { teacher_name: string; cancelled_standby_assignments: boolean } }> {
+    const { data } = await apiClient.post('/admin/teacher-standby/mark-present', payload)
+    return data
+}
+
+async function markTeacherAbsent(payload: { teacher_id: number; date: string; absence_reason: string; notes?: string }): Promise<{ success: boolean; data: { teacher_name: string } }> {
+    const { data } = await apiClient.post('/admin/teacher-standby/mark-absent', payload)
+    return data
+}
+
 // =====================================================
 // Component
 // =====================================================
@@ -153,6 +181,13 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
     const [hasPublished, setHasPublished] = useState(false)
     const [isViewingPublished, setIsViewingPublished] = useState(false)
     const [ignorePublished, setIgnorePublished] = useState(false)
+    const [markPresentDialog, setMarkPresentDialog] = useState<{ teacherId: number; teacherName: string } | null>(null)
+    const [markPresentReason, setMarkPresentReason] = useState('')
+    const [markAbsentDialogOpen, setMarkAbsentDialogOpen] = useState(false)
+    const [markAbsentTeacherId, setMarkAbsentTeacherId] = useState<number | null>(null)
+    const [markAbsentReason, setMarkAbsentReason] = useState<string>('unjustified')
+    const [markAbsentNotes, setMarkAbsentNotes] = useState('')
+    const [markAbsentSearch, setMarkAbsentSearch] = useState('')
 
     // Queries
     const absencesQuery = useQuery({
@@ -164,7 +199,7 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
     const staffQuery = useQuery({
         queryKey: ['standby-all-staff'],
         queryFn: fetchAllStaff,
-        enabled: isOpen && step >= 2,
+        enabled: isOpen && (step >= 2 || markAbsentDialogOpen),
     })
 
     // Mutations
@@ -177,6 +212,44 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
         },
         onError: () => {
             toast({ type: 'error', title: 'فشل في حفظ التوزيع' })
+        },
+    })
+
+    const markAbsentMutation = useMutation({
+        mutationFn: markTeacherAbsent,
+        onSuccess: (result) => {
+            toast({
+                type: 'success',
+                title: `تم إضافة ${result.data?.teacher_name} كغائب`,
+                description: 'سيظهر في قائمة الغائبين ويدخل في توزيع الانتظار',
+            })
+            setMarkAbsentDialogOpen(false)
+            setMarkAbsentTeacherId(null)
+            setMarkAbsentReason('unjustified')
+            setMarkAbsentNotes('')
+            setMarkAbsentSearch('')
+            queryClient.invalidateQueries({ queryKey: ['standby-daily-absences'] })
+        },
+        onError: (err: { response?: { data?: { message?: string } } }) => {
+            toast({ type: 'error', title: err?.response?.data?.message || 'فشل إضافة المعلم كغائب' })
+        },
+    })
+
+    const markPresentMutation = useMutation({
+        mutationFn: markTeacherPresent,
+        onSuccess: (result) => {
+            const cancelled = result.data?.cancelled_standby_assignments
+            toast({
+                type: 'success',
+                title: `تم تحويل ${result.data?.teacher_name} إلى حاضر`,
+                description: cancelled ? 'تم إلغاء حصص الانتظار وإرسال إشعار للبدلاء' : undefined,
+            })
+            setMarkPresentDialog(null)
+            setMarkPresentReason('')
+            queryClient.invalidateQueries({ queryKey: ['standby-daily-absences'] })
+        },
+        onError: () => {
+            toast({ type: 'error', title: 'فشل تحويل المعلم إلى حاضر' })
         },
     })
 
@@ -217,6 +290,8 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
             if (data.absent_teachers) {
                 const teachers = data.absent_teachers.map(t => ({
                     ...t,
+                    // الموزَّعون سابقاً لا يُحدَّدون تلقائياً (لمنع إعادة إرسال الإشعارات)
+                    selected: t.distribution_status === 'distributed' ? false : t.selected,
                     periods: t.periods.map(p => ({
                         ...p,
                         selectedStandby: p.selectedStandby || p.standby1 || p.standby2 || p.standby3 || p.standby4 || p.standby5 || p.standby6 || p.standby7 || null,
@@ -601,6 +676,21 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
                     ) : step === 1 ? (
                         /* Step 1: Select absent teachers */
                         <div className="space-y-4">
+                            {/* Banner: ظهور غائب جديد بعد الاعتماد */}
+                            {hasPublished && absencesQuery.data?.data?.has_new_absences && (
+                                <div className="rounded-xl border border-amber-300 bg-amber-50 p-4">
+                                    <div className="flex items-start gap-3">
+                                        <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                                        <div className="flex-1">
+                                            <h4 className="font-semibold text-amber-900">يوجد غائب جديد بعد الاعتماد</h4>
+                                            <p className="text-sm text-amber-700 mt-1">
+                                                ظهر معلم/معلمون غائبون لم يكونوا مشمولين في التوزيع المعتمد. اختر الجديد فقط واضغط حفظ ثم اعتماد ليتم إشعار البدلاء الجدد دون إزعاج السابقين.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Banner: عرض التوزيع المعتمد */}
                             {hasPublished && isViewingPublished && (
                                 <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
@@ -628,9 +718,19 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
 
                             <div className="flex items-center justify-between">
                                 <h3 className="text-lg font-semibold text-slate-900">اختر المعلمين الغائبين</h3>
-                                <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-600">
-                                    {selectedTeachers.length} / {absentTeachers.length} مختار
-                                </span>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setMarkAbsentDialogOpen(true)}
+                                        className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-sm font-medium text-rose-700 hover:bg-rose-100"
+                                        title="إضافة معلم غائب يدوياً (للمعلمين الذين لا تُسحَب بياناتهم من حضوري)"
+                                    >
+                                        <Users className="h-4 w-4" />
+                                        إضافة غائب يدوي
+                                    </button>
+                                    <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-600">
+                                        {selectedTeachers.length} / {absentTeachers.length} مختار
+                                    </span>
+                                </div>
                             </div>
                             <div className="overflow-x-auto rounded-2xl border border-slate-200">
                                 <table className="w-full text-sm">
@@ -658,6 +758,7 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
                                             <th className="px-4 py-3 text-right font-semibold text-slate-700">سبب الغياب</th>
                                             <th className="px-4 py-3 text-center font-semibold text-slate-700">الحصص</th>
                                             <th className="px-4 py-3 text-center font-semibold text-slate-700">الحالة</th>
+                                            <th className="px-4 py-3 text-center font-semibold text-slate-700">إجراء</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -701,7 +802,16 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
                                                         </button>
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-3 text-right font-medium text-slate-900">{teacher.teacher_name}</td>
+                                                <td className="px-4 py-3 text-right font-medium text-slate-900">
+                                                    <span className="inline-flex items-center gap-1.5">
+                                                        {teacher.teacher_name}
+                                                        {teacher.is_manual && (
+                                                            <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700" title="إضافة يدوية">
+                                                                يدوي
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                </td>
                                                 <td className="px-4 py-3 text-right text-muted">{teacher.absence_reason}</td>
                                                 <td className="px-4 py-3 text-center">
                                                     <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700">
@@ -728,6 +838,18 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
                                                         <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">
                                                             جديد
                                                         </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                                                    {teacher.distribution_status !== 'arrived' && (
+                                                        <button
+                                                            onClick={() => setMarkPresentDialog({ teacherId: teacher.teacher_id, teacherName: teacher.teacher_name })}
+                                                            className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+                                                            title="تحويل إلى حاضر يدوياً (للمعلم الذي لا يستخدم نظام حضوري)"
+                                                        >
+                                                            <UserCheck className="h-3.5 w-3.5" />
+                                                            تحويل لحاضر
+                                                        </button>
                                                     )}
                                                 </td>
                                             </tr>
@@ -962,6 +1084,190 @@ export function StandbyDistributionModal({ isOpen, onClose, date }: StandbyDistr
                     </div>
                 </footer>
             </div>
+
+            {markAbsentDialogOpen && (() => {
+                const absentIds = new Set(absentTeachers.map(t => t.teacher_id))
+                const teachers = (staffQuery.data?.data ?? [])
+                    .filter(s => s.role === 'teacher' || s.secondary_role === 'teacher')
+                    .filter(s => !absentIds.has(s.id))
+                    .filter(s => !markAbsentSearch || s.name.includes(markAbsentSearch.trim()))
+                const selectedTeacher = teachers.find(t => t.id === markAbsentTeacherId)
+                return (
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
+                        <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl">
+                            <div className="border-b border-slate-200 px-5 py-4">
+                                <h3 className="text-base font-semibold text-slate-900">إضافة معلم غائب يدوياً</h3>
+                                <p className="mt-1 text-sm text-slate-500">
+                                    للمعلمين الذين لا تُسحَب بياناتهم من نظام حضوري. سيظهر المعلم في قائمة الغائبين فوراً.
+                                </p>
+                            </div>
+                            <div className="space-y-3 px-5 py-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">المعلم</label>
+                                    <input
+                                        type="text"
+                                        value={markAbsentSearch}
+                                        onChange={(e) => { setMarkAbsentSearch(e.target.value); setMarkAbsentTeacherId(null) }}
+                                        placeholder="ابحث باسم المعلم..."
+                                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                                    />
+                                    {staffQuery.isLoading ? (
+                                        <p className="mt-2 text-xs text-slate-500">جاري تحميل قائمة المعلمين...</p>
+                                    ) : (
+                                        <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-slate-200">
+                                            {teachers.length === 0 ? (
+                                                <p className="px-3 py-2 text-sm text-slate-500">لا توجد نتائج مطابقة</p>
+                                            ) : (
+                                                teachers.slice(0, 50).map(t => (
+                                                    <button
+                                                        key={t.id}
+                                                        onClick={() => { setMarkAbsentTeacherId(t.id); setMarkAbsentSearch(t.name) }}
+                                                        className={`flex w-full items-center justify-between px-3 py-2 text-right text-sm hover:bg-slate-50 ${markAbsentTeacherId === t.id ? 'bg-rose-50 font-medium' : ''}`}
+                                                    >
+                                                        <span>{t.name}</span>
+                                                        {t.phone && <span className="text-xs text-slate-400">{t.phone}</span>}
+                                                    </button>
+                                                ))
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">سبب الغياب</label>
+                                    <select
+                                        value={markAbsentReason}
+                                        onChange={(e) => setMarkAbsentReason(e.target.value)}
+                                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                                    >
+                                        {ABSENCE_REASONS.map(r => (
+                                            <option key={r.value} value={r.value}>{r.label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">ملاحظات (اختياري)</label>
+                                    <textarea
+                                        value={markAbsentNotes}
+                                        onChange={(e) => setMarkAbsentNotes(e.target.value)}
+                                        rows={2}
+                                        maxLength={500}
+                                        placeholder="مثال: المعلم لا يستخدم نظام حضوري، تم التبليغ بغيابه هاتفياً"
+                                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex items-center justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-3">
+                                <button
+                                    onClick={() => {
+                                        setMarkAbsentDialogOpen(false)
+                                        setMarkAbsentTeacherId(null)
+                                        setMarkAbsentReason('unjustified')
+                                        setMarkAbsentNotes('')
+                                        setMarkAbsentSearch('')
+                                    }}
+                                    disabled={markAbsentMutation.isPending}
+                                    className="rounded-xl px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200 disabled:opacity-50"
+                                >
+                                    إلغاء
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        if (!selectedTeacher) {
+                                            toast({ type: 'error', title: 'يرجى اختيار معلم من القائمة' })
+                                            return
+                                        }
+                                        markAbsentMutation.mutate({
+                                            teacher_id: selectedTeacher.id,
+                                            date,
+                                            absence_reason: markAbsentReason,
+                                            notes: markAbsentNotes.trim() || undefined,
+                                        })
+                                    }}
+                                    disabled={markAbsentMutation.isPending || !selectedTeacher}
+                                    className="flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {markAbsentMutation.isPending ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            جاري الحفظ...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Users className="h-4 w-4" />
+                                            تأكيد الإضافة
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            })()}
+
+            {markPresentDialog && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
+                    <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
+                        <div className="border-b border-slate-200 px-5 py-4">
+                            <h3 className="text-base font-semibold text-slate-900">تحويل المعلم إلى حاضر</h3>
+                            <p className="mt-1 text-sm text-slate-500">
+                                <span className="font-medium text-slate-700">{markPresentDialog.teacherName}</span>
+                                <span className="mr-1">— يرجى إدخال سبب التحويل اليدوي.</span>
+                            </p>
+                        </div>
+                        <div className="space-y-3 px-5 py-4">
+                            <label className="block text-sm font-medium text-slate-700">سبب التحويل</label>
+                            <textarea
+                                value={markPresentReason}
+                                onChange={(e) => setMarkPresentReason(e.target.value)}
+                                rows={3}
+                                maxLength={500}
+                                placeholder="مثال: المعلم لا يستخدم نظام حضوري، تم التأكد من حضوره"
+                                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            />
+                            <p className="text-xs text-slate-500">
+                                ملاحظة: سيتم إلغاء حصص الانتظار المستقبلية لهذا المعلم وإرسال إشعار للبدلاء تلقائياً.
+                            </p>
+                        </div>
+                        <div className="flex items-center justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-3">
+                            <button
+                                onClick={() => { setMarkPresentDialog(null); setMarkPresentReason('') }}
+                                disabled={markPresentMutation.isPending}
+                                className="rounded-xl px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200 disabled:opacity-50"
+                            >
+                                إلغاء
+                            </button>
+                            <button
+                                onClick={() => {
+                                    const reason = markPresentReason.trim()
+                                    if (!reason) {
+                                        toast({ type: 'error', title: 'يرجى إدخال سبب التحويل' })
+                                        return
+                                    }
+                                    markPresentMutation.mutate({
+                                        teacher_id: markPresentDialog.teacherId,
+                                        date,
+                                        reason,
+                                    })
+                                }}
+                                disabled={markPresentMutation.isPending || !markPresentReason.trim()}
+                                className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {markPresentMutation.isPending ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        جاري الحفظ...
+                                    </>
+                                ) : (
+                                    <>
+                                        <UserCheck className="h-4 w-4" />
+                                        تأكيد التحويل
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
