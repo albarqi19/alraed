@@ -20,6 +20,9 @@ import { PreparationSection } from '../teacher-profile/components/preparation-se
 import { PeriodActionsSection } from '../teacher-profile/components/period-actions-section'
 import { ReferralsReportsSection } from '../teacher-profile/components/referrals-section'
 import { PdfExportButton } from '../teacher-profile/components/pdf-export-button'
+import { TeacherReportPrintDialog } from '../components/teacher-report-print-dialog'
+import { Button } from '@/components/ui/button'
+import { FileText } from 'lucide-react'
 import { EmptyState } from '../teacher-profile/components/empty-state'
 
 import {
@@ -66,6 +69,7 @@ export function AdminTeacherProfilePage() {
   )
   const [activeTab, setActiveTab] = useState<ProfileTabKey>('overview')
   const [period, setPeriod] = useState<PeriodKey>('semester')
+  const [reportDialogOpen, setReportDialogOpen] = useState(false)
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
 
@@ -175,6 +179,17 @@ export function AdminTeacherProfilePage() {
           <p className="text-sm text-slate-500">عرض شامل لكل بيانات المعلم</p>
         </div>
         <div className="flex items-center gap-3">
+          {selectedTeacherId && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setReportDialogOpen(true)}
+              className="gap-2"
+            >
+              <FileText className="h-4 w-4" />
+              طباعة تقرير شامل
+            </Button>
+          )}
           {summaryQuery.data && (
             <PdfExportButton summary={summaryQuery.data} printRef={printRef} />
           )}
@@ -184,6 +199,13 @@ export function AdminTeacherProfilePage() {
           />
         </div>
       </div>
+
+      <TeacherReportPrintDialog
+        teacherId={selectedTeacherId}
+        teacherName={summaryQuery.data?.teacher?.name ?? null}
+        open={reportDialogOpen}
+        onOpenChange={setReportDialogOpen}
+      />
 
       {/* حالة عدم اختيار معلم */}
       {!selectedTeacherId && (
