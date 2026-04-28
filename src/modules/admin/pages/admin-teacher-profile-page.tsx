@@ -22,7 +22,6 @@ import { ReferralsReportsSection } from '../teacher-profile/components/referrals
 import { PdfExportButton } from '../teacher-profile/components/pdf-export-button'
 import { TeacherReportPrintDialog } from '../components/teacher-report-print-dialog'
 import { Button } from '@/components/ui/button'
-import { FileText } from 'lucide-react'
 import { EmptyState } from '../teacher-profile/components/empty-state'
 
 import {
