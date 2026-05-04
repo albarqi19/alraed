@@ -46,6 +46,7 @@ interface TeacherOverridesResponse {
 export function AdminTeacherMessagesPage() {
   const queryClient = useQueryClient()
   const [editingTemplate, setEditingTemplate] = useState<MessageTemplate | null>(null)
+  const [creatingTemplate, setCreatingTemplate] = useState(false)
   const [editingSettings, setEditingSettings] = useState(false)
   const [overridesSearch, setOverridesSearch] = useState('')
   const [overridesShowAll, setOverridesShowAll] = useState(false)
@@ -107,6 +108,29 @@ export function AdminTeacherMessagesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'teacher-message-templates'] })
       setEditingTemplate(null)
+    },
+  })
+
+  // Create template mutation
+  const createTemplateMutation = useMutation({
+    mutationFn: async (payload: { title: string; icon: string; content: string; color?: string; is_active?: boolean }) => {
+      const response = await apiClient.post('/admin/teacher-messages/templates', payload)
+      return response.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'teacher-message-templates'] })
+      setCreatingTemplate(false)
+    },
+  })
+
+  // Delete template mutation
+  const deleteTemplateMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiClient.delete(`/admin/teacher-messages/templates/${id}`)
+      return response.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'teacher-message-templates'] })
     },
   })
 
@@ -695,10 +719,19 @@ export function AdminTeacherMessagesPage() {
 
       {/* Templates */}
       <div className="glass-card space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted">
-            <span className="font-semibold text-slate-900">{templates.length}</span> قالب مسجل •{' '}
-            <span className="font-semibold text-emerald-600">{templates.filter(t => t.is_active).length}</span> مفعّل
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setCreatingTemplate(true)}
+              className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-700"
+            >
+              ➕ قالب جديد
+            </button>
+            <div className="text-sm text-muted">
+              <span className="font-semibold text-slate-900">{templates.length}</span> قالب •{' '}
+              <span className="font-semibold text-emerald-600">{templates.filter(t => t.is_active).length}</span> مفعّل
+            </div>
           </div>
           <h2 className="text-xl font-semibold text-slate-900">قوالب الرسائل المتاحة</h2>
         </div>
@@ -716,13 +749,27 @@ export function AdminTeacherMessagesPage() {
             >
               <div className="space-y-3 text-right">
                 <div className="flex items-start justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setEditingTemplate(template)}
-                    className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-teal-600 shadow-sm transition hover:bg-teal-50 hover:text-teal-700"
-                  >
-                    ✏️ تعديل
-                  </button>
+                  <div className="flex flex-col gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setEditingTemplate(template)}
+                      className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-teal-600 shadow-sm transition hover:bg-teal-50 hover:text-teal-700"
+                    >
+                      ✏️ تعديل
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm(`هل تريد حذف قالب "${template.title}"؟\n\nملاحظة: الرسائل المرسلة سابقاً تبقى محفوظة في السجل.`)) {
+                          deleteTemplateMutation.mutate(template.id)
+                        }
+                      }}
+                      disabled={deleteTemplateMutation.isPending}
+                      className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-rose-600 shadow-sm transition hover:bg-rose-50 disabled:opacity-50"
+                    >
+                      🗑️ حذف
+                    </button>
+                  </div>
                   <div className="flex-1 text-center">
                     <div className="text-5xl drop-shadow-sm">{template.icon}</div>
                     <div className={clsx(
@@ -834,6 +881,102 @@ export function AdminTeacherMessagesPage() {
                   className="button-primary flex-1 disabled:opacity-50"
                 >
                   {updateTemplateMutation.isPending ? 'جاري الحفظ...' : 'حفظ التعديلات'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create Template Modal */}
+      {creatingTemplate && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200"
+          onClick={() => setCreatingTemplate(false)}
+        >
+          <div
+            className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                const formData = new FormData(e.currentTarget)
+                createTemplateMutation.mutate({
+                  title: formData.get('title') as string,
+                  icon: formData.get('icon') as string,
+                  content: formData.get('content') as string,
+                  is_active: formData.get('is_active') === 'on',
+                })
+              }}
+              className="space-y-4 text-right"
+            >
+              <h2 className="text-2xl font-bold text-slate-900">قالب جديد</h2>
+              <p className="text-xs text-muted">سيُضاف هذا القالب لمدرستك فقط، ولن يظهر في المدارس الأخرى.</p>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-900">العنوان</label>
+                <input
+                  type="text"
+                  name="title"
+                  required
+                  maxLength={255}
+                  placeholder="مثلاً: تنبيه سلوكي"
+                  className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-2"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-900">الأيقونة (Emoji)</label>
+                <input
+                  type="text"
+                  name="icon"
+                  required
+                  maxLength={10}
+                  defaultValue="📌"
+                  className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-2 text-center text-3xl"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-900">محتوى الرسالة</label>
+                <textarea
+                  name="content"
+                  required
+                  rows={4}
+                  placeholder="اكتب نص الرسالة الذي سيظهر لولي الأمر..."
+                  className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-2"
+                />
+              </div>
+
+              <label className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  name="is_active"
+                  defaultChecked
+                  className="h-5 w-5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                />
+                <span className="font-semibold text-slate-900">تفعيل القالب فور إنشائه</span>
+              </label>
+
+              {createTemplateMutation.isError && (
+                <p className="text-sm text-rose-600">حدث خطأ أثناء الحفظ. حاول مرة أخرى.</p>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCreatingTemplate(false)}
+                  className="button-secondary flex-1"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  disabled={createTemplateMutation.isPending}
+                  className="button-primary flex-1 disabled:opacity-50"
+                >
+                  {createTemplateMutation.isPending ? 'جاري الإضافة...' : 'إضافة القالب'}
                 </button>
               </div>
             </form>
