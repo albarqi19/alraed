@@ -27,10 +27,29 @@ interface MessageSettings {
   allow_custom_messages: boolean
 }
 
+interface TeacherOverrideRow {
+  teacher_id: number
+  teacher_name: string
+  teacher_national_id: string | null
+  has_override: boolean
+  effective_limit: number
+  override_limit: number | null
+  note: string | null
+}
+
+interface TeacherOverridesResponse {
+  success: boolean
+  general_limit: number
+  teachers: TeacherOverrideRow[]
+}
+
 export function AdminTeacherMessagesPage() {
   const queryClient = useQueryClient()
   const [editingTemplate, setEditingTemplate] = useState<MessageTemplate | null>(null)
   const [editingSettings, setEditingSettings] = useState(false)
+  const [overridesSearch, setOverridesSearch] = useState('')
+  const [overridesShowAll, setOverridesShowAll] = useState(false)
+  const [editingOverride, setEditingOverride] = useState<TeacherOverrideRow | null>(null)
   const [modalState, setModalState] = useState<{
     isOpen: boolean
     period: 'today' | 'week' | 'month' | 'active'
@@ -100,6 +119,38 @@ export function AdminTeacherMessagesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'teacher-message-settings'] })
       setEditingSettings(false)
+    },
+  })
+
+  // Fetch teachers with override info
+  const { data: overridesData, isLoading: overridesLoading } = useQuery<TeacherOverridesResponse>({
+    queryKey: ['admin', 'teacher-message-overrides'],
+    queryFn: async () => {
+      const response = await apiClient.get('/admin/teacher-messages/teacher-overrides')
+      return response.data
+    },
+  })
+
+  // Upsert override mutation
+  const upsertOverrideMutation = useMutation({
+    mutationFn: async (payload: { teacher_id: number; daily_limit: number; note?: string | null }) => {
+      const response = await apiClient.post('/admin/teacher-messages/teacher-overrides', payload)
+      return response.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'teacher-message-overrides'] })
+      setEditingOverride(null)
+    },
+  })
+
+  // Delete override mutation
+  const deleteOverrideMutation = useMutation({
+    mutationFn: async (teacherId: number) => {
+      const response = await apiClient.delete(`/admin/teacher-messages/teacher-overrides/${teacherId}`)
+      return response.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'teacher-message-overrides'] })
     },
   })
 
@@ -289,18 +340,18 @@ export function AdminTeacherMessagesPage() {
 
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
                 <label className="block text-right text-sm font-semibold text-slate-900">
-                  الحد اليومي لكل معلم
+                  الحد اليومي العام لكل معلم
                 </label>
                 <input
                   type="number"
                   name="daily_limit"
-                  defaultValue={Math.min(settings.daily_limit_per_teacher, 5)}
+                  defaultValue={settings.daily_limit_per_teacher}
                   min="1"
-                  max="5"
+                  max="500"
                   className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-center"
                 />
                 <p className="text-xs text-amber-700 mt-2 text-right">
-                  ⚠️ حرصاً على حماية الرقم الخاص بالمدرسة من التقييد والحظر، الحد الأقصى حالياً 5 رسائل يومياً. سيتم زيادة الحد تدريجياً مع الوقت.
+                  ⚠️ هذا الحد يطبّق على جميع المعلمين افتراضياً. يمكن تخصيص حد أعلى لمعلمين محددين من قسم "حدود خاصة للمعلمين" أدناه. تنبه: الأرقام العالية قد تعرّض رقم المدرسة لخطر التقييد من واتساب.
                 </p>
               </div>
 
@@ -420,6 +471,227 @@ export function AdminTeacherMessagesPage() {
           </div>
         )}
       </div>
+
+      {/* Teacher Overrides */}
+      <div className="glass-card space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="text-sm text-muted">
+            الحد العام: <span className="font-semibold text-slate-900">{overridesData?.general_limit ?? settings.daily_limit_per_teacher}</span> رسالة/يوم
+            {' • '}
+            <span className="font-semibold text-amber-600">
+              {overridesData?.teachers.filter(t => t.has_override).length ?? 0}
+            </span>
+            {' '}معلم بحد خاص
+          </div>
+          <h2 className="text-xl font-semibold text-slate-900">حدود خاصة للمعلمين</h2>
+        </div>
+
+        <p className="text-xs text-muted text-right">
+          يمكنك زيادة (أو تقليل) الحد اليومي لمعلمين محددين دون التأثير على الباقي. عند حذف الحد الخاص، يعود المعلم تلقائياً للحد العام.
+        </p>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            type="text"
+            value={overridesSearch}
+            onChange={(e) => setOverridesSearch(e.target.value)}
+            placeholder="ابحث باسم المعلم أو الهوية..."
+            className="flex-1 min-w-[200px] rounded-lg border border-slate-300 px-3 py-2 text-right"
+          />
+          <button
+            type="button"
+            onClick={() => setOverridesShowAll(!overridesShowAll)}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            {overridesShowAll ? 'عرض الذين لديهم حد خاص فقط' : 'عرض كل المعلمين'}
+          </button>
+        </div>
+
+        {overridesLoading ? (
+          <div className="text-center py-6 text-sm text-muted">جاري التحميل...</div>
+        ) : (
+          <div className="overflow-hidden rounded-xl border border-slate-200">
+            <table className="w-full text-right text-sm">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-4 py-3 font-semibold text-slate-700">المعلم</th>
+                  <th className="px-4 py-3 font-semibold text-slate-700">الهوية</th>
+                  <th className="px-4 py-3 font-semibold text-slate-700">الحد الفعلي</th>
+                  <th className="px-4 py-3 font-semibold text-slate-700">الحالة</th>
+                  <th className="px-4 py-3 font-semibold text-slate-700">إجراءات</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 bg-white">
+                {(() => {
+                  const search = overridesSearch.trim().toLowerCase()
+                  const all = overridesData?.teachers ?? []
+                  const filtered = all
+                    .filter(t => overridesShowAll || t.has_override)
+                    .filter(t => {
+                      if (!search) return true
+                      return (
+                        t.teacher_name.toLowerCase().includes(search) ||
+                        (t.teacher_national_id ?? '').toLowerCase().includes(search)
+                      )
+                    })
+
+                  if (filtered.length === 0) {
+                    return (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-6 text-center text-muted">
+                          {overridesShowAll
+                            ? 'لا يوجد معلمون مطابقون للبحث.'
+                            : 'لا يوجد معلمون لديهم حد خاص حالياً. اضغط "عرض كل المعلمين" لتعيين حد خاص.'}
+                        </td>
+                      </tr>
+                    )
+                  }
+
+                  return filtered.map((t) => (
+                    <tr key={t.teacher_id} className={t.has_override ? 'bg-amber-50/50' : ''}>
+                      <td className="px-4 py-3">
+                        <p className="font-semibold text-slate-900">{t.teacher_name}</p>
+                        {t.note && (
+                          <p className="mt-0.5 text-xs text-amber-700">📝 {t.note}</p>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600 font-mono text-xs">{t.teacher_national_id ?? '—'}</td>
+                      <td className="px-4 py-3">
+                        <span className={clsx('font-bold', t.has_override ? 'text-amber-700' : 'text-slate-900')}>
+                          {t.effective_limit}
+                        </span>
+                        <span className="text-xs text-muted"> رسالة</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {t.has_override ? (
+                          <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+                            حد خاص
+                          </span>
+                        ) : (
+                          <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
+                            الحد العام
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setEditingOverride(t)}
+                            className="rounded-md border border-teal-300 bg-white px-3 py-1 text-xs font-semibold text-teal-700 hover:bg-teal-50"
+                          >
+                            {t.has_override ? 'تعديل الحد' : 'تعيين حد خاص'}
+                          </button>
+                          {t.has_override && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (confirm(`هل تريد حذف الحد الخاص للمعلم "${t.teacher_name}" والعودة للحد العام؟`)) {
+                                  deleteOverrideMutation.mutate(t.teacher_id)
+                                }
+                              }}
+                              disabled={deleteOverrideMutation.isPending}
+                              className="rounded-md border border-rose-300 bg-white px-3 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50"
+                            >
+                              حذف
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                })()}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Edit Override Modal */}
+      {editingOverride && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200"
+          onClick={() => setEditingOverride(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                const formData = new FormData(e.currentTarget)
+                upsertOverrideMutation.mutate({
+                  teacher_id: editingOverride.teacher_id,
+                  daily_limit: Number(formData.get('daily_limit')),
+                  note: (formData.get('note') as string) || null,
+                })
+              }}
+              className="space-y-4 text-right"
+            >
+              <h2 className="text-2xl font-bold text-slate-900">
+                {editingOverride.has_override ? 'تعديل الحد الخاص' : 'تعيين حد خاص'}
+              </h2>
+              <div className="rounded-lg bg-slate-50 p-3 text-sm">
+                <p className="font-semibold text-slate-900">{editingOverride.teacher_name}</p>
+                {editingOverride.teacher_national_id && (
+                  <p className="text-xs text-muted font-mono">{editingOverride.teacher_national_id}</p>
+                )}
+                <p className="mt-2 text-xs text-muted">
+                  الحد العام الحالي: <span className="font-semibold">{overridesData?.general_limit}</span> رسالة/يوم
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-900">الحد اليومي الخاص</label>
+                <input
+                  type="number"
+                  name="daily_limit"
+                  defaultValue={editingOverride.override_limit ?? editingOverride.effective_limit}
+                  required
+                  min="1"
+                  max="500"
+                  className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-2 text-center text-lg font-bold"
+                />
+                <p className="mt-1 text-xs text-muted">عدد الرسائل التي يستطيع هذا المعلم إرسالها يومياً (يلغي الحد العام).</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-900">ملاحظة (اختياري)</label>
+                <input
+                  type="text"
+                  name="note"
+                  defaultValue={editingOverride.note ?? ''}
+                  maxLength={255}
+                  placeholder="مثلاً: مرشد طلابي يحتاج حد أعلى"
+                  className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-2"
+                />
+              </div>
+
+              {upsertOverrideMutation.isError && (
+                <p className="text-sm text-rose-600">حدث خطأ أثناء الحفظ. حاول مرة أخرى.</p>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingOverride(null)}
+                  className="button-secondary flex-1"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  disabled={upsertOverrideMutation.isPending}
+                  className="button-primary flex-1 disabled:opacity-50"
+                >
+                  {upsertOverrideMutation.isPending ? 'جاري الحفظ...' : 'حفظ'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Templates */}
       <div className="glass-card space-y-4">
