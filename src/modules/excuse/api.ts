@@ -14,6 +14,7 @@ import type {
   ExcuseSettingsResponse,
   UpdateExcuseSettingsPayload,
   MessageType,
+  ExcuseDetailsResponse,
 } from './types'
 
 // استخدام نفس الـ base URL المستخدم في apiClient
@@ -113,11 +114,11 @@ export async function getAbsenceExcuses(filters?: AbsenceExcuseFilters): Promise
 }
 
 /**
- * الحصول على تفاصيل عذر معين
+ * الحصول على تفاصيل عذر معين (يشمل سجل التاريخ والصلاحيات)
  */
-export async function getExcuseDetails(id: number): Promise<AbsenceExcuseRecord> {
-  const response = await apiClient.get<{ success: boolean; data: AbsenceExcuseRecord }>(`/admin/absence-excuses/${id}`)
-  return response.data.data
+export async function getExcuseDetails(id: number): Promise<ExcuseDetailsResponse> {
+  const response = await apiClient.get<ExcuseDetailsResponse>(`/admin/absence-excuses/${id}`)
+  return response.data
 }
 
 /**
@@ -137,6 +138,20 @@ export async function approveExcuse(id: number, message?: string): Promise<{ suc
 export async function rejectExcuse(id: number, reason: string): Promise<{ success: boolean; message: string; data: AbsenceExcuseRecord }> {
   const response = await apiClient.post<{ success: boolean; message: string; data: AbsenceExcuseRecord }>(
     `/admin/absence-excuses/${id}/reject`,
+    { notes: reason }
+  )
+  return response.data
+}
+
+/**
+ * إعادة فتح المراجعة (متاحة لمدير المدرسة فقط، ومرفوضة بعد مزامنة نور)
+ */
+export async function reopenExcuse(
+  id: number,
+  reason: string
+): Promise<{ success: boolean; message: string; data: AbsenceExcuseRecord }> {
+  const response = await apiClient.post<{ success: boolean; message: string; data: AbsenceExcuseRecord }>(
+    `/admin/absence-excuses/${id}/reopen`,
     { notes: reason }
   )
   return response.data

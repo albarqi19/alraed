@@ -14,6 +14,9 @@ import {
   AlertCircle,
   Plus,
   Settings,
+  RotateCcw,
+  History,
+  Lock,
 } from 'lucide-react'
 import { CreateAdminExcuseModal } from '../components/create-admin-excuse-modal'
 import { ExcuseSettingsModal } from '../components/excuse-settings-modal'
@@ -22,9 +25,10 @@ import {
   getExcuseDetails,
   approveExcuse,
   rejectExcuse,
+  reopenExcuse,
   markExcuseNoorSynced,
 } from '../api'
-import type { AbsenceExcuseRecord } from '../types'
+import type { AbsenceExcuseRecord, ExcuseReviewHistoryItem } from '../types'
 import { useToast } from '@/shared/feedback/use-toast'
 import { useAuthStore } from '@/modules/auth/store/auth-store'
 
@@ -46,7 +50,8 @@ const tabs: { value: TabValue; label: string }[] = [
 export function AdminAbsenceExcusesPage() {
   const toast = useToast()
   const queryClient = useQueryClient()
-  const { token } = useAuthStore()
+  const { token, user } = useAuthStore()
+  const isPrincipal = user?.role === 'school_principal'
   const [page, setPage] = useState(1)
   const [activeTab, setActiveTab] = useState<TabValue>('all')
   const [searchQuery, setSearchQuery] = useState('')
@@ -77,6 +82,15 @@ export function AdminAbsenceExcusesPage() {
   // Reject dialog
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
+
+  // Reopen dialog (مدير المدرسة فقط)
+  const [reopenDialogOpen, setReopenDialogOpen] = useState(false)
+  const [reopenReason, setReopenReason] = useState('')
+
+  // صلاحية إعادة الفتح للعذر المعروض حالياً (تأتي من السيرفر)
+  const [canReopenSelected, setCanReopenSelected] = useState(false)
+  // سجل تاريخ مراجعات العذر المعروض حالياً
+  const [reviewsHistory, setReviewsHistory] = useState<ExcuseReviewHistoryItem[]>([])
 
   // Helper function to add auth token to file URLs
   const getAuthenticatedFileUrl = useMemo(() => {
@@ -138,6 +152,31 @@ export function AdminAbsenceExcusesPage() {
     },
   })
 
+  const reopenMutation = useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason: string }) => reopenExcuse(id, reason),
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'absence-excuses'] })
+      setReopenDialogOpen(false)
+      setReopenReason('')
+      // تحديث العذر المعروض بالبيانات الجديدة (status=pending + سجل محدث)
+      if (response.data) {
+        setSelectedExcuse(response.data)
+        setReviewsHistory(response.data.reviews_history ?? [])
+        setCanReopenSelected(false)
+      }
+      toast({
+        type: 'success',
+        title: 'تم إعادة الفتح',
+        description: 'العذر الآن قيد المراجعة من جديد',
+      })
+    },
+    onError: (error: unknown) => {
+      const errorObj = error as { response?: { data?: { message?: string } } }
+      const message = errorObj?.response?.data?.message ?? 'حدث خطأ أثناء إعادة فتح المراجعة'
+      toast({ type: 'error', title: 'خطأ', description: message })
+    },
+  })
+
   const handleTabChange = (tab: TabValue) => {
     setActiveTab(tab)
     setPage(1)
@@ -150,10 +189,14 @@ export function AdminAbsenceExcusesPage() {
 
   const handleViewExcuse = async (excuse: AbsenceExcuseRecord) => {
     setSelectedExcuse(excuse)
+    setReviewsHistory(excuse.reviews_history ?? [])
+    setCanReopenSelected(false)
     setViewDialogOpen(true)
     try {
-      const details = await getExcuseDetails(excuse.id)
-      setSelectedExcuse(details)
+      const response = await getExcuseDetails(excuse.id)
+      setSelectedExcuse(response.data)
+      setReviewsHistory(response.data.reviews_history ?? [])
+      setCanReopenSelected(Boolean(response.permissions?.can_reopen))
     } catch {
       // Keep existing data if details fetch fails
     }
@@ -183,6 +226,17 @@ export function AdminAbsenceExcusesPage() {
 
   const handleMarkNoorSynced = (excuse: AbsenceExcuseRecord) => {
     noorSyncMutation.mutate(excuse.id)
+  }
+
+  const handleOpenReopenDialog = () => {
+    if (!selectedExcuse) return
+    setReopenReason('')
+    setReopenDialogOpen(true)
+  }
+
+  const handleReopen = () => {
+    if (!selectedExcuse || reopenReason.trim().length < 5) return
+    reopenMutation.mutate({ id: selectedExcuse.id, reason: reopenReason.trim() })
   }
 
   const formatDate = (dateStr: string | null | undefined) => {
@@ -660,6 +714,53 @@ export function AdminAbsenceExcusesPage() {
                 </div>
               )}
 
+              {/* سجل تاريخ المراجعات */}
+              {reviewsHistory.length > 0 && (
+                <div>
+                  <div className="mb-3 flex items-center gap-2">
+                    <History className="h-4 w-4 text-slate-500" />
+                    <p className="text-xs font-semibold uppercase tracking-widest text-slate-600">
+                      سجل المراجعات ({reviewsHistory.length})
+                    </p>
+                  </div>
+                  <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/40 p-4">
+                    {reviewsHistory.map((entry, idx) => {
+                      const colorMap: Record<string, { dot: string; pill: string }> = {
+                        approved: { dot: 'bg-emerald-500', pill: 'bg-emerald-100 text-emerald-700' },
+                        rejected: { dot: 'bg-rose-500', pill: 'bg-rose-100 text-rose-700' },
+                        reopened: { dot: 'bg-indigo-500', pill: 'bg-indigo-100 text-indigo-700' },
+                      }
+                      const colors = colorMap[entry.action] ?? { dot: 'bg-slate-400', pill: 'bg-slate-100 text-slate-700' }
+                      const isLast = idx === reviewsHistory.length - 1
+                      return (
+                        <div key={entry.id} className="relative flex gap-3">
+                          <div className="flex flex-col items-center">
+                            <span className={`h-3 w-3 rounded-full ${colors.dot} ring-2 ring-white`} />
+                            {!isLast && <span className="mt-1 w-px flex-1 bg-slate-200" />}
+                          </div>
+                          <div className="flex-1 pb-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${colors.pill}`}>
+                                {entry.action_label}
+                              </span>
+                              <span className="text-xs text-slate-500">{formatDate(entry.performed_at)}</span>
+                            </div>
+                            <p className="mt-1 text-sm text-slate-700">
+                              بواسطة <span className="font-semibold">{entry.performer?.name ?? 'غير معروف'}</span>
+                            </p>
+                            {entry.notes && (
+                              <p className="mt-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 whitespace-pre-wrap">
+                                {entry.notes}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
               {selectedExcuse.file_url && (
                 <div>
                   <p className="text-xs text-slate-500 mb-2">الملف المرفق</p>
@@ -691,6 +792,27 @@ export function AdminAbsenceExcusesPage() {
             </div>
 
             <footer className="mt-6 flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 pt-4">
+              {/* زر إعادة فتح المراجعة (مدير المدرسة فقط، إذا كانت الصلاحية متاحة من السيرفر) */}
+              {isPrincipal && selectedExcuse.status !== 'pending' && (
+                canReopenSelected ? (
+                  <button
+                    onClick={handleOpenReopenDialog}
+                    className="button-secondary flex items-center gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                    title="إعادة فتح المراجعة"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    إعادة فتح المراجعة
+                  </button>
+                ) : selectedExcuse.noor_synced ? (
+                  <span
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500"
+                    title="لا يمكن إعادة الفتح بعد المزامنة مع نور"
+                  >
+                    <Lock className="h-3.5 w-3.5" />
+                    مؤمَّن بعد مزامنة نور
+                  </span>
+                ) : null
+              )}
               {selectedExcuse.status === 'pending' && (
                 <>
                   <button
@@ -845,6 +967,79 @@ export function AdminAbsenceExcusesPage() {
                   <X className="h-4 w-4" />
                 )}
                 رفض العذر
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
+
+      {/* Reopen Dialog (مدير المدرسة فقط) */}
+      {reopenDialogOpen && selectedExcuse && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => !reopenMutation.isPending && setReopenDialogOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-3xl bg-white p-6 text-right shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <header className="space-y-2 mb-4">
+              <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">إعادة فتح المراجعة</p>
+              <h2 className="text-xl font-semibold text-slate-900">
+                إعادة فتح عذر <span className="text-indigo-600">{selectedExcuse.student?.name}</span>؟
+              </h2>
+              <p className="text-sm text-slate-600">
+                سيُرجَع العذر إلى حالة <strong>قيد المراجعة</strong> ويُحفظ القرار السابق في سجل التاريخ. الإجراء متاح لك بصفتك مدير المدرسة.
+              </p>
+            </header>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-semibold text-slate-700">
+                  سبب إعادة الفتح <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  value={reopenReason}
+                  onChange={(e) => setReopenReason(e.target.value)}
+                  placeholder="مثال: تبيّن أن العذر صحيح بعد مراجعة المستندات الإضافية..."
+                  className={`mt-1 w-full rounded-xl border bg-white px-4 py-2.5 text-sm shadow-sm focus:outline-none focus:ring-2 ${
+                    reopenReason.trim().length < 5
+                      ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500/20'
+                      : 'border-slate-200 focus:border-indigo-500 focus:ring-indigo-500/20'
+                  }`}
+                  rows={4}
+                  maxLength={500}
+                />
+                <div className="mt-1 flex items-center justify-between text-xs">
+                  <span className={reopenReason.trim().length < 5 ? 'text-rose-600' : 'text-slate-500'}>
+                    {reopenReason.trim().length < 5 ? 'الحد الأدنى 5 أحرف' : 'سبب موثَّق'}
+                  </span>
+                  <span className="text-slate-400">{reopenReason.length}/500</span>
+                </div>
+              </div>
+            </div>
+
+            <footer className="mt-6 flex items-center justify-end gap-2">
+              <button
+                onClick={() => setReopenDialogOpen(false)}
+                className="button-secondary"
+                disabled={reopenMutation.isPending}
+              >
+                إلغاء
+              </button>
+              <button
+                onClick={handleReopen}
+                className="button-primary flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700"
+                disabled={reopenMutation.isPending || reopenReason.trim().length < 5}
+              >
+                {reopenMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RotateCcw className="h-4 w-4" />
+                )}
+                تأكيد إعادة الفتح
               </button>
             </footer>
           </div>

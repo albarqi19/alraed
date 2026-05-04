@@ -81,6 +81,25 @@ export interface CreateAdminExcuseResponse {
 
 // ==================== Admin types ====================
 
+// سجل تاريخ مراجعات العذر (قبول/رفض/إعادة فتح)
+export interface ExcuseReviewHistoryItem {
+  id: number
+  excuse_id: number
+  action: 'approved' | 'rejected' | 'reopened'
+  action_label: string
+  previous_status: 'pending' | 'approved' | 'rejected' | null
+  new_status: 'pending' | 'approved' | 'rejected'
+  performed_by: number
+  performed_by_role: string | null
+  notes: string | null
+  performed_at: string
+  performer?: {
+    id: number
+    name: string
+    role: string
+  }
+}
+
 // Admin types
 export interface AbsenceExcuseRecord {
   id: number
@@ -140,6 +159,17 @@ export interface AbsenceExcuseRecord {
     id: number
     name: string
   } | null
+  // سجل تاريخ المراجعات (يأتي مع تفاصيل العذر فقط)
+  reviews_history?: ExcuseReviewHistoryItem[]
+}
+
+// استجابة تفاصيل العذر مع صلاحيات المستخدم الحالي
+export interface ExcuseDetailsResponse {
+  success: boolean
+  data: AbsenceExcuseRecord
+  permissions?: {
+    can_reopen: boolean
+  }
 }
 
 export interface AbsenceExcuseStats {
