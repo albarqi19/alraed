@@ -7,6 +7,7 @@ import {
   GraduationCap,
   UserCheck,
   UserX,
+  Clock,
   RefreshCw,
   CheckSquare,
   MessageSquare,
@@ -27,6 +28,7 @@ export function AdminDashboardPage() {
     total_teachers: 0,
     present_today: 0,
     absent_today: 0,
+    late_today: 0,
     pending_approvals: 0,
     weekly_attendance: [],
   }
@@ -60,9 +62,9 @@ export function AdminDashboardPage() {
       titleAccent: 'text-rose-700',
     },
     {
-      title: 'عدد المعلمين',
-      value: stats.total_teachers,
-      icon: <Users className="h-5 w-5 text-amber-600" />,
+      title: 'المتأخرون اليوم',
+      value: stats.late_today,
+      icon: <Clock className="h-5 w-5 text-amber-600" />,
       theme: 'bg-amber-50 border border-amber-100',
       textAccent: 'text-amber-900',
       titleAccent: 'text-amber-700',

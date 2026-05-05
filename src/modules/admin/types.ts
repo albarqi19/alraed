@@ -3,6 +3,7 @@ export interface AdminDashboardStats {
   total_teachers: number
   present_today: number
   absent_today: number
+  late_today: number
   pending_approvals: number
   weekly_attendance?: Array<{
     day: string

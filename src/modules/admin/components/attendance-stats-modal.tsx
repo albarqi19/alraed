@@ -395,6 +395,7 @@ export function AttendanceStatsModal({ isOpen, onClose }: AttendanceStatsModalPr
                 <StatCard
                   title="إجمالي الحضور"
                   value={data.summary.total_present}
+                  subtitle="شامل المتأخرين"
                   icon={Award}
                   color="emerald"
                 />
