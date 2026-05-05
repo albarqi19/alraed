@@ -111,7 +111,7 @@ export function AdminDashboardPage() {
             </div>
             <div className="px-3 py-3">
               <p className={`text-2xl font-bold ${card.textAccent}`}>
-                {isLoading ? <span className="animate-pulse opacity-50">•••</span> : card.value.toLocaleString('en-US')}
+                {isLoading ? <span className="animate-pulse opacity-50">•••</span> : (card.value ?? 0).toLocaleString('en-US')}
               </p>
             </div>
           </article>
