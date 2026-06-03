@@ -229,6 +229,9 @@ export interface TeacherMessageRecord {
   template_key: string
   template_title: string
   message_content: string
+  original_content?: string | null
+  ai_review_status?: 'disabled' | 'clean' | 'edited' | 'failed' | null
+  ai_review_reasons?: string[] | null
   student_name: string | null
   parent_name: string | null
   status: 'pending' | 'sent' | 'failed'

@@ -25,6 +25,7 @@ interface MessageSettings {
   enable_replies: boolean
   reply_expiry_days: number
   allow_custom_messages: boolean
+  ai_review_enabled: boolean
 }
 
 interface TeacherOverrideRow {
@@ -188,6 +189,7 @@ export function AdminTeacherMessagesPage() {
     enable_replies: false,
     reply_expiry_days: 3,
     allow_custom_messages: false,
+    ai_review_enabled: true,
   }
   const statistics = statisticsData?.statistics || {
     total_sent_today: 0,
@@ -344,6 +346,7 @@ export function AdminTeacherMessagesPage() {
                 enable_replies: formData.get('enable_replies') === 'on',
                 reply_expiry_days: Number(formData.get('reply_expiry_days')),
                 allow_custom_messages: formData.get('allow_custom_messages') === 'on',
+                ai_review_enabled: formData.get('ai_review_enabled') === 'on',
               })
             }}
             className="space-y-4"
@@ -446,6 +449,19 @@ export function AdminTeacherMessagesPage() {
                   <p className="text-xs text-muted">يتيح للمعلمين كتابة رسائل خاصة بدلاً من القوالب الجاهزة</p>
                 </div>
               </label>
+
+              <label className="flex items-center gap-3 rounded-xl border border-teal-200 bg-teal-50 p-4 sm:col-span-2">
+                <input
+                  type="checkbox"
+                  name="ai_review_enabled"
+                  defaultChecked={settings.ai_review_enabled}
+                  className="h-5 w-5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                />
+                <div className="flex-1 text-right">
+                  <p className="font-semibold text-slate-900">🛡️ المراجعة الذكية للرسائل المخصصة</p>
+                  <p className="text-xs text-muted">تفحص الرسائل المخصصة قبل الإرسال: تُمرّر النظيفة كما هي، وتُهذّب المخالفة تلقائياً (إخفاء أسماء الطلاب، تلطيف الألفاظ، تحسين النبرة). لا تتأثر القوالب الجاهزة.</p>
+                </div>
+              </label>
             </div>
 
             <button
@@ -491,6 +507,11 @@ export function AdminTeacherMessagesPage() {
             <div className={clsx('rounded-xl border p-4 text-center', settings.allow_custom_messages ? 'border-indigo-200 bg-indigo-50' : 'border-slate-200 bg-slate-50')}>
               <p className="text-2xl font-bold">{settings.allow_custom_messages ? 'مفعّل' : 'معطّل'}</p>
               <p className="text-sm text-muted">الرسائل المخصصة</p>
+            </div>
+
+            <div className={clsx('rounded-xl border p-4 text-center', settings.ai_review_enabled ? 'border-teal-200 bg-teal-50' : 'border-slate-200 bg-slate-50')}>
+              <p className="text-2xl font-bold">{settings.ai_review_enabled ? 'مفعّل' : 'معطّل'}</p>
+              <p className="text-sm text-muted">🛡️ المراجعة الذكية</p>
             </div>
           </div>
         )}

@@ -167,11 +167,29 @@ export function TeacherMessagesModal({ isOpen, onClose, data, title }: TeacherMe
                                     <Clock className="h-4 w-4" />
                                     <span>{message.sent_at_human}</span>
                                   </div>
-                                  <span className="rounded-md bg-teal-100 px-2 py-1 text-xs font-semibold text-teal-700">
-                                    {message.template_title}
-                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    {message.ai_review_status === 'edited' && (
+                                      <span className="rounded-md bg-amber-100 px-2 py-1 text-xs font-bold text-amber-700">🛡️ عُدّلت بالمراجعة الذكية</span>
+                                    )}
+                                    <span className="rounded-md bg-teal-100 px-2 py-1 text-xs font-semibold text-teal-700">
+                                      {message.template_title}
+                                    </span>
+                                  </div>
                                 </div>
                                 <p className="text-sm leading-relaxed text-slate-700">{message.message_content}</p>
+                                {message.ai_review_status === 'edited' && message.original_content && (
+                                  <details className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2">
+                                    <summary className="cursor-pointer text-xs font-semibold text-amber-800">عرض النص الأصلي قبل المراجعة (رسالة المعلم الحقيقية)</summary>
+                                    <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-amber-900 line-through decoration-amber-400">{message.original_content}</p>
+                                    {message.ai_review_reasons && message.ai_review_reasons.length > 0 && (
+                                      <div className="mt-2 flex flex-wrap gap-1">
+                                        {message.ai_review_reasons.map((r, i) => (
+                                          <span key={i} className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] text-amber-700">{r}</span>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </details>
+                                )}
                               </div>
                             </div>
                           ))}

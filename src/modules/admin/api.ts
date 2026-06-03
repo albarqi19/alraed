@@ -3015,6 +3015,9 @@ export interface TeacherMessageRecord {
   template_title: string
   template_key: string
   message_content: string
+  original_content?: string | null
+  ai_review_status?: 'disabled' | 'clean' | 'edited' | 'failed' | null
+  ai_review_reasons?: string[] | null
   status: string
   sent_at: string
   sent_at_human: string

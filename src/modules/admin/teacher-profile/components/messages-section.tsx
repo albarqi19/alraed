@@ -71,12 +71,36 @@ export function MessagesSection({ data }: MessagesSectionProps) {
                   ) : msg.status === 'failed' ? (
                     <MailX className="h-3.5 w-3.5 text-rose-500" />
                   ) : null}
+                  {msg.ai_review_status === 'edited' && (
+                    <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
+                      🛡️ عُدّلت بالمراجعة الذكية
+                    </Badge>
+                  )}
                   <span className="text-xs text-slate-400">
                     {msg.student_name && `${msg.student_name}`}
                     {msg.parent_name && ` · ${msg.parent_name}`}
                   </span>
                 </div>
                 <p className="line-clamp-2 text-sm text-slate-600">{msg.message_content}</p>
+                {msg.ai_review_status === 'edited' && msg.original_content && (
+                  <details className="mt-1.5 rounded-lg border border-amber-100 bg-amber-50/50 p-2">
+                    <summary className="cursor-pointer text-xs font-semibold text-amber-800">
+                      عرض النص الأصلي قبل المراجعة (رسالة المعلم الحقيقية)
+                    </summary>
+                    <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-amber-900 line-through decoration-amber-400">
+                      {msg.original_content}
+                    </p>
+                    {msg.ai_review_reasons && msg.ai_review_reasons.length > 0 && (
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {msg.ai_review_reasons.map((r, i) => (
+                          <span key={i} className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] text-amber-700">
+                            {r}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </details>
+                )}
               </div>
               <span className="shrink-0 text-xs text-slate-400">
                 {msg.created_at ? new Date(msg.created_at).toLocaleDateString('ar-SA') : ''}
