@@ -1,4 +1,15 @@
 import { useState } from 'react'
+import { apiClient } from '@/services/api/client'
+
+// تهريب قيم HTML لمنع حقن سكربتات في نافذة الطباعة (XSS) — C14
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
 
 interface AbsentStudent {
   student_id: number
@@ -30,27 +41,13 @@ export function AbsentStudentsPDFModal({ open, onClose }: AbsentStudentsPDFModal
 
       console.log('📅 Selected date:', selectedDate)
 
-      // Fetch data from API
-      const token = localStorage.getItem('auth_token')
-      const baseURL = import.meta.env.VITE_API_BASE_URL || 'https://roseanne-nonrestricting-arnoldo.ngrok-free.dev/api'
-      
-      console.log('🌐 API URL:', `${baseURL}/admin/attendance-reports/absent-list?date=${selectedDate}`)
-      const response = await fetch(`${baseURL}/admin/attendance-reports/absent-list?date=${selectedDate}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'ngrok-skip-browser-warning': 'true',
-        },
+      // جلب البيانات عبر apiClient المركزي (baseURL موحّد + توكن + معالجة أخطاء 401/402) — B04
+      const { data: result } = await apiClient.get('/admin/attendance-reports/absent-list', {
+        params: { date: selectedDate },
       })
 
-      if (!response.ok) {
-        throw new Error(`خطأ في الاتصال بالخادم: ${response.status} ${response.statusText}`)
-      }
-
-      const result = await response.json()
-
-      if (!result.success) {
-        throw new Error(result.message || 'خطأ في جلب البيانات من الخادم')
+      if (!result?.success) {
+        throw new Error(result?.message || 'خطأ في جلب البيانات من الخادم')
       }
 
       const data: AbsentStudentsData = result.data
@@ -73,7 +70,7 @@ export function AbsentStudentsPDFModal({ open, onClose }: AbsentStudentsPDFModal
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>كشف الطلاب الغائبين - ${data.date}</title>
+  <title>كشف الطلاب الغائبين - ${escapeHtml(data.date)}</title>
   <style>
     @page {
       size: A4;
@@ -199,10 +196,10 @@ export function AbsentStudentsPDFModal({ open, onClose }: AbsentStudentsPDFModal
 </head>
 <body>
   <div class="header">
-    <h1>${data.school_name}</h1>
+    <h1>${escapeHtml(data.school_name)}</h1>
     <h2>كشف الطلاب الغائبين</h2>
-    <div class="info">التاريخ: ${data.date} - ${data.day_name}</div>
-    <div class="total">إجمالي الغائبين: ${data.total_absent} طالب</div>
+    <div class="info">التاريخ: ${escapeHtml(data.date)} - ${escapeHtml(data.day_name)}</div>
+    <div class="total">إجمالي الغائبين: ${Number(data.total_absent) || 0} طالب</div>
   </div>
   
   <table>
@@ -217,8 +214,8 @@ export function AbsentStudentsPDFModal({ open, onClose }: AbsentStudentsPDFModal
       ${data.students.map((student: AbsentStudent, index: number) => `
         <tr>
           <td class="col-num">${index + 1}</td>
-          <td class="col-name">${student.student_name}</td>
-          <td class="col-class">${student.grade} ${student.class_name}</td>
+          <td class="col-name">${escapeHtml(student.student_name)}</td>
+          <td class="col-class">${escapeHtml(student.grade)} ${escapeHtml(student.class_name)}</td>
         </tr>
       `).join('')}
     </tbody>
