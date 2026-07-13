@@ -248,11 +248,21 @@ export function GuardianProvider({ children: childrenProp }: GuardianProviderPro
         }
     }, [lookupMutation, storedChildren])
 
+    // إعادة إصدار توكن Guardian للطفل المُحدّد (best-effort، غير حاجب)
+    const reissueGuardianToken = useCallback((child?: StoredChild | null) => {
+        if (!child) return
+        guardianLogin({ national_id: child.national_id, phone_last4: child.phone_last4 })
+            .then(res => setGuardianToken(res.token))
+            .catch(() => { /* الدردشة قد لا تعمل، لكن باقي البوابة يعمل عادي */ })
+    }, [])
+
     const switchChild = useCallback((index: number) => {
         if (index >= 0 && index < storedChildren.length) {
             setActiveChildIndex(index)
+            // إعادة إصدار التوكن للطفل المُختار (يعالج حالة أبناء بأرقام أولياء أمور مختلفة) — B06
+            reissueGuardianToken(storedChildren[index])
         }
-    }, [storedChildren.length])
+    }, [storedChildren, reissueGuardianToken])
 
     const removeChild = useCallback((index: number) => {
         if (storedChildren.length <= 1) {
@@ -260,19 +270,22 @@ export function GuardianProvider({ children: childrenProp }: GuardianProviderPro
             setStoredChildren([])
             setActiveChildIndex(0)
             setStudentSummary(null)
+            removeGuardianToken() // مسح توكن ولي الأمر عند إزالة آخر طفل — B08
             clearSession()
             return
         }
 
-        setStoredChildren(prev => prev.filter((_, i) => i !== index))
+        const remaining = storedChildren.filter((_, i) => i !== index)
+        setStoredChildren(remaining)
 
-        // Adjust active index if needed
+        // Adjust active index if needed + إعادة إصدار التوكن للطفل النشط الجديد — B08
         if (index === activeChildIndex) {
             setActiveChildIndex(0)
+            reissueGuardianToken(remaining[0])
         } else if (index < activeChildIndex) {
             setActiveChildIndex(prev => prev - 1)
         }
-    }, [storedChildren.length, activeChildIndex])
+    }, [storedChildren, activeChildIndex, reissueGuardianToken])
 
     const handleLogout = useCallback(() => {
         // Logout current child only

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { apiClient } from '@/services/api/client'
+import { getTodayRiyadh } from '@/lib/date-utils'
 
 // تهريب قيم HTML لمنع حقن سكربتات في نافذة الطباعة (XSS) — C14
 function escapeHtml(value: unknown): string {
@@ -32,7 +33,7 @@ interface AbsentStudentsPDFModalProps {
 }
 
 export function AbsentStudentsPDFModal({ open, onClose }: AbsentStudentsPDFModalProps) {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [selectedDate, setSelectedDate] = useState(getTodayRiyadh)
   const [isLoading, setIsLoading] = useState(false)
 
   const generatePDF = async () => {

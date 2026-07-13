@@ -5,6 +5,7 @@ import {
   useCreateManualAbsenceMutation,
 } from '../hooks'
 import type { StudentForManualAbsence } from '../api'
+import { getTodayRiyadh } from '@/lib/date-utils'
 
 type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused'
 
@@ -31,10 +32,8 @@ export function ManualAbsenceModal({ open, onClose }: ManualAbsenceModalProps) {
   const [step, setStep] = useState<'select-class' | 'record-attendance'>('select-class')
   const [selectedGrade, setSelectedGrade] = useState<string | null>(null)
   const [selectedClassName, setSelectedClassName] = useState<string | null>(null)
-  const [attendanceDate, setAttendanceDate] = useState(() => {
-    const today = new Date()
-    return today.toISOString().split('T')[0]
-  })
+  // توقيت الرياض بدل UTC لتفادي تسجيل الغياب على يوم خاطئ بين منتصف الليل و3 فجراً — B03
+  const [attendanceDate, setAttendanceDate] = useState(getTodayRiyadh)
   const [studentStatuses, setStudentStatuses] = useState<Record<number, AttendanceStatus>>({})
   const [notes, setNotes] = useState('')
 

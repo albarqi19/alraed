@@ -5,11 +5,20 @@ import Pusher from 'pusher-js'
 ;(window as any).Pusher = Pusher
 
 let echoInstance: any = null
+let echoToken: string | null = null
 
 export function createEchoInstance(token: string) {
-  if (echoInstance) {
+  // أعِد استخدام النسخة فقط إن كان التوكن نفسه؛ وإلا أعد الإنشاء بالتوكن الجديد — B10
+  if (echoInstance && echoToken === token) {
     return echoInstance
   }
+
+  if (echoInstance) {
+    echoInstance.disconnect()
+    echoInstance = null
+  }
+
+  echoToken = token
 
   echoInstance = new Echo({
     broadcaster: 'reverb',
@@ -38,5 +47,6 @@ export function destroyEchoInstance(): void {
   if (echoInstance) {
     echoInstance.disconnect()
     echoInstance = null
+    echoToken = null
   }
 }

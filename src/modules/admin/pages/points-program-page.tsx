@@ -369,8 +369,14 @@ export function PointsProgramPage() {
       setExportingCardId(record.student.id)
 
       try {
+        // لا تستخدم المعرّف التسلسلي القابل للتنبؤ كحمولة QR؛ امنع التصدير عند غياب توكن البطاقة — B13
+        if (!record.card.token) {
+          setExportingCardId(null)
+          alert('تعذّر توليد رمز QR: لا يوجد رمز مميز للبطاقة. أعد توليد بطاقة الطالب ثم حاول مجدداً.')
+          return
+        }
         // Generate QR code for this specific student
-        const qrPayload = record.card.token ?? String(record.student.id)
+        const qrPayload = record.card.token
         
         // 🔍 Debug: عرض القيمة التي سيتم وضعها في QR
         console.log('🔍 Generating QR for student:', {

@@ -195,6 +195,16 @@ export function useSchoolBellEngine(
       })()
 
       loadPromisesRef.current.set(soundId, promise)
+      // عند فشل التحميل (resolve null أو رفض) احذف الوعد المخزّن حتى تُتاح إعادة المحاولة — B05
+      promise
+        .then((result) => {
+          if (result === null) {
+            loadPromisesRef.current.delete(soundId)
+          }
+        })
+        .catch(() => {
+          loadPromisesRef.current.delete(soundId)
+        })
       return promise
     },
     [resolveAssetUrl, volume],

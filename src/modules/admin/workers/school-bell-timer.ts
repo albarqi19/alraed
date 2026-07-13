@@ -68,11 +68,13 @@ function scheduleEvent(message: ScheduleMessage) {
     currentEventKey = null
     postMessage({
       type: 'trigger',
+      // triggeredAt = وقت الحدث المجدول (لا وقت الإطلاق الفعلي) ليتطابق مفتاح
+      // منع الازدواجية بين مسار الـ worker والمؤقّت الأمامي — B01
       payload: {
         eventId,
         scheduleId,
         title,
-        triggeredAt: Date.now(),
+        triggeredAt: occurrenceTimestamp,
       },
     } satisfies PostMessagePayload)
   }, delay)

@@ -103,7 +103,12 @@ export function useBellScheduler({ enabled, upcomingEvent, onTrigger }: UseBellS
 
     const diff = Math.max(occurrenceTimestamp - Date.now(), 0)
     foregroundTimerRef.current = window.setTimeout(() => {
-      onTrigger({ event: upcomingEvent.event, occurrence: new Date(), source: 'foreground' })
+      // منع الازدواجية: أول مصدر (أمامي/worker) يصل يفوز، والآخر يُتجاهل — B01
+      if (triggeredKeysRef.current.has(scheduleKey)) {
+        return
+      }
+      triggeredKeysRef.current.add(scheduleKey)
+      onTrigger({ event: upcomingEvent.event, occurrence: new Date(occurrenceTimestamp), source: 'foreground' })
     }, diff)
 
     if (workerRef.current && scheduledKeyRef.current !== scheduleKey) {
