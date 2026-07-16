@@ -1,6 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Plus, X, Search, RefreshCw, Trash2, Edit2, LayoutGrid, CheckCircle2 } from 'lucide-react'
+import {
+  CalendarClock,
+  CheckCircle2,
+  Clock3,
+  LayoutGrid,
+  ListPlus,
+  Pencil,
+  Plus,
+  Power,
+  RefreshCcw,
+  Trash2,
+  Zap,
+} from 'lucide-react'
 import {
   useActivateScheduleMutation,
   useApplyScheduleToMultipleClassesMutation,
@@ -12,7 +24,25 @@ import {
   useScheduleTemplatesQuery,
   useUpdateScheduleMutation,
 } from '../hooks'
-import type { ScheduleRecord, ScheduleTemplate, ScheduleType, ClassScheduleSummary } from '../types'
+import type { ScheduleRecord, ScheduleTemplate, ScheduleType, ClassScheduleSummary, SchedulePeriod } from '../types'
+import {
+  WsAlert,
+  WsBlock,
+  WsBtn,
+  WsChip,
+  WsEmpty,
+  WsFact,
+  WsField,
+  WsHeader,
+  WsInput,
+  WsLayout,
+  WsMain,
+  WsPage,
+  WsSelect,
+  WsSideCol,
+  WsTable,
+  WsTextarea,
+} from '@/shared/workspace'
 
 type ScheduleStatusFilter = 'all' | 'active' | 'inactive'
 
@@ -263,10 +293,11 @@ const quickEntryTypeLabels: Record<QuickScheduleEntryType, string> = {
   prayer: 'صلاة',
 }
 
-const quickEntryTypeBadgeStyles: Record<QuickScheduleEntryType, string> = {
-  class: 'bg-emerald-100 text-emerald-700',
-  break: 'bg-amber-100 text-amber-700',
-  prayer: 'bg-sky-100 text-sky-700',
+/* درجات ألوان أنواع الفترات — تُستخدم في مسطرة اليوم والشارات */
+const ENTRY_TONES: Record<QuickScheduleEntryType, { bg: string; bd: string; tx: string }> = {
+  class: { bg: '#E9F5EC', bd: '#BFE3C9', tx: '#2E7D46' },
+  break: { bg: '#FCF3E1', bd: '#EFD9AC', tx: '#A8690A' },
+  prayer: { bg: '#E8F2FA', bd: '#BFDCF0', tx: '#21689E' },
 }
 
 function createInitialQuickFormValues(): QuickAddScheduleFormValues {
@@ -630,26 +661,145 @@ function generateQuickSchedule(values: QuickNormalizedValues): QuickScheduleGene
 
 function ScheduleStatusBadge({ isActive, showLabel = false }: { isActive: boolean; showLabel?: boolean }) {
   return showLabel ? (
-    <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-bold ${isActive ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
-      <span className={`h-1.5 w-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+    <WsChip tone={isActive ? 'green' : undefined}>
+      <span
+        className={isActive ? 'ws-pulse' : undefined}
+        style={{ width: 6, height: 6, borderRadius: '50%', background: isActive ? 'var(--ws-green)' : 'var(--ws-text-2)' }}
+      />
       {isActive ? 'مفعل' : 'معطل'}
-    </span>
+    </WsChip>
   ) : (
     <span
       title={isActive ? 'مفعل' : 'غير مفعل'}
-      className={`h-2 w-2 rounded-full flex-shrink-0 ${isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}
+      className={isActive ? 'ws-pulse' : undefined}
+      style={{
+        width: 8,
+        height: 8,
+        borderRadius: '50%',
+        flexShrink: 0,
+        background: isActive ? 'var(--ws-green)' : 'var(--ws-border)',
+      }}
     />
   )
 }
 
 function ScheduleTypeBadge({ type }: { type: ScheduleType }) {
+  return <WsChip tone="sky">{scheduleTypeLabels[type]}</WsChip>
+}
+
+/** يستنتج نوع الفترة من بياناتها لعرضها في مسطرة اليوم */
+function inferEntryType(isBreak: boolean, name?: string | null): QuickScheduleEntryType {
+  if (!isBreak) return 'class'
+  if (name && name.includes('صلا')) return 'prayer'
+  return 'break'
+}
+
+interface RulerSegment {
+  key: string
+  type: QuickScheduleEntryType
+  name: string
+  startTime: string
+  endTime: string
+  duration: number
+}
+
+/** مسطرة اليوم: شريط يمثل اليوم الدراسي — عرض كل مقطع بنسبة مدته الحقيقية */
+function DayRuler({ segments }: { segments: RulerSegment[] }) {
+  const total = segments.reduce((sum, segment) => sum + segment.duration, 0)
+  if (segments.length === 0 || total <= 0) return null
+
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
-      <span className="h-2 w-2 rounded-full bg-sky-500" />
-      {scheduleTypeLabels[type]}
-    </span>
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ws-text-2)', fontVariantNumeric: 'tabular-nums' }} dir="ltr">
+          {segments[0].startTime}
+        </span>
+        <span style={{ display: 'inline-flex', gap: 10, fontSize: 9.5 }}>
+          {(['class', 'break', 'prayer'] as QuickScheduleEntryType[]).map((type) => (
+            <span key={type} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: 'var(--ws-text-2)' }}>
+              <span style={{ width: 8, height: 8, borderRadius: 2, background: ENTRY_TONES[type].tx }} />
+              {quickEntryTypeLabels[type]}
+            </span>
+          ))}
+        </span>
+        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ws-text-2)', fontVariantNumeric: 'tabular-nums' }} dir="ltr">
+          {segments[segments.length - 1].endTime}
+        </span>
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          height: 34,
+          borderRadius: 8,
+          overflow: 'hidden',
+          border: '1px solid var(--ws-hairline)',
+        }}
+      >
+        {segments.map((segment) => {
+          const tone = ENTRY_TONES[segment.type]
+          const widthPercent = (segment.duration / total) * 100
+          return (
+            <div
+              key={segment.key}
+              title={`${segment.name} — ${segment.startTime} إلى ${segment.endTime} (${segment.duration} د)`}
+              style={{
+                width: `${widthPercent}%`,
+                minWidth: 4,
+                background: tone.bg,
+                borderInlineEnd: '1px solid var(--ws-surface)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+              }}
+            >
+              {widthPercent > 7 ? (
+                <span
+                  style={{
+                    fontSize: 9,
+                    fontWeight: 700,
+                    color: tone.tx,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    padding: '0 3px',
+                  }}
+                >
+                  {segment.name}
+                </span>
+              ) : null}
+            </div>
+          )
+        })}
+      </div>
+    </div>
   )
 }
+
+/** يبني مقاطع المسطرة من فترات جدول محفوظ */
+function segmentsFromPeriods(periods: SchedulePeriod[]): RulerSegment[] {
+  const segments: RulerSegment[] = []
+  for (const period of periods) {
+    const start = formatTime(period.start_time)
+    const end = formatTime(period.end_time)
+    const startMinutes = start ? parseTimeToMinutes(start) : null
+    const endMinutes = end ? parseTimeToMinutes(end) : null
+    if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) continue
+    const type = inferEntryType(Boolean(period.is_break), period.period_name)
+    segments.push({
+      key: `${period.period_number}-${start}`,
+      type,
+      name: period.period_name ?? (type === 'class' ? `الحصة ${period.period_number}` : quickEntryTypeLabels[type]),
+      startTime: start,
+      endTime: end,
+      duration: endMinutes - startMinutes,
+    })
+  }
+  return segments.sort((a, b) => (parseTimeToMinutes(a.startTime) ?? 0) - (parseTimeToMinutes(b.startTime) ?? 0))
+}
+
+const fieldError = (message?: string | null) =>
+  message ? <span style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--ws-red)' }}>{message}</span> : null
 
 function ScheduleFormDialog({ open, onClose, onSubmit, isSubmitting, schedule, templates }: ScheduleFormDialogProps) {
   const [values, setValues] = useState<ScheduleFormValues>(() => mapScheduleToFormValues(schedule))
@@ -808,60 +958,40 @@ function ScheduleFormDialog({ open, onClose, onSubmit, isSubmitting, schedule, t
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" role="dialog" aria-modal>
-      <div className="relative flex h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-md bg-white shadow-xl">
-        <header className="flex items-center justify-between border-b border-slate-100 px-6 py-5 text-right">
-          <div className="space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-widest text-teal-600">
-              {schedule ? 'تعديل جدول زمني' : 'إنشاء جدول زمني جديد'}
-            </p>
-            <h2 className="text-2xl font-bold text-slate-900">
-              {schedule ? `تحديث ${schedule.name}` : 'إضافة خطة زمنية'}
-            </h2>
-            <p className="text-sm text-muted">
-              أدخل الفترات الزمنية للحصص بالترتيب الصحيح. يمكنك استخدام قالب جاهز لتعبئة الفترات بسرعة.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200"
-            aria-label="إغلاق"
-            disabled={isSubmitting}
-          >
-            ×
-          </button>
+    <div className="ws-modal" role="dialog" aria-modal onClick={isSubmitting ? undefined : onClose}>
+      <div
+        className="ws-modal__panel"
+        style={{ maxWidth: 760, display: 'flex', flexDirection: 'column', overflow: 'hidden', maxHeight: '88vh' }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="ws-modal__head">
+          <h3 className="ws-modal__title">{schedule ? `تحديث ${schedule.name}` : 'إضافة خطة زمنية'}</h3>
+          <p className="ws-modal__sub">
+            أدخل الفترات الزمنية للحصص بالترتيب الصحيح — يمكنك استخدام قالب جاهز لتعبئة الفترات بسرعة.
+          </p>
         </header>
 
-        <form className="flex min-h-0 flex-1 flex-col overflow-hidden" onSubmit={handleSubmit} noValidate>
-          <div className="flex-1 space-y-6 overflow-y-auto px-6 py-6 custom-scrollbar">
-            <section className="grid gap-4 md:grid-cols-2">
-              <div className="grid gap-2 text-right">
-                <label htmlFor="schedule-name" className="text-sm font-medium text-slate-800">
-                  اسم الجدول
-                </label>
-                <input
+        <form style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }} onSubmit={handleSubmit} noValidate>
+          <div className="ws-modal__body" style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <WsField label="اسم الجدول" htmlFor="schedule-name">
+                <WsInput
                   id="schedule-name"
                   type="text"
                   value={values.name}
                   onChange={(event) => handleChange('name', event.target.value)}
-                  className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
                   placeholder="مثال: التوقيت الشتوي"
                   disabled={isSubmitting}
                   autoFocus
                 />
-                {errors.name ? <span className="text-xs font-medium text-rose-600">{errors.name}</span> : null}
-              </div>
+                {fieldError(errors.name)}
+              </WsField>
 
-              <div className="grid gap-2 text-right">
-                <label htmlFor="schedule-type" className="text-sm font-medium text-slate-800">
-                  نوع الجدول
-                </label>
-                <select
+              <WsField label="نوع الجدول" htmlFor="schedule-type">
+                <WsSelect
                   id="schedule-type"
                   value={values.type}
                   onChange={(event) => handleChange('type', event.target.value as ScheduleType)}
-                  className="rounded-md border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
                   disabled={isSubmitting}
                 >
                   {Object.entries(scheduleTypeLabels).map(([value, label]) => (
@@ -869,213 +999,179 @@ function ScheduleFormDialog({ open, onClose, onSubmit, isSubmitting, schedule, t
                       {label}
                     </option>
                   ))}
-                </select>
-                <p className="text-xs text-muted">{scheduleTypeDescriptions[values.type]}</p>
-                {errors.type ? <span className="text-xs font-medium text-rose-600">{errors.type}</span> : null}
-              </div>
+                </WsSelect>
+                <span style={{ fontSize: 10, color: 'var(--ws-text-2)' }}>{scheduleTypeDescriptions[values.type]}</span>
+                {fieldError(errors.type)}
+              </WsField>
 
-              <div className="grid gap-2 text-right">
-                <label htmlFor="schedule-target" className="text-sm font-medium text-slate-800">
-                  المرحلة الدراسية (اختياري)
-                </label>
-                <input
+              <WsField label="المرحلة الدراسية (اختياري)" htmlFor="schedule-target">
+                <WsInput
                   id="schedule-target"
                   type="text"
                   value={values.target_level}
                   onChange={(event) => handleChange('target_level', event.target.value)}
-                  className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
                   placeholder="مثال: الابتدائية"
                   disabled={isSubmitting}
                 />
-              </div>
+              </WsField>
 
-              <div className="grid gap-2 text-right">
-                <label htmlFor="schedule-template" className="text-sm font-medium text-slate-800">
-                  استخدام قالب جاهز
-                </label>
-                <div className="flex gap-2">
-                  <select
-                    id="schedule-template"
-                    value={selectedTemplateKey}
-                    onChange={(event) => {
-                      setSelectedTemplateKey(event.target.value)
-                      handleApplyTemplate(event.target.value)
-                    }}
-                    className="w-full h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-                    disabled={isSubmitting || !templates || templates.length === 0}
-                  >
-                    <option value="">اختر قالبًا</option>
-                    {templates?.map((template) => (
-                      <option key={template.key} value={template.key}>
-                        {template.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <p className="text-xs text-muted">اختيار القالب سيملأ الفترات آليًا ويمكن تعديلها لاحقًا.</p>
-              </div>
+              <WsField label="استخدام قالب جاهز" htmlFor="schedule-template">
+                <WsSelect
+                  id="schedule-template"
+                  value={selectedTemplateKey}
+                  onChange={(event) => {
+                    setSelectedTemplateKey(event.target.value)
+                    handleApplyTemplate(event.target.value)
+                  }}
+                  disabled={isSubmitting || !templates || templates.length === 0}
+                >
+                  <option value="">اختر قالبًا</option>
+                  {templates?.map((template) => (
+                    <option key={template.key} value={template.key}>
+                      {template.name}
+                    </option>
+                  ))}
+                </WsSelect>
+                <span style={{ fontSize: 10, color: 'var(--ws-text-2)' }}>
+                  اختيار القالب سيملأ الفترات آليًا ويمكن تعديلها لاحقًا.
+                </span>
+              </WsField>
 
-              <div className="md:col-span-2 grid gap-2 text-right">
-                <label htmlFor="schedule-description" className="text-sm font-medium text-slate-800">
-                  الوصف (اختياري)
-                </label>
-                <textarea
+              <WsField label="الوصف (اختياري)" htmlFor="schedule-description" style={{ gridColumn: '1 / -1' }}>
+                <WsTextarea
                   id="schedule-description"
                   value={values.description}
                   onChange={(event) => handleChange('description', event.target.value)}
-                  className="min-h-[110px] h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
                   placeholder="تفاصيل إضافية عن الجدول أو ملاحظات للمعلمين"
                   disabled={isSubmitting}
+                  rows={3}
                 />
-              </div>
-            </section>
+              </WsField>
+            </div>
 
-            <section className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="space-y-1 text-right">
-                  <h3 className="text-base font-semibold text-slate-800">الفترات الزمنية</h3>
-                  <p className="text-xs text-muted">
-                    رتب الفترات حسب تسلسل اليوم الدراسي. يمكنك إضافة فسحات أو فترات استراحة عبر خيار الفسحة.
-                  </p>
-                </div>
-                <button
-                  type="button"
+            {/* الفترات الزمنية */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, display: 'block' }}>الفترات الزمنية</span>
+                  <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                    رتب الفترات حسب تسلسل اليوم الدراسي — أضف الفسح عبر خيار الفسحة.
+                  </span>
+                </span>
+                <WsBtn
+                  size="sm"
+                  variant="primary"
+                  icon={Plus}
                   onClick={() =>
                     setValues((prev) => ({
                       ...prev,
                       periods: [...prev.periods, createEmptyPeriod(getNextPeriodNumber(prev.periods))],
                     }))
                   }
-                  className="inline-flex items-center gap-2 rounded-md bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 transition"
                   disabled={isSubmitting}
                 >
                   إضافة فترة
-                </button>
+                </WsBtn>
               </div>
 
-              {errors.periods ? (
-                <div className="rounded-md border border-rose-200 bg-rose-50/80 px-4 py-3 text-xs font-semibold text-rose-700">
-                  {errors.periods}
-                </div>
-              ) : null}
+              {errors.periods ? <WsAlert boxed style={{ marginBottom: 8 }}>{errors.periods}</WsAlert> : null}
 
-              <div className="space-y-3">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {values.periods.map((period, index) => {
                   const periodError = periodErrors[period.key] ?? {}
                   return (
-                    <article
-                      key={period.key}
-                      className="rounded-md border border-slate-200 bg-white/80 p-4 shadow-sm transition hover:border-teal-200"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <h4 className="text-sm font-semibold text-slate-700">الفترة رقم {index + 1}</h4>
-                        <div className="flex items-center gap-2">
-                          <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600">
+                    <div key={period.key} style={{ borderRadius: 9, border: '1px solid var(--ws-hairline)', padding: 10 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                        <span style={{ fontSize: 11.5, fontWeight: 700 }}>الفترة رقم {index + 1}</span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10.5, fontWeight: 700, cursor: 'pointer' }}>
                             <input
                               type="checkbox"
-                              className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                              style={{ width: 13, height: 13, accentColor: 'var(--ws-accent-2)' }}
                               checked={period.is_break}
                               onChange={(event) => handlePeriodChange(period.key, 'is_break', event.target.checked)}
                               disabled={isSubmitting}
                             />
                             فسحة / استراحة
                           </label>
-                          <button
-                            type="button"
+                          <WsBtn
+                            size="sm"
+                            variant="danger"
+                            icon={Trash2}
                             onClick={() => handleRemovePeriod(period.key)}
-                            className="inline-flex items-center gap-1 rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 transition hover:border-rose-300"
                             disabled={isSubmitting || values.periods.length === 1}
-                          >
-                            حذف
-                          </button>
-                        </div>
+                          />
+                        </span>
                       </div>
 
-                      <div className="mt-4 grid gap-4 md:grid-cols-5">
-                        <div className="grid gap-2 text-right">
-                          <label className="text-xs font-medium text-slate-600">رقم الفترة</label>
-                          <input
+                      <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr 1fr 1fr', gap: 6 }}>
+                        <WsField label="الرقم">
+                          <WsInput
                             type="number"
                             min={1}
                             value={period.period_number}
                             onChange={(event) => handlePeriodChange(period.key, 'period_number', event.target.value)}
-                            className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
                             disabled={isSubmitting}
                           />
-                          {periodError.period_number ? (
-                            <span className="text-xs font-medium text-rose-600">{periodError.period_number}</span>
-                          ) : null}
-                        </div>
-
-                        <div className="grid gap-2 text-right md:col-span-2">
-                          <label className="text-xs font-medium text-slate-600">اسم الفترة (اختياري)</label>
-                          <input
+                          {fieldError(periodError.period_number)}
+                        </WsField>
+                        <WsField label="الاسم (اختياري)">
+                          <WsInput
                             type="text"
                             value={period.period_name}
                             onChange={(event) => handlePeriodChange(period.key, 'period_name', event.target.value)}
-                            className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
                             placeholder="مثال: الحصة الأولى"
                             disabled={isSubmitting}
                           />
-                        </div>
-
-                        <div className="grid gap-2 text-right">
-                          <label className="text-xs font-medium text-slate-600">وقت البداية</label>
-                          <input
+                        </WsField>
+                        <WsField label="البداية">
+                          <WsInput
                             type="time"
                             value={period.start_time}
                             onChange={(event) => handlePeriodChange(period.key, 'start_time', event.target.value)}
-                            className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
                             disabled={isSubmitting}
                           />
-                          {periodError.start_time ? (
-                            <span className="text-xs font-medium text-rose-600">{periodError.start_time}</span>
-                          ) : null}
-                        </div>
-
-                        <div className="grid gap-2 text-right">
-                          <label className="text-xs font-medium text-slate-600">وقت النهاية</label>
-                          <input
+                          {fieldError(periodError.start_time)}
+                        </WsField>
+                        <WsField label="النهاية">
+                          <WsInput
                             type="time"
                             value={period.end_time}
                             onChange={(event) => handlePeriodChange(period.key, 'end_time', event.target.value)}
-                            className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
                             disabled={isSubmitting}
                           />
-                          {periodError.end_time ? (
-                            <span className="text-xs font-medium text-rose-600">{periodError.end_time}</span>
-                          ) : null}
-                        </div>
+                          {fieldError(periodError.end_time)}
+                        </WsField>
                       </div>
 
                       {period.is_break ? (
-                        <div className="mt-3 grid gap-2 text-right md:w-48">
-                          <label className="text-xs font-medium text-slate-600">مدة الفسحة (دقائق)</label>
-                          <input
-                            type="number"
-                            min={0}
-                            value={period.break_duration}
-                            onChange={(event) => handlePeriodChange(period.key, 'break_duration', event.target.value)}
-                            className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-                            placeholder="مثال: 15"
-                            disabled={isSubmitting}
-                          />
+                        <div style={{ marginTop: 6, maxWidth: 180 }}>
+                          <WsField label="مدة الفسحة (دقائق)">
+                            <WsInput
+                              type="number"
+                              min={0}
+                              value={period.break_duration}
+                              onChange={(event) => handlePeriodChange(period.key, 'break_duration', event.target.value)}
+                              placeholder="مثال: 15"
+                              disabled={isSubmitting}
+                            />
+                          </WsField>
                         </div>
                       ) : null}
-                    </article>
+                    </div>
                   )
                 })}
               </div>
-            </section>
+            </div>
           </div>
 
-          <footer className="flex shrink-0 items-center justify-end gap-3 border-t border-slate-200 bg-slate-50/70 px-6 py-4">
-            <button type="button" onClick={onClose} className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 transition" disabled={isSubmitting}>
+          <footer className="ws-modal__foot" style={{ flexShrink: 0 }}>
+            <WsBtn onClick={onClose} disabled={isSubmitting}>
               إلغاء
-            </button>
-            <button type="submit" className="inline-flex items-center gap-2 rounded-md bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 transition" disabled={isSubmitting}>
+            </WsBtn>
+            <WsBtn type="submit" variant="primary" disabled={isSubmitting}>
               {isSubmitting ? 'جاري الحفظ...' : schedule ? 'حفظ التعديلات' : 'إنشاء الجدول'}
-            </button>
+            </WsBtn>
           </footer>
         </form>
       </div>
@@ -1087,22 +1183,23 @@ function ConfirmDeleteDialog({ open, schedule, isSubmitting, onCancel, onConfirm
   if (!open || !schedule) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" role="alertdialog">
-      <div className="w-full max-w-md rounded-md bg-white p-6 text-right shadow-xl">
-        <header className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-widest text-rose-600">حذف جدول زمني</p>
-          <h2 className="text-xl font-semibold text-slate-900">هل تريد حذف {schedule.name}؟</h2>
-          <p className="text-sm text-muted">
+    <div className="ws-modal" style={{ zIndex: 60 }} role="alertdialog" onClick={isSubmitting ? undefined : onCancel}>
+      <div className="ws-modal__panel" style={{ maxWidth: 400 }} onClick={(event) => event.stopPropagation()}>
+        <header className="ws-modal__head">
+          <h3 className="ws-modal__title">هل تريد حذف {schedule.name}؟</h3>
+        </header>
+        <div className="ws-modal__body">
+          <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.9 }}>
             سيتم إزالة الجدول في حال عدم وجود حصص مرتبطة به. إذا كان مرتبطًا بحصص نشطة فستظهر رسالة تمنع الحذف.
           </p>
-        </header>
-        <footer className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <button type="button" onClick={onCancel} className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 transition" disabled={isSubmitting}>
+        </div>
+        <footer className="ws-modal__foot">
+          <WsBtn onClick={onCancel} disabled={isSubmitting}>
             تراجع
-          </button>
-          <button type="button" onClick={onConfirm} className="inline-flex items-center gap-2 rounded-md bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 transition" disabled={isSubmitting}>
+          </WsBtn>
+          <WsBtn variant="danger" onClick={onConfirm} disabled={isSubmitting}>
             {isSubmitting ? 'جارٍ الحذف...' : 'تأكيد الحذف'}
-          </button>
+          </WsBtn>
         </footer>
       </div>
     </div>
@@ -1124,105 +1221,94 @@ function QuickSchedulePreviewModal({ open, data, onClose, onConfirm, isSubmittin
   const durationLabel = formatDurationLabel(data.totalDuration)
   const requiresWarning = data.totalDuration > 480
 
+  const rulerSegments: RulerSegment[] = data.entries.map((entry) => ({
+    key: `preview-${entry.sequence}`,
+    type: entry.type,
+    name: entry.name ?? entry.typeLabel,
+    startTime: entry.startTime,
+    endTime: entry.endTime,
+    duration: entry.duration,
+  }))
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" role="dialog" aria-modal>
-      <div className="relative flex w-full max-w-4xl flex-col overflow-hidden rounded-md bg-white shadow-xl">
-        <header className="flex flex-col gap-2 border-b border-slate-100 px-6 py-5 text-right">
-          <p className="text-xs font-semibold uppercase tracking-widest text-sky-600">معاينة الجدول الزمني</p>
-          <h2 className="text-2xl font-bold text-slate-900">{data.scheduleName}</h2>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted md:justify-end">
-            <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700">
-              <span className="h-2 w-2 rounded-full bg-slate-400" />
-              {scheduleTypeLabels[data.semesterType]}
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700">
-              <span className="h-2 w-2 rounded-full bg-teal-500" />
-              إجمالي المدة: {durationLabel}
-            </span>
-          </div>
-          {requiresWarning ? (
-            <div className="rounded-md border border-amber-200 bg-amber-50/80 px-4 py-3 text-xs font-semibold text-amber-700">
-              تنبيه: مدة الجدول تتجاوز 8 ساعات. تأكد من مناسبة الجدول للفترة الدراسية.
-            </div>
-          ) : null}
+    <div className="ws-modal" style={{ zIndex: 60 }} role="dialog" aria-modal onClick={isSubmitting ? undefined : onClose}>
+      <div
+        className="ws-modal__panel"
+        style={{ maxWidth: 720, display: 'flex', flexDirection: 'column', overflow: 'hidden', maxHeight: '86vh' }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="ws-modal__head">
+          <h3 className="ws-modal__title">معاينة: {data.scheduleName}</h3>
+          <span style={{ display: 'inline-flex', gap: 5, marginTop: 4 }}>
+            <WsChip tone="sky">{scheduleTypeLabels[data.semesterType]}</WsChip>
+            <WsChip icon={Clock3}>إجمالي المدة: {durationLabel}</WsChip>
+          </span>
         </header>
 
-        <div className="flex-1 overflow-auto px-6 py-6">
-          <div className="overflow-x-auto rounded-md border border-slate-200">
-            <table className="w-full min-w-[600px] table-fixed text-right text-sm">
-              <thead className="bg-slate-50 border-y border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-500">
+        <div className="ws-modal__body" style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
+          {requiresWarning ? (
+            <WsAlert tone="warn" boxed>
+              تنبيه: مدة الجدول تتجاوز 8 ساعات. تأكد من مناسبة الجدول للفترة الدراسية.
+            </WsAlert>
+          ) : null}
+
+          {/* مسطرة اليوم */}
+          <DayRuler segments={rulerSegments} />
+
+          <div style={{ borderRadius: 9, border: '1px solid var(--ws-hairline)', overflow: 'hidden' }}>
+            <table className="ws-table" style={{ width: '100%' }}>
+              <thead>
                 <tr>
-                  <th className="px-4 py-3 font-semibold">رقم الفترة</th>
-                  <th className="px-4 py-3 font-semibold">النوع</th>
-                  <th className="px-4 py-3 font-semibold">وقت البداية</th>
-                  <th className="px-4 py-3 font-semibold">وقت النهاية</th>
-                  <th className="px-4 py-3 font-semibold">المدة</th>
+                  <th style={{ width: 60 }}>#</th>
+                  <th>النوع</th>
+                  <th>البداية</th>
+                  <th>النهاية</th>
+                  <th>المدة</th>
                 </tr>
               </thead>
               <tbody>
-                {data.entries.map((entry) => (
-                  <tr key={entry.sequence} className="border-t border-slate-200">
-                    <td className="px-4 py-3 text-sm font-semibold text-slate-800">{entry.sequence}</td>
-                    <td className="px-4 py-3 text-sm text-slate-600">
-                      <span
-                        className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${quickEntryTypeBadgeStyles[entry.type]}`}
-                      >
-                        <span className="h-2 w-2 rounded-full bg-current" />
-                        {entry.typeLabel}
-                      </span>
-                      {entry.name && entry.name !== entry.typeLabel ? (
-                        <span className="mt-2 block text-xs text-slate-500">{entry.name}</span>
-                      ) : null}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-600">{entry.startTime}</td>
-                    <td className="px-4 py-3 text-sm text-slate-600">{entry.endTime}</td>
-                    <td className="px-4 py-3 text-sm text-slate-600">{`${entry.duration} دقيقة`}</td>
-                  </tr>
-                ))}
+                {data.entries.map((entry) => {
+                  const tone = ENTRY_TONES[entry.type]
+                  return (
+                    <tr key={entry.sequence}>
+                      <td style={{ fontWeight: 700 }}>{entry.sequence}</td>
+                      <td>
+                        <span className="ws-chip" style={{ background: tone.bg, borderColor: tone.bd, color: tone.tx }}>
+                          {entry.typeLabel}
+                        </span>
+                        {entry.name && entry.name !== entry.typeLabel ? (
+                          <span className="ws-cell-sub" style={{ display: 'block', marginTop: 2 }}>{entry.name}</span>
+                        ) : null}
+                      </td>
+                      <td>
+                        <span style={{ fontVariantNumeric: 'tabular-nums' }} dir="ltr">{entry.startTime}</span>
+                      </td>
+                      <td>
+                        <span style={{ fontVariantNumeric: 'tabular-nums' }} dir="ltr">{entry.endTime}</span>
+                      </td>
+                      <td>{entry.duration} دقيقة</td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
+
+          {errorMessage ? <WsAlert boxed>{errorMessage}</WsAlert> : null}
         </div>
 
-        <footer className="flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50/70 px-6 py-4">
-          <div className="space-y-1 text-xs text-muted">
-            <p>تحقق من توزيع الحصص والفسحات قبل حفظ الجدول.</p>
-            {errorMessage ? (
-              <p className="rounded-md border border-rose-200 bg-rose-50/70 px-3 py-2 text-rose-700">{errorMessage}</p>
-            ) : null}
-          </div>
-          <div className="flex items-center gap-3">
-            <button type="button" onClick={onClose} className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 transition" disabled={isSubmitting}>
+        <footer className="ws-modal__foot" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>تحقق من توزيع الحصص والفسحات قبل حفظ الجدول.</span>
+          <span style={{ display: 'inline-flex', gap: 6 }}>
+            <WsBtn onClick={onClose} disabled={isSubmitting}>
               تعديل المدخلات
-            </button>
-            <button type="button" onClick={onConfirm} className="inline-flex items-center gap-2 rounded-md bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 transition" disabled={isSubmitting}>
+            </WsBtn>
+            <WsBtn variant="primary" onClick={onConfirm} disabled={isSubmitting}>
               {isSubmitting ? 'جاري الحفظ...' : 'حفظ الجدول'}
-            </button>
-          </div>
+            </WsBtn>
+          </span>
         </footer>
-
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute left-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200"
-          aria-label="إغلاق المعاينة"
-          disabled={isSubmitting}
-        >
-          ×
-        </button>
       </div>
-    </div>
-  )
-}
-
-function EmptyState({ onCreate }: { onCreate: () => void }) {
-  return (
-    <div className="rounded-md border border-dashed border-slate-200 bg-white/70 p-16 text-center">
-      <p className="text-lg font-semibold text-slate-700">لا توجد جداول زمنية حتى الآن</p>
-      <p className="mt-2 text-sm text-muted">ابدأ بإنشاء جدول جديد أو استيراد قالب من النظام القديم.</p>
-      <button type="button" onClick={onCreate} className="button-primary mt-6">
-        إنشاء جدول جديد
-      </button>
     </div>
   )
 }
@@ -1236,14 +1322,14 @@ function ApplyScheduleToClassesDialog({ open, schedule, isSubmitting, onCancel, 
     if (open && schedule && classesQuery.data) {
       const classes = classesQuery.data
       const preSelected = new Set<string>()
-      
+
       classes.forEach((classItem: ClassScheduleSummary) => {
         // Check if this class is already using the selected schedule
         if (classItem.active_schedule === schedule.name) {
           preSelected.add(`${classItem.grade}|${classItem.class_name}`)
         }
       })
-      
+
       setSelectedClasses(preSelected)
     } else if (!open) {
       setSelectedClasses(new Set())
@@ -1285,36 +1371,48 @@ function ApplyScheduleToClassesDialog({ open, schedule, isSubmitting, onCancel, 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" role="dialog" aria-modal>
-      <div className="relative flex w-full max-w-4xl flex-col rounded-md bg-white shadow-xl" style={{ maxHeight: '85vh' }}>
-        <header className="shrink-0 border-b border-slate-100 px-6 py-5 text-right">
-          <p className="text-xs font-semibold uppercase tracking-widest text-sky-600">تطبيق الجدول على الفصول</p>
-          <h2 className="mt-1 text-xl font-bold text-slate-900">{schedule.name}</h2>
-          <p className="mt-2 text-sm text-muted">اختر الفصول التي تريد تطبيق هذا الجدول عليها</p>
+    <div className="ws-modal" role="dialog" aria-modal onClick={isSubmitting ? undefined : onCancel}>
+      <div
+        className="ws-modal__panel"
+        style={{ maxWidth: 700, display: 'flex', flexDirection: 'column', overflow: 'hidden', maxHeight: '84vh' }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="ws-modal__head">
+          <h3 className="ws-modal__title">تطبيق «{schedule.name}» على الفصول</h3>
+          <p className="ws-modal__sub">اختر الفصول التي تريد تطبيق هذا الجدول عليها — الفصول المطبَّق عليها محددة مسبقاً.</p>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="ws-modal__body" style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
           {isLoading ? (
-            <div className="flex items-center justify-center py-12 text-sm text-muted">جاري التحميل...</div>
+            <WsEmpty loading>جاري التحميل...</WsEmpty>
           ) : classes.length === 0 ? (
-            <div className="flex items-center justify-center py-12 text-sm text-muted">لا توجد فصول متاحة</div>
+            <WsEmpty icon={LayoutGrid}>لا توجد فصول متاحة.</WsEmpty>
           ) : (
-            <div className="space-y-4">
-              <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white pb-3">
-                <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
+            <>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 8,
+                  paddingBottom: 8,
+                  borderBottom: '1px solid var(--ws-hairline)',
+                }}
+              >
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
                   <input
                     type="checkbox"
                     checked={selectedClasses.size === classes.length}
                     onChange={toggleAll}
-                    className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-2 focus:ring-teal-500/20"
+                    style={{ width: 14, height: 14, accentColor: 'var(--ws-accent-2)' }}
                     disabled={isSubmitting}
                   />
-                  <span>تحديد الكل ({classes.length} فصل)</span>
+                  تحديد الكل ({classes.length} فصل)
                 </label>
-                <span className="text-xs text-muted">محدد: {selectedClasses.size}</span>
+                <WsChip tone="sky">محدد: {selectedClasses.size}</WsChip>
               </div>
 
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 6 }}>
                 {classes.map((classItem: ClassScheduleSummary) => {
                   const key = `${classItem.grade}|${classItem.class_name}`
                   const isChecked = selectedClasses.has(key)
@@ -1322,53 +1420,45 @@ function ApplyScheduleToClassesDialog({ open, schedule, isSubmitting, onCancel, 
                   return (
                     <label
                       key={key}
-                      className={`flex cursor-pointer items-center gap-3 rounded-md border px-4 py-3 transition ${
-                        isChecked
-                          ? 'border-teal-300 bg-teal-50/50'
-                          : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50'
-                      }`}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        borderRadius: 8,
+                        border: `1px solid ${isChecked ? 'var(--ws-accent-2)' : 'var(--ws-hairline)'}`,
+                        background: isChecked ? 'var(--ws-accent-soft)' : 'transparent',
+                        padding: '8px 10px',
+                        cursor: 'pointer',
+                      }}
                     >
                       <input
                         type="checkbox"
                         checked={isChecked}
                         onChange={() => toggleClass(classItem.grade, classItem.class_name)}
-                        className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-2 focus:ring-teal-500/20"
+                        style={{ width: 14, height: 14, accentColor: 'var(--ws-accent-2)', flexShrink: 0 }}
                         disabled={isSubmitting}
                       />
-                      <div className="flex-1 text-right text-sm">
-                        <div className="flex items-center justify-between gap-2">
-                          <div>
-                            <span className="font-semibold text-slate-800">{classItem.class_name}</span>
-                            <span className="mx-2 text-slate-400">•</span>
-                            <span className="text-muted">{classItem.grade}</span>
-                          </div>
-                          {isAlreadyApplied && (
-                            <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-                              مطبق
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: 'block', fontSize: 12, fontWeight: 700 }}>
+                          {classItem.grade} / {classItem.class_name}
+                        </span>
+                      </span>
+                      {isAlreadyApplied && <WsChip tone="green">مطبق</WsChip>}
                     </label>
                   )
                 })}
               </div>
-            </div>
+            </>
           )}
         </div>
 
-        <footer className="shrink-0 flex items-center justify-end gap-3 border-t border-slate-200 bg-slate-50/70 px-6 py-4">
-          <button type="button" onClick={onCancel} className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 transition" disabled={isSubmitting}>
+        <footer className="ws-modal__foot">
+          <WsBtn onClick={onCancel} disabled={isSubmitting}>
             إلغاء
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            className="inline-flex items-center gap-2 rounded-md bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 transition"
-            disabled={isSubmitting || selectedClasses.size === 0}
-          >
+          </WsBtn>
+          <WsBtn variant="primary" onClick={handleSubmit} disabled={isSubmitting || selectedClasses.size === 0}>
             {isSubmitting ? 'جاري التطبيق...' : `تطبيق على ${selectedClasses.size} فصل`}
-          </button>
+          </WsBtn>
         </footer>
       </div>
     </div>
@@ -1671,13 +1761,13 @@ export function AdminSchedulesPage() {
     const active = schedules.filter((schedule) => schedule.is_active).length
     const archived = total - active
     const totalPeriods = schedules.reduce((count, schedule) => count + (schedule.periods?.length ?? 0), 0)
-    return [
-      { label: 'إجمالي الجداول', value: total, theme: 'bg-sky-50 border-sky-100', valueClass: 'text-sky-900', labelClass: 'text-sky-700' },
-      { label: 'جداول مفعلة', value: active, theme: 'bg-emerald-50 border-emerald-100', valueClass: 'text-emerald-900', labelClass: 'text-emerald-700' },
-      { label: 'جداول غير مفعلة', value: archived, theme: 'bg-slate-50 border-slate-200', valueClass: 'text-slate-700', labelClass: 'text-slate-500' },
-      { label: 'عدد الفترات المسجلة', value: totalPeriods, theme: 'bg-amber-50 border-amber-100', valueClass: 'text-amber-900', labelClass: 'text-amber-700' },
-    ]
+    return { total, active, archived, totalPeriods }
   }, [schedules])
+
+  const selectedRulerSegments = useMemo(
+    () => (selectedSchedule ? segmentsFromPeriods(selectedSchedule.periods ?? []) : []),
+    [selectedSchedule],
+  )
 
   const handleCreate = () => {
     setEditingSchedule(null)
@@ -1747,604 +1837,222 @@ export function AdminSchedulesPage() {
     createScheduleMutation.isPending || updateScheduleMutation.isPending || activateScheduleMutation.isPending || deactivateScheduleMutation.isPending
 
   return (
-    <section className="space-y-4">
-      <header className="space-y-2">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">الخطط الزمنية</h1>
-            <p className="text-sm text-slate-500 mt-1">
-              إدارة الجداول الزمنية للحصص الدراسية وتفعيل الجدول المعتمد للفصول
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setIsQuickAddOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-md bg-teal-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-teal-700"
-            disabled={createScheduleMutation.isPending}
-          >
-            <Plus className="h-3.5 w-3.5" /> إضافة توقيت
-          </button>
-        </div>
-        {schedulesQuery.isError ? (
-          <div className="rounded-md border border-rose-200 bg-rose-50/70 p-4 text-sm text-rose-700">
-            حدث خطأ أثناء تحميل الجداول الزمنية.
-            <button
-              type="button"
-              onClick={() => schedulesQuery.refetch()}
-              className="mr-3 inline-flex items-center gap-2 rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 transition hover:border-rose-300"
-            >
-              <RefreshCw className="h-4 w-4" /> إعادة المحاولة
-            </button>
-          </div>
-        ) : null}
-      </header>
+    <WsPage>
+      <WsHeader
+        title="الخطط الزمنية"
+        badge="توقيت اليوم الدراسي"
+        actions={
+          <>
+            <WsBtn icon={ListPlus} onClick={handleCreate} disabled={createScheduleMutation.isPending}>
+              جدول يدوي
+            </WsBtn>
+            <WsBtn variant="primary" icon={Zap} onClick={() => setIsQuickAddOpen(true)} disabled={createScheduleMutation.isPending}>
+              إضافة توقيت سريع
+            </WsBtn>
+          </>
+        }
+        facts={
+          <>
+            <WsFact icon={CalendarClock} label="إجمالي الجداول:">
+              {stats.total.toLocaleString('ar-SA')}
+            </WsFact>
+            <WsFact label="مفعلة:">{stats.active.toLocaleString('ar-SA')}</WsFact>
+            <WsFact label="غير مفعلة:">{stats.archived.toLocaleString('ar-SA')}</WsFact>
+            <WsFact icon={Clock3} label="الفترات المسجلة:">
+              {stats.totalPeriods.toLocaleString('ar-SA')}
+            </WsFact>
+          </>
+        }
+      >
+        {quickSuccessMessage ? <WsChip tone="green">{quickSuccessMessage}</WsChip> : null}
+      </WsHeader>
 
-      {isQuickAddOpen ? (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-12 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget && !createScheduleMutation.isPending) { setIsQuickAddOpen(false); resetQuickForm() } }}>
-          <div className="relative w-full max-w-3xl rounded-md border border-slate-100 bg-white p-6 shadow-2xl space-y-6">
-            <header className="flex flex-wrap items-center justify-between gap-3">
-              <div className="space-y-1 text-right">
-                <h2 className="text-xl font-semibold text-slate-900">إضافة توقيت</h2>
-                <p className="text-sm text-muted">
-                  كوّن جدولًا زمنيًا كاملًا خلال دقائق عبر تعبئة الحقول الأساسية وإضافة الفسح وأوقات الصلاة حسب الحاجة.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => { setIsQuickAddOpen(false); resetQuickForm() }}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-                disabled={createScheduleMutation.isPending}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </header>
-
-            {quickSuccessMessage ? (
-              <div className="rounded-md border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-sm font-semibold text-emerald-700">
-                {quickSuccessMessage}
-              </div>
-            ) : null}
-
-            <form
-              id="quick-add-form"
-              className="space-y-6"
-              onSubmit={(event) => {
-                event.preventDefault()
-                handleQuickPreview()
-              }}
-              noValidate
-            >
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <div className="grid gap-2 text-right">
-                <label htmlFor="quick-schedule-name" className="text-sm font-medium text-slate-800">
-                  اسم الجدول الزمني
-                </label>
-                <input
-                  id="quick-schedule-name"
-                  type="text"
-                  value={quickFormValues.scheduleName}
-                  onChange={(event) => handleQuickScheduleNameChange(event.target.value)}
-                  className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-                  placeholder="مثال: الجدول الدراسي للفصل الأول"
-                  disabled={createScheduleMutation.isPending}
-                  required
-                />
-                {quickFormErrors.scheduleName ? (
-                  <span className="text-xs font-medium text-rose-600">{quickFormErrors.scheduleName}</span>
-                ) : null}
-                <p className="text-xs text-muted">اكتب اسمًا واضحًا يسهل التعرف عليه لاحقًا.</p>
-              </div>
-
-              <div className="grid gap-2 text-right">
-                <span className="text-sm font-medium text-slate-800">نوع الفصل</span>
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  {(['winter', 'summer'] as ScheduleType[]).map((value) => {
-                    const isActive = quickFormValues.semesterType === value
-                    return (
-                      <label
-                        key={value}
-                        className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition focus-within:outline-none focus-within:ring-2 focus-within:ring-teal-500/40 ${
-                          isActive ? 'border-teal-500 bg-teal-50 text-teal-700' : 'border-slate-200 bg-white text-slate-600 hover:border-teal-300'
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="quick-semester-type"
-                          value={value}
-                          checked={isActive}
-                          onChange={() => handleQuickSemesterChange(value)}
-                          className="sr-only"
-                          disabled={createScheduleMutation.isPending}
-                        />
-                        {scheduleTypeLabels[value]}
-                      </label>
-                    )
-                  })}
-                </div>
-                {quickFormErrors.semesterType ? (
-                  <span className="text-xs font-medium text-rose-600">{quickFormErrors.semesterType}</span>
-                ) : null}
-                <p className="text-xs text-muted">اختر التوقيت المناسب للخطة (شتوي أو صيفي).</p>
-              </div>
-
-              <div className="grid gap-2 text-right">
-                <label htmlFor="quick-target-level" className="text-sm font-medium text-slate-800">
-                  المرحلة الدراسية <span className="text-xs text-muted font-normal">(اختياري)</span>
-                </label>
-                <input
-                  id="quick-target-level"
-                  type="text"
-                  value={quickFormValues.targetLevel}
-                  onChange={(event) => setQuickFormValues((prev) => ({ ...prev, targetLevel: event.target.value }))}
-                  className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-                  placeholder="مثال: العليا أو الدنيا"
-                  disabled={createScheduleMutation.isPending}
-                />
-                <p className="text-xs text-muted">حدد المرحلة إذا كان التوقيت يخص مرحلة معينة.</p>
-              </div>
-
-              <div className="grid gap-2 text-right">
-                <label htmlFor="quick-period-duration" className="text-sm font-medium text-slate-800">
-                  مدة الحصة (بالدقائق)
-                </label>
-                <input
-                  id="quick-period-duration"
-                  type="number"
-                  min={15}
-                  max={120}
-                  value={quickFormValues.periodDuration}
-                  onChange={(event) => handleQuickPeriodDurationChange(event.target.value)}
-                  className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-                  placeholder="45"
-                  disabled={createScheduleMutation.isPending}
-                  required
-                />
-                {quickFormErrors.periodDuration ? (
-                  <span className="text-xs font-medium text-rose-600">{quickFormErrors.periodDuration}</span>
-                ) : null}
-                <p className="text-xs text-muted">المدة المعيارية للحصة الدراسية، يمكن تعديلها لاحقًا.</p>
-              </div>
-
-              <div className="grid gap-2 text-right">
-                <label htmlFor="quick-first-period" className="text-sm font-medium text-slate-800">
-                  وقت بداية الحصة الأولى
-                </label>
-                <input
-                  id="quick-first-period"
-                  type="time"
-                  value={quickFormValues.firstPeriodStart}
-                  onChange={(event) => handleQuickFirstPeriodStartChange(event.target.value)}
-                  className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-                  disabled={createScheduleMutation.isPending}
-                  required
-                />
-                {quickFormErrors.firstPeriodStart ? (
-                  <span className="text-xs font-medium text-rose-600">{quickFormErrors.firstPeriodStart}</span>
-                ) : null}
-                <p className="text-xs text-muted">أدخل الوقت بصيغة 24 ساعة (مثال: 07:30).</p>
-              </div>
-
-              <div className="grid gap-2 text-right">
-                <label htmlFor="quick-period-count" className="text-sm font-medium text-slate-800">
-                  عدد الحصص
-                </label>
-                <input
-                  id="quick-period-count"
-                  type="number"
-                  min={1}
-                  max={12}
-                  value={quickFormValues.numberOfPeriods}
-                  onChange={(event) => handleQuickNumberOfPeriodsChange(event.target.value)}
-                  className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-                  placeholder="7"
-                  disabled={createScheduleMutation.isPending}
-                  required
-                />
-                {quickFormErrors.numberOfPeriods ? (
-                  <span className="text-xs font-medium text-rose-600">{quickFormErrors.numberOfPeriods}</span>
-                ) : null}
-                <p className="text-xs text-muted">يمكن إنشاء ما بين حصة واحدة وحتى 12 حصة في اليوم الدراسي.</p>
-              </div>
-            </div>
-
-            <section className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <label className="inline-flex items-center gap-3 text-sm font-semibold text-slate-700">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                    checked={quickFormValues.breaksEnabled}
-                    onChange={(event) => handleQuickBreaksToggle(event.target.checked)}
-                    disabled={createScheduleMutation.isPending}
-                  />
-                  إضافة فسحة
-                </label>
-                <button
-                  type="button"
-                  onClick={handleAddBreak}
-                  className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 transition"
-                  disabled={!quickFormValues.breaksEnabled || createScheduleMutation.isPending}
-                >
-                  <Plus className="h-4 w-4" /> إضافة فسحة أخرى
-                </button>
-              </div>
-              <p className="text-xs text-muted">
-                استخدم هذا الخيار لإدراج فترات استراحة بين الحصص. سيتم ضبط توقيت الحصص التالية تلقائيًا.
-              </p>
-              {quickFormErrors.breaks ? (
-                <div className="rounded-md border border-rose-200 bg-rose-50/70 px-3 py-2 text-xs font-semibold text-rose-700">
-                  {quickFormErrors.breaks}
-                </div>
-              ) : null}
-              {quickFormValues.breaksEnabled ? (
-                <div className="space-y-3">
-                  {quickFormValues.breaks.map((item, index) => {
-                    const itemErrors = quickFormErrors.breaksById[item.id] ?? {}
-                    return (
-                      <article
-                        key={item.id}
-                        className="rounded-md border border-slate-200 bg-white/80 p-4 shadow-sm transition hover:border-teal-200"
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <h4 className="text-sm font-semibold text-slate-700">فسحة رقم {index + 1}</h4>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveBreak(item.id)}
-                            className="inline-flex items-center gap-1 rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 transition hover:border-rose-300"
-                            disabled={createScheduleMutation.isPending}
-                          >
-                            حذف
-                          </button>
-                        </div>
-                        <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                          <div className="grid gap-2 text-right">
-                            <label className="text-xs font-medium text-slate-600">بعد الحصة رقم</label>
-                            <input
-                              type="number"
-                              min={1}
-                              max={12}
-                              value={item.afterPeriod}
-                              onChange={(event) => handleBreakFieldChange(item.id, 'afterPeriod', event.target.value)}
-                              className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-                              placeholder="3"
-                              disabled={createScheduleMutation.isPending}
-                            />
-                            {itemErrors.afterPeriod ? (
-                              <span className="text-xs font-medium text-rose-600">{itemErrors.afterPeriod}</span>
-                            ) : null}
-                          </div>
-                          <div className="grid gap-2 text-right">
-                            <label className="text-xs font-medium text-slate-600">مدة الفسحة (دقائق)</label>
-                            <input
-                              type="number"
-                              min={5}
-                              max={120}
-                              value={item.duration}
-                              onChange={(event) => handleBreakFieldChange(item.id, 'duration', event.target.value)}
-                              className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-                              placeholder="15"
-                              disabled={createScheduleMutation.isPending}
-                            />
-                            {itemErrors.duration ? (
-                              <span className="text-xs font-medium text-rose-600">{itemErrors.duration}</span>
-                            ) : null}
-                          </div>
-                        </div>
-                      </article>
-                    )
-                  })}
-                </div>
-              ) : null}
-            </section>
-
-            <section className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <label className="inline-flex items-center gap-3 text-sm font-semibold text-slate-700">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                    checked={quickFormValues.prayersEnabled}
-                    onChange={(event) => handleQuickPrayersToggle(event.target.checked)}
-                    disabled={createScheduleMutation.isPending}
-                  />
-                  إضافة وقت صلاة
-                </label>
-                <button
-                  type="button"
-                  onClick={handleAddPrayer}
-                  className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 transition"
-                  disabled={!quickFormValues.prayersEnabled || createScheduleMutation.isPending}
-                >
-                  <Plus className="h-4 w-4" /> إضافة وقت صلاة
-                </button>
-              </div>
-              <p className="text-xs text-muted">يمكنك تحديد أكثر من وقت صلاة مع اسم المدة والموقع في الجدول.</p>
-              {quickFormErrors.prayers ? (
-                <div className="rounded-md border border-rose-200 bg-rose-50/70 px-3 py-2 text-xs font-semibold text-rose-700">
-                  {quickFormErrors.prayers}
-                </div>
-              ) : null}
-              {quickFormValues.prayersEnabled ? (
-                <div className="space-y-3">
-                  {quickFormValues.prayers.map((item, index) => {
-                    const itemErrors = quickFormErrors.prayersById[item.id] ?? {}
-                    return (
-                      <article
-                        key={item.id}
-                        className="rounded-md border border-slate-200 bg-white/80 p-4 shadow-sm transition hover:border-teal-200"
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <h4 className="text-sm font-semibold text-slate-700">وقت صلاة رقم {index + 1}</h4>
-                          <button
-                            type="button"
-                            onClick={() => handleRemovePrayer(item.id)}
-                            className="inline-flex items-center gap-1 rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 transition hover:border-rose-300"
-                            disabled={createScheduleMutation.isPending}
-                          >
-                            حذف
-                          </button>
-                        </div>
-                        <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                          <div className="grid gap-2 text-right">
-                            <label className="text-xs font-medium text-slate-600">بعد الحصة رقم</label>
-                            <input
-                              type="number"
-                              min={1}
-                              max={12}
-                              value={item.afterPeriod}
-                              onChange={(event) => handlePrayerFieldChange(item.id, 'afterPeriod', event.target.value)}
-                              className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-                              placeholder="4"
-                              disabled={createScheduleMutation.isPending}
-                            />
-                            {itemErrors.afterPeriod ? (
-                              <span className="text-xs font-medium text-rose-600">{itemErrors.afterPeriod}</span>
-                            ) : null}
-                          </div>
-                          <div className="grid gap-2 text-right">
-                            <label className="text-xs font-medium text-slate-600">مدة الصلاة (دقائق)</label>
-                            <input
-                              type="number"
-                              min={5}
-                              max={120}
-                              value={item.duration}
-                              onChange={(event) => handlePrayerFieldChange(item.id, 'duration', event.target.value)}
-                              className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-                              placeholder="20"
-                              disabled={createScheduleMutation.isPending}
-                            />
-                            {itemErrors.duration ? (
-                              <span className="text-xs font-medium text-rose-600">{itemErrors.duration}</span>
-                            ) : null}
-                          </div>
-                          <div className="md:col-span-2 grid gap-2 text-right">
-                            <label className="text-xs font-medium text-slate-600">اسم الصلاة</label>
-                            <input
-                              type="text"
-                              value={item.name}
-                              onChange={(event) => handlePrayerFieldChange(item.id, 'name', event.target.value)}
-                              className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-                              placeholder="مثال: صلاة الظهر"
-                              disabled={createScheduleMutation.isPending}
-                            />
-                            {itemErrors.name ? (
-                              <span className="text-xs font-medium text-rose-600">{itemErrors.name}</span>
-                            ) : null}
-                          </div>
-                        </div>
-                      </article>
-                    )
-                  })}
-                </div>
-              ) : null}
-            </section>
-
-            {quickFormErrors.overlap ? (
-              <div className="rounded-md border border-rose-200 bg-rose-50/70 px-3 py-2 text-xs font-semibold text-rose-700">
-                {quickFormErrors.overlap}
-              </div>
-            ) : null}
-
-            {quickTotalDuration !== null ? (
-              <div className="rounded-md border border-slate-100 bg-slate-50/70 px-4 py-3 text-sm text-slate-700">
-                إجمالي الزمن المتوقع: <span className="font-semibold text-slate-900">{formatDurationLabel(quickTotalDuration)}</span>
-                {quickTotalDuration > 480 ? (
-                  <span className="mt-2 block text-xs font-semibold text-amber-600">
-                    تنبيه: مدة الجدول تتجاوز 8 ساعات، يرجى مراجعة الفسح وأوقات الصلاة.
-                  </span>
-                ) : null}
-              </div>
-            ) : null}
-
-            <div className="flex flex-wrap items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={resetQuickForm}
-                className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 transition"
-                disabled={createScheduleMutation.isPending}
-              >
-                إعادة تعيين
-              </button>
-              <button
-                type="submit"
-                className="inline-flex items-center gap-2 rounded-md bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 transition"
-                disabled={!quickFormIsReady || createScheduleMutation.isPending}
-              >
-                معاينة الجدول
-              </button>
-            </div>
-            </form>
-          </div>
-        </div>
+      {schedulesQuery.isError ? (
+        <WsAlert>
+          حدث خطأ أثناء تحميل الجداول الزمنية.
+          <WsBtn size="sm" icon={RefreshCcw} onClick={() => schedulesQuery.refetch()}>
+            إعادة المحاولة
+          </WsBtn>
+        </WsAlert>
       ) : null}
 
-      <section className="rounded-md border border-slate-200 bg-white p-4 shadow-sm space-y-3">
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          {stats.map((item) => (
-            <article key={item.label} className={`rounded-md shadow-sm overflow-hidden border ${item.theme}`}>
-              <div className={`flex items-center justify-between px-3 py-2 border-b border-inherit bg-white/40`}>
-                <p className={`text-xs font-bold ${item.labelClass}`}>{item.label}</p>
-              </div>
-              <div className="px-3 py-3">
-                <p className={`text-xl font-bold ${item.valueClass}`}>{item.value.toLocaleString('en-US')}</p>
-              </div>
-            </article>
-          ))}
-        </div>
-
-        <div className="grid gap-3 lg:grid-cols-[280px,1fr]">
-          <aside className="space-y-2">
-            <div className="flex items-center justify-between py-1">
-              <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider">قائمة الجداول</h2>
-              <span className="rounded bg-teal-100 px-2 py-0.5 text-xs font-bold text-teal-700">
-                {filteredSchedules.length}
-              </span>
+      <WsLayout>
+        {/* العمود الأيمن: قائمة الجداول */}
+        <WsSideCol title="الجداول" icon={CalendarClock} side="start" width={280} storageKey="ws:schedules:list">
+          <div
+            style={{
+              flexShrink: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+              padding: '8px 10px',
+              borderBottom: '1px solid var(--ws-hairline)',
+            }}
+          >
+            <div className="ws-seg" style={{ display: 'flex' }}>
+              {([
+                { value: 'all', label: 'الكل' },
+                { value: 'active', label: 'مفعلة' },
+                { value: 'inactive', label: 'معطلة' },
+              ] as const).map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setStatusFilter(option.value)}
+                  className={`ws-seg__btn ${statusFilter === option.value ? 'is-active' : ''}`}
+                  style={{ flex: 1, justifyContent: 'center' }}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
+            <WsInput
+              type="search"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="ابحث بالاسم أو المرحلة..."
+            />
+          </div>
 
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2 rounded border border-slate-300 bg-white px-2.5 py-1.5 focus-within:border-teal-500 focus-within:ring-1 focus-within:ring-teal-500">
-                <Search className="h-3.5 w-3.5 text-slate-400" />
-                <input
-                  type="search"
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder="ابحث بالاسم..."
-                  className="w-full border-none bg-transparent text-xs text-slate-700 outline-none"
-                />
-              </div>
-              <select
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value as ScheduleStatusFilter)}
-                className="w-full rounded border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 focus:border-teal-500 focus:outline-none"
-              >
-                <option value="all">جميع الحالات</option>
-                <option value="active">مفعلة</option>
-                <option value="inactive">غير مفعلة</option>
-              </select>
-            </div>
-
-            <div className="space-y-1">
-              {schedulesQuery.isLoading ? (
-                Array.from({ length: 4 }).map((_, index) => (
-                  <div key={index} className="h-12 animate-pulse rounded bg-slate-100" />
-                ))
-              ) : filteredSchedules.length === 0 ? (
-                <div className="rounded border border-dashed border-slate-200 bg-white/60 p-4 text-center text-xs text-muted">
-                  لا توجد جداول مطابقة للبحث.
-                </div>
-              ) : (
-                filteredSchedules.map((schedule) => {
+          <WsBlock title="القائمة" count={filteredSchedules.length.toLocaleString('ar-SA')} fill scroll>
+            {schedulesQuery.isLoading ? (
+              <WsEmpty loading>جاري تحميل الجداول...</WsEmpty>
+            ) : filteredSchedules.length === 0 ? (
+              <WsEmpty icon={CalendarClock}>لا توجد جداول مطابقة للبحث.</WsEmpty>
+            ) : (
+              <div>
+                {filteredSchedules.map((schedule) => {
                   const isSelected = schedule.id === selectedScheduleId
                   return (
                     <button
                       key={schedule.id}
                       type="button"
                       onClick={() => setSelectedScheduleId(schedule.id)}
-                      className={`w-full rounded border px-3 py-2 text-right transition focus:outline-none focus:ring-1 focus:ring-teal-500 ${
-                        isSelected
-                          ? 'border-teal-500 bg-teal-50 text-teal-900 shadow-sm'
-                          : 'border-transparent bg-white/80 hover:border-teal-200 hover:bg-white'
-                      }`}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        textAlign: 'right',
+                        padding: '8px 12px',
+                        border: 'none',
+                        borderBottom: '1px solid var(--ws-hairline)',
+                        background: isSelected ? 'var(--ws-accent-soft)' : 'transparent',
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                      }}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="space-y-0.5 min-w-0">
-                          <p className="text-xs font-bold text-slate-800 truncate">{schedule.name}</p>
-                          <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
-                            <ScheduleTypeBadge type={schedule.type ?? 'custom'} />
-                            {schedule.target_level ? <span>{schedule.target_level}</span> : null}
-                            <span>{schedule.periods?.length ?? 0} فترة</span>
-                          </div>
-                        </div>
-                        <ScheduleStatusBadge isActive={schedule.is_active} />
-                      </div>
+                      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                          <ScheduleStatusBadge isActive={schedule.is_active} />
+                          <span style={{ fontSize: 12.5, fontWeight: isSelected ? 700 : 600, color: 'var(--ws-text)' }}>
+                            {schedule.name}
+                          </span>
+                        </span>
+                      </span>
+                      <span style={{ display: 'inline-flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
+                        <ScheduleTypeBadge type={schedule.type ?? 'custom'} />
+                        {schedule.target_level ? <WsChip>{schedule.target_level}</WsChip> : null}
+                        <WsChip>{schedule.periods?.length ?? 0} فترة</WsChip>
+                      </span>
                     </button>
                   )
-                })
-              )}
-            </div>
-          </aside>
+                })}
+              </div>
+            )}
+          </WsBlock>
+        </WsSideCol>
 
-          <div className="rounded-md border border-slate-100 bg-white/80 p-4 shadow-sm">
+        {/* الوسط: تفاصيل الجدول */}
+        <WsMain>
+          <WsBlock
+            title={selectedSchedule ? selectedSchedule.name : 'تفاصيل الجدول'}
+            icon={CalendarClock}
+            count={selectedSchedule ? `${(selectedSchedule.periods ?? []).length} فترة` : undefined}
+            tools={
+              selectedSchedule ? (
+                <>
+                  <WsBtn size="sm" icon={Pencil} onClick={() => handleEdit(selectedSchedule)} disabled={isMutating}>
+                    تعديل
+                  </WsBtn>
+                  <WsBtn
+                    size="sm"
+                    icon={LayoutGrid}
+                    onClick={() => {
+                      setScheduleToApply(selectedSchedule)
+                      setIsApplyToClassesModalOpen(true)
+                    }}
+                    disabled={isMutating}
+                  >
+                    تطبيق
+                  </WsBtn>
+                  {selectedSchedule.is_active ? (
+                    <WsBtn
+                      size="sm"
+                      icon={Power}
+                      onClick={() => deactivateScheduleMutation.mutate(selectedSchedule.id)}
+                      disabled={deactivateScheduleMutation.isPending}
+                    >
+                      {deactivateScheduleMutation.isPending ? '...' : 'تعطيل'}
+                    </WsBtn>
+                  ) : (
+                    <WsBtn
+                      size="sm"
+                      variant="primary"
+                      icon={CheckCircle2}
+                      onClick={() => handleActivate(selectedSchedule)}
+                      disabled={activateScheduleMutation.isPending}
+                    >
+                      {activateScheduleMutation.isPending ? '...' : 'تفعيل'}
+                    </WsBtn>
+                  )}
+                  <WsBtn
+                    size="sm"
+                    variant="danger"
+                    icon={Trash2}
+                    onClick={() => setScheduleToDelete(selectedSchedule)}
+                    disabled={deleteScheduleMutation.isPending}
+                  />
+                </>
+              ) : undefined
+            }
+            fill
+          >
             {selectedSchedule ? (
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-3">
-                  <div className="space-y-1.5 text-right">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="text-base font-bold text-slate-900">{selectedSchedule.name}</h2>
-                      <ScheduleStatusBadge isActive={selectedSchedule.is_active} showLabel />
-                      {selectedSchedule.description ? (
-                        <span className="text-xs text-slate-500 border-r border-slate-200 pr-2">{selectedSchedule.description}</span>
-                      ) : null}
-                      <span className="text-xs text-slate-400">{formatDateTime(selectedSchedule.updated_at ?? selectedSchedule.created_at)}</span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
-                      <ScheduleTypeBadge type={selectedSchedule.type ?? 'custom'} />
-                      {selectedSchedule.target_level ? (
-                        <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">
-                          {selectedSchedule.target_level}
-                        </span>
-                      ) : null}
-                    </div>
+              <>
+                {/* شريط التعريف + مسطرة اليوم */}
+                <div style={{ flexShrink: 0, padding: '10px 14px', borderBottom: '1px solid var(--ws-hairline)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                    <ScheduleStatusBadge isActive={selectedSchedule.is_active} showLabel />
+                    <ScheduleTypeBadge type={selectedSchedule.type ?? 'custom'} />
+                    {selectedSchedule.target_level ? <WsChip>{selectedSchedule.target_level}</WsChip> : null}
+                    {selectedSchedule.description ? (
+                      <span style={{ fontSize: 11, color: 'var(--ws-text-2)' }}>{selectedSchedule.description}</span>
+                    ) : null}
+                    <span style={{ fontSize: 10, color: 'var(--ws-text-2)', marginInlineStart: 'auto' }}>
+                      آخر تحديث: {formatDateTime(selectedSchedule.updated_at ?? selectedSchedule.created_at)}
+                    </span>
                   </div>
-                  <div className="hidden md:flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => handleEdit(selectedSchedule)}
-                      className="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
-                      disabled={isMutating}
-                    >
-                      <Edit2 className="h-3.5 w-3.5" /> تعديل
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setScheduleToApply(selectedSchedule); setIsApplyToClassesModalOpen(true) }}
-                      className="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
-                      disabled={isMutating}
-                    >
-                      <LayoutGrid className="h-3.5 w-3.5" /> تطبيق
-                    </button>
-                    {selectedSchedule.is_active ? (
-                      <button
-                        type="button"
-                        onClick={() => deactivateScheduleMutation.mutate(selectedSchedule.id)}
-                        className="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
-                        disabled={deactivateScheduleMutation.isPending}
-                      >
-                        {deactivateScheduleMutation.isPending ? '...' : 'تعطيل'}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleActivate(selectedSchedule)}
-                        className="inline-flex items-center gap-1.5 rounded border border-teal-600 bg-teal-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-teal-700 transition"
-                        disabled={activateScheduleMutation.isPending}
-                      >
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        {activateScheduleMutation.isPending ? '...' : 'تفعيل'}
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setScheduleToDelete(selectedSchedule)}
-                      className="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition"
-                      disabled={deleteScheduleMutation.isPending}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
+                  {selectedRulerSegments.length > 0 ? (
+                    <DayRuler segments={selectedRulerSegments} />
+                  ) : (
+                    <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                      لا توجد فترات بأوقات صالحة لعرض مسطرة اليوم.
+                    </span>
+                  )}
                 </div>
 
-                {/* جدول الفترات - للشاشات الكبيرة */}
-                <div className="hidden md:block overflow-hidden rounded border border-slate-200">
-                  <table className="w-full min-w-[560px] table-fixed text-right text-xs">
-                    <thead className="bg-slate-50 border-b border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-500">
-                      <tr className="divide-x divide-x-reverse divide-slate-200">
-                        <th className="px-3 py-2">#</th>
-                        <th className="px-3 py-2">الاسم</th>
-                        <th className="px-3 py-2">النوع</th>
-                        <th className="px-3 py-2">البداية</th>
-                        <th className="px-3 py-2">النهاية</th>
-                        <th className="px-3 py-2">المدة (د)</th>
+                {/* جدول الفترات */}
+                {(selectedSchedule.periods ?? []).length === 0 ? (
+                  <WsEmpty icon={Clock3}>لا توجد فترات مسجلة لهذا الجدول.</WsEmpty>
+                ) : (
+                  <WsTable>
+                    <thead>
+                      <tr>
+                        <th style={{ width: 60 }}>#</th>
+                        <th>الاسم</th>
+                        <th>النوع</th>
+                        <th>البداية</th>
+                        <th>النهاية</th>
+                        <th>المدة (د)</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2352,96 +2060,388 @@ export function AdminSchedulesPage() {
                         const start = formatTime(period.start_time)
                         const end = formatTime(period.end_time)
                         const duration = period.break_duration ?? ''
+                        const entryType = inferEntryType(Boolean(period.is_break), period.period_name)
+                        const tone = ENTRY_TONES[entryType]
                         return (
-                          <tr key={`${period.period_number}-${period.start_time}`} className="border-t border-slate-100 divide-x divide-x-reverse divide-slate-100 hover:bg-slate-50/50">
-                            <td className="px-3 py-1.5 font-bold text-slate-700">{period.period_number}</td>
-                            <td className="px-3 py-1.5 text-slate-600">{period.period_name ?? '—'}</td>
-                            <td className="px-3 py-1.5">
-                              {period.is_break ? (
-                                <span className="inline-flex items-center rounded bg-amber-100 px-1.5 py-0.5 text-xs font-bold text-amber-700">فسحة</span>
-                              ) : (
-                                <span className="inline-flex items-center rounded bg-emerald-100 px-1.5 py-0.5 text-xs font-bold text-emerald-700">حصة</span>
-                              )}
+                          <tr key={`${period.period_number}-${period.start_time}`}>
+                            <td style={{ fontWeight: 700 }}>{period.period_number}</td>
+                            <td>{period.period_name ?? '—'}</td>
+                            <td>
+                              <span className="ws-chip" style={{ background: tone.bg, borderColor: tone.bd, color: tone.tx }}>
+                                {quickEntryTypeLabels[entryType]}
+                              </span>
                             </td>
-                            <td className="px-3 py-1.5 font-mono text-slate-600">{start || '—'}</td>
-                            <td className="px-3 py-1.5 font-mono text-slate-600">{end || '—'}</td>
-                            <td className="px-3 py-1.5 text-slate-600">{duration || '—'}</td>
+                            <td>
+                              <span style={{ fontVariantNumeric: 'tabular-nums' }} dir="ltr">{start || '—'}</span>
+                            </td>
+                            <td>
+                              <span style={{ fontVariantNumeric: 'tabular-nums' }} dir="ltr">{end || '—'}</span>
+                            </td>
+                            <td>{duration || '—'}</td>
                           </tr>
                         )
                       })}
-                      {(selectedSchedule.periods ?? []).length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="px-3 py-6 text-center text-xs text-muted">
-                            لا توجد فترات مسجلة لهذا الجدول.
-                          </td>
-                        </tr>
-                      ) : null}
                     </tbody>
-                  </table>
-                </div>
+                  </WsTable>
+                )}
 
-                {/* بطاقات الفترات - للجوال */}
-                <div className="md:hidden space-y-3">
-                  {(selectedSchedule.periods ?? []).map((period) => {
-                    const start = formatTime(period.start_time)
-                    const end = formatTime(period.end_time)
-                    const duration = period.break_duration ?? ''
-                    return (
-                      <div key={`${period.period_number}-${period.start_time}`} className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
-                        <div className="flex items-start justify-between mb-3">
-                          <div>
-                            <span className="font-semibold text-teal-600">الفترة {period.period_number}</span>
-                            {period.period_name && <p className="text-xs text-slate-600 mt-1">{period.period_name}</p>}
-                          </div>
-                          {period.is_break ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs text-amber-700">
-                              فسحة
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs text-emerald-700">
-                              حصة دراسية
-                            </span>
-                          )}
-                        </div>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex items-center justify-between">
-                            <span className="text-slate-600">البداية:</span>
-                            <span className="font-semibold text-slate-900">{start || '—'}</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-slate-600">النهاية:</span>
-                            <span className="font-semibold text-slate-900">{end || '—'}</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-slate-600">المدة:</span>
-                            <span className="font-semibold text-slate-900">{duration ? `${duration} دقيقة` : period.is_break ? '—' : 'حسب الفترة'}</span>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                  {(selectedSchedule.periods ?? []).length === 0 && (
-                    <div className="rounded-md border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-muted">
-                      لا توجد فترات مسجلة لهذا الجدول حاليًا.
-                    </div>
-                  )}
+                <div
+                  style={{
+                    flexShrink: 0,
+                    padding: '6px 14px',
+                    borderTop: '1px solid var(--ws-hairline)',
+                    fontSize: 10.5,
+                    color: 'var(--ws-text-2)',
+                  }}
+                >
+                  لتطبيق هذا الجدول على فصول محددة استخدم زر «تطبيق» أعلاه — الجدول المفعّل هو المعتمد افتراضياً للنظام.
                 </div>
-
-                <p className="text-xs text-muted border-t border-slate-100 pt-2">
-                  لتطبيق هذا الجدول على فصل محدد استخدم زر «تطبيق» أعلاه.
-                </p>
-              </div>
+              </>
             ) : schedulesQuery.isLoading ? (
-              <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 text-sm text-muted">
-                <span className="h-12 w-12 animate-spin rounded-full border-2 border-teal-500 border-t-transparent" />
-                جاري تحميل تفاصيل الجداول...
-              </div>
+              <WsEmpty loading>جاري تحميل تفاصيل الجداول...</WsEmpty>
             ) : (
-              <EmptyState onCreate={handleCreate} />
+              <WsEmpty icon={CalendarClock}>
+                لا توجد جداول زمنية حتى الآن — ابدأ بالتوقيت السريع أو أنشئ جدولاً يدوياً.
+                <span style={{ display: 'inline-flex', gap: 6 }}>
+                  <WsBtn variant="primary" icon={Zap} onClick={() => setIsQuickAddOpen(true)}>
+                    إضافة توقيت سريع
+                  </WsBtn>
+                  <WsBtn icon={ListPlus} onClick={handleCreate}>
+                    جدول يدوي
+                  </WsBtn>
+                </span>
+              </WsEmpty>
             )}
+          </WsBlock>
+        </WsMain>
+      </WsLayout>
+
+      {/* مودال الإضافة السريعة */}
+      {isQuickAddOpen ? (
+        <div
+          className="ws-modal"
+          role="dialog"
+          aria-modal
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !createScheduleMutation.isPending) {
+              setIsQuickAddOpen(false)
+              resetQuickForm()
+            }
+          }}
+        >
+          <div
+            className="ws-modal__panel"
+            style={{ maxWidth: 700, display: 'flex', flexDirection: 'column', overflow: 'hidden', maxHeight: '88vh' }}
+          >
+            <header className="ws-modal__head">
+              <h3 className="ws-modal__title">إضافة توقيت سريع</h3>
+              <p className="ws-modal__sub">
+                كوّن جدولًا زمنيًا كاملًا خلال دقائق — عبّئ الأساسيات وأضف الفسح وأوقات الصلاة، والنظام يحسب كل الأوقات.
+              </p>
+            </header>
+
+            <form
+              id="quick-add-form"
+              style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}
+              onSubmit={(event) => {
+                event.preventDefault()
+                handleQuickPreview()
+              }}
+              noValidate
+            >
+              <div className="ws-modal__body" style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                  <WsField label="اسم الجدول الزمني" htmlFor="quick-schedule-name" style={{ gridColumn: '1 / -1' }}>
+                    <WsInput
+                      id="quick-schedule-name"
+                      type="text"
+                      value={quickFormValues.scheduleName}
+                      onChange={(event) => handleQuickScheduleNameChange(event.target.value)}
+                      placeholder="مثال: الجدول الدراسي للفصل الأول"
+                      disabled={createScheduleMutation.isPending}
+                      required
+                      autoFocus
+                    />
+                    {fieldError(quickFormErrors.scheduleName)}
+                  </WsField>
+
+                  <WsField label="نوع الفصل">
+                    <div className="ws-choice-grid">
+                      {(['winter', 'summer'] as ScheduleType[]).map((value) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => handleQuickSemesterChange(value)}
+                          className={`ws-choice ${quickFormValues.semesterType === value ? 'is-selected' : ''}`}
+                          disabled={createScheduleMutation.isPending}
+                        >
+                          {scheduleTypeLabels[value]}
+                        </button>
+                      ))}
+                    </div>
+                    {fieldError(quickFormErrors.semesterType)}
+                  </WsField>
+
+                  <WsField label="المرحلة الدراسية (اختياري)" htmlFor="quick-target-level">
+                    <WsInput
+                      id="quick-target-level"
+                      type="text"
+                      value={quickFormValues.targetLevel}
+                      onChange={(event) => setQuickFormValues((prev) => ({ ...prev, targetLevel: event.target.value }))}
+                      placeholder="مثال: العليا أو الدنيا"
+                      disabled={createScheduleMutation.isPending}
+                    />
+                  </WsField>
+
+                  <WsField label="مدة الحصة (دقائق)" htmlFor="quick-period-duration">
+                    <WsInput
+                      id="quick-period-duration"
+                      type="number"
+                      min={15}
+                      max={120}
+                      value={quickFormValues.periodDuration}
+                      onChange={(event) => handleQuickPeriodDurationChange(event.target.value)}
+                      placeholder="45"
+                      disabled={createScheduleMutation.isPending}
+                      required
+                    />
+                    {fieldError(quickFormErrors.periodDuration)}
+                  </WsField>
+
+                  <WsField label="بداية الحصة الأولى" htmlFor="quick-first-period">
+                    <WsInput
+                      id="quick-first-period"
+                      type="time"
+                      value={quickFormValues.firstPeriodStart}
+                      onChange={(event) => handleQuickFirstPeriodStartChange(event.target.value)}
+                      disabled={createScheduleMutation.isPending}
+                      required
+                    />
+                    {fieldError(quickFormErrors.firstPeriodStart)}
+                  </WsField>
+
+                  <WsField label="عدد الحصص" htmlFor="quick-period-count">
+                    <WsInput
+                      id="quick-period-count"
+                      type="number"
+                      min={1}
+                      max={12}
+                      value={quickFormValues.numberOfPeriods}
+                      onChange={(event) => handleQuickNumberOfPeriodsChange(event.target.value)}
+                      placeholder="7"
+                      disabled={createScheduleMutation.isPending}
+                      required
+                    />
+                    {fieldError(quickFormErrors.numberOfPeriods)}
+                  </WsField>
+
+                  <WsField label=" " style={{ justifyContent: 'flex-end' }}>
+                    <span style={{ fontSize: 10, color: 'var(--ws-text-2)', lineHeight: 1.7 }}>
+                      بين 1 و 12 حصة يومياً — الأوقات بصيغة 24 ساعة.
+                    </span>
+                  </WsField>
+                </div>
+
+                {/* الفسح */}
+                <div style={{ borderRadius: 9, border: '1px solid var(--ws-hairline)', padding: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        style={{ width: 14, height: 14, accentColor: 'var(--ws-accent-2)' }}
+                        checked={quickFormValues.breaksEnabled}
+                        onChange={(event) => handleQuickBreaksToggle(event.target.checked)}
+                        disabled={createScheduleMutation.isPending}
+                      />
+                      إضافة فسحة
+                    </label>
+                    <WsBtn
+                      size="sm"
+                      icon={Plus}
+                      onClick={handleAddBreak}
+                      disabled={!quickFormValues.breaksEnabled || createScheduleMutation.isPending}
+                    >
+                      فسحة أخرى
+                    </WsBtn>
+                  </div>
+                  {fieldError(quickFormErrors.breaks)}
+                  {quickFormValues.breaksEnabled ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+                      {quickFormValues.breaks.map((item, index) => {
+                        const itemErrors = quickFormErrors.breaksById[item.id] ?? {}
+                        return (
+                          <div
+                            key={item.id}
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: '1fr 1fr auto',
+                              gap: 6,
+                              alignItems: 'end',
+                              borderRadius: 8,
+                              background: 'var(--ws-surface-2)',
+                              padding: 8,
+                            }}
+                          >
+                            <WsField label={`فسحة ${index + 1} — بعد الحصة رقم`}>
+                              <WsInput
+                                type="number"
+                                min={1}
+                                max={12}
+                                value={item.afterPeriod}
+                                onChange={(event) => handleBreakFieldChange(item.id, 'afterPeriod', event.target.value)}
+                                placeholder="3"
+                                disabled={createScheduleMutation.isPending}
+                              />
+                              {fieldError(itemErrors.afterPeriod)}
+                            </WsField>
+                            <WsField label="المدة (دقائق)">
+                              <WsInput
+                                type="number"
+                                min={5}
+                                max={120}
+                                value={item.duration}
+                                onChange={(event) => handleBreakFieldChange(item.id, 'duration', event.target.value)}
+                                placeholder="15"
+                                disabled={createScheduleMutation.isPending}
+                              />
+                              {fieldError(itemErrors.duration)}
+                            </WsField>
+                            <WsBtn
+                              size="sm"
+                              variant="danger"
+                              icon={Trash2}
+                              onClick={() => handleRemoveBreak(item.id)}
+                              disabled={createScheduleMutation.isPending}
+                            />
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+
+                {/* أوقات الصلاة */}
+                <div style={{ borderRadius: 9, border: '1px solid var(--ws-hairline)', padding: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        style={{ width: 14, height: 14, accentColor: 'var(--ws-accent-2)' }}
+                        checked={quickFormValues.prayersEnabled}
+                        onChange={(event) => handleQuickPrayersToggle(event.target.checked)}
+                        disabled={createScheduleMutation.isPending}
+                      />
+                      إضافة وقت صلاة
+                    </label>
+                    <WsBtn
+                      size="sm"
+                      icon={Plus}
+                      onClick={handleAddPrayer}
+                      disabled={!quickFormValues.prayersEnabled || createScheduleMutation.isPending}
+                    >
+                      وقت صلاة
+                    </WsBtn>
+                  </div>
+                  {fieldError(quickFormErrors.prayers)}
+                  {quickFormValues.prayersEnabled ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+                      {quickFormValues.prayers.map((item, index) => {
+                        const itemErrors = quickFormErrors.prayersById[item.id] ?? {}
+                        return (
+                          <div
+                            key={item.id}
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: '1fr 1fr 1.4fr auto',
+                              gap: 6,
+                              alignItems: 'end',
+                              borderRadius: 8,
+                              background: 'var(--ws-surface-2)',
+                              padding: 8,
+                            }}
+                          >
+                            <WsField label={`صلاة ${index + 1} — بعد الحصة`}>
+                              <WsInput
+                                type="number"
+                                min={1}
+                                max={12}
+                                value={item.afterPeriod}
+                                onChange={(event) => handlePrayerFieldChange(item.id, 'afterPeriod', event.target.value)}
+                                placeholder="4"
+                                disabled={createScheduleMutation.isPending}
+                              />
+                              {fieldError(itemErrors.afterPeriod)}
+                            </WsField>
+                            <WsField label="المدة (دقائق)">
+                              <WsInput
+                                type="number"
+                                min={5}
+                                max={120}
+                                value={item.duration}
+                                onChange={(event) => handlePrayerFieldChange(item.id, 'duration', event.target.value)}
+                                placeholder="20"
+                                disabled={createScheduleMutation.isPending}
+                              />
+                              {fieldError(itemErrors.duration)}
+                            </WsField>
+                            <WsField label="اسم الصلاة">
+                              <WsInput
+                                type="text"
+                                value={item.name}
+                                onChange={(event) => handlePrayerFieldChange(item.id, 'name', event.target.value)}
+                                placeholder="مثال: صلاة الظهر"
+                                disabled={createScheduleMutation.isPending}
+                              />
+                              {fieldError(itemErrors.name)}
+                            </WsField>
+                            <WsBtn
+                              size="sm"
+                              variant="danger"
+                              icon={Trash2}
+                              onClick={() => handleRemovePrayer(item.id)}
+                              disabled={createScheduleMutation.isPending}
+                            />
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+
+                {quickFormErrors.overlap ? <WsAlert boxed>{quickFormErrors.overlap}</WsAlert> : null}
+
+                {quickTotalDuration !== null ? (
+                  <div
+                    style={{
+                      borderRadius: 8,
+                      border: '1px solid var(--ws-hairline)',
+                      background: 'var(--ws-surface-2)',
+                      padding: '8px 12px',
+                      fontSize: 12,
+                    }}
+                  >
+                    إجمالي الزمن المتوقع: <b>{formatDurationLabel(quickTotalDuration)}</b>
+                    {quickTotalDuration > 480 ? (
+                      <span style={{ display: 'block', marginTop: 3, fontSize: 10.5, fontWeight: 700, color: 'var(--ws-amber)' }}>
+                        تنبيه: مدة الجدول تتجاوز 8 ساعات، يرجى مراجعة الفسح وأوقات الصلاة.
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+
+              <footer className="ws-modal__foot" style={{ flexShrink: 0 }}>
+                <WsBtn onClick={resetQuickForm} disabled={createScheduleMutation.isPending}>
+                  إعادة تعيين
+                </WsBtn>
+                <WsBtn type="submit" variant="primary" disabled={!quickFormIsReady || createScheduleMutation.isPending}>
+                  معاينة الجدول
+                </WsBtn>
+              </footer>
+            </form>
           </div>
         </div>
-      </section>
+      ) : null}
 
       <ScheduleFormDialog
         open={isFormOpen}
@@ -2497,6 +2497,6 @@ export function AdminSchedulesPage() {
           errorMessage={quickPreviewError}
         />
       ) : null}
-    </section>
+    </WsPage>
   )
 }
