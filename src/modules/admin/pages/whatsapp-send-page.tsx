@@ -122,10 +122,7 @@ type TemplateVariableMetaEntry = {
   variable: WhatsappTemplateVariable
 }
 
-function formatNumber(value: number) {
-  if (!Number.isFinite(value)) return '0'
-  return value.toLocaleString('ar-SA')
-}
+
 
 function getAbsenceBadgeClass(absenceDays?: number | null) {
   if (!absenceDays || absenceDays <= 0) {
@@ -147,47 +144,40 @@ function StatsCard({
   icon,
   label,
   value,
-  tone,
+  theme,
+  textAccent,
+  titleAccent,
   loading,
 }: {
-  icon: string
+  icon: React.ReactNode
   label: string
   value: number
-  tone: 'primary' | 'success' | 'danger' | 'warning'
+  theme: string
+  textAccent: string
+  titleAccent: string
   loading?: boolean
 }) {
-  const toneClasses: Record<typeof tone, string> = {
-    primary: 'from-indigo-500 to-indigo-600',
-    success: 'from-emerald-500 to-emerald-600',
-    danger: 'from-rose-500 to-rose-600',
-    warning: 'from-amber-500 to-amber-600',
-  }
-
   return (
-    <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-semibold text-slate-500">{label}</p>
-          <p className="mt-2 text-2xl font-bold text-slate-900">
-            {loading ? <span className="inline-block h-6 w-20 animate-pulse rounded-full bg-slate-200" /> : formatNumber(value)}
-          </p>
-        </div>
-        <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br text-white ${toneClasses[tone]}`}>
-          <i className={`bi ${icon} text-xl`}></i>
-        </div>
+    <article
+      className={`rounded-md border shadow-sm overflow-hidden transition-shadow hover:shadow-md ${theme}`}
+    >
+      <div className="flex items-center justify-between px-3 py-2 border-b border-inherit bg-white/40">
+        <p className={`text-xs font-bold ${titleAccent}`}>{label}</p>
+        {icon}
       </div>
-    </div>
+      <div className="px-3 py-3">
+        <p className={`text-2xl font-bold ${textAccent}`}>
+          {loading ? (
+            <span className="animate-pulse opacity-50">•••</span>
+          ) : (
+            value.toLocaleString('en-US')
+          )}
+        </p>
+      </div>
+    </article>
   )
 }
 
-function TemplateBadge({ token, description }: { token: string; description: string }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs">
-      <p className="font-semibold text-slate-700">{token}</p>
-      <p className="mt-1 text-[11px] text-slate-500">{description}</p>
-    </div>
-  )
-}
 
 function EmptyState({ icon, title, description }: { icon: string; title: string; description: string }) {
   return (
@@ -259,8 +249,8 @@ export function WhatsAppSendPage() {
 
   const studentPool = useMemo(() => {
     const map = new Map<number, WhatsappTargetStudent>()
-    ;(studentsQuery.data ?? []).forEach((student) => map.set(student.id, student))
-    ;(absentQuery.data ?? []).forEach((student) => map.set(student.id, student))
+      ; (studentsQuery.data ?? []).forEach((student) => map.set(student.id, student))
+      ; (absentQuery.data ?? []).forEach((student) => map.set(student.id, student))
     return map
   }, [studentsQuery.data, absentQuery.data])
 
@@ -617,46 +607,82 @@ export function WhatsAppSendPage() {
   }, [selectedTemplate])
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <header className="space-y-2">
-        <h1 className="text-3xl font-bold text-slate-900">إرسال رسائل الواتساب</h1>
-        <p className="text-sm text-slate-600">اختر الطلاب، طبّق الفلاتر، وخصص الرسالة قبل إرسالها لأولياء الأمور.</p>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">إرسال رسائل الواتساب</h1>
+            <p className="text-xs text-slate-500 mt-1">اختر الطلاب، طبّق الفلاتر، وخصص الرسالة قبل إرسالها لأولياء الأمور</p>
+          </div>
+        </div>
       </header>
 
-      <section className="grid gap-4 md:grid-cols-4">
-        <StatsCard icon="bi-send" label="رسائل مرسلة" value={statisticsQuery.data?.total_sent ?? 0} tone="primary" loading={statisticsQuery.isLoading} />
-        <StatsCard icon="bi-check-circle" label="وصلت بنجاح" value={statisticsQuery.data?.total_failed != null ? (statisticsQuery.data.total_sent - statisticsQuery.data.total_failed) : statisticsQuery.data?.total_sent ?? 0} tone="success" loading={statisticsQuery.isLoading} />
-        <StatsCard icon="bi-x-circle" label="فشلت" value={statisticsQuery.data?.total_failed ?? 0} tone="danger" loading={statisticsQuery.isLoading} />
-        <StatsCard icon="bi-clock-history" label="بانتظار الإرسال" value={statisticsQuery.data?.queue_size ?? 0} tone="warning" loading={statisticsQuery.isLoading} />
+      <section className="grid gap-3 md:grid-cols-4">
+        <StatsCard
+          icon={<i className="bi bi-send text-sky-600 text-lg"></i>}
+          label="رسائل مرسلة"
+          value={statisticsQuery.data?.total_sent ?? 0}
+          theme="bg-sky-50 border-sky-100"
+          textAccent="text-sky-900"
+          titleAccent="text-sky-700"
+          loading={statisticsQuery.isLoading}
+        />
+        <StatsCard
+          icon={<i className="bi bi-check-circle text-emerald-600 text-lg"></i>}
+          label="وصلت بنجاح"
+          value={statisticsQuery.data?.total_failed != null ? (statisticsQuery.data.total_sent - statisticsQuery.data.total_failed) : statisticsQuery.data?.total_sent ?? 0}
+          theme="bg-emerald-50 border-emerald-100"
+          textAccent="text-emerald-900"
+          titleAccent="text-emerald-700"
+          loading={statisticsQuery.isLoading}
+        />
+        <StatsCard
+          icon={<i className="bi bi-x-circle text-rose-600 text-lg"></i>}
+          label="فشلت"
+          value={statisticsQuery.data?.total_failed ?? 0}
+          theme="bg-rose-50 border-rose-100"
+          textAccent="text-rose-900"
+          titleAccent="text-rose-700"
+          loading={statisticsQuery.isLoading}
+        />
+        <StatsCard
+          icon={<i className="bi bi-clock-history text-amber-600 text-lg"></i>}
+          label="بانتظار الإرسال"
+          value={statisticsQuery.data?.queue_size ?? 0}
+          theme="bg-amber-50 border-amber-100"
+          textAccent="text-amber-900"
+          titleAccent="text-amber-700"
+          loading={statisticsQuery.isLoading}
+        />
       </section>
 
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        <div className="space-y-6">
-          <div className="glass-card space-y-6 p-6">
+        <div className="space-y-4">
+          <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm space-y-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div className="w-full sm:w-64">
-                <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">البحث</label>
-                <div className="relative mt-2">
-                  <i className="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">البحث</label>
+                <div className="relative mt-1">
+                  <i className="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
                   <input
                     type="search"
                     value={searchTerm}
                     onChange={(event) => setSearchTerm(event.target.value)}
                     placeholder="ابحث بالاسم، الهوية، أو الصف..."
-                    className="w-full rounded-2xl border border-slate-200 bg-white py-3 pr-4 pl-12 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    className="w-full rounded border border-slate-200 bg-white py-1.5 pr-3 pl-9 text-xs shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
                   />
                 </div>
               </div>
 
-              <div className="w-full sm:w-56">
-                <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">تصفية الغياب</label>
+              <div className="w-full sm:w-48">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">تصفية الغياب</label>
                 <select
                   value={absenceFilter === 'all' ? 'all' : String(absenceFilter)}
                   onChange={(event) => {
                     const { value } = event.target
                     setAbsenceFilter(value === 'all' ? 'all' : Number(value))
                   }}
-                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white py-3 px-4 text-sm font-semibold text-slate-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  className="mt-1 w-full rounded border border-slate-200 bg-white py-1.5 px-2 text-xs font-bold text-slate-700 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
                 >
                   {ABSENCE_FILTER_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value === 'all' ? 'all' : option.value}>
@@ -670,7 +696,7 @@ export function WhatsAppSendPage() {
                 <button
                   type="button"
                   onClick={() => setIsPickerOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-indigo-50 px-4 py-3 text-sm font-semibold text-indigo-600 shadow-sm transition hover:bg-indigo-100"
+                  className="inline-flex items-center gap-1.5 rounded-md bg-teal-50 px-3 py-1.5 text-xs font-bold text-teal-700 border border-teal-100 transition hover:bg-teal-100"
                 >
                   <i className="bi bi-people"></i>
                   اختيار طالب
@@ -678,7 +704,7 @@ export function WhatsAppSendPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 text-xs text-slate-500">
+            <div className="flex items-center justify-between rounded bg-slate-50 px-3 py-2 text-[11px] text-slate-500 border border-slate-100">
               <div className="flex items-center gap-2 text-slate-600">
                 <span className="inline-flex h-6 min-w-[1.75rem] items-center justify-center rounded-full bg-indigo-100 px-2 text-xs font-semibold text-indigo-700">
                   {availableStudents.length.toLocaleString('ar-SA')}
@@ -706,11 +732,11 @@ export function WhatsAppSendPage() {
               </div>
             </div>
 
-            <div className="max-h-[420px] overflow-y-auto rounded-3xl border border-slate-200 bg-white/60">
+            <div className="max-h-[420px] overflow-y-auto rounded-md border border-slate-200 bg-white shadow-sm">
               {isStudentsLoading ? (
                 <div className="flex h-64 flex-col items-center justify-center gap-3 text-slate-400">
-                  <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-indigo-500" />
-                  <p className="text-sm font-medium">جاري تحميل قائمة الطلاب...</p>
+                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-teal-600" />
+                  <p className="text-xs font-bold text-slate-500">جاري تحميل قائمة الطلاب...</p>
                 </div>
               ) : availableStudents.length === 0 ? (
                 <EmptyState icon="bi-people" title="لا توجد نتائج" description="جرب تعديل البحث أو تغيير فلاتر الغياب" />
@@ -724,43 +750,41 @@ export function WhatsAppSendPage() {
                         <button
                           type="button"
                           onClick={() => handleToggleStudent(student.id)}
-                          className={`flex w-full items-center gap-4 px-5 py-4 text-right transition ${
-                            isSelected ? 'bg-indigo-50/80' : 'hover:bg-slate-50'
-                          }`}
+                          className={`flex w-full items-center gap-3 px-4 py-2.5 text-right transition ${isSelected ? 'bg-teal-50/50' : 'hover:bg-slate-50'
+                            }`}
                         >
                           <span
-                            className={`flex h-5 w-5 items-center justify-center rounded-lg border text-sm font-semibold ${
-                              isSelected ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-slate-300 text-slate-400'
-                            }`}
+                            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] font-bold ${isSelected ? 'border-teal-600 bg-teal-600 text-white' : 'border-slate-300 text-slate-400'
+                              }`}
                           >
                             {isSelected ? <i className="bi bi-check"></i> : ''}
                           </span>
-                          <div className="flex flex-1 flex-col gap-1">
+                          <div className="flex flex-1 flex-col gap-0.5">
                             <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-sm font-semibold text-slate-800">{student.name}</p>
+                              <p className="text-[13px] font-bold text-slate-800">{student.name}</p>
                               {absenceDaysValue ? (
-                                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold ${getAbsenceBadgeClass(absenceDaysValue)}`}>
-                                  <i className="bi bi-exclamation-diamond-fill"></i>
-                                  {absenceDaysValue} يوم غياب
+                                <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold border ${getAbsenceBadgeClass(absenceDaysValue)}`}>
+                                  {absenceDaysValue} غياب
                                 </span>
                               ) : null}
                             </div>
-                            <p className="text-xs text-slate-500">
-                              {student.grade ? `${student.grade}` : '—'}
-                              {student.class_name ? ` • ${student.class_name}` : ''}
-                              {student.national_id ? ` • ${student.national_id}` : ''}
-                            </p>
-                            {student.parent_phone ? (
-                              <p className="text-xs font-medium text-slate-500">
-                                <i className="bi bi-phone me-1"></i>
-                                {student.parent_phone}
-                              </p>
-                            ) : (
-                              <p className="text-xs font-medium text-amber-600">
-                                <i className="bi bi-info-circle me-1"></i>
-                                لا يوجد رقم ولي أمر
-                              </p>
-                            )}
+                            <div className="flex gap-2 text-[11px] text-slate-400 font-medium overflow-hidden">
+                              <span className="truncate">{student.grade && student.class_name ? `${student.grade} - ${student.class_name}` : student.grade || '—'}</span>
+                              <span className="shrink-0">•</span>
+                              <span className="shrink-0">{student.national_id}</span>
+                              {student.parent_phone && (
+                                <>
+                                  <span className="shrink-0">•</span>
+                                  <span className="shrink-0 text-slate-500">{student.parent_phone}</span>
+                                </>
+                              )}
+                              {!student.parent_phone && (
+                                <>
+                                  <span className="shrink-0">•</span>
+                                  <span className="shrink-0 text-rose-500 font-bold underline underline-offset-2">بدون رقم!</span>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </button>
                       </li>
@@ -771,15 +795,15 @@ export function WhatsAppSendPage() {
             </div>
           </div>
 
-          <div className="glass-card space-y-6 p-6">
+          <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm space-y-5">
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-500" htmlFor="whatsapp-template-select">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400" htmlFor="whatsapp-template-select">
                     اختيار قالب جاهز
                   </label>
                   {isAppointmentTemplate ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+                    <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-100">
                       <i className="bi bi-calendar-event"></i>
                       موعد
                     </span>
@@ -789,7 +813,7 @@ export function WhatsAppSendPage() {
                   id="whatsapp-template-select"
                   value={templateSelectValue}
                   onChange={(event) => handleTemplateChange(event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-white py-3 px-4 text-sm font-semibold text-slate-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  className="w-full rounded border border-slate-200 bg-white py-1.5 px-3 text-xs font-bold text-slate-700 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
                 >
                   <option value="">— بدون قالب —</option>
                   <option value="custom">رسالة مخصصة</option>
@@ -799,69 +823,70 @@ export function WhatsAppSendPage() {
                     </option>
                   ))}
                 </select>
-                {isAppointmentTemplate ? (
-                  <p className="text-[11px] font-medium text-emerald-600">
-                    هذا القالب يحتوي على بيانات موعد. أكمل الحقول الجانبية قبل الإرسال.
-                  </p>
-                ) : null}
               </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">عدد المحددين</label>
-                <div className="flex h-12 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-xl font-bold text-slate-700">
-                  {selectedStudents.length.toLocaleString('ar-SA')}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">عدد المحددين</label>
+                <div className="flex h-9 items-center justify-center rounded border border-slate-200 bg-slate-50 text-base font-bold text-slate-700">
+                  {selectedStudents.length.toLocaleString('en-US')}
                 </div>
               </div>
             </div>
 
-            <div className="grid gap-2 md:grid-cols-2">
+            <div className="flex flex-wrap gap-1.5">
               {templatesVariables.map((variable) => (
-                <TemplateBadge key={variable.token} token={variable.token} description={variable.description} />
+                <div key={variable.token} className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] group transition-colors hover:border-teal-200 hover:bg-teal-50 cursor-pointer" onClick={() => {
+                  setMessageText(prev => prev + ' ' + variable.token)
+                }}>
+                  <span className="font-bold text-slate-700">{variable.token}</span>
+                  <span className="mx-1 text-slate-300">|</span>
+                  <span className="text-slate-500">{variable.description}</span>
+                </div>
               ))}
             </div>
 
-            <div className={`grid gap-6 ${isAppointmentTemplate ? 'lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]' : 'lg:grid-cols-1'}`}>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-500" htmlFor="whatsapp-message-body">
+            <div className={`grid gap-5 ${isAppointmentTemplate ? 'lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]' : 'lg:grid-cols-1'}`}>
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400" htmlFor="whatsapp-message-body">
                     نص الرسالة
                   </label>
                   <textarea
                     id="whatsapp-message-body"
                     value={messageText}
                     onChange={(event) => setMessageText(event.target.value)}
-                    rows={8}
-                    className="w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm leading-7 text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    rows={6}
+                    className="w-full rounded border border-slate-200 bg-white px-3 py-2.5 text-xs font-medium leading-relaxed text-slate-700 shadow-sm transition focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
                     placeholder="اكتب رسالتك هنا باستخدام المتغيرات المتاحة..."
                   />
                 </div>
 
-                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
-                  <span>عدد الأحرف: {messageText.length.toLocaleString('ar-SA')}</span>
+                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 font-medium">
+                  <span>عدد الأحرف: {messageText.length.toLocaleString('en-US')}</span>
                   <span>سيتم إرسال نسخة مخصصة لكل ولي أمر</span>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/70 px-4 py-3">
-                  <div className="flex flex-wrap items-center gap-3 text-sm font-semibold text-indigo-700">
-                    <span className="inline-flex h-7 min-w-[2.25rem] items-center justify-center rounded-full bg-white/80 px-3 text-sm text-indigo-700 shadow-sm">
-                      {selectedStudents.length.toLocaleString('ar-SA')}
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded border border-teal-100 bg-teal-50/40 p-3">
+                  <div className="flex flex-wrap items-center gap-2 text-[13px] font-bold text-teal-800">
+                    <span className="inline-flex h-6 min-w-[1.75rem] items-center justify-center rounded bg-white px-2 text-xs text-teal-700 border border-teal-100 shadow-sm">
+                      {selectedStudents.length.toLocaleString('en-US')}
                     </span>
-                    <span>جاهز للإرسال</span>
+                    <span>طالب جاهز للإرسال</span>
                   </div>
                   <button
                     type="button"
                     onClick={handleSend}
                     disabled={sendBulkMutation.isPending}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-75"
+                    className="inline-flex items-center justify-center gap-1.5 rounded bg-teal-600 px-4 py-2 text-xs font-bold text-white shadow transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-75"
                   >
                     {sendBulkMutation.isPending ? (
                       <>
-                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
+                        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
                         جاري الإرسال...
                       </>
                     ) : (
                       <>
-                        <i className="bi bi-send-fill"></i>
+                        <i className="bi bi-send-fill text-xs"></i>
                         إرسال الرسائل الآن
                       </>
                     )}
@@ -885,35 +910,32 @@ export function WhatsAppSendPage() {
               </div>
 
               {isAppointmentTemplate ? (
-                <div className="space-y-6 rounded-3xl border border-emerald-100 bg-white/80 p-5 shadow-sm">
-                  <header className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                <div className="space-y-4 rounded-md border border-emerald-100 bg-white p-4 shadow-sm h-fit">
+                  <header className="flex items-start justify-between gap-3 border-b border-emerald-50 pb-3">
+                    <div className="flex items-start gap-2">
+                      <span className="flex h-8 w-8 items-center justify-center rounded bg-emerald-50 text-emerald-600 text-sm">
                         <i className="bi bi-calendar-event"></i>
                       </span>
-                      <div className="space-y-1">
-                        <p className="text-sm font-semibold text-slate-800">تفاصيل الموعد</p>
-                        <p className="text-xs text-slate-500">اختر التاريخ والوقت ليتم استبدالهما داخل القالب لكل رسالة.</p>
+                      <div className="space-y-0.5">
+                        <p className="text-[13px] font-bold text-slate-800">تفاصيل الموعد</p>
+                        <p className="text-[11px] text-slate-400 font-medium leading-tight">اختر التاريخ والوقت ليتم استبدالهما داخل القالب.</p>
                       </div>
                     </div>
-                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700">
-                      <i className="bi bi-check2-circle"></i> مطلوب
-                    </span>
                   </header>
 
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {uniqueDateKeys.map((key) => {
                       const meta = templateVariableMetaByKey[key]
                       const label = meta?.variable.label ?? 'تاريخ الموعد'
                       const example = meta?.variable.example
                       const inputId = `appointment-date-${key}`
                       return (
-                        <div key={`date-${key}`} className="space-y-2">
-                          <label className="text-xs font-semibold uppercase tracking-wider text-slate-500" htmlFor={inputId}>
+                        <div key={`date-${key}`} className="space-y-1">
+                          <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400" htmlFor={inputId}>
                             {label}
                           </label>
                           <div
-                            className="group relative rounded-2xl border border-emerald-200 bg-white shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50/60"
+                            className="group relative rounded border border-emerald-100 bg-white shadow-sm transition hover:border-emerald-300"
                             onClick={() => handleFieldWrapperClick(inputId)}
                           >
                             <input
@@ -921,11 +943,11 @@ export function WhatsAppSendPage() {
                               type="date"
                               value={templateVariableValues[key] ?? ''}
                               onChange={(event) => handleTemplateVariableValueChange(key, event.target.value)}
-                              className="w-full cursor-pointer rounded-2xl border-none bg-transparent py-3 pl-4 pr-10 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-0"
+                              className="w-full cursor-pointer rounded border-none bg-transparent py-1.5 pl-3 pr-8 text-xs font-bold text-slate-700 focus:outline-none focus:ring-0"
                             />
-                            <i className="bi bi-calendar3 pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400"></i>
+                            <i className="bi bi-calendar3 pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-emerald-400 text-xs"></i>
                           </div>
-                          <p className="text-[11px] text-slate-400">{example ? `مثال: ${example}` : 'صيغة مقترحة: 2025-10-15'}</p>
+                          {example && <p className="text-[10px] text-slate-400 font-medium">مثال: {example}</p>}
                         </div>
                       )
                     })}
@@ -936,12 +958,12 @@ export function WhatsAppSendPage() {
                       const example = meta?.variable.example
                       const inputId = `appointment-time-${key}`
                       return (
-                        <div key={`time-${key}`} className="space-y-2">
-                          <label className="text-xs font-semibold uppercase tracking-wider text-slate-500" htmlFor={inputId}>
+                        <div key={`time-${key}`} className="space-y-1">
+                          <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400" htmlFor={inputId}>
                             {label}
                           </label>
                           <div
-                            className="group relative rounded-2xl border border-emerald-200 bg-white shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50/60"
+                            className="group relative rounded border border-emerald-100 bg-white shadow-sm transition hover:border-emerald-300"
                             onClick={() => handleFieldWrapperClick(inputId)}
                           >
                             <input
@@ -949,20 +971,20 @@ export function WhatsAppSendPage() {
                               type="time"
                               value={templateVariableValues[key] ?? ''}
                               onChange={(event) => handleTemplateVariableValueChange(key, event.target.value)}
-                              className="w-full cursor-pointer rounded-2xl border-none bg-transparent py-3 pl-4 pr-10 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-0"
+                              className="w-full cursor-pointer rounded border-none bg-transparent py-1.5 pl-3 pr-8 text-xs font-bold text-slate-700 focus:outline-none focus:ring-0"
                               step={300}
                             />
-                            <i className="bi bi-clock-history pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400"></i>
+                            <i className="bi bi-clock-history pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-emerald-400 text-xs"></i>
                           </div>
-                          <p className="text-[11px] text-slate-400">{example ? `مثال: ${example}` : 'صيغة مقترحة: 10:30'}</p>
+                          {example && <p className="text-[10px] text-slate-400 font-medium">مثال: {example}</p>}
                         </div>
                       )
                     })}
                   </div>
 
-                  <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-xs text-emerald-700">
+                  <div className="rounded-md border border-emerald-100 bg-emerald-50/40 px-3 py-2 text-[11px] text-emerald-700 font-bold leading-relaxed">
                     <i className="bi bi-lightbulb me-1"></i>
-                    يمكنك تحديث هذه القيم قبل كل دفعة إرسال لضمان دقة المواعيد المعروضة لأولياء الأمور.
+                    يمكنك تحديث هذه القيم قبل كل دفعة إرسال لضمان دقة المواعيد.
                   </div>
                 </div>
               ) : null}
@@ -970,214 +992,189 @@ export function WhatsAppSendPage() {
           </div>
         </div>
 
-        <aside className="space-y-6">
-          <div className="glass-card space-y-4 p-6">
-            <div className="rounded-2xl bg-slate-900 p-5 text-white">
-              <div className="flex items-start gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-lg">
+        <aside className="space-y-4">
+          <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm space-y-4 h-fit">
+            <div className="rounded-md bg-slate-900 px-4 py-3 text-white">
+              <div className="flex items-start gap-2.5">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/10 text-sm">
                   <i className="bi bi-info-circle"></i>
                 </span>
-                <div className="space-y-2">
-                  <p className="text-sm font-semibold">نصائح الإرسال</p>
-                  <ul className="space-y-1 text-xs text-slate-200">
+                <div className="space-y-1">
+                  <p className="text-[13px] font-bold">نصائح الإرسال</p>
+                  <ul className="space-y-1 text-[11px] text-slate-300 font-medium">
                     <li>• تأكد من دقة أرقام أولياء الأمور قبل الإرسال.</li>
                     <li>• استخدم المتغيرات لضمان تخصيص الرسائل تلقائياً.</li>
-                    <li>• الرسائل ترسل إلى قائمة الانتظار وتتم معالجتها خلال دقائق.</li>
+                    <li>• الرسائل تتم معالجتها خلال دقائق من الإرسال.</li>
                   </ul>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 text-sm text-slate-600">
-              <div className="flex items-center gap-3 text-indigo-600">
-                <i className="bi bi-chat-quote text-xl"></i>
-                <p className="font-semibold">تذكير قبل الإرسال</p>
+            <div className="rounded border border-slate-200 bg-slate-50/50 p-4 text-[11px] text-slate-500 font-medium leading-relaxed">
+              <div className="flex items-center gap-2 text-teal-600 mb-2 border-b border-teal-50 pb-1.5">
+                <i className="bi bi-chat-quote text-sm"></i>
+                <p className="font-bold">تذكير قبل الإرسال</p>
               </div>
-              <p className="mt-3 text-xs text-slate-500">
-                راجع محتوى الرسالة وأرقام أولياء الأمور قبل الضغط على زر الإرسال، واحرص على أن تكون اللغة واضحة ومحترفة لضمان وصول الرسالة بالشكل المطلوب.
-              </p>
+              راجِع محتوى الرسالة وأرقام أولياء الأمور قبل الضغط على زر الإرسال. احرص على أن تكون اللغة واضحة ومحترفة لضمان وصول الرسالة بالشكل المطلوب.
             </div>
           </div>
-
-          
         </aside>
       </div>
 
       {isPickerOpen ? (
-        <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-slate-900/60" onClick={() => setIsPickerOpen(false)}></div>
-          <div className="absolute inset-0 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsPickerOpen(false)}></div>
+          <div className="relative flex min-h-screen items-center justify-center p-4">
             <div
-              className="relative w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-2xl"
+              className="relative w-full max-w-5xl overflow-hidden rounded-md bg-white shadow-2xl border border-slate-200"
               onClick={(event) => event.stopPropagation()}
             >
               <button
                 type="button"
                 onClick={() => setIsPickerOpen(false)}
-                className="absolute left-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-700"
+                className="absolute left-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-400 transition hover:bg-slate-200 hover:text-slate-600 z-10"
               >
-                <i className="bi bi-x-lg"></i>
+                <i className="bi bi-x-lg text-xs"></i>
               </button>
 
-              <div className="space-y-6 p-6">
-                <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="space-y-2">
-                    <h2 className="text-xl font-bold text-slate-900">اختيار الطلاب للإرسال</h2>
-                    <p className="text-sm text-slate-500">
-                      اختر الصف والفصل لاستعراض الطلاب وتحديدهم بشكل أسرع. يمكنك تحديد أكثر من طالب واحد في كل مرة.
+              <div className="p-5">
+                <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between border-b border-slate-100 pb-4 mb-4">
+                  <div className="space-y-1">
+                    <h2 className="text-lg font-bold text-slate-900 leading-none">اختيار الطلاب للإرسال</h2>
+                    <p className="text-xs text-slate-400 font-medium font-bold">
+                      اختر الصف والفصل لاستعراض الطلاب وتحديدهم بشكل أسرع
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 rounded-2xl bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">
-                    <i className="bi bi-person-check"></i>
-                    {selectedStudentIds.size.toLocaleString('ar-SA')} مختار حالياً
+                  <div className="flex items-center gap-1.5 rounded bg-teal-50 px-2.5 py-1 text-[11px] font-bold text-teal-700 border border-teal-100 h-fit">
+                    <i className="bi bi-person-check text-xs"></i>
+                    {selectedStudentIds.size.toLocaleString('en-US')} مختار حالياً
                   </div>
                 </header>
 
-                <section className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">الصفوف الدراسية</p>
-                    <span className="text-xs text-slate-400">{gradeOptions.length.toLocaleString('ar-SA')} صف</span>
-                  </div>
-                  {gradeOptions.length === 0 ? (
-                    <EmptyState icon="bi-journals" title="لا توجد صفوف" description="لم يتم جلب بيانات الطلاب بعد." />
-                  ) : (
-                    <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                      {gradeOptions.map((grade) => {
-                        const isActive = pickerGrade === grade
-                        return (
-                          <button
-                            key={grade}
-                            type="button"
-                            onClick={() => {
-                              setPickerGrade(grade)
-                              setPickerClass(null)
-                            }}
-                            className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
-                              isActive
-                                ? 'border-indigo-500 bg-indigo-50 text-indigo-600 shadow-sm'
-                                : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/60'
-                            }`}
-                          >
-                            <span>{grade}</span>
-                            {isActive ? <i className="bi bi-check-circle-fill text-indigo-500"></i> : <i className="bi bi-door-open text-slate-300"></i>}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
-                </section>
-
-                {pickerGrade ? (
-                  <section className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">الفصول والشُعب</p>
-                      <span className="text-xs text-slate-400">{classOptionsForGrade.length.toLocaleString('ar-SA')} فصل</span>
-                    </div>
-                    {classOptionsForGrade.length === 0 ? (
-                      <EmptyState icon="bi-grid" title="لا توجد فصول" description="اختر صفاً آخر لعرض الفصول المرتبطة." />
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {classOptionsForGrade.map((className) => {
-                          const isActive = pickerClass === className
-                          return (
-                            <button
-                              key={className}
-                              type="button"
-                              onClick={() => setPickerClass(className)}
-                              className={`rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
-                                isActive
-                                  ? 'border-indigo-500 bg-indigo-50 text-indigo-600 shadow-sm'
-                                  : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/60'
-                              }`}
-                            >
-                              {className}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </section>
-                ) : null}
-
-                <section className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">الطلاب</p>
-                    <span className="text-xs text-slate-400">{pickerStudents.length.toLocaleString('ar-SA')} طالب</span>
-                  </div>
-                  <div className="max-h-80 overflow-y-auto rounded-3xl border border-slate-200 bg-slate-50/60">
-                    {pickerStudents.length === 0 ? (
-                      <EmptyState icon="bi-people" title="لا يوجد طلاب" description="جرب اختيار صف أو فصل مختلف." />
-                    ) : (
-                      <ul className="divide-y divide-slate-100">
-                        {pickerStudents.map((student) => {
-                          const isSelected = selectedStudentIds.has(student.id)
-                          return (
-                            <li key={student.id}>
+                <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+                  <div className="space-y-5 overflow-y-auto max-h-[60vh] pr-1">
+                    <section className="space-y-2">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">الصفوف الدراسية</p>
+                      {gradeOptions.length === 0 ? (
+                        <div className="py-4">
+                          <EmptyState icon="bi-journals" title="لا توجد صفوف" description="لم يتم جلب بيانات الطلاب بعد." />
+                        </div>
+                      ) : (
+                        <div className="grid gap-2 grid-cols-2 md:grid-cols-3">
+                          {gradeOptions.map((grade) => {
+                            const isActive = pickerGrade === grade
+                            return (
                               <button
+                                key={grade}
                                 type="button"
-                                onClick={() => handleToggleStudent(student.id)}
-                                className={`flex w-full items-center gap-4 px-5 py-4 text-right transition ${
-                                  isSelected ? 'bg-indigo-50/90' : 'hover:bg-white'
-                                }`}
-                              >
-                                <span
-                                  className={`flex h-5 w-5 items-center justify-center rounded-lg border text-sm font-semibold ${
-                                    isSelected ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-slate-300 text-slate-400'
+                                onClick={() => {
+                                  setPickerGrade(grade)
+                                  setPickerClass(null)
+                                }}
+                                className={`flex items-center justify-between rounded border px-3 py-2 text-xs font-bold transition ${isActive
+                                    ? 'border-teal-500 bg-teal-50 text-teal-700 shadow-sm'
+                                    : 'border-slate-200 bg-white text-slate-600 hover:border-teal-200 hover:bg-teal-50/40'
                                   }`}
-                                >
-                                  {isSelected ? <i className="bi bi-check"></i> : ''}
-                                </span>
-                                <div className="flex flex-1 flex-col gap-1">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <p className="text-sm font-semibold text-slate-800">{student.name}</p>
-                                    {student.absence_days || student.total_absences ? (
-                                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold ${getAbsenceBadgeClass(student.absence_days ?? student.total_absences ?? 0)}`}>
-                                        <i className="bi bi-exclamation-diamond-fill"></i>
-                                        {(student.absence_days ?? student.total_absences ?? 0).toLocaleString('ar-SA')} يوم غياب
-                                      </span>
-                                    ) : null}
-                                  </div>
-                                  <p className="text-xs text-slate-500">
-                                    {(student.grade ?? '—') + (student.class_name ? ` • ${student.class_name}` : '')}
-                                  </p>
-                                  {student.parent_phone ? (
-                                    <p className="text-xs font-medium text-slate-500">
-                                      <i className="bi bi-phone me-1"></i>
-                                      {student.parent_phone}
-                                    </p>
-                                  ) : (
-                                    <p className="text-xs font-medium text-amber-600">
-                                      <i className="bi bi-info-circle me-1"></i>
-                                      لا يوجد رقم ولي أمر
-                                    </p>
-                                  )}
-                                </div>
+                              >
+                                <span className="truncate">{grade}</span>
+                                {isActive && <i className="bi bi-check-circle-fill text-teal-500 text-[10px]"></i>}
                               </button>
-                            </li>
-                          )
-                        })}
-                      </ul>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </section>
+
+                    {pickerGrade && (
+                      <section className="space-y-2">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">الفصول والشُعب في {pickerGrade}</p>
+                        {classOptionsForGrade.length === 0 ? (
+                          <div className="py-4">
+                            <EmptyState icon="bi-grid" title="لا توجد فصول" description="اختر صفاً آخر لعرض الفصول المرتبطة." />
+                          </div>
+                        ) : (
+                          <div className="flex flex-wrap gap-2">
+                            {classOptionsForGrade.map((className) => {
+                              const isActive = pickerClass === className
+                              return (
+                                <button
+                                  key={className}
+                                  type="button"
+                                  onClick={() => setPickerClass(className)}
+                                  className={`rounded border px-3 py-1.5 text-xs font-bold transition ${isActive
+                                      ? 'border-teal-500 bg-teal-50 text-teal-700 shadow-sm'
+                                      : 'border-slate-200 bg-white text-slate-600 hover:border-teal-200 hover:bg-teal-50/40'
+                                    }`}
+                                >
+                                  {className}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </section>
                     )}
                   </div>
-                </section>
 
-                <footer className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="text-xs text-slate-500">
-                    يمكنك مواصلة اختيار الطلاب من أكثر من فصل ثم إغلاق هذه النافذة لمتابعة إعداد الرسالة.
+                  <section className="space-y-2 flex flex-col h-full border-r border-slate-100 pr-5">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">قائمة اختيار الطلاب</p>
+                    <div className="flex-1 overflow-y-auto max-h-[60vh] rounded border border-slate-200 bg-slate-50/30">
+                      {pickerStudents.length === 0 ? (
+                        <div className="p-8">
+                          <EmptyState icon="bi-people" title="لا يوجد طلاب" description="جرب اختيار صف أو فصل مختلف." />
+                        </div>
+                      ) : (
+                        <ul className="divide-y divide-slate-100">
+                          {pickerStudents.map((student) => {
+                            const isSelected = selectedStudentIds.has(student.id)
+                            return (
+                              <li key={student.id}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleStudent(student.id)}
+                                  className={`flex w-full items-center gap-3 px-4 py-2.5 text-right transition ${isSelected ? 'bg-teal-50/80' : 'hover:bg-white'
+                                    }`}
+                                >
+                                  <span
+                                    className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] font-bold ${isSelected ? 'border-teal-600 bg-teal-600 text-white' : 'border-slate-300 text-slate-400'
+                                      }`}
+                                  >
+                                    {isSelected ? <i className="bi bi-check"></i> : ''}
+                                  </span>
+                                  <div className="flex flex-1 flex-col gap-0.5 overflow-hidden">
+                                    <p className="text-[13px] font-bold text-slate-800 truncate">{student.name}</p>
+                                    <div className="flex gap-2 text-[11px] text-slate-400 font-medium">
+                                      <span className="truncate">{student.grade || '—'}</span>
+                                      {student.class_name && <span className="truncate">• {student.class_name}</span>}
+                                    </div>
+                                  </div>
+                                </button>
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      )}
+                    </div>
+                  </section>
+                </div>
+
+                <footer className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-slate-100 pt-4 mt-5">
+                  <div className="text-[11px] text-slate-400 font-medium font-bold">
+                    يمكنك اختيار الطلاب من أكثر من فصل قبل إغلاق النافذة
                   </div>
                   <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={() => setIsPickerOpen(false)}
-                      className="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500"
+                      className="inline-flex items-center gap-1.5 rounded bg-teal-600 px-4 py-2 text-xs font-bold text-white shadow transition hover:bg-teal-500"
                     >
-                      تم الاختيار
+                      حفظ الاختيار
                       <i className="bi bi-check-circle"></i>
                     </button>
                     <button
                       type="button"
                       onClick={() => setSelectedStudentIds(() => new Set())}
-                      className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+                      className="inline-flex items-center gap-1.5 rounded border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 transition hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200"
                     >
                       مسح التحديد
                     </button>
