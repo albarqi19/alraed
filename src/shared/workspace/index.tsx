@@ -24,6 +24,9 @@ import { AlertTriangle, ChevronsLeft, ChevronsRight, Info } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import cx from 'classnames'
 
+/* اللوحة اللونية الهادئة المعتمدة للتطعيمات — تُستورد من نفس البوابة */
+export { TONES, ToneChip, InitialAvatar, type Tone } from './tones'
+
 /* ────────────────────────────────────────────────
    الهيكل العام
    ──────────────────────────────────────────────── */

@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, FileText, Plus, Sparkles, Trash2, Upload, X } from 'lucide-react'
+import { WsBtn, WsIconBtn, WsInput, WsTextarea, WsField, WsAlert, TONES } from '@/shared/workspace'
 import { useCreateActivity } from '../hooks'
 import type { ActivityStatus } from '../types'
 
@@ -9,7 +11,7 @@ interface Props {
 
 export function ActivityCreateModal({ grades, onClose }: Props) {
   const createActivity = useCreateActivity()
-  
+
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -94,189 +96,133 @@ export function ActivityCreateModal({ grades, onClose }: Props) {
   const canProceedToStep2 = form.title.trim() && form.start_date && form.end_date
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl">
-        {/* Header */}
-        <div 
-          className="relative px-8 py-6 text-white"
-          style={{ background: 'linear-gradient(to left, var(--color-header), var(--color-sidebar))' }}
-        >
-          <button
-            type="button"
-            onClick={onClose}
-            className="absolute left-4 top-4 rounded-full bg-white/20 p-2 text-white/80 backdrop-blur-sm transition hover:bg-white/30 hover:text-white"
-          >
-            <i className="bi bi-x-lg text-lg" />
-          </button>
-          
-          <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
-              <i className="bi bi-stars text-3xl" />
-            </div>
+    <div className="ws-modal" onClick={onClose}>
+      <div className="ws-modal__panel" style={{ maxWidth: 620 }} onClick={(e) => e.stopPropagation()}>
+        <header className="ws-modal__head">
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
             <div>
-              <h2 className="text-2xl font-bold">إنشاء نشاط جديد</h2>
-              <p className="mt-1 text-sm text-white/80">أضف نشاطاً جديداً للمعلمين</p>
+              <h3 className="ws-modal__title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Sparkles style={{ width: 14, height: 14, color: 'var(--ws-accent)' }} />
+                إنشاء نشاط جديد
+              </h3>
+              <p className="ws-modal__sub">أضف نشاطاً جديداً للمعلمين</p>
             </div>
+            <WsIconBtn icon={X} label="إغلاق" onClick={onClose} />
           </div>
 
-          {/* Steps indicator */}
-          <div className="mt-6 flex items-center justify-center gap-3">
+          {/* مؤشر الخطوتين */}
+          <div className="ws-seg" style={{ marginTop: 8 }}>
             <button
               type="button"
+              className={`ws-seg__btn ${step === 1 ? 'is-active' : ''}`}
               onClick={() => setStep(1)}
-              className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold transition ${
-                step === 1 
-                  ? 'bg-white shadow-lg' 
-                  : 'bg-white/20 text-white hover:bg-white/30'
-              }`}
-              style={step === 1 ? { color: 'var(--color-primary-dark)' } : {}}
             >
-              1
+              <span className="ws-count">1</span> المعلومات الأساسية
             </button>
-            <div className={`h-1 w-16 rounded-full transition ${step >= 2 ? 'bg-white' : 'bg-white/30'}`} />
             <button
               type="button"
+              className={`ws-seg__btn ${step === 2 ? 'is-active' : ''}`}
               onClick={() => canProceedToStep2 && setStep(2)}
               disabled={!canProceedToStep2}
-              className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold transition ${
-                step === 2 
-                  ? 'bg-white shadow-lg' 
-                  : canProceedToStep2
-                    ? 'bg-white/20 text-white hover:bg-white/30'
-                    : 'bg-white/10 text-white/50 cursor-not-allowed'
-              }`}
-              style={step === 2 ? { color: 'var(--color-primary-dark)' } : {}}
             >
-              2
+              <span className="ws-count">2</span> الصفوف والمرفقات
             </button>
           </div>
-          <div className="mt-2 flex justify-center gap-12 text-xs text-white/70">
-            <span>المعلومات الأساسية</span>
-            <span>الصفوف والمرفقات</span>
-          </div>
-        </div>
+        </header>
 
         <form onSubmit={handleSubmit}>
-          {/* Content */}
-          <div className="max-h-[60vh] overflow-y-auto p-8">
-            {error && (
-              <div className="mb-6 flex items-center gap-3 rounded-xl bg-red-50 border border-red-200 p-4 text-sm text-red-700">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100">
-                  <i className="bi bi-exclamation-triangle text-lg" />
-                </div>
-                <p>{error}</p>
-              </div>
-            )}
+          <div className="ws-modal__body" style={{ maxHeight: '58vh', overflowY: 'auto' }}>
+            {error && <WsAlert tone="error" boxed>{error}</WsAlert>}
 
             {step === 1 && (
-              <div className="space-y-6">
-                {/* العنوان */}
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                    <i className="bi bi-type" style={{ color: 'var(--color-primary)' }} />
-                    عنوان النشاط
-                    <span className="text-red-500">*</span>
-                  </label>
-                  <input
+              <>
+                <WsField label="عنوان النشاط *">
+                  <WsInput
                     type="text"
                     value={form.title}
                     onChange={(e) => setForm({ ...form, title: e.target.value })}
-                    className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 transition focus:bg-white focus:outline-none"
-                    style={{ '--tw-ring-color': 'var(--color-primary)' } as React.CSSProperties}
-                    onFocus={(e) => e.target.style.borderColor = 'var(--color-primary)'}
-                    onBlur={(e) => e.target.style.borderColor = ''}
                     placeholder="مثال: نشاط القراءة الحرة"
                   />
-                </div>
+                </WsField>
 
-                {/* الفترة */}
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                      <i className="bi bi-calendar-event" style={{ color: 'var(--color-success)' }} />
-                      تاريخ البداية
-                      <span className="text-red-500">*</span>
-                    </label>
-                    <input
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <WsField label="تاريخ البداية *">
+                    <WsInput
                       type="date"
                       value={form.start_date}
                       onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-                      className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 transition focus:bg-white focus:outline-none"
-                      onFocus={(e) => e.target.style.borderColor = 'var(--color-primary)'}
-                      onBlur={(e) => e.target.style.borderColor = ''}
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                      <i className="bi bi-calendar-check" style={{ color: 'var(--color-danger)' }} />
-                      تاريخ النهاية
-                      <span className="text-red-500">*</span>
-                    </label>
-                    <input
+                  </WsField>
+                  <WsField label="تاريخ النهاية *">
+                    <WsInput
                       type="date"
                       value={form.end_date}
                       min={form.start_date}
                       onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-                      className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 transition focus:bg-white focus:outline-none"
-                      onFocus={(e) => e.target.style.borderColor = 'var(--color-primary)'}
-                      onBlur={(e) => e.target.style.borderColor = ''}
                     />
-                  </div>
+                  </WsField>
                 </div>
 
-                {/* الوصف */}
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                    <i className="bi bi-text-paragraph" style={{ color: 'var(--color-primary)' }} />
-                    الوصف
-                  </label>
-                  <textarea
+                <WsField label="الوصف">
+                  <WsTextarea
                     value={form.description}
                     onChange={(e) => setForm({ ...form, description: e.target.value })}
                     rows={3}
-                    className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 transition focus:bg-white focus:outline-none resize-none"
-                    onFocus={(e) => e.target.style.borderColor = 'var(--color-primary)'}
-                    onBlur={(e) => e.target.style.borderColor = ''}
                     placeholder="وصف مختصر للنشاط..."
                   />
-                </div>
+                </WsField>
 
-                {/* الأهداف */}
-                <div className="space-y-3">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                    <i className="bi bi-bullseye" style={{ color: 'var(--color-warning)' }} />
-                    الأهداف
-                    <span className="text-xs font-normal text-slate-400">(أضف كل هدف على حدة)</span>
-                  </label>
-                  
-                  {/* قائمة الأهداف المضافة */}
+                <div>
+                  <p className="ws-label" style={{ marginBottom: 6 }}>
+                    الأهداف <span style={{ fontWeight: 400 }}>(أضف كل هدف على حدة)</span>
+                  </p>
+
                   {form.objectives.length > 0 && (
-                    <div className="rounded-xl border-2 border-slate-200 bg-slate-50 p-3 space-y-2">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 6 }}>
                       {form.objectives.map((objective, index) => (
-                        <div 
-                          key={index} 
-                          className="flex items-center gap-3 bg-white rounded-lg px-3 py-2 border border-slate-200"
+                        <div
+                          key={index}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 7,
+                            background: 'var(--ws-surface-2)',
+                            border: '1px solid var(--ws-hairline)',
+                            borderRadius: 8,
+                            padding: '6px 8px',
+                          }}
                         >
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-                                style={{ background: 'var(--color-primary)' }}>
+                          <span
+                            style={{
+                              width: 18,
+                              height: 18,
+                              borderRadius: '50%',
+                              flexShrink: 0,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 10,
+                              fontWeight: 800,
+                              background: TONES.sky.bg,
+                              color: TONES.sky.tx,
+                            }}
+                          >
                             {index + 1}
                           </span>
-                          <span className="flex-1 text-sm text-slate-700">{objective}</span>
-                          <button
-                            type="button"
+                          <span style={{ flex: 1, fontSize: 12 }}>{objective}</span>
+                          <WsIconBtn
+                            icon={Trash2}
+                            label="إزالة الهدف"
                             onClick={() => handleRemoveObjective(index)}
-                            className="shrink-0 rounded-full p-1 text-red-400 hover:bg-red-50 hover:text-red-600 transition"
-                          >
-                            <i className="bi bi-x-circle" />
-                          </button>
+                            style={{ color: TONES.red.tx }}
+                          />
                         </div>
                       ))}
                     </div>
                   )}
-                  
-                  {/* إضافة هدف جديد */}
-                  <div className="flex gap-2">
-                    <input
+
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <WsInput
                       type="text"
                       value={newObjective}
                       onChange={(e) => setNewObjective(e.target.value)}
@@ -286,267 +232,185 @@ export function ActivityCreateModal({ grades, onClose }: Props) {
                           handleAddObjective()
                         }
                       }}
-                      className="flex-1 rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 transition focus:bg-white focus:outline-none"
-                      onFocus={(e) => e.target.style.borderColor = 'var(--color-primary)'}
-                      onBlur={(e) => e.target.style.borderColor = ''}
-                      placeholder="اكتب الهدف ثم اضغط Enter أو زر الإضافة..."
+                      placeholder="اكتب الهدف ثم اضغط Enter..."
+                      style={{ flex: 1 }}
                     />
-                    <button
-                      type="button"
-                      onClick={handleAddObjective}
-                      disabled={!newObjective.trim()}
-                      className="shrink-0 rounded-xl px-4 py-3 text-white font-semibold transition disabled:opacity-50"
-                      style={{ background: 'var(--color-primary)' }}
-                    >
-                      <i className="bi bi-plus-lg" />
-                    </button>
+                    <WsBtn icon={Plus} onClick={handleAddObjective} disabled={!newObjective.trim()}>إضافة</WsBtn>
                   </div>
-                  
+
                   {form.objectives.length > 0 && (
-                    <p className="text-xs text-slate-500">
-                      <i className="bi bi-info-circle ml-1" />
+                    <p style={{ margin: '5px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
                       تم إضافة {form.objectives.length} هدف
                     </p>
                   )}
                 </div>
 
-                {/* أمثلة تطبيقية */}
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                    <i className="bi bi-lightbulb" style={{ color: 'var(--color-warning)' }} />
-                    أمثلة تطبيقية
-                  </label>
-                  <textarea
+                <WsField label="أمثلة تطبيقية">
+                  <WsTextarea
                     value={form.examples}
                     onChange={(e) => setForm({ ...form, examples: e.target.value })}
                     rows={3}
-                    className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 transition focus:bg-white focus:outline-none resize-none"
-                    onFocus={(e) => e.target.style.borderColor = 'var(--color-primary)'}
-                    onBlur={(e) => e.target.style.borderColor = ''}
                     placeholder="أمثلة على كيفية تنفيذ النشاط..."
                   />
-                </div>
-              </div>
+                </WsField>
+              </>
             )}
 
             {step === 2 && (
-              <div className="space-y-6">
-                {/* الصفوف المستهدفة */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                      <i className="bi bi-people" style={{ color: 'var(--color-primary)' }} />
-                      الصفوف المستهدفة
-                      <span className="text-red-500">*</span>
-                    </label>
+              <>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 6 }}>
+                    <p className="ws-label" style={{ margin: 0 }}>الصفوف المستهدفة *</p>
                     {grades.length > 0 && (
-                      <div className="flex items-center gap-3">
-                        <button
-                          type="button"
-                          onClick={selectAllGrades}
-                          className="text-xs font-medium hover:underline"
-                          style={{ color: 'var(--color-primary)' }}
-                        >
-                          <i className="bi bi-check-all ml-1" />
-                          تحديد الكل
-                        </button>
-                        <span className="text-slate-300">|</span>
-                        <button
-                          type="button"
-                          onClick={clearAllGrades}
-                          className="text-xs font-medium text-slate-500 hover:text-slate-700 hover:underline"
-                        >
-                          <i className="bi bi-x-circle ml-1" />
-                          إلغاء الكل
-                        </button>
-                      </div>
+                      <span style={{ display: 'inline-flex', gap: 4 }}>
+                        <WsBtn size="sm" icon={CheckCircle2} onClick={selectAllGrades}>تحديد الكل</WsBtn>
+                        <WsBtn size="sm" icon={X} onClick={clearAllGrades}>إلغاء الكل</WsBtn>
+                      </span>
                     )}
                   </div>
-                  
+
                   {grades.length === 0 ? (
-                    <div className="rounded-2xl border-2 border-dashed border-amber-200 bg-amber-50 p-6 text-center">
-                      <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100">
-                        <i className="bi bi-exclamation-triangle text-2xl text-amber-600" />
-                      </div>
-                      <p className="font-medium text-amber-800">لا توجد صفوف متاحة</p>
-                      <p className="mt-1 text-sm text-amber-600">تأكد من وجود طلاب مسجلين في النظام</p>
-                    </div>
+                    <WsAlert tone="warn" boxed>
+                      لا توجد صفوف متاحة — تأكد من وجود طلاب مسجلين في النظام
+                    </WsAlert>
                   ) : (
-                    <div className="rounded-2xl border-2 border-slate-200 bg-slate-50 p-4">
-                      <div className="flex flex-wrap gap-2">
+                    <>
+                      <div className="ws-choice-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))' }}>
                         {grades.map((grade) => {
                           const isSelected = form.target_grades.includes(grade)
                           return (
                             <button
                               key={grade}
                               type="button"
+                              className={`ws-choice ${isSelected ? 'is-selected' : ''}`}
                               onClick={() => toggleGrade(grade)}
-                              className={`group relative rounded-xl px-5 py-3 text-sm font-semibold transition-all duration-200 ${
-                                isSelected
-                                  ? 'text-white shadow-lg'
-                                  : 'bg-white text-slate-600 shadow hover:shadow-md border border-slate-200'
-                              }`}
-                              style={isSelected ? { 
-                                background: 'linear-gradient(to left, var(--color-primary), var(--color-primary-dark))',
-                              } : {}}
-                              onMouseEnter={(e) => !isSelected && (e.currentTarget.style.color = 'var(--color-primary)')}
-                              onMouseLeave={(e) => !isSelected && (e.currentTarget.style.color = '')}
                             >
-                              {isSelected && (
-                                <i className="bi bi-check-circle-fill ml-2" />
-                              )}
+                              {isSelected && <Check />}
                               {grade}
                             </button>
                           )
                         })}
                       </div>
                       {form.target_grades.length > 0 && (
-                        <div className="mt-4 flex items-center gap-2 text-sm" style={{ color: 'var(--color-primary)' }}>
-                          <i className="bi bi-info-circle" />
-                          <span>تم اختيار <strong>{form.target_grades.length}</strong> صف من أصل {grades.length}</span>
-                        </div>
+                        <p style={{ margin: '6px 0 0', fontSize: 10.5, color: 'var(--ws-accent)' }}>
+                          تم اختيار <b>{form.target_grades.length}</b> صف من أصل {grades.length}
+                        </p>
                       )}
-                    </div>
+                    </>
                   )}
                 </div>
 
-                {/* ملف PDF */}
-                <div className="space-y-3">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                    <i className="bi bi-file-earmark-pdf text-red-500" />
-                    ملف PDF مرفق
-                    <span className="text-xs font-normal text-slate-400">(اختياري)</span>
-                  </label>
-                  
+                <div>
+                  <p className="ws-label" style={{ marginBottom: 6 }}>
+                    ملف PDF مرفق <span style={{ fontWeight: 400 }}>(اختياري)</span>
+                  </p>
                   {pdfFile ? (
-                    <div className="flex items-center justify-between rounded-xl border-2 border-emerald-200 bg-emerald-50 p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-100">
-                          <i className="bi bi-file-earmark-pdf text-2xl text-red-600" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-slate-800">{pdfFile.name}</p>
-                          <p className="text-xs text-slate-500">
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 8,
+                        border: `1px solid ${TONES.green.bd}`,
+                        background: TONES.green.bg,
+                        borderRadius: 10,
+                        padding: 10,
+                      }}
+                    >
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                        <FileText style={{ width: 18, height: 18, color: TONES.red.tx, flexShrink: 0 }} />
+                        <span style={{ minWidth: 0 }}>
+                          <span style={{ display: 'block', fontSize: 12, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {pdfFile.name}
+                          </span>
+                          <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
                             {(pdfFile.size / 1024 / 1024).toFixed(2)} MB
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setPdfFile(null)}
-                        className="rounded-lg bg-red-100 px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-200"
-                      >
-                        <i className="bi bi-trash ml-1" />
-                        إزالة
-                      </button>
+                          </span>
+                        </span>
+                      </span>
+                      <WsBtn size="sm" icon={Trash2} onClick={() => setPdfFile(null)} style={{ color: TONES.red.tx }}>إزالة</WsBtn>
                     </div>
                   ) : (
-                    <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-8 transition hover:border-indigo-400 hover:bg-indigo-50">
-                      <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-slate-200">
-                        <i className="bi bi-cloud-arrow-up text-2xl text-slate-500" />
-                      </div>
-                      <p className="font-medium text-slate-700">اسحب الملف هنا أو اضغط للاختيار</p>
-                      <p className="mt-1 text-xs text-slate-500">PDF فقط - الحد الأقصى 10MB</p>
+                    <label
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 4,
+                        border: '2px dashed var(--ws-border)',
+                        borderRadius: 10,
+                        padding: 18,
+                        cursor: 'pointer',
+                        background: 'var(--ws-surface-2)',
+                      }}
+                    >
+                      <Upload style={{ width: 20, height: 20, color: 'var(--ws-text-2)' }} />
+                      <span style={{ fontSize: 12, fontWeight: 600 }}>اضغط لاختيار ملف</span>
+                      <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>PDF فقط — الحد الأقصى 10MB</span>
                       <input
                         type="file"
                         accept=".pdf"
                         onChange={(e) => setPdfFile(e.target.files?.[0] ?? null)}
-                        className="hidden"
+                        style={{ display: 'none' }}
                       />
                     </label>
                   )}
                 </div>
 
-                {/* الحالة */}
-                <div className="space-y-3">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                    <i className="bi bi-toggle-on text-emerald-500" />
-                    حالة النشاط
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="ws-label" style={{ marginBottom: 6 }}>حالة النشاط</p>
+                  <div className="ws-choice-grid">
                     <button
                       type="button"
+                      className={`ws-choice ${form.status === 'active' ? 'is-selected' : ''}`}
                       onClick={() => setForm({ ...form, status: 'active' })}
-                      className={`flex items-center justify-center gap-2 rounded-xl border-2 p-4 text-sm font-semibold transition ${
-                        form.status === 'active'
-                          ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
-                          : 'border-slate-200 text-slate-600 hover:border-slate-300'
-                      }`}
+                      style={form.status === 'active'
+                        ? { background: TONES.green.bg, borderColor: TONES.green.tx, color: TONES.green.tx, boxShadow: `0 0 0 1px ${TONES.green.tx}` }
+                        : undefined}
                     >
-                      <i className={`bi ${form.status === 'active' ? 'bi-check-circle-fill' : 'bi-circle'}`} />
-                      نشط
-                      <span className="text-xs font-normal text-slate-500">(مرئي للمعلمين)</span>
+                      <CheckCircle2 />
+                      نشط <span style={{ fontWeight: 400, fontSize: 10.5 }}>(مرئي للمعلمين)</span>
                     </button>
                     <button
                       type="button"
+                      className={`ws-choice ${form.status === 'draft' ? 'is-selected' : ''}`}
                       onClick={() => setForm({ ...form, status: 'draft' })}
-                      className={`flex items-center justify-center gap-2 rounded-xl border-2 p-4 text-sm font-semibold transition ${
-                        form.status === 'draft'
-                          ? 'border-amber-400 bg-amber-50 text-amber-700'
-                          : 'border-slate-200 text-slate-600 hover:border-slate-300'
-                      }`}
+                      style={form.status === 'draft'
+                        ? { background: TONES.amber.bg, borderColor: TONES.amber.tx, color: TONES.amber.tx, boxShadow: `0 0 0 1px ${TONES.amber.tx}` }
+                        : undefined}
                     >
-                      <i className={`bi ${form.status === 'draft' ? 'bi-check-circle-fill' : 'bi-circle'}`} />
-                      مسودة
-                      <span className="text-xs font-normal text-slate-500">(غير مرئي)</span>
+                      <FileText />
+                      مسودة <span style={{ fontWeight: 400, fontSize: 10.5 }}>(غير مرئي)</span>
                     </button>
                   </div>
                 </div>
-              </div>
+              </>
             )}
           </div>
 
-          {/* Footer */}
-          <div className="flex items-center justify-between border-t bg-slate-50 px-8 py-5">
+          <footer className="ws-modal__foot" style={{ justifyContent: 'space-between' }}>
             {step === 1 ? (
               <>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="rounded-xl border-2 border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
-                >
-                  إلغاء
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStep(2)}
-                  disabled={!canProceedToStep2}
-                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-l from-indigo-600 to-violet-600 px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-200 transition hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                <WsBtn onClick={onClose}>إلغاء</WsBtn>
+                <WsBtn variant="primary" icon={ArrowLeft} onClick={() => setStep(2)} disabled={!canProceedToStep2}>
                   التالي
-                  <i className="bi bi-arrow-left" />
-                </button>
+                </WsBtn>
               </>
             ) : (
               <>
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
-                >
-                  <i className="bi bi-arrow-right" />
-                  السابق
-                </button>
-                <button
+                <WsBtn icon={ArrowRight} onClick={() => setStep(1)}>السابق</WsBtn>
+                <WsBtn
                   type="submit"
+                  variant="primary"
+                  icon={Check}
                   disabled={createActivity.isPending || form.target_grades.length === 0}
-                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-l from-emerald-500 to-teal-500 px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-200 transition hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {createActivity.isPending ? (
-                    <>
-                      <i className="bi bi-arrow-repeat animate-spin" />
-                      جاري الإنشاء...
-                    </>
-                  ) : (
-                    <>
-                      <i className="bi bi-check-lg" />
-                      إنشاء النشاط
-                    </>
-                  )}
-                </button>
+                  {createActivity.isPending ? 'جاري الإنشاء...' : 'إنشاء النشاط'}
+                </WsBtn>
               </>
             )}
-          </div>
+          </footer>
         </form>
       </div>
     </div>
