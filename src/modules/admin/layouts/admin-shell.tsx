@@ -33,6 +33,12 @@ const WORKSPACE_ROUTES = [
   '/admin/evaluation-settings',
   '/admin/class-sessions',
   '/admin/class-schedules',
+  '/admin/whatsapp',
+  '/admin/whatsapp-send',
+  '/admin/whatsapp-templates',
+  '/admin/teacher-messages',
+  '/admin/parent-replies',
+  '/admin/sms-gateway',
 ]
 
 export function AdminShell() {

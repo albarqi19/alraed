@@ -1,4 +1,5 @@
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   useReactTable,
   getCoreRowModel,
@@ -11,6 +12,19 @@ import {
   type ColumnFiltersState,
 } from '@tanstack/react-table'
 import { useQuery } from '@tanstack/react-query'
+import {
+  ChevronDown,
+  ChevronUp,
+  ClipboardList,
+  FileText,
+  Inbox,
+  MessageCircle,
+  Plus,
+  RefreshCcw,
+  Send,
+  Smartphone,
+  Trash2,
+} from 'lucide-react'
 import {
   useCreateWhatsappTemplateMutation,
   useDeleteAllPendingWhatsappMessagesMutation,
@@ -26,6 +40,27 @@ import {
 } from '../hooks'
 import { fetchWhatsappInstances } from '../api'
 import type { WhatsappHistoryItem, WhatsappQueueItem, WhatsappTemplate, WhatsappTemplateVariable, WhatsappInstance } from '../types'
+import {
+  WsBlock,
+  WsBtn,
+  WsChip,
+  WsEmpty,
+  WsFact,
+  WsFactRow,
+  WsFactsList,
+  WsField,
+  WsHeader,
+  WsInput,
+  WsLayout,
+  WsMain,
+  WsModal,
+  WsPage,
+  WsSelect,
+  WsSideCol,
+  WsTable,
+  WsTextarea,
+} from '@/shared/workspace'
+import type { WsChipTone } from '@/shared/workspace'
 
 type TabKey = 'queue' | 'history' | 'templates'
 
@@ -45,13 +80,11 @@ const DEFAULT_TEMPLATE_FORM: TemplateFormState = {
   variables: [],
 }
 
-const TABS: Array<{ key: TabKey; label: string }> = [
-  { key: 'history', label: 'سجل الرسائل' },
-  { key: 'queue', label: 'قائمة الانتظار' },
-  { key: 'templates', label: 'القوالب' },
+const TABS: Array<{ key: TabKey; label: string; icon: typeof Inbox }> = [
+  { key: 'history', label: 'سجل الرسائل', icon: ClipboardList },
+  { key: 'queue', label: 'قائمة الانتظار', icon: Inbox },
+  { key: 'templates', label: 'القوالب', icon: FileText },
 ]
-
-const PANEL_CLASS = 'rounded-3xl border border-slate-200 bg-white'
 
 function formatDateTime(value?: string | null) {
   if (!value) return '—'
@@ -74,62 +107,30 @@ function formatStatisticValue(value: unknown) {
   return numericValue.toLocaleString('ar-SA')
 }
 
-function StatusPill({ tone, icon, label }: { tone: 'success' | 'warning' | 'danger' | 'info'; icon: string; label: string }) {
-  const toneClasses = {
-    success: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-    warning: 'bg-amber-50 text-amber-700 border border-amber-200',
-    danger: 'bg-rose-50 text-rose-700 border border-rose-200',
-    info: 'bg-sky-50 text-sky-700 border border-sky-200',
-  } as const
-
-  return (
-    <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${toneClasses[tone]}`}>
-      <i className={`bi ${icon}`} />
-      {label}
-    </span>
-  )
+const QUEUE_STATUS_META: Record<string, { tone: WsChipTone; label: string }> = {
+  sent: { tone: 'green', label: 'تم الإرسال' },
+  processing: { tone: 'sky', label: 'قيد المعالجة' },
+  failed: { tone: 'red', label: 'فشل الإرسال' },
+  pending: { tone: 'amber', label: 'بانتظار الإرسال' },
 }
 
 function QueueStatusBadge({ status }: { status: WhatsappQueueItem['status'] }) {
-  switch (status) {
-    case 'sent':
-      return <StatusPill tone="success" icon="bi-check-circle" label="تم الإرسال" />
-    case 'processing':
-      return <StatusPill tone="info" icon="bi-arrow-repeat" label="قيد المعالجة" />
-    case 'failed':
-      return <StatusPill tone="danger" icon="bi-exclamation-triangle" label="فشل الإرسال" />
-    default:
-      return <StatusPill tone="warning" icon="bi-clock-history" label="بانتظار الإرسال" />
-  }
+  const meta = QUEUE_STATUS_META[status] ?? QUEUE_STATUS_META.pending
+  return <WsChip tone={meta.tone}>{meta.label}</WsChip>
 }
 
 function HistoryStatusBadge({ status }: { status: WhatsappHistoryItem['status'] }) {
-  return status === 'sent' ? (
-    <StatusPill tone="success" icon="bi-check2-circle" label="مرسلة" />
-  ) : (
-    <StatusPill tone="danger" icon="bi-x-circle" label="فشلت" />
-  )
+  return status === 'sent' ? <WsChip tone="green">مرسلة</WsChip> : <WsChip tone="red">فشلت</WsChip>
 }
 
 function TemplateStatusBadge({ status }: { status: WhatsappTemplate['status'] }) {
-  return status === 'active' ? (
-    <StatusPill tone="success" icon="bi-lightning" label="مفعّل" />
-  ) : (
-    <StatusPill tone="warning" icon="bi-pause-circle" label="موقوف" />
-  )
+  return status === 'active' ? <WsChip tone="green">مفعّل</WsChip> : <WsChip tone="amber">موقوف</WsChip>
 }
 
-function TabButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-full px-4 py-2 text-sm font-semibold transition ${active ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'
-        }`}
-    >
-      {label}
-    </button>
-  )
+const INSTANCE_STATUS_META: Record<string, { tone: WsChipTone | undefined; label: string; dot: string; pulse: boolean }> = {
+  connected: { tone: 'green', label: 'متصل', dot: 'var(--ws-green)', pulse: true },
+  connecting: { tone: 'amber', label: 'جاري الاتصال', dot: 'var(--ws-amber)', pulse: false },
+  disconnected: { tone: 'red', label: 'غير متصل', dot: 'var(--ws-red)', pulse: false },
 }
 
 export function WhatsappHubPage() {
@@ -217,13 +218,13 @@ export function WhatsappHubPage() {
           const recipientPhone = item.parent_phone ?? item.recipient_phone ?? item.phone_number ?? null
 
           return (
-            <div className="space-y-0.5">
-              <p className="text-sm font-semibold text-slate-900">{recipientName}</p>
-              {recipientPhone ? <p className="text-xs text-slate-500">{recipientPhone}</p> : null}
-            </div>
+            <span>
+              <span style={{ display: 'block', fontWeight: 700 }}>{recipientName}</span>
+              {recipientPhone ? <span className="ws-cell-sub">{recipientPhone}</span> : null}
+            </span>
           )
         },
-        size: 180,
+        size: 170,
       },
       {
         id: 'message',
@@ -243,9 +244,19 @@ export function WhatsappHubPage() {
         cell: ({ getValue }) => {
           const messagePreview = getValue() as string
           return (
-            <p className="line-clamp-2 text-sm text-slate-700">
+            <span
+              style={{
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                fontSize: 11.5,
+                color: 'var(--ws-text-2)',
+                lineHeight: 1.6,
+              }}
+            >
               {messagePreview}
-            </p>
+            </span>
           )
         },
         size: 300,
@@ -256,9 +267,9 @@ export function WhatsappHubPage() {
         accessorKey: 'template_name',
         cell: ({ getValue }) => {
           const value = getValue() as string | null | undefined
-          return <span className="text-sm text-slate-600">{value ?? '—'}</span>
+          return value ? <WsChip>{value}</WsChip> : <span className="ws-cell-sub">—</span>
         },
-        size: 140,
+        size: 130,
       },
       {
         id: 'date',
@@ -267,9 +278,9 @@ export function WhatsappHubPage() {
         cell: ({ row }) => {
           const item = row.original
           const sentAt = formatDateTime(item.sent_at ?? item.created_at)
-          return <p className="text-xs text-slate-500">{sentAt}</p>
+          return <span className="ws-cell-sub">{sentAt}</span>
         },
-        size: 150,
+        size: 140,
       },
       {
         id: 'status',
@@ -279,21 +290,7 @@ export function WhatsappHubPage() {
           const status = getValue() as WhatsappHistoryItem['status']
           return <HistoryStatusBadge status={status} />
         },
-        size: 110,
-      },
-      {
-        id: 'actions',
-        header: '',
-        cell: ({ row }) => (
-          <button
-            type="button"
-            onClick={() => openHistoryModal(row.original.id)}
-            className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 transition"
-          >
-            التفاصيل
-          </button>
-        ),
-        size: 80,
+        size: 90,
       },
     ],
     [],
@@ -403,718 +400,674 @@ export function WhatsappHubPage() {
   const formattedQueueSize = formatStatisticValue(statisticsQuery.data?.queue_size)
   const formattedTotalFailed = formatStatisticValue(statisticsQuery.data?.total_failed)
 
+  const connectedCount = instances.filter((instance: WhatsappInstance) => instance.status === 'connected').length
+  const pendingQueueCount = queueItems.filter((item) => item.status !== 'sent').length
+
   return (
-    <section className="space-y-8">
-      <header className="space-y-2">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="space-y-1 text-right">
-            <h1 className="text-3xl font-bold text-slate-900">إدارة الواتساب</h1>
-            <p className="text-sm text-muted">تابع حالة الرسائل، راجع السجل، وادمج القوالب الذكية مع الطلاب وأولياء الأمور.</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {TABS.map((tab) => (
-              <TabButton key={tab.key} label={tab.label} active={activeTab === tab.key} onClick={() => setActiveTab(tab.key)} />
-            ))}
-          </div>
-        </div>
-      </header>
+    <WsPage>
+      <WsHeader
+        title="مركز الواتساب"
+        badge="القناة الرسمية للمدرسة"
+        actions={
+          <>
+            <WsBtn
+              icon={RefreshCcw}
+              onClick={() => {
+                statisticsQuery.refetch()
+                queueQuery.refetch()
+                historyQuery.refetch()
+              }}
+            >
+              تحديث
+            </WsBtn>
+            <Link to="/admin/whatsapp-send" className="ws-btn ws-btn--primary">
+              <Send style={{ width: 13, height: 13 }} />
+              رسالة جديدة
+            </Link>
+          </>
+        }
+        facts={
+          <>
+            <WsFact icon={MessageCircle} label="مرسلة:">
+              {formattedTotalSent}
+            </WsFact>
+            <WsFact icon={Inbox} label="معلقة:">
+              {formattedQueueSize}
+            </WsFact>
+            <WsFact label="فاشلة:">{formattedTotalFailed}</WsFact>
+            <WsFact icon={Smartphone} label="أرقام متصلة:">
+              {connectedCount} / {instances.length}
+            </WsFact>
+          </>
+        }
+      >
+        {connectedCount === 0 && !isLoadingInstances && instances.length > 0 ? (
+          <WsChip tone="red">القناة غير متصلة!</WsChip>
+        ) : null}
+      </WsHeader>
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,2fr),minmax(320px,1fr)]">
-        <div className={`${PANEL_CLASS} space-y-6 p-6 lg:p-8`}>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {statisticsQuery.isLoading ? (
-              Array.from({ length: 3 }).map((_, index) => (
-                <div key={index} className="h-24 rounded-2xl bg-slate-100 animate-pulse" />
-              ))
-            ) : statisticsQuery.data ? (
-              <>
-                <article className="rounded-2xl border border-indigo-100 bg-indigo-50 px-5 py-4 text-right">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">الرسائل المرسلة</p>
-                  <p className="mt-2 text-2xl font-bold text-indigo-900">{formattedTotalSent}</p>
-                </article>
-                <article className="rounded-2xl border border-amber-100 bg-amber-50 px-5 py-4 text-right">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-amber-600">رسائل معلقة</p>
-                  <p className="mt-2 text-2xl font-bold text-amber-800">{formattedQueueSize}</p>
-                </article>
-                <article className="rounded-2xl border border-rose-100 bg-rose-50 px-5 py-4 text-right">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-rose-600">رسائل فاشلة</p>
-                  <p className="mt-2 text-2xl font-bold text-rose-800">{formattedTotalFailed}</p>
-                </article>
-              </>
+      <WsLayout>
+        {/* العمود الأيمن: القناة والعمليات الحرجة */}
+        <WsSideCol title="القناة" icon={Smartphone} side="start" width={280} storageKey="ws:whatsapp-hub:channel">
+          <WsBlock title="أرقام الواتساب" count={instances.length} scroll>
+            {isLoadingInstances ? (
+              <WsEmpty loading>جارٍ فحص الاتصال...</WsEmpty>
+            ) : instances.length === 0 ? (
+              <WsEmpty icon={Smartphone}>
+                لا توجد أرقام واتساب مرتبطة — أضف رقماً من صفحة الإعدادات.
+              </WsEmpty>
             ) : (
-              <div className="col-span-full rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-                تعذر تحميل إحصائيات الواتساب.
-              </div>
-            )}
-          </div>
-        </div>
-
-        <aside className={`${PANEL_CLASS} space-y-4 p-6 lg:p-8`}>
-          <div className="space-y-1 text-right">
-            <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">حالة الاتصال</p>
-            <h2 className="text-lg font-semibold text-slate-900">أرقام الواتساب</h2>
-          </div>
-          {isLoadingInstances ? (
-            <div className="h-24 rounded-2xl bg-slate-100 animate-pulse" />
-          ) : instances.length === 0 ? (
-            <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-6 text-center">
-              <p className="text-sm text-muted">لا توجد أرقام واتساب مرتبطة</p>
-              <p className="mt-2 text-xs text-slate-500">قم بإضافة رقم واتساب من صفحة الإعدادات</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {instances.map((instance: WhatsappInstance) => (
-                <div
-                  key={instance.id}
-                  className="rounded-2xl border border-slate-200 bg-white/80 p-4"
-                >
-                  <div className="mb-2 flex items-start justify-between">
-                    <div className="space-y-1">
-                      <p className="text-sm font-semibold text-slate-900">{instance.instance_name}</p>
+              <div>
+                {instances.map((instance: WhatsappInstance) => {
+                  const meta = INSTANCE_STATUS_META[instance.status] ?? INSTANCE_STATUS_META.disconnected
+                  return (
+                    <div key={instance.id} style={{ padding: '9px 12px', borderBottom: '1px solid var(--ws-hairline)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                          <span
+                            className={meta.pulse ? 'ws-pulse' : undefined}
+                            style={{ width: 8, height: 8, borderRadius: '50%', background: meta.dot, flexShrink: 0 }}
+                          />
+                          <span style={{ fontSize: 12.5, fontWeight: 700 }}>{instance.instance_name}</span>
+                        </span>
+                        <WsChip tone={meta.tone}>{meta.label}</WsChip>
+                      </div>
                       {instance.phone_number && (
-                        <p className="text-xs text-slate-600">{instance.phone_number}</p>
+                        <span className="ws-cell-sub" style={{ display: 'block', marginTop: 3 }} dir="ltr">
+                          {instance.phone_number}
+                        </span>
                       )}
                       {instance.department && (
-                        <p className="text-xs text-muted">{instance.department}</p>
+                        <span className="ws-cell-sub" style={{ display: 'block' }}>{instance.department}</span>
+                      )}
+                      {instance.last_connected_at && (
+                        <span className="ws-cell-sub" style={{ display: 'block', marginTop: 2 }}>
+                          آخر اتصال: {formatDateTime(instance.last_connected_at)}
+                        </span>
                       )}
                     </div>
-                    {instance.status === 'connected' && (
-                      <StatusPill tone="success" icon="bi-check-circle" label="متصل" />
-                    )}
-                    {instance.status === 'connecting' && (
-                      <StatusPill tone="warning" icon="bi-arrow-repeat" label="جاري الاتصال" />
-                    )}
-                    {instance.status === 'disconnected' && (
-                      <StatusPill tone="danger" icon="bi-exclamation-circle" label="غير متصل" />
-                    )}
-                  </div>
-                  {instance.last_connected_at && (
-                    <p className="text-xs text-muted">
-                      آخر اتصال: {formatDateTime(instance.last_connected_at)}
-                    </p>
-                  )}
-                </div>
-              ))}
+                  )
+                })}
+              </div>
+            )}
+          </WsBlock>
+
+          <WsBlock title="قائمة الانتظار" icon={Inbox} count={pendingQueueCount.toLocaleString('ar-SA')} fill padded>
+            <p style={{ margin: '0 0 10px', fontSize: 11, lineHeight: 1.8, color: 'var(--ws-text-2)' }}>
+              رسائل بانتظار الإرسال عبر القناة — أرسلها دفعة واحدة أو راجعها من تبويب «قائمة الانتظار».
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <WsBtn
+                variant="primary"
+                icon={Send}
+                onClick={() => sendPendingMutation.mutate()}
+                disabled={isBusySendingAll || pendingQueueCount === 0}
+                style={{ justifyContent: 'center' }}
+              >
+                {isBusySendingAll ? 'جارٍ الإرسال...' : 'إرسال جميع المعلّق'}
+              </WsBtn>
+              <WsBtn
+                variant="danger"
+                icon={Trash2}
+                onClick={() => {
+                  if (window.confirm('هل أنت متأكد من حذف جميع الرسائل المعلقة؟')) {
+                    deleteAllPendingMutation.mutate()
+                  }
+                }}
+                disabled={deleteAllPendingMutation.isPending || queueItems.length === 0}
+                style={{ justifyContent: 'center' }}
+              >
+                {deleteAllPendingMutation.isPending ? 'جارٍ الحذف...' : 'حذف جميع المعلّق'}
+              </WsBtn>
             </div>
-          )}
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <button type="button" className="button-secondary" onClick={() => statisticsQuery.refetch()}>
-              تحديث الإحصائيات
-            </button>
-          </div>
-        </aside>
-      </section>
+          </WsBlock>
+        </WsSideCol>
 
-      <section className={`${PANEL_CLASS} space-y-6 p-6 lg:p-8`}>
-        {activeTab === 'queue' ? (
-          <section className="space-y-4">
-            <header className="flex flex-wrap items-center justify-between gap-3">
-              <div className="space-y-1 text-right">
-                <h2 className="text-xl font-semibold text-slate-900">قائمة انتظار الرسائل</h2>
-                <p className="text-sm text-muted">تابع الرسائل المعلقة، أعد الإرسال يدويًا أو أزل العناصر المعطلة.</p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  className="button-secondary"
-                  onClick={() => queueQuery.refetch()}
-                >
-                  تحديث القائمة
-                </button>
-                <button
-                  type="button"
-                  className="button-danger"
-                  onClick={() => {
-                    if (window.confirm('هل أنت متأكد من حذف جميع الرسائل المعلقة؟')) {
-                      deleteAllPendingMutation.mutate()
-                    }
-                  }}
-                  disabled={deleteAllPendingMutation.isPending || queueItems.length === 0}
-                >
-                  {deleteAllPendingMutation.isPending ? 'جارٍ الحذف...' : 'حذف جميع المعلّق'}
-                </button>
-                <button
-                  type="button"
-                  className="button-primary"
-                  onClick={() => sendPendingMutation.mutate()}
-                  disabled={isBusySendingAll}
-                >
-                  {isBusySendingAll ? 'جارٍ الإرسال...' : 'إرسال جميع المعلّق'}
-                </button>
-              </div>
-            </header>
-
-            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
-              {queueQuery.isLoading ? (
-                <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 text-sm text-muted">
-                  <span className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
-                  جاري تحميل قائمة الانتظار...
-                </div>
-              ) : queueItems.length === 0 ? (
-                <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 text-sm text-muted">
-                  <i className="bi bi-inboxes text-3xl text-slate-300" />
-                  لا توجد رسائل في قائمة الانتظار.
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-[980px] table-fixed text-right text-sm">
-                    <thead className="bg-slate-50/80 text-xs uppercase text-slate-500">
-                      <tr>
-                        <th className="px-4 py-3 font-semibold">المستلم</th>
-                        <th className="px-4 py-3 font-semibold">القالب</th>
-                        <th className="px-4 py-3 font-semibold">أضيفت</th>
-                        <th className="px-4 py-3 font-semibold">الجدولة</th>
-                        <th className="px-4 py-3 font-semibold">الحالة</th>
-                        <th className="px-4 py-3 font-semibold">تفاصيل</th>
-                        <th className="px-4 py-3 font-semibold">الإجراءات</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {queueItems.map((item) => {
-                        const isDeleting = deleteQueueTarget === item.id && deleteQueueMutation.isPending
-                        const isSending = sendSingleTarget === item.id && sendSingleMutation.isPending
-                        return (
-                          <tr key={item.id} className="border-t border-slate-100 hover:bg-slate-50">
-                            <td className="px-4 py-3">
-                              <p className="text-sm font-semibold text-slate-900">{item.parent_phone}</p>
-                              {item.student_name ? <p className="text-xs text-muted">{item.student_name}</p> : null}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-slate-600">{item.template_name ?? '—'}</td>
-                            <td className="px-4 py-3 text-xs text-slate-500">{formatDateTime(item.created_at)}</td>
-                            <td className="px-4 py-3 text-xs text-slate-500">{formatDateTime(item.scheduled_at)}</td>
-                            <td className="px-4 py-3">
-                              <QueueStatusBadge status={item.status} />
-                            </td>
-                            <td className="px-4 py-3 text-xs text-rose-600">{item.error_message ?? '—'}</td>
-                            <td className="px-4 py-3">
-                              <div className="flex flex-wrap items-center justify-end gap-2">
-                                <button
-                                  type="button"
-                                  className="button-secondary"
-                                  onClick={() => sendSingleMutation.mutate(item.id)}
-                                  disabled={isSending || item.status === 'sent'}
-                                >
-                                  {isSending ? 'جارٍ الإرسال...' : 'إرسال الآن'}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="button-secondary"
-                                  onClick={() => deleteQueueMutation.mutate(item.id)}
-                                  disabled={isDeleting}
-                                >
-                                  {isDeleting ? 'جارٍ الحذف...' : 'حذف'}
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </section>
-        ) : null}
-
-        {activeTab === 'history' ? (
-          <section className="space-y-4">
-            <header className="flex flex-wrap items-center justify-between gap-3">
-              <div className="space-y-1 text-right">
-                <h2 className="text-xl font-semibold text-slate-900">سجل الرسائل</h2>
-                <p className="text-sm text-muted">راجع أحدث الرسائل المرسلة وتحقق من الأخطاء المرتبطة بها.</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button type="button" className="button-secondary" onClick={() => historyQuery.refetch()}>
+        {/* الوسط: التبويبات */}
+        <WsMain>
+          <WsBlock
+            title={
+              <span className="ws-seg" style={{ display: 'inline-flex' }}>
+                {TABS.map((tab) => {
+                  const TabIcon = tab.icon
+                  return (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setActiveTab(tab.key)}
+                      className={`ws-seg__btn ${activeTab === tab.key ? 'is-active' : ''}`}
+                    >
+                      <TabIcon style={{ width: 12, height: 12 }} />
+                      {tab.label}
+                      {tab.key === 'queue' && pendingQueueCount > 0 ? (
+                        <span className="ws-count">{pendingQueueCount}</span>
+                      ) : null}
+                    </button>
+                  )
+                })}
+              </span>
+            }
+            tools={
+              activeTab === 'history' ? (
+                <WsBtn size="sm" icon={RefreshCcw} onClick={() => historyQuery.refetch()}>
                   تحديث السجل
-                </button>
-              </div>
-            </header>
-
-            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
-              {historyQuery.isLoading ? (
-                <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 text-sm text-muted">
-                  <span className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
-                  جاري تحميل السجل...
-                </div>
-              ) : historyItems.length === 0 ? (
-                <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 text-sm text-muted">
-                  <i className="bi bi-journal-text text-3xl text-slate-300" />
-                  لا توجد بيانات في السجل خلال الفترة الحالية.
-                </div>
+                </WsBtn>
+              ) : activeTab === 'queue' ? (
+                <WsBtn size="sm" icon={RefreshCcw} onClick={() => queueQuery.refetch()}>
+                  تحديث القائمة
+                </WsBtn>
               ) : (
-                <div className="space-y-0">
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full w-full table-auto text-right">
-                      <thead className="bg-slate-50 border-b border-slate-200">
-                        {historyTable.getHeaderGroups().map((headerGroup) => (
-                          <tr key={headerGroup.id}>
-                            {headerGroup.headers.map((header) => (
-                              <th
-                                key={header.id}
-                                style={{ width: header.column.getSize() }}
-                                className="px-3 py-2 text-xs font-semibold text-slate-600"
-                              >
-                                {header.isPlaceholder ? null : (
-                                  <div
-                                    className={
-                                      header.column.getCanSort()
-                                        ? 'flex cursor-pointer select-none items-center justify-start gap-2 transition hover:text-indigo-600'
-                                        : 'flex items-center justify-start'
-                                    }
-                                    onClick={header.column.getToggleSortingHandler()}
-                                  >
-                                    {flexRender(header.column.columnDef.header, header.getContext())}
-                                    {{
-                                      asc: <i className="bi bi-arrow-up text-[10px]" />,
-                                      desc: <i className="bi bi-arrow-down text-[10px]" />,
-                                    }[header.column.getIsSorted() as string] ?? null}
-                                  </div>
-                                )}
-                              </th>
-                            ))}
-                          </tr>
-                        ))}
-                      </thead>
-                      <tbody>
-                        {historyTable.getRowModel().rows.map((row) => (
-                          <tr
-                            key={row.id}
-                            className="border-b border-slate-100 hover:bg-slate-50/70 transition cursor-pointer"
-                            onClick={() => openHistoryModal(row.original.id)}
-                          >
-                            {row.getVisibleCells().map((cell) => (
-                              <td key={cell.id} className="px-3 py-2.5">
-                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Pagination controls */}
-                  <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/60 px-6 py-3">
-                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <span>
-                        الصفحة {historyTable.getState().pagination.pageIndex + 1} من {historyTable.getPageCount()}
-                      </span>
-                      <span className="text-slate-400">•</span>
-                      <span>إجمالي: {historyTable.getFilteredRowModel().rows.length} رسالة</span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          historyTable.setPageIndex(0)
-                        }}
-                        disabled={!historyTable.getCanPreviousPage()}
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        <i className="bi bi-chevron-bar-right" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          historyTable.previousPage()
-                        }}
-                        disabled={!historyTable.getCanPreviousPage()}
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        <i className="bi bi-chevron-right" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          historyTable.nextPage()
-                        }}
-                        disabled={!historyTable.getCanNextPage()}
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        <i className="bi bi-chevron-left" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          historyTable.setPageIndex(historyTable.getPageCount() - 1)
-                        }}
-                        disabled={!historyTable.getCanNextPage()}
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        <i className="bi bi-chevron-bar-left" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
-        ) : null}
-
-        {activeTab === 'templates' ? (
-          <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr),420px]">
-            <div className="space-y-4">
-              <header className="flex flex-wrap items-center justify-between gap-3">
-                <div className="space-y-1 text-right">
-                  <h2 className="text-xl font-semibold text-slate-900">قوالب الرسائل</h2>
-                  <p className="text-sm text-muted">أنشئ قوالب جديدة أو عدّل القوالب الحالية لاستخدامها في الرسائل الذكية.</p>
-                </div>
-                <button
-                  type="button"
-                  className="button-primary"
+                <WsBtn
+                  size="sm"
+                  variant="primary"
+                  icon={Plus}
                   onClick={() => {
                     setTemplateSelection('new')
                     setTemplateForm(DEFAULT_TEMPLATE_FORM)
                   }}
                 >
                   قالب جديد
-                </button>
-              </header>
+                </WsBtn>
+              )
+            }
+            fill
+          >
+            {/* ══ السجل ══ */}
+            {activeTab === 'history' &&
+              (historyQuery.isLoading ? (
+                <WsEmpty loading>جاري تحميل السجل...</WsEmpty>
+              ) : historyItems.length === 0 ? (
+                <WsEmpty icon={ClipboardList}>لا توجد بيانات في السجل خلال الفترة الحالية.</WsEmpty>
+              ) : (
+                <>
+                  <WsTable className="is-clickable">
+                    <thead>
+                      {historyTable.getHeaderGroups().map((headerGroup) => (
+                        <tr key={headerGroup.id}>
+                          {headerGroup.headers.map((header) => (
+                            <th key={header.id} style={{ width: header.column.getSize() }}>
+                              {header.isPlaceholder ? null : (
+                                <span
+                                  onClick={header.column.getToggleSortingHandler()}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    cursor: header.column.getCanSort() ? 'pointer' : 'default',
+                                    userSelect: 'none',
+                                  }}
+                                >
+                                  {flexRender(header.column.columnDef.header, header.getContext())}
+                                  {{
+                                    asc: <ChevronUp style={{ width: 11, height: 11 }} />,
+                                    desc: <ChevronDown style={{ width: 11, height: 11 }} />,
+                                  }[header.column.getIsSorted() as string] ?? null}
+                                </span>
+                              )}
+                            </th>
+                          ))}
+                        </tr>
+                      ))}
+                    </thead>
+                    <tbody>
+                      {historyTable.getRowModel().rows.map((row) => (
+                        <tr key={row.id} onClick={() => openHistoryModal(row.original.id)}>
+                          {row.getVisibleCells().map((cell) => (
+                            <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </WsTable>
 
-              <div className="rounded-3xl border border-slate-200 bg-white">
-                {templatesQuery.isLoading ? (
-                  <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 text-sm text-muted">
-                    <span className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
-                    جاري تحميل القوالب...
+                  {/* شريط الترقيم */}
+                  <div
+                    style={{
+                      flexShrink: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 10,
+                      flexWrap: 'wrap',
+                      padding: '7px 12px',
+                      borderTop: '1px solid var(--ws-hairline)',
+                    }}
+                  >
+                    <span style={{ fontSize: 11, color: 'var(--ws-text-2)' }}>
+                      إجمالي {historyTable.getFilteredRowModel().rows.length.toLocaleString('ar-SA')} رسالة — انقر أي صف
+                      للتفاصيل
+                    </span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <WsBtn size="sm" onClick={() => historyTable.setPageIndex(0)} disabled={!historyTable.getCanPreviousPage()}>
+                        الأولى
+                      </WsBtn>
+                      <WsBtn size="sm" onClick={() => historyTable.previousPage()} disabled={!historyTable.getCanPreviousPage()}>
+                        السابق
+                      </WsBtn>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, padding: '0 6px' }}>
+                        {(historyTable.getState().pagination.pageIndex + 1).toLocaleString('ar-SA')} /{' '}
+                        {Math.max(1, historyTable.getPageCount()).toLocaleString('ar-SA')}
+                      </span>
+                      <WsBtn size="sm" onClick={() => historyTable.nextPage()} disabled={!historyTable.getCanNextPage()}>
+                        التالي
+                      </WsBtn>
+                      <WsBtn
+                        size="sm"
+                        onClick={() => historyTable.setPageIndex(historyTable.getPageCount() - 1)}
+                        disabled={!historyTable.getCanNextPage()}
+                      >
+                        الأخيرة
+                      </WsBtn>
+                    </span>
                   </div>
-                ) : templates.length === 0 ? (
-                  <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 text-sm text-muted">
-                    <i className="bi bi-layout-text-window-reverse text-3xl text-slate-300" />
-                    لا توجد قوالب مسجلة حتى الآن.
-                  </div>
-                ) : (
-                  <div className="max-h-[420px] overflow-y-auto">
-                    <ul className="divide-y divide-slate-100">
+                </>
+              ))}
+
+            {/* ══ قائمة الانتظار ══ */}
+            {activeTab === 'queue' &&
+              (queueQuery.isLoading ? (
+                <WsEmpty loading>جاري تحميل قائمة الانتظار...</WsEmpty>
+              ) : queueItems.length === 0 ? (
+                <WsEmpty icon={Inbox}>لا توجد رسائل في قائمة الانتظار.</WsEmpty>
+              ) : (
+                <WsTable>
+                  <thead>
+                    <tr>
+                      <th>المستلم</th>
+                      <th>القالب</th>
+                      <th>أضيفت</th>
+                      <th>الجدولة</th>
+                      <th>الحالة</th>
+                      <th>الخطأ</th>
+                      <th style={{ width: 170 }}>الإجراءات</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {queueItems.map((item) => {
+                      const isDeleting = deleteQueueTarget === item.id && deleteQueueMutation.isPending
+                      const isSending = sendSingleTarget === item.id && sendSingleMutation.isPending
+                      return (
+                        <tr key={item.id}>
+                          <td>
+                            <span style={{ display: 'block', fontWeight: 700 }} dir="ltr">
+                              {item.parent_phone}
+                            </span>
+                            {item.student_name ? <span className="ws-cell-sub">{item.student_name}</span> : null}
+                          </td>
+                          <td>{item.template_name ?? '—'}</td>
+                          <td>
+                            <span className="ws-cell-sub">{formatDateTime(item.created_at)}</span>
+                          </td>
+                          <td>
+                            <span className="ws-cell-sub">{formatDateTime(item.scheduled_at)}</span>
+                          </td>
+                          <td>
+                            <QueueStatusBadge status={item.status} />
+                          </td>
+                          <td>
+                            {item.error_message ? (
+                              <span style={{ fontSize: 10.5, color: 'var(--ws-red)' }}>{item.error_message}</span>
+                            ) : (
+                              <span className="ws-cell-sub">—</span>
+                            )}
+                          </td>
+                          <td>
+                            <span style={{ display: 'inline-flex', gap: 4 }}>
+                              <WsBtn
+                                size="sm"
+                                icon={Send}
+                                onClick={() => sendSingleMutation.mutate(item.id)}
+                                disabled={isSending || item.status === 'sent'}
+                              >
+                                {isSending ? 'جارٍ الإرسال...' : 'إرسال الآن'}
+                              </WsBtn>
+                              <WsBtn
+                                size="sm"
+                                variant="danger"
+                                icon={Trash2}
+                                onClick={() => deleteQueueMutation.mutate(item.id)}
+                                disabled={isDeleting}
+                              />
+                            </span>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </WsTable>
+              ))}
+
+            {/* ══ القوالب ══ */}
+            {activeTab === 'templates' && (
+              <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+                {/* قائمة القوالب */}
+                <div style={{ flex: 1, minWidth: 0, overflowY: 'auto', borderInlineEnd: '1px solid var(--ws-hairline)' }}>
+                  {templatesQuery.isLoading ? (
+                    <WsEmpty loading>جاري تحميل القوالب...</WsEmpty>
+                  ) : templates.length === 0 ? (
+                    <WsEmpty icon={FileText}>لا توجد قوالب مسجلة حتى الآن.</WsEmpty>
+                  ) : (
+                    <div>
                       {templates.map((template) => {
                         const isActive = templateSelection === template.id
                         return (
-                          <li
+                          <button
                             key={template.id}
-                            className={`flex flex-col gap-2 px-5 py-4 transition ${isActive ? 'bg-indigo-50/70' : 'hover:bg-slate-50'
-                              }`}
+                            type="button"
+                            onClick={() => setTemplateSelection(template.id)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: 8,
+                              width: '100%',
+                              textAlign: 'right',
+                              padding: '9px 12px',
+                              border: 'none',
+                              borderBottom: '1px solid var(--ws-hairline)',
+                              background: isActive ? 'var(--ws-accent-soft)' : 'transparent',
+                              cursor: 'pointer',
+                              fontFamily: 'inherit',
+                            }}
                           >
-                            <button
-                              type="button"
-                              onClick={() => setTemplateSelection(template.id)}
-                              className="flex items-center justify-between gap-3 text-right"
-                            >
-                              <span className="space-y-1">
-                                <span className="block text-sm font-semibold text-slate-900">{template.name}</span>
-                                <span className="block text-xs text-muted">{template.category ?? 'غير مصنف'}</span>
+                            <span style={{ minWidth: 0 }}>
+                              <span style={{ display: 'block', fontSize: 12.5, fontWeight: isActive ? 700 : 600, color: 'var(--ws-text)' }}>
+                                {template.name}
                               </span>
-                              <TemplateStatusBadge status={template.status} />
-                            </button>
-                          </li>
+                              <span className="ws-cell-sub">{template.category ?? 'غير مصنف'}</span>
+                            </span>
+                            <TemplateStatusBadge status={template.status} />
+                          </button>
                         )
                       })}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <aside className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5">
-              {templateSelection === null ? (
-                <div className="flex min-h-[220px] flex-col items-center justify-center gap-3 text-sm text-muted">
-                  <i className="bi bi-arrow-left-circle text-3xl text-slate-300" />
-                  اختر قالبًا لعرض التفاصيل أو أنشئ قالبًا جديدًا.
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <Fragment>
-                  <header className="space-y-1 text-right">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">
-                      {templateSelection === 'new' ? 'قالب جديد' : 'تعديل القالب'}
-                    </p>
-                    <h3 className="text-xl font-semibold text-slate-900">
-                      {templateSelection === 'new' ? 'إنشاء قالب واتساب' : templateForm.name || 'قالب بدون اسم'}
-                    </h3>
-                  </header>
 
-                  <div className="space-y-3 text-right text-sm">
-                    <div className="space-y-2">
-                      <label className="text-xs font-semibold text-slate-600">اسم القالب</label>
-                      <input
-                        type="text"
-                        value={templateForm.name}
-                        onChange={(event) => handleTemplateFieldChange('name', event.target.value)}
-                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                        placeholder="مثال: إشعار غياب"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-xs font-semibold text-slate-600">التصنيف</label>
-                      <input
-                        type="text"
-                        value={templateForm.category}
-                        onChange={(event) => handleTemplateFieldChange('category', event.target.value)}
-                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                        placeholder="مثال: الحضور"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-xs font-semibold text-slate-600">حالة القالب</label>
-                      <select
-                        value={templateForm.status}
-                        onChange={(event) => handleTemplateFieldChange('status', event.target.value as TemplateFormState['status'])}
-                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                      >
-                        <option value="active">مفعّل</option>
-                        <option value="inactive">موقوف</option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-xs font-semibold text-slate-600">نص الرسالة</label>
-                      <textarea
-                        value={templateForm.body}
-                        onChange={(event) => handleTemplateFieldChange('body', event.target.value)}
-                        placeholder="اكتب نص الرسالة مع المتغيرات مثل {student_name}"
-                        className="h-40 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-xs text-slate-600">
-                        <span className="font-semibold">المتغيرات الديناميكية</span>
-                        <button type="button" className="button-secondary" onClick={handleAddVariable}>
-                          إضافة متغير
-                        </button>
+                {/* محرر القالب */}
+                <div style={{ width: 360, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                  {templateSelection === null ? (
+                    <WsEmpty icon={FileText}>اختر قالبًا لعرض التفاصيل أو أنشئ قالبًا جديدًا.</WsEmpty>
+                  ) : (
+                    <>
+                      <div className="ws-block__head" style={{ flexShrink: 0 }}>
+                        <span className="ws-block__title">
+                          {templateSelection === 'new' ? 'إنشاء قالب جديد' : 'تعديل القالب'}
+                          {isTemplateDirty && <WsChip tone="amber">غير محفوظ</WsChip>}
+                        </span>
+                        <span className="ws-block__tools">
+                          {templateSelection !== 'new' && selectedTemplate ? (
+                            <WsBtn
+                              size="sm"
+                              variant="danger"
+                              icon={Trash2}
+                              onClick={() => handleDeleteTemplate(selectedTemplate)}
+                              disabled={deleteTemplateMutation.isPending && deleteTemplateMutation.variables === selectedTemplate.id}
+                            />
+                          ) : null}
+                          <WsBtn
+                            size="sm"
+                            variant="primary"
+                            onClick={handleSaveTemplate}
+                            disabled={!isTemplateDirty || createTemplateMutation.isPending || updateTemplateMutation.isPending}
+                          >
+                            {createTemplateMutation.isPending || updateTemplateMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ'}
+                          </WsBtn>
+                        </span>
                       </div>
 
-                      {templateForm.variables.length === 0 ? (
-                        <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 p-3 text-xs text-muted">
-                          لم يتم تعريف متغيرات لهذا القالب.
-                        </p>
-                      ) : (
-                        <div className="space-y-3">
-                          {templateForm.variables.map((variable, index) => (
-                            <div key={index} className="rounded-2xl border border-slate-200 bg-white p-3">
-                              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
-                                <strong>المتغير #{index + 1}</strong>
-                                <button type="button" onClick={() => handleRemoveVariable(index)} className="text-rose-600">
-                                  حذف
-                                </button>
-                              </div>
-                              <div className="mt-2 grid gap-2">
-                                <input
-                                  type="text"
-                                  value={variable.key}
-                                  onChange={(event) => handleVariableChange(index, 'key', event.target.value)}
-                                  placeholder="المفتاح (مثال: student_name)"
-                                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                                />
-                                <input
-                                  type="text"
-                                  value={variable.label}
-                                  onChange={(event) => handleVariableChange(index, 'label', event.target.value)}
-                                  placeholder="الوصف (اسم الطالب)"
-                                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                                />
-                                <input
-                                  type="text"
-                                  value={variable.example ?? ''}
-                                  onChange={(event) => handleVariableChange(index, 'example', event.target.value)}
-                                  placeholder="قيمة افتراضية (مثال: محمد)"
-                                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                                />
-                              </div>
-                            </div>
-                          ))}
+                      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <WsField label="اسم القالب">
+                          <WsInput
+                            type="text"
+                            value={templateForm.name}
+                            onChange={(event) => handleTemplateFieldChange('name', event.target.value)}
+                            placeholder="مثال: إشعار غياب"
+                          />
+                        </WsField>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                          <WsField label="التصنيف">
+                            <WsInput
+                              type="text"
+                              value={templateForm.category}
+                              onChange={(event) => handleTemplateFieldChange('category', event.target.value)}
+                              placeholder="مثال: الحضور"
+                            />
+                          </WsField>
+                          <WsField label="الحالة">
+                            <WsSelect
+                              value={templateForm.status}
+                              onChange={(event) =>
+                                handleTemplateFieldChange('status', event.target.value as TemplateFormState['status'])
+                              }
+                            >
+                              <option value="active">مفعّل</option>
+                              <option value="inactive">موقوف</option>
+                            </WsSelect>
+                          </WsField>
                         </div>
-                      )}
-                    </div>
-                  </div>
 
-                  <footer className="flex flex-wrap items-center justify-end gap-2">
-                    {templateSelection !== 'new' && selectedTemplate ? (
-                      <button
-                        type="button"
-                        className="button-secondary"
-                        onClick={() => handleDeleteTemplate(selectedTemplate)}
-                        disabled={deleteTemplateMutation.isPending && deleteTemplateMutation.variables === selectedTemplate.id}
-                      >
-                        {deleteTemplateMutation.isPending && deleteTemplateMutation.variables === selectedTemplate.id
-                          ? 'جارٍ الحذف...'
-                          : 'حذف القالب'}
-                      </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      className="button-primary"
-                      onClick={handleSaveTemplate}
-                      disabled={!isTemplateDirty || createTemplateMutation.isPending || updateTemplateMutation.isPending}
-                    >
-                      {createTemplateMutation.isPending || updateTemplateMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ القالب'}
-                    </button>
-                  </footer>
-                </Fragment>
-              )}
-            </aside>
-          </section>
-        ) : null}
-      </section>
+                        <WsField label="نص الرسالة">
+                          <WsTextarea
+                            value={templateForm.body}
+                            onChange={(event) => handleTemplateFieldChange('body', event.target.value)}
+                            placeholder="اكتب نص الرسالة مع المتغيرات مثل {student_name}"
+                            rows={6}
+                          />
+                        </WsField>
 
-      {/* History Details Modal */}
-      {modalHistoryItem && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          onClick={closeHistoryModal}
-        >
-          <div
-            className="relative w-full max-w-3xl max-h-[90vh] overflow-auto rounded-3xl border border-slate-200 bg-white shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
-              <h3 className="text-xl font-bold text-slate-900">تفاصيل الرسالة</h3>
-              <button
-                type="button"
-                onClick={closeHistoryModal}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-slate-200 hover:text-slate-900"
-                aria-label="إغلاق"
-              >
-                <i className="bi bi-x-lg text-lg" />
-              </button>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700 }}>المتغيرات الديناميكية</span>
+                            <WsBtn size="sm" icon={Plus} onClick={handleAddVariable}>
+                              متغير
+                            </WsBtn>
+                          </div>
+
+                          {templateForm.variables.length === 0 ? (
+                            <p
+                              style={{
+                                margin: 0,
+                                padding: '8px 10px',
+                                borderRadius: 8,
+                                border: '1px dashed var(--ws-border)',
+                                fontSize: 10.5,
+                                color: 'var(--ws-text-2)',
+                              }}
+                            >
+                              لم يتم تعريف متغيرات لهذا القالب.
+                            </p>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              {templateForm.variables.map((variable, index) => (
+                                <div
+                                  key={index}
+                                  style={{ borderRadius: 8, border: '1px solid var(--ws-hairline)', padding: 8 }}
+                                >
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      marginBottom: 6,
+                                      fontSize: 10.5,
+                                      fontWeight: 700,
+                                    }}
+                                  >
+                                    المتغير #{index + 1}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveVariable(index)}
+                                      style={{
+                                        border: 'none',
+                                        background: 'transparent',
+                                        color: 'var(--ws-red)',
+                                        fontSize: 10.5,
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        fontFamily: 'inherit',
+                                      }}
+                                    >
+                                      حذف
+                                    </button>
+                                  </div>
+                                  <div style={{ display: 'grid', gap: 5 }}>
+                                    <WsInput
+                                      type="text"
+                                      value={variable.key}
+                                      onChange={(event) => handleVariableChange(index, 'key', event.target.value)}
+                                      placeholder="المفتاح (مثال: student_name)"
+                                    />
+                                    <WsInput
+                                      type="text"
+                                      value={variable.label}
+                                      onChange={(event) => handleVariableChange(index, 'label', event.target.value)}
+                                      placeholder="الوصف (اسم الطالب)"
+                                    />
+                                    <WsInput
+                                      type="text"
+                                      value={variable.example ?? ''}
+                                      onChange={(event) => handleVariableChange(index, 'example', event.target.value)}
+                                      placeholder="قيمة افتراضية (مثال: محمد)"
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </WsBlock>
+        </WsMain>
+      </WsLayout>
+
+      {/* مودال تفاصيل الرسالة */}
+      <WsModal
+        open={Boolean(modalHistoryItem)}
+        onClose={closeHistoryModal}
+        title="تفاصيل الرسالة"
+        sub={modalHistoryItem ? formatDateTime(modalHistoryItem.sent_at ?? modalHistoryItem.created_at) : undefined}
+        maxWidth={600}
+        footer={<WsBtn onClick={closeHistoryModal}>إغلاق</WsBtn>}
+      >
+        {modalHistoryItem ? (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+              <HistoryStatusBadge status={modalHistoryItem.status} />
             </div>
 
-            <div className="p-6 space-y-6">
-              {/* Message Content */}
-              <section className="space-y-3">
-                <h4 className="text-sm font-semibold text-slate-600">نص الرسالة الكامل</h4>
-                <pre className="whitespace-pre-wrap rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-relaxed text-slate-800">
-                  {(() => {
-                    const metadataMessage =
-                      modalHistoryItem.metadata && typeof modalHistoryItem.metadata === 'object' && modalHistoryItem.metadata !== null
-                        ? (() => {
-                          const meta = modalHistoryItem.metadata as Record<string, unknown>
-                          const messageValue = meta.message ?? meta.body ?? meta.content
-                          return typeof messageValue === 'string' ? messageValue : undefined
-                        })()
-                        : undefined
-                    return modalHistoryItem.message_content ?? modalHistoryItem.message_body ?? modalHistoryItem.message_preview ?? metadataMessage ?? '—'
-                  })()}
-                </pre>
-              </section>
-
-              {/* Recipient Info */}
-              <section className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-3">معلومات المستلم</p>
-                  <div className="space-y-2 text-sm">
-                    <div>
-                      <p className="text-xs text-slate-500">الاسم</p>
-                      <p className="font-semibold text-slate-900">
-                        {(() => {
-                          const fallbackRecipient = modalHistoryItem.recipient && /[^0-9]/.test(modalHistoryItem.recipient) ? modalHistoryItem.recipient : null
-                          return modalHistoryItem.student_name ?? modalHistoryItem.recipient_name ?? fallbackRecipient ?? '—'
-                        })()}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500">رقم الهاتف</p>
-                      <p className="font-medium text-slate-700">
-                        {(() => {
-                          const fallbackRecipient = modalHistoryItem.recipient && /[^0-9]/.test(modalHistoryItem.recipient) ? modalHistoryItem.recipient : null
-                          return modalHistoryItem.phone_number ?? modalHistoryItem.recipient_phone ?? (fallbackRecipient ? null : modalHistoryItem.recipient) ?? '—'
-                        })()}
-                      </p>
-                    </div>
-                    {(modalHistoryItem.student_grade || modalHistoryItem.student_class) && (
-                      <div>
-                        <p className="text-xs text-slate-500">الصف / الفصل</p>
-                        <p className="font-medium text-slate-700">
-                          {[modalHistoryItem.student_grade, modalHistoryItem.student_class].filter(Boolean).join(' - ')}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-3">حالة الإرسال</p>
-                  <div className="space-y-2 text-sm">
-                    <div>
-                      <p className="text-xs text-slate-500">الحالة</p>
-                      <div className="mt-1">
-                        <HistoryStatusBadge status={modalHistoryItem.status} />
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500">تاريخ الإرسال</p>
-                      <p className="font-medium text-slate-700">
-                        {formatDateTime(modalHistoryItem.sent_at ?? modalHistoryItem.created_at)}
-                      </p>
-                    </div>
-                    {modalHistoryItem.delivered_at && (
-                      <div>
-                        <p className="text-xs text-slate-500">تاريخ الوصول</p>
-                        <p className="font-medium text-emerald-600">
-                          {formatDateTime(modalHistoryItem.delivered_at)}
-                        </p>
-                      </div>
-                    )}
-                    {modalHistoryItem.template_name && (
-                      <div>
-                        <p className="text-xs text-slate-500">القالب المستخدم</p>
-                        <p className="font-medium text-slate-700">
-                          {modalHistoryItem.template_name}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </section>
-
-              {/* Error Message */}
-              {modalHistoryItem.error_message && (
-                <section className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-rose-600 mb-2">رسالة الخطأ</p>
-                  <p className="text-sm text-rose-700 leading-relaxed">{modalHistoryItem.error_message}</p>
-                </section>
-              )}
-
-              {/* Additional Metadata */}
+            <div
+              style={{
+                borderRadius: 8,
+                border: '1px solid var(--ws-hairline)',
+                background: 'var(--ws-surface-2)',
+                padding: '10px 12px',
+                fontSize: 12,
+                lineHeight: 1.9,
+                whiteSpace: 'pre-wrap',
+              }}
+            >
               {(() => {
-                const metadataEntries =
+                const metadataMessage =
                   modalHistoryItem.metadata && typeof modalHistoryItem.metadata === 'object' && modalHistoryItem.metadata !== null
-                    ? Object.entries(modalHistoryItem.metadata as Record<string, unknown>)
-                      .filter((entry): entry is [string, string | number] => {
-                        const [key, value] = entry
-                        if (['message', 'body', 'content', 'text'].includes(key)) return false
-                        return typeof value === 'string' || typeof value === 'number'
-                      })
-                    : []
-
-                if (metadataEntries.length === 0) return null
-
-                return (
-                  <section className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-3">تفاصيل إضافية</p>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {metadataEntries.map(([key, value], index) => {
-                        const normalizedKey = key.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
-                        return (
-                          <div key={index} className="rounded-xl bg-white border border-slate-200 px-3 py-2">
-                            <p className="text-xs text-slate-500">{normalizedKey}</p>
-                            <p className="text-sm font-medium text-slate-700 mt-0.5">{String(value)}</p>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </section>
-                )
+                    ? (() => {
+                      const meta = modalHistoryItem.metadata as Record<string, unknown>
+                      const messageValue = meta.message ?? meta.body ?? meta.content
+                      return typeof messageValue === 'string' ? messageValue : undefined
+                    })()
+                    : undefined
+                return modalHistoryItem.message_content ?? modalHistoryItem.message_body ?? modalHistoryItem.message_preview ?? metadataMessage ?? '—'
               })()}
             </div>
-          </div>
-        </div>
-      )}
-    </section>
+
+            <WsFactsList>
+              <WsFactRow label="الاسم">
+                {(() => {
+                  const fallbackRecipient =
+                    modalHistoryItem.recipient && /[^0-9]/.test(modalHistoryItem.recipient) ? modalHistoryItem.recipient : null
+                  return modalHistoryItem.student_name ?? modalHistoryItem.recipient_name ?? fallbackRecipient ?? '—'
+                })()}
+              </WsFactRow>
+              <WsFactRow label="رقم الهاتف">
+                <span dir="ltr">
+                  {(() => {
+                    const fallbackRecipient =
+                      modalHistoryItem.recipient && /[^0-9]/.test(modalHistoryItem.recipient) ? modalHistoryItem.recipient : null
+                    return (
+                      modalHistoryItem.phone_number ??
+                      modalHistoryItem.recipient_phone ??
+                      (fallbackRecipient ? null : modalHistoryItem.recipient) ??
+                      '—'
+                    )
+                  })()}
+                </span>
+              </WsFactRow>
+              {(modalHistoryItem.student_grade || modalHistoryItem.student_class) && (
+                <WsFactRow label="الصف / الفصل">
+                  {[modalHistoryItem.student_grade, modalHistoryItem.student_class].filter(Boolean).join(' - ')}
+                </WsFactRow>
+              )}
+              {modalHistoryItem.delivered_at && (
+                <WsFactRow label="تاريخ الوصول">
+                  <span style={{ color: 'var(--ws-green)' }}>{formatDateTime(modalHistoryItem.delivered_at)}</span>
+                </WsFactRow>
+              )}
+              {modalHistoryItem.template_name && (
+                <WsFactRow label="القالب المستخدم">{modalHistoryItem.template_name}</WsFactRow>
+              )}
+            </WsFactsList>
+
+            {modalHistoryItem.error_message && (
+              <div
+                style={{
+                  borderRadius: 8,
+                  border: '1px solid var(--ws-red-bd)',
+                  background: 'var(--ws-red-bg)',
+                  padding: '8px 12px',
+                  fontSize: 11.5,
+                  color: 'var(--ws-red)',
+                  lineHeight: 1.8,
+                }}
+              >
+                <b>رسالة الخطأ:</b> {modalHistoryItem.error_message}
+              </div>
+            )}
+
+            {(() => {
+              const metadataEntries =
+                modalHistoryItem.metadata && typeof modalHistoryItem.metadata === 'object' && modalHistoryItem.metadata !== null
+                  ? Object.entries(modalHistoryItem.metadata as Record<string, unknown>)
+                    .filter((entry): entry is [string, string | number] => {
+                      const [key, value] = entry
+                      if (['message', 'body', 'content', 'text'].includes(key)) return false
+                      return typeof value === 'string' || typeof value === 'number'
+                    })
+                  : []
+
+              if (metadataEntries.length === 0) return null
+
+              return (
+                <WsFactsList>
+                  {metadataEntries.map(([key, value], index) => {
+                    const normalizedKey = key.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
+                    return (
+                      <WsFactRow key={index} label={normalizedKey}>
+                        {String(value)}
+                      </WsFactRow>
+                    )
+                  })}
+                </WsFactsList>
+              )
+            })()}
+          </>
+        ) : null}
+      </WsModal>
+    </WsPage>
   )
 }

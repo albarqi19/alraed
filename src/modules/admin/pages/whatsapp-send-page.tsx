@@ -1,6 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
+  Calendar,
+  Check,
+  CheckCheck,
+  Eye,
+  Inbox,
+  Lightbulb,
+  MessageCircle,
+  Send,
+  Users,
+  X,
+} from 'lucide-react'
+import {
   useSendWhatsappBulkMessagesMutation,
   useWhatsappAbsentStudentsQuery,
   useWhatsappStatisticsQuery,
@@ -10,6 +22,24 @@ import {
 import type { WhatsappTargetStudent, WhatsappTemplateVariable } from '../types'
 import { sanitizeWhatsappVariableKey } from '../utils/whatsapp-templates'
 import { useToast } from '@/shared/feedback/use-toast'
+import {
+  WsBlock,
+  WsBtn,
+  WsChip,
+  WsEmpty,
+  WsFact,
+  WsField,
+  WsHeader,
+  WsInput,
+  WsLayout,
+  WsMain,
+  WsPage,
+  WsSelect,
+  WsSideCol,
+  WsTextarea,
+} from '@/shared/workspace'
+import type { WsChipTone } from '@/shared/workspace'
+
 type AbsenceFilterOption = {
   value: 'all' | number
   label: string
@@ -122,75 +152,11 @@ type TemplateVariableMetaEntry = {
   variable: WhatsappTemplateVariable
 }
 
-
-
-function getAbsenceBadgeClass(absenceDays?: number | null) {
-  if (!absenceDays || absenceDays <= 0) {
-    return 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-  }
-
-  if (absenceDays >= 10) {
-    return 'bg-rose-50 text-rose-700 border border-rose-200'
-  }
-
-  if (absenceDays >= 5) {
-    return 'bg-amber-50 text-amber-700 border border-amber-200'
-  }
-
-  return 'bg-sky-50 text-sky-700 border border-sky-200'
-}
-
-function StatsCard({
-  icon,
-  label,
-  value,
-  theme,
-  textAccent,
-  titleAccent,
-  loading,
-}: {
-  icon: React.ReactNode
-  label: string
-  value: number
-  theme: string
-  textAccent: string
-  titleAccent: string
-  loading?: boolean
-}) {
-  return (
-    <article
-      className={`rounded-md border shadow-sm overflow-hidden transition-shadow hover:shadow-md ${theme}`}
-    >
-      <div className="flex items-center justify-between px-3 py-2 border-b border-inherit bg-white/40">
-        <p className={`text-xs font-bold ${titleAccent}`}>{label}</p>
-        {icon}
-      </div>
-      <div className="px-3 py-3">
-        <p className={`text-2xl font-bold ${textAccent}`}>
-          {loading ? (
-            <span className="animate-pulse opacity-50">•••</span>
-          ) : (
-            value.toLocaleString('en-US')
-          )}
-        </p>
-      </div>
-    </article>
-  )
-}
-
-
-function EmptyState({ icon, title, description }: { icon: string; title: string; description: string }) {
-  return (
-    <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-slate-200 bg-white/70 p-8 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-500">
-        <i className={`bi ${icon} text-3xl`}></i>
-      </div>
-      <div>
-        <h3 className="text-base font-semibold text-slate-700">{title}</h3>
-        <p className="mt-1 text-sm text-slate-500">{description}</p>
-      </div>
-    </div>
-  )
+function absenceChipTone(absenceDays?: number | null): WsChipTone {
+  if (!absenceDays || absenceDays <= 0) return 'green'
+  if (absenceDays >= 10) return 'red'
+  if (absenceDays >= 5) return 'amber'
+  return 'sky'
 }
 
 export function WhatsAppSendPage() {
@@ -606,214 +572,184 @@ export function WhatsAppSendPage() {
     }))
   }, [selectedTemplate])
 
+  const deliveredCount =
+    statisticsQuery.data?.total_failed != null
+      ? statisticsQuery.data.total_sent - statisticsQuery.data.total_failed
+      : statisticsQuery.data?.total_sent ?? 0
+
   return (
-    <div className="space-y-4">
-      <header className="space-y-2">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">إرسال رسائل الواتساب</h1>
-            <p className="text-xs text-slate-500 mt-1">اختر الطلاب، طبّق الفلاتر، وخصص الرسالة قبل إرسالها لأولياء الأمور</p>
+    <WsPage>
+      <WsHeader
+        title="إرسال رسائل واتساب"
+        badge="رسالة مخصصة لكل ولي أمر"
+        actions={
+          <WsBtn
+            variant="primary"
+            icon={Send}
+            onClick={handleSend}
+            disabled={sendBulkMutation.isPending || selectedStudents.length === 0 || !messageText.trim()}
+          >
+            {sendBulkMutation.isPending
+              ? 'جاري الإرسال...'
+              : `إرسال (${selectedStudents.length.toLocaleString('ar-SA')})`}
+          </WsBtn>
+        }
+        facts={
+          <>
+            <WsFact icon={Send} label="مرسلة:">
+              {(statisticsQuery.data?.total_sent ?? 0).toLocaleString('ar-SA')}
+            </WsFact>
+            <WsFact label="وصلت:">{deliveredCount.toLocaleString('ar-SA')}</WsFact>
+            <WsFact label="فشلت:">{(statisticsQuery.data?.total_failed ?? 0).toLocaleString('ar-SA')}</WsFact>
+            <WsFact icon={Inbox} label="بالانتظار:">
+              {(statisticsQuery.data?.queue_size ?? 0).toLocaleString('ar-SA')}
+            </WsFact>
+          </>
+        }
+      >
+        {selectedStudents.length > 0 && (
+          <WsChip tone="sky">{selectedStudents.length.toLocaleString('ar-SA')} محدد</WsChip>
+        )}
+      </WsHeader>
+
+      <WsLayout>
+        {/* العمود الأيمن: الجمهور */}
+        <WsSideCol title="الجمهور" icon={Users} side="start" width={310} storageKey="ws:whatsapp-send:audience">
+          <div
+            style={{
+              flexShrink: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+              padding: '8px 10px',
+              borderBottom: '1px solid var(--ws-hairline)',
+            }}
+          >
+            <WsInput
+              type="search"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="ابحث بالاسم، الهوية أو الصف..."
+            />
+            <WsSelect
+              value={absenceFilter === 'all' ? 'all' : String(absenceFilter)}
+              onChange={(event) => {
+                const { value } = event.target
+                setAbsenceFilter(value === 'all' ? 'all' : Number(value))
+              }}
+            >
+              {ABSENCE_FILTER_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value === 'all' ? 'all' : option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </WsSelect>
+            <div style={{ display: 'flex', gap: 4 }}>
+              <WsBtn size="sm" icon={Users} onClick={() => setIsPickerOpen(true)} style={{ flex: 1, justifyContent: 'center' }}>
+                من الفصول
+              </WsBtn>
+              <WsBtn size="sm" onClick={handleSelectAll}>
+                تحديد الكل
+              </WsBtn>
+              <WsBtn size="sm" onClick={handleClearSelection}>
+                مسح
+              </WsBtn>
+            </div>
           </div>
-        </div>
-      </header>
 
-      <section className="grid gap-3 md:grid-cols-4">
-        <StatsCard
-          icon={<i className="bi bi-send text-sky-600 text-lg"></i>}
-          label="رسائل مرسلة"
-          value={statisticsQuery.data?.total_sent ?? 0}
-          theme="bg-sky-50 border-sky-100"
-          textAccent="text-sky-900"
-          titleAccent="text-sky-700"
-          loading={statisticsQuery.isLoading}
-        />
-        <StatsCard
-          icon={<i className="bi bi-check-circle text-emerald-600 text-lg"></i>}
-          label="وصلت بنجاح"
-          value={statisticsQuery.data?.total_failed != null ? (statisticsQuery.data.total_sent - statisticsQuery.data.total_failed) : statisticsQuery.data?.total_sent ?? 0}
-          theme="bg-emerald-50 border-emerald-100"
-          textAccent="text-emerald-900"
-          titleAccent="text-emerald-700"
-          loading={statisticsQuery.isLoading}
-        />
-        <StatsCard
-          icon={<i className="bi bi-x-circle text-rose-600 text-lg"></i>}
-          label="فشلت"
-          value={statisticsQuery.data?.total_failed ?? 0}
-          theme="bg-rose-50 border-rose-100"
-          textAccent="text-rose-900"
-          titleAccent="text-rose-700"
-          loading={statisticsQuery.isLoading}
-        />
-        <StatsCard
-          icon={<i className="bi bi-clock-history text-amber-600 text-lg"></i>}
-          label="بانتظار الإرسال"
-          value={statisticsQuery.data?.queue_size ?? 0}
-          theme="bg-amber-50 border-amber-100"
-          textAccent="text-amber-900"
-          titleAccent="text-amber-700"
-          loading={statisticsQuery.isLoading}
-        />
-      </section>
-
-      <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        <div className="space-y-4">
-          <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div className="w-full sm:w-64">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">البحث</label>
-                <div className="relative mt-1">
-                  <i className="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                  <input
-                    type="search"
-                    value={searchTerm}
-                    onChange={(event) => setSearchTerm(event.target.value)}
-                    placeholder="ابحث بالاسم، الهوية، أو الصف..."
-                    className="w-full rounded border border-slate-200 bg-white py-1.5 pr-3 pl-9 text-xs shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-                  />
-                </div>
-              </div>
-
-              <div className="w-full sm:w-48">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">تصفية الغياب</label>
-                <select
-                  value={absenceFilter === 'all' ? 'all' : String(absenceFilter)}
-                  onChange={(event) => {
-                    const { value } = event.target
-                    setAbsenceFilter(value === 'all' ? 'all' : Number(value))
-                  }}
-                  className="mt-1 w-full rounded border border-slate-200 bg-white py-1.5 px-2 text-xs font-bold text-slate-700 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-                >
-                  {ABSENCE_FILTER_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value === 'all' ? 'all' : option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex w-full justify-end sm:w-auto">
-                <button
-                  type="button"
-                  onClick={() => setIsPickerOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-teal-50 px-3 py-1.5 text-xs font-bold text-teal-700 border border-teal-100 transition hover:bg-teal-100"
-                >
-                  <i className="bi bi-people"></i>
-                  اختيار طالب
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between rounded bg-slate-50 px-3 py-2 text-[11px] text-slate-500 border border-slate-100">
-              <div className="flex items-center gap-2 text-slate-600">
-                <span className="inline-flex h-6 min-w-[1.75rem] items-center justify-center rounded-full bg-indigo-100 px-2 text-xs font-semibold text-indigo-700">
-                  {availableStudents.length.toLocaleString('ar-SA')}
-                </span>
-                <span>طالباً في القائمة الحالية</span>
-                {isStudentsFetching ? <span className="flex items-center gap-1 text-indigo-500"><span className="h-2 w-2 animate-pulse rounded-full bg-indigo-500"></span> يجري التحديث...</span> : null}
-              </div>
-
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-                <button
-                  type="button"
-                  className="text-xs font-semibold text-indigo-600 transition hover:text-indigo-700"
-                  onClick={handleSelectAll}
-                >
-                  تحديد الكل
-                </button>
-                <span className="text-slate-300">|</span>
-                <button
-                  type="button"
-                  className="text-xs font-semibold text-rose-500 transition hover:text-rose-600"
-                  onClick={handleClearSelection}
-                >
-                  إلغاء التحديد
-                </button>
-              </div>
-            </div>
-
-            <div className="max-h-[420px] overflow-y-auto rounded-md border border-slate-200 bg-white shadow-sm">
-              {isStudentsLoading ? (
-                <div className="flex h-64 flex-col items-center justify-center gap-3 text-slate-400">
-                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-teal-600" />
-                  <p className="text-xs font-bold text-slate-500">جاري تحميل قائمة الطلاب...</p>
-                </div>
-              ) : availableStudents.length === 0 ? (
-                <EmptyState icon="bi-people" title="لا توجد نتائج" description="جرب تعديل البحث أو تغيير فلاتر الغياب" />
-              ) : (
-                <ul className="divide-y divide-slate-100">
-                  {availableStudents.map((student) => {
-                    const isSelected = selectedStudentIds.has(student.id)
-                    const absenceDaysValue = student.absence_days ?? student.total_absences ?? 0
-                    return (
-                      <li key={student.id}>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleStudent(student.id)}
-                          className={`flex w-full items-center gap-3 px-4 py-2.5 text-right transition ${isSelected ? 'bg-teal-50/50' : 'hover:bg-slate-50'
-                            }`}
-                        >
-                          <span
-                            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] font-bold ${isSelected ? 'border-teal-600 bg-teal-600 text-white' : 'border-slate-300 text-slate-400'
-                              }`}
-                          >
-                            {isSelected ? <i className="bi bi-check"></i> : ''}
+          <WsBlock
+            title="الطلاب"
+            count={`${availableStudents.length.toLocaleString('ar-SA')}`}
+            tools={isStudentsFetching ? <WsChip tone="sky">تحديث...</WsChip> : undefined}
+            fill
+            scroll
+          >
+            {isStudentsLoading ? (
+              <WsEmpty loading>جاري تحميل قائمة الطلاب...</WsEmpty>
+            ) : availableStudents.length === 0 ? (
+              <WsEmpty icon={Users}>لا توجد نتائج — جرب تعديل البحث أو فلتر الغياب.</WsEmpty>
+            ) : (
+              <div>
+                {availableStudents.map((student) => {
+                  const isSelected = selectedStudentIds.has(student.id)
+                  const absenceDaysValue = student.absence_days ?? student.total_absences ?? 0
+                  return (
+                    <button
+                      key={student.id}
+                      type="button"
+                      onClick={() => handleToggleStudent(student.id)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 8,
+                        width: '100%',
+                        textAlign: 'right',
+                        padding: '7px 10px',
+                        border: 'none',
+                        borderBottom: '1px solid var(--ws-hairline)',
+                        background: isSelected ? 'var(--ws-accent-soft)' : 'transparent',
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      <span
+                        style={{
+                          display: 'grid',
+                          placeItems: 'center',
+                          width: 15,
+                          height: 15,
+                          marginTop: 2,
+                          borderRadius: 4,
+                          border: `1px solid ${isSelected ? 'var(--ws-accent-2)' : 'var(--ws-border)'}`,
+                          background: isSelected ? 'var(--ws-accent-2)' : 'transparent',
+                          color: '#fff',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {isSelected && <Check style={{ width: 10, height: 10 }} />}
+                      </span>
+                      <span style={{ minWidth: 0, flex: 1 }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ws-text)' }}>{student.name}</span>
+                          {absenceDaysValue ? (
+                            <WsChip tone={absenceChipTone(absenceDaysValue)}>{absenceDaysValue} غياب</WsChip>
+                          ) : null}
+                        </span>
+                        <span className="ws-cell-sub" style={{ display: 'block', marginTop: 2 }}>
+                          {student.grade && student.class_name ? `${student.grade} - ${student.class_name}` : student.grade || '—'}
+                          {' • '}
+                          {student.national_id}
+                        </span>
+                        {student.parent_phone ? (
+                          <span className="ws-cell-sub" style={{ display: 'block' }} dir="ltr">
+                            {student.parent_phone}
                           </span>
-                          <div className="flex flex-1 flex-col gap-0.5">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-[13px] font-bold text-slate-800">{student.name}</p>
-                              {absenceDaysValue ? (
-                                <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold border ${getAbsenceBadgeClass(absenceDaysValue)}`}>
-                                  {absenceDaysValue} غياب
-                                </span>
-                              ) : null}
-                            </div>
-                            <div className="flex gap-2 text-[11px] text-slate-400 font-medium overflow-hidden">
-                              <span className="truncate">{student.grade && student.class_name ? `${student.grade} - ${student.class_name}` : student.grade || '—'}</span>
-                              <span className="shrink-0">•</span>
-                              <span className="shrink-0">{student.national_id}</span>
-                              {student.parent_phone && (
-                                <>
-                                  <span className="shrink-0">•</span>
-                                  <span className="shrink-0 text-slate-500">{student.parent_phone}</span>
-                                </>
-                              )}
-                              {!student.parent_phone && (
-                                <>
-                                  <span className="shrink-0">•</span>
-                                  <span className="shrink-0 text-rose-500 font-bold underline underline-offset-2">بدون رقم!</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </button>
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
-            </div>
-          </div>
+                        ) : (
+                          <span style={{ display: 'block', fontSize: 10, fontWeight: 700, color: 'var(--ws-red)' }}>
+                            بدون رقم!
+                          </span>
+                        )}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </WsBlock>
+        </WsSideCol>
 
-          <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm space-y-5">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400" htmlFor="whatsapp-template-select">
-                    اختيار قالب جاهز
-                  </label>
-                  {isAppointmentTemplate ? (
-                    <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-100">
-                      <i className="bi bi-calendar-event"></i>
-                      موعد
-                    </span>
-                  ) : null}
-                </div>
-                <select
-                  id="whatsapp-template-select"
+        {/* الوسط: الرسالة */}
+        <WsMain>
+          <WsBlock
+            title="الرسالة"
+            icon={MessageCircle}
+            tools={
+              <>
+                {isAppointmentTemplate && <WsChip tone="green" icon={Calendar}>قالب موعد</WsChip>}
+                <WsSelect
                   value={templateSelectValue}
                   onChange={(event) => handleTemplateChange(event.target.value)}
-                  className="w-full rounded border border-slate-200 bg-white py-1.5 px-3 text-xs font-bold text-slate-700 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                  style={{ minWidth: 170 }}
                 >
                   <option value="">— بدون قالب —</option>
                   <option value="custom">رسالة مخصصة</option>
@@ -822,369 +758,382 @@ export function WhatsAppSendPage() {
                       {template.name}
                     </option>
                   ))}
-                </select>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">عدد المحددين</label>
-                <div className="flex h-9 items-center justify-center rounded border border-slate-200 bg-slate-50 text-base font-bold text-slate-700">
-                  {selectedStudents.length.toLocaleString('en-US')}
+                </WsSelect>
+              </>
+            }
+            fill
+            scroll
+          >
+            <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* شرائح المتغيرات */}
+              <div>
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--ws-text-2)', marginBottom: 6 }}>
+                  المتغيرات المتاحة — انقر أي متغير لإدراجه في النص
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {templatesVariables.map((variable) => (
+                    <WsChip
+                      key={variable.token}
+                      onClick={() => {
+                        setMessageText((prev) => prev + ' ' + variable.token)
+                      }}
+                    >
+                      <b>{variable.token}</b>
+                      <span style={{ opacity: 0.7 }}>{variable.description}</span>
+                    </WsChip>
+                  ))}
                 </div>
               </div>
-            </div>
 
-            <div className="flex flex-wrap gap-1.5">
-              {templatesVariables.map((variable) => (
-                <div key={variable.token} className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] group transition-colors hover:border-teal-200 hover:bg-teal-50 cursor-pointer" onClick={() => {
-                  setMessageText(prev => prev + ' ' + variable.token)
-                }}>
-                  <span className="font-bold text-slate-700">{variable.token}</span>
-                  <span className="mx-1 text-slate-300">|</span>
-                  <span className="text-slate-500">{variable.description}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className={`grid gap-5 ${isAppointmentTemplate ? 'lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]' : 'lg:grid-cols-1'}`}>
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400" htmlFor="whatsapp-message-body">
-                    نص الرسالة
-                  </label>
-                  <textarea
-                    id="whatsapp-message-body"
-                    value={messageText}
-                    onChange={(event) => setMessageText(event.target.value)}
-                    rows={6}
-                    className="w-full rounded border border-slate-200 bg-white px-3 py-2.5 text-xs font-medium leading-relaxed text-slate-700 shadow-sm transition focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-                    placeholder="اكتب رسالتك هنا باستخدام المتغيرات المتاحة..."
-                  />
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 font-medium">
-                  <span>عدد الأحرف: {messageText.length.toLocaleString('en-US')}</span>
+              {/* نص الرسالة */}
+              <WsField label="نص الرسالة" htmlFor="whatsapp-message-body">
+                <WsTextarea
+                  id="whatsapp-message-body"
+                  value={messageText}
+                  onChange={(event) => setMessageText(event.target.value)}
+                  rows={8}
+                  placeholder="اكتب رسالتك هنا باستخدام المتغيرات المتاحة..."
+                />
+                <span style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                  <span>عدد الأحرف: {messageText.length.toLocaleString('ar-SA')}</span>
                   <span>سيتم إرسال نسخة مخصصة لكل ولي أمر</span>
-                </div>
+                </span>
+              </WsField>
 
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded border border-teal-100 bg-teal-50/40 p-3">
-                  <div className="flex flex-wrap items-center gap-2 text-[13px] font-bold text-teal-800">
-                    <span className="inline-flex h-6 min-w-[1.75rem] items-center justify-center rounded bg-white px-2 text-xs text-teal-700 border border-teal-100 shadow-sm">
-                      {selectedStudents.length.toLocaleString('en-US')}
+              {/* تفاصيل الموعد */}
+              {isAppointmentTemplate && (
+                <div
+                  style={{
+                    borderRadius: 10,
+                    border: '1px solid var(--ws-green-bd)',
+                    background: 'var(--ws-green-bg)',
+                    padding: '10px 12px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                    <Calendar style={{ width: 13, height: 13, color: 'var(--ws-green)' }} />
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ws-green)' }}>تفاصيل الموعد</span>
+                    <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                      — اختر التاريخ والوقت ليُستبدلا داخل القالب
                     </span>
-                    <span>طالب جاهز للإرسال</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleSend}
-                    disabled={sendBulkMutation.isPending}
-                    className="inline-flex items-center justify-center gap-1.5 rounded bg-teal-600 px-4 py-2 text-xs font-bold text-white shadow transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-75"
-                  >
-                    {sendBulkMutation.isPending ? (
-                      <>
-                        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
-                        جاري الإرسال...
-                      </>
-                    ) : (
-                      <>
-                        <i className="bi bi-send-fill text-xs"></i>
-                        إرسال الرسائل الآن
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                <p className="text-xs text-slate-400">
-                  تظهر الرسائل في قائمة الانتظار فوراً، ويمكن متابعة تقدم الإرسال من صفحة مركز الواتساب.
-                </p>
-
-                {messagePreview ? (
-                  <div className="rounded-3xl border border-indigo-100 bg-indigo-50/70 p-4 text-sm text-slate-700">
-                    <div className="mb-2 flex items-center gap-2 text-indigo-600">
-                      <i className="bi bi-eye"></i>
-                      <span className="font-semibold">معاينة لأوّل طالب محدد:</span>
-                      <span className="text-xs text-slate-500">{selectedStudents[0]?.name}</span>
-                    </div>
-                    <p className="whitespace-pre-line leading-7">{messagePreview}</p>
-                  </div>
-                ) : null}
-              </div>
-
-              {isAppointmentTemplate ? (
-                <div className="space-y-4 rounded-md border border-emerald-100 bg-white p-4 shadow-sm h-fit">
-                  <header className="flex items-start justify-between gap-3 border-b border-emerald-50 pb-3">
-                    <div className="flex items-start gap-2">
-                      <span className="flex h-8 w-8 items-center justify-center rounded bg-emerald-50 text-emerald-600 text-sm">
-                        <i className="bi bi-calendar-event"></i>
-                      </span>
-                      <div className="space-y-0.5">
-                        <p className="text-[13px] font-bold text-slate-800">تفاصيل الموعد</p>
-                        <p className="text-[11px] text-slate-400 font-medium leading-tight">اختر التاريخ والوقت ليتم استبدالهما داخل القالب.</p>
-                      </div>
-                    </div>
-                  </header>
-
-                  <div className="space-y-3">
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8 }}>
                     {uniqueDateKeys.map((key) => {
                       const meta = templateVariableMetaByKey[key]
                       const label = meta?.variable.label ?? 'تاريخ الموعد'
                       const example = meta?.variable.example
                       const inputId = `appointment-date-${key}`
                       return (
-                        <div key={`date-${key}`} className="space-y-1">
-                          <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400" htmlFor={inputId}>
-                            {label}
-                          </label>
-                          <div
-                            className="group relative rounded border border-emerald-100 bg-white shadow-sm transition hover:border-emerald-300"
+                        <WsField key={`date-${key}`} label={label} htmlFor={inputId}>
+                          <WsInput
+                            id={inputId}
+                            type="date"
+                            value={templateVariableValues[key] ?? ''}
+                            onChange={(event) => handleTemplateVariableValueChange(key, event.target.value)}
                             onClick={() => handleFieldWrapperClick(inputId)}
-                          >
-                            <input
-                              id={inputId}
-                              type="date"
-                              value={templateVariableValues[key] ?? ''}
-                              onChange={(event) => handleTemplateVariableValueChange(key, event.target.value)}
-                              className="w-full cursor-pointer rounded border-none bg-transparent py-1.5 pl-3 pr-8 text-xs font-bold text-slate-700 focus:outline-none focus:ring-0"
-                            />
-                            <i className="bi bi-calendar3 pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-emerald-400 text-xs"></i>
-                          </div>
-                          {example && <p className="text-[10px] text-slate-400 font-medium">مثال: {example}</p>}
-                        </div>
+                          />
+                          {example && <span style={{ fontSize: 9.5, color: 'var(--ws-text-2)' }}>مثال: {example}</span>}
+                        </WsField>
                       )
                     })}
-
                     {uniqueTimeKeys.map((key) => {
                       const meta = templateVariableMetaByKey[key]
                       const label = meta?.variable.label ?? 'وقت الموعد'
                       const example = meta?.variable.example
                       const inputId = `appointment-time-${key}`
                       return (
-                        <div key={`time-${key}`} className="space-y-1">
-                          <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400" htmlFor={inputId}>
-                            {label}
-                          </label>
-                          <div
-                            className="group relative rounded border border-emerald-100 bg-white shadow-sm transition hover:border-emerald-300"
+                        <WsField key={`time-${key}`} label={label} htmlFor={inputId}>
+                          <WsInput
+                            id={inputId}
+                            type="time"
+                            value={templateVariableValues[key] ?? ''}
+                            onChange={(event) => handleTemplateVariableValueChange(key, event.target.value)}
                             onClick={() => handleFieldWrapperClick(inputId)}
-                          >
-                            <input
-                              id={inputId}
-                              type="time"
-                              value={templateVariableValues[key] ?? ''}
-                              onChange={(event) => handleTemplateVariableValueChange(key, event.target.value)}
-                              className="w-full cursor-pointer rounded border-none bg-transparent py-1.5 pl-3 pr-8 text-xs font-bold text-slate-700 focus:outline-none focus:ring-0"
-                              step={300}
-                            />
-                            <i className="bi bi-clock-history pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-emerald-400 text-xs"></i>
-                          </div>
-                          {example && <p className="text-[10px] text-slate-400 font-medium">مثال: {example}</p>}
-                        </div>
+                            step={300}
+                          />
+                          {example && <span style={{ fontSize: 9.5, color: 'var(--ws-text-2)' }}>مثال: {example}</span>}
+                        </WsField>
                       )
                     })}
                   </div>
-
-                  <div className="rounded-md border border-emerald-100 bg-emerald-50/40 px-3 py-2 text-[11px] text-emerald-700 font-bold leading-relaxed">
-                    <i className="bi bi-lightbulb me-1"></i>
-                    يمكنك تحديث هذه القيم قبل كل دفعة إرسال لضمان دقة المواعيد.
+                  <div style={{ marginTop: 8, fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                    <Lightbulb style={{ width: 11, height: 11, display: 'inline', verticalAlign: '-2px' }} /> يمكنك تحديث
+                    هذه القيم قبل كل دفعة إرسال لضمان دقة المواعيد.
                   </div>
                 </div>
-              ) : null}
-            </div>
-          </div>
-        </div>
+              )}
 
-        <aside className="space-y-4">
-          <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm space-y-4 h-fit">
-            <div className="rounded-md bg-slate-900 px-4 py-3 text-white">
-              <div className="flex items-start gap-2.5">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/10 text-sm">
-                  <i className="bi bi-info-circle"></i>
-                </span>
-                <div className="space-y-1">
-                  <p className="text-[13px] font-bold">نصائح الإرسال</p>
-                  <ul className="space-y-1 text-[11px] text-slate-300 font-medium">
-                    <li>• تأكد من دقة أرقام أولياء الأمور قبل الإرسال.</li>
-                    <li>• استخدم المتغيرات لضمان تخصيص الرسائل تلقائياً.</li>
-                    <li>• الرسائل تتم معالجتها خلال دقائق من الإرسال.</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded border border-slate-200 bg-slate-50/50 p-4 text-[11px] text-slate-500 font-medium leading-relaxed">
-              <div className="flex items-center gap-2 text-teal-600 mb-2 border-b border-teal-50 pb-1.5">
-                <i className="bi bi-chat-quote text-sm"></i>
-                <p className="font-bold">تذكير قبل الإرسال</p>
-              </div>
-              راجِع محتوى الرسالة وأرقام أولياء الأمور قبل الضغط على زر الإرسال. احرص على أن تكون اللغة واضحة ومحترفة لضمان وصول الرسالة بالشكل المطلوب.
-            </div>
-          </div>
-        </aside>
-      </div>
-
-      {isPickerOpen ? (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsPickerOpen(false)}></div>
-          <div className="relative flex min-h-screen items-center justify-center p-4">
-            <div
-              className="relative w-full max-w-5xl overflow-hidden rounded-md bg-white shadow-2xl border border-slate-200"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <button
-                type="button"
-                onClick={() => setIsPickerOpen(false)}
-                className="absolute left-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-400 transition hover:bg-slate-200 hover:text-slate-600 z-10"
+              {/* شريط الإرسال */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 10,
+                  flexWrap: 'wrap',
+                  borderRadius: 10,
+                  border: '1px solid var(--ws-hairline)',
+                  background: 'var(--ws-surface-2)',
+                  padding: '10px 12px',
+                }}
               >
-                <i className="bi bi-x-lg text-xs"></i>
-              </button>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 700 }}>
+                  <span
+                    style={{
+                      display: 'grid',
+                      placeItems: 'center',
+                      minWidth: 30,
+                      height: 24,
+                      borderRadius: 6,
+                      background: 'var(--ws-accent-soft)',
+                      color: 'var(--ws-accent-2)',
+                      fontSize: 12,
+                      padding: '0 8px',
+                    }}
+                  >
+                    {selectedStudents.length.toLocaleString('ar-SA')}
+                  </span>
+                  طالب جاهز للإرسال
+                </span>
+                <WsBtn
+                  variant="primary"
+                  icon={Send}
+                  onClick={handleSend}
+                  disabled={sendBulkMutation.isPending}
+                >
+                  {sendBulkMutation.isPending ? 'جاري الإرسال...' : 'إرسال الرسائل الآن'}
+                </WsBtn>
+              </div>
 
-              <div className="p-5">
-                <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between border-b border-slate-100 pb-4 mb-4">
-                  <div className="space-y-1">
-                    <h2 className="text-lg font-bold text-slate-900 leading-none">اختيار الطلاب للإرسال</h2>
-                    <p className="text-xs text-slate-400 font-medium font-bold">
-                      اختر الصف والفصل لاستعراض الطلاب وتحديدهم بشكل أسرع
-                    </p>
+              <p style={{ margin: 0, fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                تظهر الرسائل في قائمة الانتظار فوراً، ويمكن متابعة تقدم الإرسال من مركز الواتساب.
+              </p>
+            </div>
+          </WsBlock>
+        </WsMain>
+
+        {/* العمود الأيسر: المعاينة الحية */}
+        <WsSideCol title="المعاينة الحية" icon={Eye} width={300} storageKey="ws:whatsapp-send:preview">
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+            {/* فقاعة واتساب */}
+            <div
+              style={{
+                flex: 1,
+                padding: 14,
+                background:
+                  'radial-gradient(circle at 20% 20%, rgba(0,0,0,0.02) 0 2px, transparent 2px) 0 0 / 26px 26px, var(--ws-surface-2)',
+              }}
+            >
+              {messagePreview ? (
+                <>
+                  <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--ws-text-2)', marginBottom: 8 }}>
+                    كما ستصل لولي أمر: {selectedStudents[0]?.name}
                   </div>
-                  <div className="flex items-center gap-1.5 rounded bg-teal-50 px-2.5 py-1 text-[11px] font-bold text-teal-700 border border-teal-100 h-fit">
-                    <i className="bi bi-person-check text-xs"></i>
-                    {selectedStudentIds.size.toLocaleString('en-US')} مختار حالياً
+                  <div
+                    style={{
+                      maxWidth: '95%',
+                      borderRadius: '10px 2px 10px 10px',
+                      background: '#D5F5DF',
+                      color: '#12261A',
+                      padding: '9px 11px',
+                      fontSize: 12,
+                      lineHeight: 1.9,
+                      whiteSpace: 'pre-line',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.12)',
+                    }}
+                  >
+                    {messagePreview}
+                    <span
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'flex-end',
+                        gap: 3,
+                        marginTop: 4,
+                        fontSize: 9,
+                        color: '#5a7a66',
+                      }}
+                    >
+                      الآن
+                      <CheckCheck style={{ width: 12, height: 12, color: '#4FA3DE' }} />
+                    </span>
                   </div>
-                </header>
+                </>
+              ) : (
+                <WsEmpty icon={MessageCircle}>
+                  اكتب رسالة وحدد طالباً واحداً على الأقل لتظهر المعاينة هنا كما ستصل فعلياً.
+                </WsEmpty>
+              )}
+            </div>
 
-                <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
-                  <div className="space-y-5 overflow-y-auto max-h-[60vh] pr-1">
-                    <section className="space-y-2">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">الصفوف الدراسية</p>
-                      {gradeOptions.length === 0 ? (
-                        <div className="py-4">
-                          <EmptyState icon="bi-journals" title="لا توجد صفوف" description="لم يتم جلب بيانات الطلاب بعد." />
-                        </div>
-                      ) : (
-                        <div className="grid gap-2 grid-cols-2 md:grid-cols-3">
-                          {gradeOptions.map((grade) => {
-                            const isActive = pickerGrade === grade
-                            return (
-                              <button
-                                key={grade}
-                                type="button"
-                                onClick={() => {
-                                  setPickerGrade(grade)
-                                  setPickerClass(null)
-                                }}
-                                className={`flex items-center justify-between rounded border px-3 py-2 text-xs font-bold transition ${isActive
-                                    ? 'border-teal-500 bg-teal-50 text-teal-700 shadow-sm'
-                                    : 'border-slate-200 bg-white text-slate-600 hover:border-teal-200 hover:bg-teal-50/40'
-                                  }`}
-                              >
-                                <span className="truncate">{grade}</span>
-                                {isActive && <i className="bi bi-check-circle-fill text-teal-500 text-[10px]"></i>}
-                              </button>
-                            )
-                          })}
-                        </div>
-                      )}
-                    </section>
+            {/* نصائح */}
+            <div style={{ flexShrink: 0, borderTop: '1px solid var(--ws-hairline)', padding: '10px 14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 700, marginBottom: 6 }}>
+                <Lightbulb style={{ width: 12, height: 12, color: 'var(--ws-amber)' }} />
+                نصائح الإرسال
+              </div>
+              <ul style={{ margin: 0, paddingInlineStart: 16, display: 'grid', gap: 3, fontSize: 10.5, color: 'var(--ws-text-2)', lineHeight: 1.8 }}>
+                <li>تأكد من دقة أرقام أولياء الأمور قبل الإرسال.</li>
+                <li>استخدم المتغيرات لضمان تخصيص الرسائل تلقائياً.</li>
+                <li>الرسائل تتم معالجتها خلال دقائق من الإرسال.</li>
+                <li>راجِع المعاينة أعلاه — هي بالضبط ما سيصل ولي الأمر.</li>
+              </ul>
+            </div>
+          </div>
+        </WsSideCol>
+      </WsLayout>
 
-                    {pickerGrade && (
-                      <section className="space-y-2">
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">الفصول والشُعب في {pickerGrade}</p>
-                        {classOptionsForGrade.length === 0 ? (
-                          <div className="py-4">
-                            <EmptyState icon="bi-grid" title="لا توجد فصول" description="اختر صفاً آخر لعرض الفصول المرتبطة." />
-                          </div>
-                        ) : (
-                          <div className="flex flex-wrap gap-2">
-                            {classOptionsForGrade.map((className) => {
-                              const isActive = pickerClass === className
-                              return (
-                                <button
-                                  key={className}
-                                  type="button"
-                                  onClick={() => setPickerClass(className)}
-                                  className={`rounded border px-3 py-1.5 text-xs font-bold transition ${isActive
-                                      ? 'border-teal-500 bg-teal-50 text-teal-700 shadow-sm'
-                                      : 'border-slate-200 bg-white text-slate-600 hover:border-teal-200 hover:bg-teal-50/40'
-                                    }`}
-                                >
-                                  {className}
-                                </button>
-                              )
-                            })}
-                          </div>
-                        )}
-                      </section>
-                    )}
+      {/* مودال اختيار الطلاب من الفصول */}
+      {isPickerOpen ? (
+        <div className="ws-modal" role="dialog" aria-modal onClick={() => setIsPickerOpen(false)}>
+          <div
+            className="ws-modal__panel"
+            style={{ maxWidth: 760, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="ws-modal__head" style={{ position: 'relative' }}>
+              <h3 className="ws-modal__title">اختيار الطلاب من الفصول</h3>
+              <p className="ws-modal__sub">اختر الصف ثم الشعبة لاستعراض الطلاب وتحديدهم بشكل أسرع — يمكنك الجمع من أكثر من فصل.</p>
+              <span style={{ position: 'absolute', insetInlineEnd: 12, top: 12 }}>
+                <WsChip tone="sky">{selectedStudentIds.size.toLocaleString('ar-SA')} مختار</WsChip>
+              </span>
+            </header>
+
+            <div style={{ display: 'flex', height: '52vh', overflow: 'hidden' }}>
+              {/* الصفوف والشعب */}
+              <div style={{ width: '46%', overflowY: 'auto', borderInlineEnd: '1px solid var(--ws-hairline)', padding: 12 }}>
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--ws-text-2)', marginBottom: 6 }}>الصفوف الدراسية</div>
+                {gradeOptions.length === 0 ? (
+                  <WsEmpty icon={Users}>لم يتم جلب بيانات الطلاب بعد.</WsEmpty>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
+                    {gradeOptions.map((grade) => {
+                      const isActive = pickerGrade === grade
+                      return (
+                        <button
+                          key={grade}
+                          type="button"
+                          onClick={() => {
+                            setPickerGrade(grade)
+                            setPickerClass(null)
+                          }}
+                          className={`ws-choice ${isActive ? 'is-selected' : ''}`}
+                        >
+                          {grade}
+                        </button>
+                      )
+                    })}
                   </div>
+                )}
 
-                  <section className="space-y-2 flex flex-col h-full border-r border-slate-100 pr-5">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">قائمة اختيار الطلاب</p>
-                    <div className="flex-1 overflow-y-auto max-h-[60vh] rounded border border-slate-200 bg-slate-50/30">
-                      {pickerStudents.length === 0 ? (
-                        <div className="p-8">
-                          <EmptyState icon="bi-people" title="لا يوجد طلاب" description="جرب اختيار صف أو فصل مختلف." />
-                        </div>
-                      ) : (
-                        <ul className="divide-y divide-slate-100">
-                          {pickerStudents.map((student) => {
-                            const isSelected = selectedStudentIds.has(student.id)
-                            return (
-                              <li key={student.id}>
-                                <button
-                                  type="button"
-                                  onClick={() => handleToggleStudent(student.id)}
-                                  className={`flex w-full items-center gap-3 px-4 py-2.5 text-right transition ${isSelected ? 'bg-teal-50/80' : 'hover:bg-white'
-                                    }`}
-                                >
-                                  <span
-                                    className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] font-bold ${isSelected ? 'border-teal-600 bg-teal-600 text-white' : 'border-slate-300 text-slate-400'
-                                      }`}
-                                  >
-                                    {isSelected ? <i className="bi bi-check"></i> : ''}
-                                  </span>
-                                  <div className="flex flex-1 flex-col gap-0.5 overflow-hidden">
-                                    <p className="text-[13px] font-bold text-slate-800 truncate">{student.name}</p>
-                                    <div className="flex gap-2 text-[11px] text-slate-400 font-medium">
-                                      <span className="truncate">{student.grade || '—'}</span>
-                                      {student.class_name && <span className="truncate">• {student.class_name}</span>}
-                                    </div>
-                                  </div>
-                                </button>
-                              </li>
-                            )
-                          })}
-                        </ul>
-                      )}
+                {pickerGrade && (
+                  <>
+                    <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--ws-text-2)', margin: '12px 0 6px' }}>
+                      شعب {pickerGrade}
                     </div>
-                  </section>
-                </div>
+                    {classOptionsForGrade.length === 0 ? (
+                      <p style={{ margin: 0, fontSize: 11, color: 'var(--ws-text-2)' }}>لا توجد فصول — اختر صفاً آخر.</p>
+                    ) : (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                        {classOptionsForGrade.map((className) => (
+                          <WsChip
+                            key={className}
+                            tone={pickerClass === className ? 'sky' : undefined}
+                            onClick={() => setPickerClass(className)}
+                          >
+                            {className}
+                          </WsChip>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
 
-                <footer className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-slate-100 pt-4 mt-5">
-                  <div className="text-[11px] text-slate-400 font-medium font-bold">
-                    يمكنك اختيار الطلاب من أكثر من فصل قبل إغلاق النافذة
+              {/* طلاب الفصل */}
+              <div style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
+                <div
+                  style={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1,
+                    padding: '8px 12px',
+                    background: 'var(--ws-surface-2)',
+                    borderBottom: '1px solid var(--ws-hairline)',
+                    fontSize: 11,
+                    fontWeight: 700,
+                  }}
+                >
+                  قائمة الطلاب ({pickerStudents.length.toLocaleString('ar-SA')})
+                </div>
+                {pickerStudents.length === 0 ? (
+                  <WsEmpty icon={Users}>جرب اختيار صف أو فصل مختلف.</WsEmpty>
+                ) : (
+                  <div>
+                    {pickerStudents.map((student) => {
+                      const isSelected = selectedStudentIds.has(student.id)
+                      return (
+                        <button
+                          key={student.id}
+                          type="button"
+                          onClick={() => handleToggleStudent(student.id)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            width: '100%',
+                            textAlign: 'right',
+                            padding: '7px 12px',
+                            border: 'none',
+                            borderBottom: '1px solid var(--ws-hairline)',
+                            background: isSelected ? 'var(--ws-accent-soft)' : 'transparent',
+                            cursor: 'pointer',
+                            fontFamily: 'inherit',
+                          }}
+                        >
+                          <span
+                            style={{
+                              display: 'grid',
+                              placeItems: 'center',
+                              width: 15,
+                              height: 15,
+                              borderRadius: 4,
+                              border: `1px solid ${isSelected ? 'var(--ws-accent-2)' : 'var(--ws-border)'}`,
+                              background: isSelected ? 'var(--ws-accent-2)' : 'transparent',
+                              color: '#fff',
+                              flexShrink: 0,
+                            }}
+                          >
+                            {isSelected && <Check style={{ width: 10, height: 10 }} />}
+                          </span>
+                          <span style={{ minWidth: 0 }}>
+                            <span style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--ws-text)' }}>
+                              {student.name}
+                            </span>
+                            <span className="ws-cell-sub">
+                              {student.grade || '—'}
+                              {student.class_name ? ` • ${student.class_name}` : ''}
+                            </span>
+                          </span>
+                        </button>
+                      )
+                    })}
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setIsPickerOpen(false)}
-                      className="inline-flex items-center gap-1.5 rounded bg-teal-600 px-4 py-2 text-xs font-bold text-white shadow transition hover:bg-teal-500"
-                    >
-                      حفظ الاختيار
-                      <i className="bi bi-check-circle"></i>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedStudentIds(() => new Set())}
-                      className="inline-flex items-center gap-1.5 rounded border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 transition hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200"
-                    >
-                      مسح التحديد
-                    </button>
-                  </div>
-                </footer>
+                )}
               </div>
             </div>
+
+            <footer className="ws-modal__foot" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+              <WsBtn variant="danger" icon={X} onClick={() => setSelectedStudentIds(() => new Set())}>
+                مسح التحديد
+              </WsBtn>
+              <WsBtn variant="primary" icon={Check} onClick={() => setIsPickerOpen(false)}>
+                حفظ الاختيار
+              </WsBtn>
+            </footer>
           </div>
         </div>
       ) : null}
-    </div>
+    </WsPage>
   )
 }

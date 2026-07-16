@@ -1,447 +1,430 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/services/api/client'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Loader2, MessageSquare, School, User, Calendar, Eye, EyeOff, CheckCheck, ExternalLink } from 'lucide-react'
+import { MessageSquare, School, Calendar, CheckCheck, ExternalLink, Inbox, UserRound } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
+import {
+  WsBlock,
+  WsBtn,
+  WsChip,
+  WsEmpty,
+  WsFact,
+  WsFactRow,
+  WsFactsList,
+  WsField,
+  WsHeader,
+  WsInput,
+  WsLayout,
+  WsMain,
+  WsPage,
+  WsSelect,
+  WsSideCol,
+  WsToolbar,
+} from '@/shared/workspace'
 
 interface ParentReply {
-    id: number
-    type: 'referral' | 'teacher_message'
-    type_label: string
-    student_name: string
-    student_grade: string
-    student_class: string
-    source_title: string
-    source_id: number
-    sent_message: string | null
-    reply_text: string
-    replied_at: string
-    replied_at_formatted: string
-    is_read: boolean
-    read_at: string | null
-    receiver_name: string
+  id: number
+  type: 'referral' | 'teacher_message'
+  type_label: string
+  student_name: string
+  student_grade: string
+  student_class: string
+  source_title: string
+  source_id: number
+  sent_message: string | null
+  reply_text: string
+  replied_at: string
+  replied_at_formatted: string
+  is_read: boolean
+  read_at: string | null
+  receiver_name: string
 }
 
 interface ParentRepliesStats {
-    total: number
-    unread: number
-    referral: { total: number; unread: number }
-    teacher_message: { total: number; unread: number }
+  total: number
+  unread: number
+  referral: { total: number; unread: number }
+  teacher_message: { total: number; unread: number }
 }
 
 interface ParentRepliesResponse {
-    success: boolean
-    data: ParentReply[]
-    stats: ParentRepliesStats
-    meta: {
-        current_page: number
-        last_page: number
-        per_page: number
-        total: number
-    }
+  success: boolean
+  data: ParentReply[]
+  stats: ParentRepliesStats
+  meta: {
+    current_page: number
+    last_page: number
+    per_page: number
+    total: number
+  }
 }
 
 export function AdminParentRepliesPage() {
-    const queryClient = useQueryClient()
-    const [activeTab, setActiveTab] = useState<'all' | 'referral' | 'teacher_message'>('all')
-    const [statusFilter, setStatusFilter] = useState<'all' | 'unread' | 'read'>('all')
-    const [gradeFilter, setGradeFilter] = useState<string>('all')
-    const [classFilter, setClassFilter] = useState<string>('all')
-    const [searchQuery, setSearchQuery] = useState<string>('')
-    const [selectedReply, setSelectedReply] = useState<ParentReply | null>(null)
+  const queryClient = useQueryClient()
+  const [activeTab, setActiveTab] = useState<'all' | 'referral' | 'teacher_message'>('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'unread' | 'read'>('all')
+  const [gradeFilter, setGradeFilter] = useState<string>('all')
+  const [classFilter, setClassFilter] = useState<string>('all')
+  const [searchQuery, setSearchQuery] = useState<string>('')
+  const [selectedReply, setSelectedReply] = useState<ParentReply | null>(null)
 
-    // جلب خيارات الفلاتر (الصفوف والفصول المتاحة)
-    const { data: filterOptions } = useQuery<{ success: boolean; data: { grades: string[]; classes: string[] } }>({
-        queryKey: ['parent-replies-filter-options'],
-        queryFn: async () => {
-            const response = await apiClient.get('/admin/parent-replies/filter-options')
-            return response.data
-        },
-    })
+  // جلب خيارات الفلاتر (الصفوف والفصول المتاحة)
+  const { data: filterOptions } = useQuery<{ success: boolean; data: { grades: string[]; classes: string[] } }>({
+    queryKey: ['parent-replies-filter-options'],
+    queryFn: async () => {
+      const response = await apiClient.get('/admin/parent-replies/filter-options')
+      return response.data
+    },
+  })
 
-    const { data, isLoading, error } = useQuery<ParentRepliesResponse>({
-        queryKey: ['parent-replies', activeTab, statusFilter, gradeFilter, classFilter, searchQuery],
-        queryFn: async () => {
-            const response = await apiClient.get<ParentRepliesResponse>('/admin/parent-replies', {
-                params: {
-                    type: activeTab,
-                    status: statusFilter,
-                    grade: gradeFilter !== 'all' ? gradeFilter : undefined,
-                    class_name: classFilter !== 'all' ? classFilter : undefined,
-                    search: searchQuery || undefined,
-                }
-            })
-            return response.data
-        },
-    })
-
-    const markAsReadMutation = useMutation({
-        mutationFn: (reply: ParentReply) =>
-            apiClient.post(`/admin/parent-replies/${reply.type}/${reply.id}/read`),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['parent-replies'] })
-            toast.success('تم تحديد الرد كمقروء')
-        },
-        onError: () => {
-            toast.error('حدث خطأ أثناء تحديث حالة الرد')
+  const { data, isLoading, error } = useQuery<ParentRepliesResponse>({
+    queryKey: ['parent-replies', activeTab, statusFilter, gradeFilter, classFilter, searchQuery],
+    queryFn: async () => {
+      const response = await apiClient.get<ParentRepliesResponse>('/admin/parent-replies', {
+        params: {
+          type: activeTab,
+          status: statusFilter,
+          grade: gradeFilter !== 'all' ? gradeFilter : undefined,
+          class_name: classFilter !== 'all' ? classFilter : undefined,
+          search: searchQuery || undefined,
         }
-    })
+      })
+      return response.data
+    },
+  })
 
-    const markAllAsReadMutation = useMutation({
-        mutationFn: async () => {
-            const response = await apiClient.post<{ message: string }>('/admin/parent-replies/mark-all-read', { type: activeTab })
-            return response.data
-        },
-        onSuccess: (data) => {
-            queryClient.invalidateQueries({ queryKey: ['parent-replies'] })
-            toast.success(data.message)
-        },
-        onError: () => {
-            toast.error('حدث خطأ')
-        }
-    })
-
-    const handleReplyClick = (reply: ParentReply) => {
-        setSelectedReply(reply)
-        if (!reply.is_read) {
-            markAsReadMutation.mutate(reply)
-        }
+  const markAsReadMutation = useMutation({
+    mutationFn: (reply: ParentReply) =>
+      apiClient.post(`/admin/parent-replies/${reply.type}/${reply.id}/read`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['parent-replies'] })
+      toast.success('تم تحديد الرد كمقروء')
+    },
+    onError: () => {
+      toast.error('حدث خطأ أثناء تحديث حالة الرد')
     }
+  })
 
-    const stats = data?.stats
+  const markAllAsReadMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiClient.post<{ message: string }>('/admin/parent-replies/mark-all-read', { type: activeTab })
+      return response.data
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['parent-replies'] })
+      toast.success(data.message)
+    },
+    onError: () => {
+      toast.error('حدث خطأ')
+    }
+  })
 
-    if (isLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+  const handleReplyClick = (reply: ParentReply) => {
+    setSelectedReply(reply)
+    if (!reply.is_read) {
+      markAsReadMutation.mutate(reply)
+    }
+  }
+
+  const stats = data?.stats
+
+  const tabs: Array<{ key: 'all' | 'referral' | 'teacher_message'; label: string; count?: number; unread?: number }> = [
+    { key: 'all', label: 'الكل', count: stats?.total, unread: stats?.unread },
+    { key: 'referral', label: 'الإحالات', count: stats?.referral.total, unread: stats?.referral.unread },
+    { key: 'teacher_message', label: 'رسائل المعلمين', count: stats?.teacher_message.total, unread: stats?.teacher_message.unread },
+  ]
+
+  return (
+    <WsPage>
+      <WsHeader
+        title="ردود أولياء الأمور"
+        badge="الوارد"
+        actions={
+          stats && stats.unread > 0 ? (
+            <WsBtn icon={CheckCheck} onClick={() => markAllAsReadMutation.mutate()} disabled={markAllAsReadMutation.isPending}>
+              {markAllAsReadMutation.isPending ? 'جارٍ التحديث...' : 'تحديد الكل كمقروء'}
+            </WsBtn>
+          ) : undefined
+        }
+        facts={
+          <>
+            <WsFact icon={Inbox} label="إجمالي الردود:">
+              {(stats?.total ?? 0).toLocaleString('ar-SA')}
+            </WsFact>
+            <WsFact icon={School} label="الإحالات:">
+              {(stats?.referral.total ?? 0).toLocaleString('ar-SA')}
+            </WsFact>
+            <WsFact icon={MessageSquare} label="رسائل المعلمين:">
+              {(stats?.teacher_message.total ?? 0).toLocaleString('ar-SA')}
+            </WsFact>
+          </>
+        }
+      >
+        {stats && stats.unread > 0 ? (
+          <WsChip tone="sky">
+            <span className="ws-pulse" style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--ws-sky)' }} />
+            {stats.unread.toLocaleString('ar-SA')} غير مقروء
+          </WsChip>
+        ) : null}
+      </WsHeader>
+
+      <WsToolbar>
+        <WsField label="بحث" htmlFor="replies-search" grow>
+          <WsInput
+            id="replies-search"
+            type="text"
+            placeholder="بحث باسم الطالب..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </WsField>
+        <WsField label="حالة القراءة" htmlFor="replies-status">
+          <WsSelect id="replies-status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}>
+            <option value="all">الكل</option>
+            <option value="unread">غير مقروء</option>
+            <option value="read">مقروء</option>
+          </WsSelect>
+        </WsField>
+        <WsField label="الصف" htmlFor="replies-grade">
+          <WsSelect id="replies-grade" value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)}>
+            <option value="all">الكل</option>
+            {filterOptions?.data.grades.map((grade) => (
+              <option key={grade} value={grade}>{grade}</option>
+            ))}
+          </WsSelect>
+        </WsField>
+        <WsField label="الفصل" htmlFor="replies-class">
+          <WsSelect id="replies-class" value={classFilter} onChange={(e) => setClassFilter(e.target.value)}>
+            <option value="all">الكل</option>
+            {filterOptions?.data.classes.map((className) => (
+              <option key={className} value={className}>{className}</option>
+            ))}
+          </WsSelect>
+        </WsField>
+      </WsToolbar>
+
+      <WsLayout>
+        {/* العمود الأيمن: صندوق الوارد */}
+        <WsSideCol title="الوارد" icon={Inbox} side="start" width={330} storageKey="ws:parent-replies:inbox">
+          <div style={{ flexShrink: 0, padding: '8px 10px', borderBottom: '1px solid var(--ws-hairline)' }}>
+            <div className="ws-seg" style={{ display: 'flex' }}>
+              {tabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`ws-seg__btn ${activeTab === tab.key ? 'is-active' : ''}`}
+                  style={{ flex: 1, justifyContent: 'center' }}
+                >
+                  {tab.label}
+                  {tab.unread && tab.unread > 0 ? <span className="ws-count">{tab.unread}</span> : null}
+                </button>
+              ))}
             </div>
-        )
-    }
+          </div>
 
-    if (error) {
-        return (
-            <div className="p-6 text-center text-red-500">
-                حدث خطأ في تحميل البيانات
-            </div>
-        )
-    }
-
-    return (
-        <div className="p-6 space-y-6">
-            {/* Header */}
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                        ردود أولياء الأمور
-                    </h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-1">
-                        جميع الردود الواردة من أولياء الأمور على الإشعارات والرسائل
-                    </p>
-                </div>
-
-                {stats && stats.unread > 0 && (
-                    <Button
-                        variant="outline"
-                        onClick={() => markAllAsReadMutation.mutate()}
-                        disabled={markAllAsReadMutation.isPending}
+          <WsBlock fill scroll count={data?.data.length.toLocaleString('ar-SA')} title="الردود">
+            {isLoading ? (
+              <WsEmpty loading>جاري تحميل الردود...</WsEmpty>
+            ) : error ? (
+              <WsEmpty icon={Inbox}>حدث خطأ في تحميل البيانات.</WsEmpty>
+            ) : data?.data.length === 0 ? (
+              <WsEmpty icon={MessageSquare}>لا توجد ردود بالمعايير الحالية.</WsEmpty>
+            ) : (
+              <div>
+                {data?.data.map((reply) => {
+                  const isSelected = selectedReply?.id === reply.id && selectedReply?.type === reply.type
+                  return (
+                    <button
+                      key={`${reply.type}-${reply.id}`}
+                      type="button"
+                      onClick={() => handleReplyClick(reply)}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        textAlign: 'right',
+                        padding: '9px 12px',
+                        border: 'none',
+                        borderBottom: '1px solid var(--ws-hairline)',
+                        background: isSelected
+                          ? 'var(--ws-accent-soft)'
+                          : reply.is_read
+                            ? 'transparent'
+                            : 'var(--ws-sky-bg)',
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                      }}
                     >
-                        {markAllAsReadMutation.isPending ? (
-                            <Loader2 className="w-4 h-4 ml-2 animate-spin" />
-                        ) : (
-                            <CheckCheck className="w-4 h-4 ml-2" />
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        {!reply.is_read && (
+                          <span
+                            className="ws-pulse"
+                            style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--ws-sky)', flexShrink: 0 }}
+                          />
                         )}
-                        تحديد الكل كمقروء
-                    </Button>
-                )}
-            </div>
-
-            {/* Stats Cards */}
-            {stats && (
-                <div className="grid gap-4 md:grid-cols-3">
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardDescription>إجمالي الردود</CardDescription>
-                            <CardTitle className="text-3xl">{stats.total}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex items-center gap-2 text-sm">
-                                <Badge variant={stats.unread > 0 ? "destructive" : "secondary"}>
-                                    {stats.unread} غير مقروء
-                                </Badge>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="border-sky-200 dark:border-sky-800">
-                        <CardHeader className="pb-2">
-                            <CardDescription className="flex items-center gap-2">
-                                <School className="w-4 h-4" />
-                                ردود الإحالات
-                            </CardDescription>
-                            <CardTitle className="text-3xl text-sky-600">{stats.referral.total}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <Badge variant={stats.referral.unread > 0 ? "destructive" : "secondary"}>
-                                {stats.referral.unread} غير مقروء
-                            </Badge>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="border-emerald-200 dark:border-emerald-800">
-                        <CardHeader className="pb-2">
-                            <CardDescription className="flex items-center gap-2">
-                                <MessageSquare className="w-4 h-4" />
-                                ردود رسائل المعلمين
-                            </CardDescription>
-                            <CardTitle className="text-3xl text-emerald-600">{stats.teacher_message.total}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <Badge variant={stats.teacher_message.unread > 0 ? "destructive" : "secondary"}>
-                                {stats.teacher_message.unread} غير مقروء
-                            </Badge>
-                        </CardContent>
-                    </Card>
-                </div>
+                        <span style={{ fontSize: 12.5, fontWeight: reply.is_read ? 600 : 800, color: 'var(--ws-text)', minWidth: 0 }}>
+                          {reply.student_name}
+                        </span>
+                        <WsChip tone={reply.type === 'referral' ? 'sky' : 'green'}>{reply.type_label}</WsChip>
+                      </span>
+                      <span className="ws-cell-sub" style={{ display: 'block', marginTop: 3 }}>
+                        {reply.source_title}
+                        {reply.type === 'teacher_message' && reply.receiver_name ? ` — ${reply.receiver_name}` : ''}
+                      </span>
+                      <span className="ws-cell-sub" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                        <Calendar style={{ width: 10, height: 10 }} />
+                        {reply.replied_at_formatted}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
             )}
+          </WsBlock>
+        </WsSideCol>
 
-            {/* Tabs and Content */}
-            <Card>
-                <CardHeader>
-                    <div className="flex flex-col gap-4">
-                        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
-                                <TabsList>
-                                    <TabsTrigger value="all" className="gap-2">
-                                        الكل
-                                        {stats && <Badge variant="secondary">{stats.total}</Badge>}
-                                    </TabsTrigger>
-                                    <TabsTrigger value="referral" className="gap-2">
-                                        <School className="w-4 h-4" />
-                                        الإحالات
-                                        {stats && <Badge variant="secondary">{stats.referral.total}</Badge>}
-                                    </TabsTrigger>
-                                    <TabsTrigger value="teacher_message" className="gap-2">
-                                        <MessageSquare className="w-4 h-4" />
-                                        رسائل المعلمين
-                                        {stats && <Badge variant="secondary">{stats.teacher_message.total}</Badge>}
-                                    </TabsTrigger>
-                                </TabsList>
-                            </Tabs>
+        {/* الوسط: المحادثة */}
+        <WsMain>
+          <WsBlock
+            title={selectedReply ? `رد ولي أمر: ${selectedReply.student_name}` : 'تفاصيل الرد'}
+            icon={MessageSquare}
+            tools={
+              selectedReply?.type === 'referral' && selectedReply.source_id ? (
+                <Link to={`/admin/referrals/${selectedReply.source_id}`} className="ws-btn ws-btn--sm">
+                  <ExternalLink style={{ width: 12, height: 12 }} />
+                  عرض الإحالة
+                </Link>
+              ) : undefined
+            }
+            fill
+            scroll
+          >
+            {!selectedReply ? (
+              <WsEmpty icon={MessageSquare}>اختر رداً من الوارد على اليمين لعرض المحادثة كاملة.</WsEmpty>
+            ) : (
+              <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 720 }}>
+                {/* بطاقة الطالب */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    borderRadius: 10,
+                    border: '1px solid var(--ws-hairline)',
+                    background: 'var(--ws-surface-2)',
+                    padding: '10px 12px',
+                  }}
+                >
+                  <span
+                    style={{
+                      display: 'grid',
+                      placeItems: 'center',
+                      width: 38,
+                      height: 38,
+                      borderRadius: '50%',
+                      background: 'var(--ws-accent-soft)',
+                      color: 'var(--ws-accent-2)',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <UserRound style={{ width: 17, height: 17 }} />
+                  </span>
+                  <span>
+                    <span style={{ display: 'block', fontSize: 13, fontWeight: 800 }}>{selectedReply.student_name}</span>
+                    <span className="ws-cell-sub">
+                      {selectedReply.student_grade} - {selectedReply.student_class}
+                    </span>
+                  </span>
+                  <span style={{ marginInlineStart: 'auto' }}>
+                    <WsChip tone={selectedReply.type === 'referral' ? 'sky' : 'green'}>{selectedReply.type_label}</WsChip>
+                  </span>
+                </div>
 
-                            <select
-                                value={statusFilter}
-                                onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-                                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none w-full md:w-[180px]"
-                            >
-                                <option value="all">الكل</option>
-                                <option value="unread">غير مقروء</option>
-                                <option value="read">مقروء</option>
-                            </select>
-                        </div>
-
-                        {/* Filters Row */}
-                        <div className="flex flex-col gap-3 md:flex-row md:items-center">
-                            <div className="flex-1">
-                                <input
-                                    type="text"
-                                    placeholder="بحث بالاسم..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
-                                />
-                            </div>
-                            <select
-                                value={gradeFilter}
-                                onChange={(e) => setGradeFilter(e.target.value)}
-                                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none w-full md:w-[150px]"
-                            >
-                                <option value="all">الكل</option>
-                                {filterOptions?.data.grades.map((grade) => (
-                                    <option key={grade} value={grade}>{grade}</option>
-                                ))}
-                            </select>
-                            <select
-                                value={classFilter}
-                                onChange={(e) => setClassFilter(e.target.value)}
-                                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none w-full md:w-[150px]"
-                            >
-                                <option value="all">الكل</option>
-                                {filterOptions?.data.classes.map((className) => (
-                                    <option key={className} value={className}>{className}</option>
-                                ))}
-                            </select>
-                        </div>
+                {/* المحادثة */}
+                <div
+                  style={{
+                    borderRadius: 12,
+                    border: '1px solid var(--ws-hairline)',
+                    padding: 14,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 10,
+                    background:
+                      'radial-gradient(circle at 20% 20%, rgba(0,0,0,0.02) 0 2px, transparent 2px) 0 0 / 26px 26px, var(--ws-surface-2)',
+                  }}
+                >
+                  {selectedReply.sent_message && (
+                    <div style={{ alignSelf: 'flex-end', maxWidth: '85%' }}>
+                      <div style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--ws-text-2)', marginBottom: 3, textAlign: 'left' }}>
+                        رسالة المدرسة — {selectedReply.receiver_name}
+                      </div>
+                      <div
+                        style={{
+                          borderRadius: '10px 2px 10px 10px',
+                          background: '#D5F5DF',
+                          color: '#12261A',
+                          padding: '9px 11px',
+                          fontSize: 12,
+                          lineHeight: 1.9,
+                          whiteSpace: 'pre-wrap',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.12)',
+                        }}
+                      >
+                        {selectedReply.sent_message}
+                        <span
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'flex-end',
+                            gap: 3,
+                            marginTop: 4,
+                            fontSize: 9,
+                            color: '#5a7a66',
+                          }}
+                        >
+                          <CheckCheck style={{ width: 12, height: 12, color: '#4FA3DE' }} />
+                        </span>
+                      </div>
                     </div>
-                </CardHeader>
+                  )}
 
-                <CardContent>
-                    <div className="grid gap-6 lg:grid-cols-2">
-                        {/* Replies List */}
-                        <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                            {isLoading ? (
-                                <div className="space-y-3">
-                                    {[1, 2, 3, 4, 5].map((i) => (
-                                        <div key={i} className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 animate-pulse">
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div className="flex-1 space-y-3">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="h-5 w-20 bg-slate-200 dark:bg-slate-700 rounded" />
-                                                        <div className="h-2 w-2 bg-slate-200 dark:bg-slate-700 rounded-full" />
-                                                    </div>
-                                                    <div className="h-4 w-32 bg-slate-200 dark:bg-slate-700 rounded" />
-                                                    <div className="h-3 w-48 bg-slate-200 dark:bg-slate-700 rounded" />
-                                                    <div className="h-3 w-24 bg-slate-200 dark:bg-slate-700 rounded" />
-                                                </div>
-                                                <div className="h-4 w-4 bg-slate-200 dark:bg-slate-700 rounded" />
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : data?.data.length === 0 ? (
-                                <div className="text-center py-12 text-slate-500">
-                                    <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                                    <p>لا توجد ردود</p>
-                                </div>
-                            ) : (
-                                data?.data.map((reply) => (
-                                    <div
-                                        key={`${reply.type}-${reply.id}`}
-                                        onClick={() => handleReplyClick(reply)}
-                                        className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md ${selectedReply?.id === reply.id && selectedReply?.type === reply.type
-                                            ? 'border-primary bg-primary/5'
-                                            : reply.is_read
-                                                ? 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900'
-                                                : 'border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-900/20'
-                                            }`}
-                                    >
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                                    <Badge variant={reply.type === 'referral' ? 'default' : 'secondary'} className="text-xs">
-                                                        {reply.type_label}
-                                                    </Badge>
-                                                    {reply.type === 'teacher_message' && reply.receiver_name && (
-                                                        <span className="text-xs text-slate-500">
-                                                            ({reply.receiver_name})
-                                                        </span>
-                                                    )}
-                                                    {!reply.is_read && (
-                                                        <span className="w-2 h-2 rounded-full bg-sky-500" />
-                                                    )}
-                                                </div>
-                                                <p className="font-semibold text-slate-900 dark:text-slate-100 truncate">
-                                                    {reply.student_name}
-                                                </p>
-                                                <p className="text-sm text-slate-500 truncate">
-                                                    {reply.source_title}
-                                                </p>
-                                                <p className="text-xs text-slate-400 mt-2 flex items-center gap-1">
-                                                    <Calendar className="w-3 h-3" />
-                                                    {reply.replied_at_formatted}
-                                                </p>
-                                            </div>
-                                            <div className="text-slate-400">
-                                                {reply.is_read ? (
-                                                    <Eye className="w-4 h-4" />
-                                                ) : (
-                                                    <EyeOff className="w-4 h-4 text-sky-500" />
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-
-                        {/* Reply Detail */}
-                        <div className="lg:border-r lg:pr-6">
-                            {selectedReply ? (
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <Badge variant={selectedReply.type === 'referral' ? 'default' : 'secondary'}>
-                                            {selectedReply.type_label}
-                                        </Badge>
-                                        {selectedReply.type === 'referral' && selectedReply.source_id && (
-                                            <Link to={`/admin/referrals/${selectedReply.source_id}`}>
-                                                <Button variant="outline" size="sm" className="gap-2">
-                                                    <ExternalLink className="w-4 h-4" />
-                                                    عرض الإحالة
-                                                </Button>
-                                            </Link>
-                                        )}
-                                    </div>
-
-                                    {/* Student Info */}
-                                    <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                                                <User className="w-5 h-5 text-primary" />
-                                            </div>
-                                            <div>
-                                                <p className="font-semibold">{selectedReply.student_name}</p>
-                                                <p className="text-sm text-slate-500">
-                                                    {selectedReply.student_grade} - {selectedReply.student_class}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Original Message */}
-                                    {selectedReply.sent_message && (
-                                        <div>
-                                            <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                                الرسالة الأصلية:
-                                            </p>
-                                            <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                                                <p className="text-sm text-amber-900 dark:text-amber-100 whitespace-pre-wrap">
-                                                    {selectedReply.sent_message}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Parent Reply */}
-                                    <div>
-                                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                            رد ولي الأمر:
-                                        </p>
-                                        <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg">
-                                            <p className="text-emerald-900 dark:text-emerald-100 whitespace-pre-wrap">
-                                                {selectedReply.reply_text}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    {/* Meta */}
-                                    <div className="pt-4 border-t text-sm text-slate-500 space-y-1">
-                                        <p>
-                                            <span className="font-medium">المستلم:</span> {selectedReply.receiver_name}
-                                        </p>
-                                        <p>
-                                            <span className="font-medium">وقت الرد:</span> {selectedReply.replied_at_formatted}
-                                        </p>
-                                        {selectedReply.read_at && (
-                                            <p>
-                                                <span className="font-medium">تم القراءة:</span> {new Date(selectedReply.read_at).toLocaleString('ar-SA')}
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="flex flex-col items-center justify-center h-full py-12 text-slate-500">
-                                    <MessageSquare className="w-12 h-12 mb-4 opacity-30" />
-                                    <p>اختر رداً لعرض تفاصيله</p>
-                                </div>
-                            )}
-                        </div>
+                  <div style={{ alignSelf: 'flex-start', maxWidth: '85%' }}>
+                    <div style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--ws-text-2)', marginBottom: 3 }}>
+                      رد ولي الأمر — {selectedReply.replied_at_formatted}
                     </div>
-                </CardContent>
-            </Card>
-        </div>
-    )
+                    <div
+                      style={{
+                        borderRadius: '2px 10px 10px 10px',
+                        background: 'var(--ws-surface)',
+                        border: '1px solid var(--ws-hairline)',
+                        color: 'var(--ws-text)',
+                        padding: '9px 11px',
+                        fontSize: 12.5,
+                        fontWeight: 600,
+                        lineHeight: 1.9,
+                        whiteSpace: 'pre-wrap',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+                      }}
+                    >
+                      {selectedReply.reply_text}
+                    </div>
+                  </div>
+                </div>
+
+                {/* البيانات الوصفية */}
+                <WsFactsList>
+                  <WsFactRow label="بخصوص">{selectedReply.source_title}</WsFactRow>
+                  <WsFactRow label="المستلم">{selectedReply.receiver_name}</WsFactRow>
+                  <WsFactRow label="وقت الرد">{selectedReply.replied_at_formatted}</WsFactRow>
+                  {selectedReply.read_at && (
+                    <WsFactRow label="تمت القراءة">{new Date(selectedReply.read_at).toLocaleString('ar-SA')}</WsFactRow>
+                  )}
+                </WsFactsList>
+              </div>
+            )}
+          </WsBlock>
+        </WsMain>
+      </WsLayout>
+    </WsPage>
+  )
 }

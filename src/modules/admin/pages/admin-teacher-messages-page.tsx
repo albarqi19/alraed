@@ -1,9 +1,39 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import {
+  CalendarDays,
+  CalendarRange,
+  FileText,
+  MessageSquare,
+  Pencil,
+  Plus,
+  Settings2,
+  ShieldCheck,
+  SlidersHorizontal,
+  Trash2,
+  Users,
+} from 'lucide-react'
 import { apiClient } from '@/services/api/client'
 import { fetchTeacherMessagesByPeriod } from '../api'
 import { TeacherMessagesModal } from '../components/teacher-messages-modal'
-import clsx from 'classnames'
+import {
+  WsBlock,
+  WsBtn,
+  WsChip,
+  WsEmpty,
+  WsFact,
+  WsFactRow,
+  WsFactsList,
+  WsField,
+  WsHeader,
+  WsInput,
+  WsLayout,
+  WsMain,
+  WsPage,
+  WsSideCol,
+  WsSwitch,
+  WsTextarea,
+} from '@/shared/workspace'
 
 interface MessageTemplate {
   id: number
@@ -42,6 +72,44 @@ interface TeacherOverridesResponse {
   success: boolean
   general_limit: number
   teachers: TeacherOverrideRow[]
+}
+
+/** صف إعداد بمفتاح checkbox داخل نموذج FormData */
+function SettingCheckboxRow({
+  name,
+  defaultChecked,
+  title,
+  sub,
+}: {
+  name: string
+  defaultChecked: boolean
+  title: string
+  sub: string
+}) {
+  return (
+    <label
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        borderRadius: 8,
+        border: '1px solid var(--ws-hairline)',
+        padding: '9px 12px',
+        cursor: 'pointer',
+      }}
+    >
+      <input
+        type="checkbox"
+        name={name}
+        defaultChecked={defaultChecked}
+        style={{ width: 15, height: 15, accentColor: 'var(--ws-accent-2)', flexShrink: 0 }}
+      />
+      <span style={{ minWidth: 0 }}>
+        <span style={{ display: 'block', fontSize: 12, fontWeight: 700 }}>{title}</span>
+        <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ws-text-2)', lineHeight: 1.7 }}>{sub}</span>
+      </span>
+    </label>
+  )
 }
 
 export function AdminTeacherMessagesPage() {
@@ -213,455 +281,411 @@ export function AdminTeacherMessagesPage() {
     },
   })
 
-  if (templatesLoading || settingsLoading) {
-    return (
-      <div className="glass-card text-center">
-        <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-teal-500/30 border-t-teal-500" />
-        <p className="mt-4 text-sm text-muted">جاري التحميل...</p>
-      </div>
-    )
-  }
+  const isLoadingCore = templatesLoading || settingsLoading
+
+  const pulseStats: Array<{ period: 'today' | 'week' | 'month' | 'active'; title: string; value: number; icon: typeof CalendarDays }> = [
+    { period: 'today', title: 'رسائل اليوم', value: statistics.total_sent_today, icon: CalendarDays },
+    { period: 'week', title: 'رسائل الأسبوع', value: statistics.total_sent_this_week, icon: CalendarRange },
+    { period: 'month', title: 'رسائل الشهر', value: statistics.total_sent_this_month, icon: MessageSquare },
+    { period: 'active', title: 'معلمون نشطون', value: statistics.active_teachers_count, icon: Users },
+  ]
+
+  const filteredOverrides = (() => {
+    const search = overridesSearch.trim().toLowerCase()
+    const all = overridesData?.teachers ?? []
+    return all
+      .filter(t => overridesShowAll || t.has_override)
+      .filter(t => {
+        if (!search) return true
+        return (
+          t.teacher_name.toLowerCase().includes(search) ||
+          (t.teacher_national_id ?? '').toLowerCase().includes(search)
+        )
+      })
+  })()
 
   return (
-    <section className="space-y-6">
-      {/* Header with Quick Toggle */}
-      <header className="glass-card">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                console.log('Toggle clicked, current state:', settings.is_enabled)
-                toggleSystemMutation.mutate(!settings.is_enabled)
-              }}
-              disabled={toggleSystemMutation.isPending}
-              className={clsx(
-                'relative inline-flex h-12 w-24 flex-shrink-0 items-center rounded-full transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed',
-                toggleSystemMutation.isPending && 'animate-pulse',
-                settings.is_enabled ? 'bg-emerald-500' : 'bg-slate-300'
-              )}
-            >
-              <span
-                className={clsx(
-                  'inline-block h-10 w-10 transform rounded-full bg-white shadow-lg transition-transform duration-300',
-                  settings.is_enabled ? 'translate-x-12' : 'translate-x-1'
-                )}
-              />
-            </button>
-            <div className="text-right">
-              <p className="text-sm font-semibold text-slate-900">
-                {toggleSystemMutation.isPending ? 'جاري التحديث...' : settings.is_enabled ? 'النظام مفعّل ✓' : 'النظام معطّل'}
-              </p>
-              <p className="text-xs text-muted">
-                {settings.is_enabled ? 'المعلمون يمكنهم إرسال الرسائل' : 'لا يمكن للمعلمين إرسال الرسائل'}
-              </p>
-            </div>
-          </div>
-
-          <div className="text-right">
-            <h1 className="text-3xl font-bold text-slate-900">إدارة رسائل المعلمين</h1>
-            <p className="text-sm text-muted">تحكم في قوالب الرسائل والإعدادات</p>
-          </div>
-        </div>
-      </header>
-
-      {/* Statistics Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <button
-          type="button"
-          onClick={() => handleCardClick('today', 'رسائل اليوم')}
-          className="group relative overflow-hidden rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 p-6 text-center transition-all duration-300 hover:scale-105 hover:border-blue-400 hover:shadow-2xl cursor-pointer"
-        >
-          <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-blue-200/50 blur-2xl transition-all group-hover:scale-150" />
-          <div className="relative">
-            <div className="text-5xl font-extrabold text-blue-600">{statistics.total_sent_today}</div>
-            <p className="mt-3 text-sm font-bold text-blue-900">رسائل اليوم</p>
-            <p className="mt-2 text-xs font-semibold text-blue-700">انقر للتفاصيل</p>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleCardClick('week', 'رسائل الأسبوع')}
-          className="group relative overflow-hidden rounded-2xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100 p-6 text-center transition-all duration-300 hover:scale-105 hover:border-purple-400 hover:shadow-2xl cursor-pointer"
-        >
-          <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-purple-200/50 blur-2xl transition-all group-hover:scale-150" />
-          <div className="relative">
-            <div className="text-5xl font-extrabold text-purple-600">{statistics.total_sent_this_week}</div>
-            <p className="mt-3 text-sm font-bold text-purple-900">رسائل الأسبوع</p>
-            <p className="mt-2 text-xs font-semibold text-purple-700">انقر للتفاصيل</p>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleCardClick('month', 'رسائل الشهر')}
-          className="group relative overflow-hidden rounded-2xl border-2 border-teal-200 bg-gradient-to-br from-teal-50 to-teal-100 p-6 text-center transition-all duration-300 hover:scale-105 hover:border-teal-400 hover:shadow-2xl cursor-pointer"
-        >
-          <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-teal-200/50 blur-2xl transition-all group-hover:scale-150" />
-          <div className="relative">
-            <div className="text-5xl font-extrabold text-teal-600">{statistics.total_sent_this_month}</div>
-            <p className="mt-3 text-sm font-bold text-teal-900">رسائل الشهر</p>
-            <p className="mt-2 text-xs font-semibold text-teal-700">انقر للتفاصيل</p>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleCardClick('active', 'المعلمين النشطين')}
-          className="group relative overflow-hidden rounded-2xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100 p-6 text-center transition-all duration-300 hover:scale-105 hover:border-amber-400 hover:shadow-2xl cursor-pointer"
-        >
-          <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-amber-200/50 blur-2xl transition-all group-hover:scale-150" />
-          <div className="relative">
-            <div className="text-5xl font-extrabold text-amber-600">{statistics.active_teachers_count}</div>
-            <p className="mt-3 text-sm font-bold text-amber-900">معلمين نشطين</p>
-            <p className="mt-2 text-xs font-semibold text-amber-700">انقر للتفاصيل</p>
-          </div>
-        </button>
-      </div>
-
-      {/* Settings Card */}
-      <div className="glass-card space-y-4">
-        <div className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => setEditingSettings(!editingSettings)}
-            className="text-sm font-semibold text-teal-600 hover:text-teal-700"
-          >
-            {editingSettings ? 'إلغاء' : 'تعديل الإعدادات'}
-          </button>
-          <h2 className="text-xl font-semibold text-slate-900">إعدادات النظام</h2>
-        </div>
-
-        {editingSettings ? (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              const formData = new FormData(e.currentTarget)
-              updateSettingsMutation.mutate({
-                is_enabled: formData.get('is_enabled') === 'on',
-                daily_limit_per_teacher: Number(formData.get('daily_limit')),
-                allowed_start_hour: Number(formData.get('start_hour')),
-                allowed_end_hour: Number(formData.get('end_hour')),
-                enable_replies: formData.get('enable_replies') === 'on',
-                reply_expiry_days: Number(formData.get('reply_expiry_days')),
-                allow_custom_messages: formData.get('allow_custom_messages') === 'on',
-                ai_review_enabled: formData.get('ai_review_enabled') === 'on',
-              })
-            }}
-            className="space-y-4"
-          >
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4">
-                <input
-                  type="checkbox"
-                  name="is_enabled"
-                  defaultChecked={settings.is_enabled}
-                  className="h-5 w-5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                />
-                <div className="flex-1 text-right">
-                  <p className="font-semibold text-slate-900">تفعيل الميزة</p>
-                  <p className="text-xs text-muted">السماح للمعلمين بإرسال الرسائل</p>
-                </div>
-              </label>
-
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-                <label className="block text-right text-sm font-semibold text-slate-900">
-                  الحد اليومي العام لكل معلم
-                </label>
-                <input
-                  type="number"
-                  name="daily_limit"
-                  defaultValue={settings.daily_limit_per_teacher}
-                  min="1"
-                  max="500"
-                  className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-center"
-                />
-                <p className="text-xs text-amber-700 mt-2 text-right">
-                  ⚠️ هذا الحد يطبّق على جميع المعلمين افتراضياً. يمكن تخصيص حد أعلى لمعلمين محددين من قسم "حدود خاصة للمعلمين" أدناه. تنبه: الأرقام العالية قد تعرّض رقم المدرسة لخطر التقييد من واتساب.
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-slate-200 bg-white p-4">
-                <label className="block text-right text-sm font-semibold text-slate-900">
-                  بداية الوقت المسموح
-                </label>
-                <input
-                  type="number"
-                  name="start_hour"
-                  defaultValue={settings.allowed_start_hour}
-                  min="0"
-                  max="23"
-                  className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-center"
-                />
-              </div>
-
-              <div className="rounded-xl border border-slate-200 bg-white p-4">
-                <label className="block text-right text-sm font-semibold text-slate-900">
-                  نهاية الوقت المسموح
-                </label>
-                <input
-                  type="number"
-                  name="end_hour"
-                  defaultValue={settings.allowed_end_hour}
-                  min="0"
-                  max="23"
-                  className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-center"
-                />
-              </div>
-
-              <label className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-                <input
-                  type="checkbox"
-                  name="enable_replies"
-                  defaultChecked={settings.enable_replies}
-                  className="h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                />
-                <div className="flex-1 text-right">
-                  <p className="font-semibold text-slate-900">تفعيل ردود أولياء الأمور</p>
-                  <p className="text-xs text-muted">إضافة رابط رد سحري للرسائل</p>
-                </div>
-              </label>
-
-              <div className="rounded-xl border border-slate-200 bg-white p-4">
-                <label className="block text-right text-sm font-semibold text-slate-900">
-                  صلاحية رابط الرد (أيام)
-                </label>
-                <input
-                  type="number"
-                  name="reply_expiry_days"
-                  defaultValue={settings.reply_expiry_days}
-                  min="1"
-                  max="30"
-                  className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-center"
-                />
-              </div>
-
-              <label className="flex items-center gap-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4 sm:col-span-2">
-                <input
-                  type="checkbox"
-                  name="allow_custom_messages"
-                  defaultChecked={settings.allow_custom_messages}
-                  className="h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                />
-                <div className="flex-1 text-right">
-                  <p className="font-semibold text-slate-900">السماح بالرسائل المخصصة</p>
-                  <p className="text-xs text-muted">يتيح للمعلمين كتابة رسائل خاصة بدلاً من القوالب الجاهزة</p>
-                </div>
-              </label>
-
-              <label className="flex items-center gap-3 rounded-xl border border-teal-200 bg-teal-50 p-4 sm:col-span-2">
-                <input
-                  type="checkbox"
-                  name="ai_review_enabled"
-                  defaultChecked={settings.ai_review_enabled}
-                  className="h-5 w-5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                />
-                <div className="flex-1 text-right">
-                  <p className="font-semibold text-slate-900">🛡️ المراجعة الذكية للرسائل المخصصة</p>
-                  <p className="text-xs text-muted">تفحص الرسائل المخصصة قبل الإرسال: تُمرّر النظيفة كما هي، وتُهذّب المخالفة تلقائياً (إخفاء أسماء الطلاب، تلطيف الألفاظ، تحسين النبرة). لا تتأثر القوالب الجاهزة.</p>
-                </div>
-              </label>
-            </div>
-
-            <button
-              type="submit"
-              disabled={updateSettingsMutation.isPending}
-              className="button-primary w-full disabled:opacity-50"
-            >
-              {updateSettingsMutation.isPending ? 'جاري الحفظ...' : 'حفظ التعديلات'}
-            </button>
-          </form>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className={clsx('rounded-xl border p-4 text-center', settings.is_enabled ? 'border-emerald-200 bg-emerald-50' : 'border-rose-200 bg-rose-50')}>
-              <p className="text-2xl font-bold">{settings.is_enabled ? 'مفعّل' : 'معطّل'}</p>
-              <p className="text-sm text-muted">حالة النظام</p>
-            </div>
-
-            <div className="rounded-xl border border-slate-200 bg-white p-4 text-center">
-              <p className="text-2xl font-bold text-slate-900">{settings.daily_limit_per_teacher}</p>
-              <p className="text-sm text-muted">رسائل يومياً / معلم</p>
-            </div>
-
-            <div className="rounded-xl border border-slate-200 bg-white p-4 text-center">
-              <p className="text-2xl font-bold text-slate-900">{settings.allowed_start_hour}:00</p>
-              <p className="text-sm text-muted">بداية الوقت</p>
-            </div>
-
-            <div className="rounded-xl border border-slate-200 bg-white p-4 text-center">
-              <p className="text-2xl font-bold text-slate-900">{settings.allowed_end_hour}:00</p>
-              <p className="text-sm text-muted">نهاية الوقت</p>
-            </div>
-
-            <div className={clsx('rounded-xl border p-4 text-center', settings.enable_replies ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-slate-50')}>
-              <p className="text-2xl font-bold">{settings.enable_replies ? 'مفعّل' : 'معطّل'}</p>
-              <p className="text-sm text-muted">ردود أولياء الأمور</p>
-            </div>
-
-            <div className="rounded-xl border border-slate-200 bg-white p-4 text-center">
-              <p className="text-2xl font-bold text-slate-900">{settings.reply_expiry_days} أيام</p>
-              <p className="text-sm text-muted">صلاحية الرابط</p>
-            </div>
-
-            <div className={clsx('rounded-xl border p-4 text-center', settings.allow_custom_messages ? 'border-indigo-200 bg-indigo-50' : 'border-slate-200 bg-slate-50')}>
-              <p className="text-2xl font-bold">{settings.allow_custom_messages ? 'مفعّل' : 'معطّل'}</p>
-              <p className="text-sm text-muted">الرسائل المخصصة</p>
-            </div>
-
-            <div className={clsx('rounded-xl border p-4 text-center', settings.ai_review_enabled ? 'border-teal-200 bg-teal-50' : 'border-slate-200 bg-slate-50')}>
-              <p className="text-2xl font-bold">{settings.ai_review_enabled ? 'مفعّل' : 'معطّل'}</p>
-              <p className="text-sm text-muted">🛡️ المراجعة الذكية</p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Teacher Overrides */}
-      <div className="glass-card space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm text-muted">
-            الحد العام: <span className="font-semibold text-slate-900">{overridesData?.general_limit ?? settings.daily_limit_per_teacher}</span> رسالة/يوم
-            {' • '}
-            <span className="font-semibold text-amber-600">
-              {overridesData?.teachers.filter(t => t.has_override).length ?? 0}
+    <WsPage>
+      <WsHeader
+        title="إدارة رسائل المعلمين"
+        badge="قناة المعلم ← ولي الأمر"
+        actions={
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--ws-text-2)' }}>
+              {toggleSystemMutation.isPending ? 'جاري التحديث...' : settings.is_enabled ? 'النظام مفعّل' : 'النظام معطّل'}
             </span>
-            {' '}معلم بحد خاص
+            <WsSwitch
+              checked={settings.is_enabled}
+              onChange={(next) => toggleSystemMutation.mutate(next)}
+              disabled={toggleSystemMutation.isPending}
+            />
           </div>
-          <h2 className="text-xl font-semibold text-slate-900">حدود خاصة للمعلمين</h2>
-        </div>
-
-        <p className="text-xs text-muted text-right">
-          يمكنك زيادة (أو تقليل) الحد اليومي لمعلمين محددين دون التأثير على الباقي. عند حذف الحد الخاص، يعود المعلم تلقائياً للحد العام.
-        </p>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <input
-            type="text"
-            value={overridesSearch}
-            onChange={(e) => setOverridesSearch(e.target.value)}
-            placeholder="ابحث باسم المعلم أو الهوية..."
-            className="flex-1 min-w-[200px] rounded-lg border border-slate-300 px-3 py-2 text-right"
-          />
-          <button
-            type="button"
-            onClick={() => setOverridesShowAll(!overridesShowAll)}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-          >
-            {overridesShowAll ? 'عرض الذين لديهم حد خاص فقط' : 'عرض كل المعلمين'}
-          </button>
-        </div>
-
-        {overridesLoading ? (
-          <div className="text-center py-6 text-sm text-muted">جاري التحميل...</div>
+        }
+        facts={
+          <>
+            <WsFact icon={MessageSquare} label="اليوم:">
+              {statistics.total_sent_today}
+            </WsFact>
+            <WsFact label="الأسبوع:">{statistics.total_sent_this_week}</WsFact>
+            <WsFact label="الشهر:">{statistics.total_sent_this_month}</WsFact>
+            <WsFact icon={Users} label="نشطون:">
+              {statistics.active_teachers_count}
+            </WsFact>
+          </>
+        }
+      >
+        {settings.is_enabled ? (
+          <WsChip tone="green">
+            <span className="ws-pulse" style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--ws-green)' }} />
+            يستقبل الرسائل
+          </WsChip>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-slate-200">
-            <table className="w-full text-right text-sm">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="px-4 py-3 font-semibold text-slate-700">المعلم</th>
-                  <th className="px-4 py-3 font-semibold text-slate-700">الهوية</th>
-                  <th className="px-4 py-3 font-semibold text-slate-700">الحد الفعلي</th>
-                  <th className="px-4 py-3 font-semibold text-slate-700">الحالة</th>
-                  <th className="px-4 py-3 font-semibold text-slate-700">إجراءات</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 bg-white">
-                {(() => {
-                  const search = overridesSearch.trim().toLowerCase()
-                  const all = overridesData?.teachers ?? []
-                  const filtered = all
-                    .filter(t => overridesShowAll || t.has_override)
-                    .filter(t => {
-                      if (!search) return true
-                      return (
-                        t.teacher_name.toLowerCase().includes(search) ||
-                        (t.teacher_national_id ?? '').toLowerCase().includes(search)
-                      )
-                    })
-
-                  if (filtered.length === 0) {
-                    return (
-                      <tr>
-                        <td colSpan={5} className="px-4 py-6 text-center text-muted">
-                          {overridesShowAll
-                            ? 'لا يوجد معلمون مطابقون للبحث.'
-                            : 'لا يوجد معلمون لديهم حد خاص حالياً. اضغط "عرض كل المعلمين" لتعيين حد خاص.'}
-                        </td>
-                      </tr>
-                    )
-                  }
-
-                  return filtered.map((t) => (
-                    <tr key={t.teacher_id} className={t.has_override ? 'bg-amber-50/50' : ''}>
-                      <td className="px-4 py-3">
-                        <p className="font-semibold text-slate-900">{t.teacher_name}</p>
-                        {t.note && (
-                          <p className="mt-0.5 text-xs text-amber-700">📝 {t.note}</p>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-slate-600 font-mono text-xs">{t.teacher_national_id ?? '—'}</td>
-                      <td className="px-4 py-3">
-                        <span className={clsx('font-bold', t.has_override ? 'text-amber-700' : 'text-slate-900')}>
-                          {t.effective_limit}
-                        </span>
-                        <span className="text-xs text-muted"> رسالة</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        {t.has_override ? (
-                          <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
-                            حد خاص
-                          </span>
-                        ) : (
-                          <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
-                            الحد العام
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setEditingOverride(t)}
-                            className="rounded-md border border-teal-300 bg-white px-3 py-1 text-xs font-semibold text-teal-700 hover:bg-teal-50"
-                          >
-                            {t.has_override ? 'تعديل الحد' : 'تعيين حد خاص'}
-                          </button>
-                          {t.has_override && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (confirm(`هل تريد حذف الحد الخاص للمعلم "${t.teacher_name}" والعودة للحد العام؟`)) {
-                                  deleteOverrideMutation.mutate(t.teacher_id)
-                                }
-                              }}
-                              disabled={deleteOverrideMutation.isPending}
-                              className="rounded-md border border-rose-300 bg-white px-3 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50"
-                            >
-                              حذف
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                })()}
-              </tbody>
-            </table>
-          </div>
+          <WsChip tone="red">القناة موقوفة</WsChip>
         )}
-      </div>
+        {settings.ai_review_enabled && <WsChip tone="sky" icon={ShieldCheck}>مراجعة ذكية</WsChip>}
+      </WsHeader>
 
-      {/* Edit Override Modal */}
-      {editingOverride && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200"
-          onClick={() => setEditingOverride(null)}
-        >
+      <WsLayout>
+        {/* العمود الأيمن: نبض القناة */}
+        <WsSideCol title="نبض القناة" icon={MessageSquare} side="start" width={250} storageKey="ws:teacher-messages:pulse">
+          <WsBlock fill scroll>
+            <div>
+              {pulseStats.map(({ period, title, value, icon: Icon }) => (
+                <button
+                  key={period}
+                  type="button"
+                  onClick={() => handleCardClick(period, title)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    width: '100%',
+                    textAlign: 'right',
+                    padding: '11px 12px',
+                    border: 'none',
+                    borderBottom: '1px solid var(--ws-hairline)',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  <span
+                    style={{
+                      display: 'grid',
+                      placeItems: 'center',
+                      width: 34,
+                      height: 34,
+                      borderRadius: 9,
+                      background: 'var(--ws-accent-soft)',
+                      color: 'var(--ws-accent-2)',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Icon style={{ width: 15, height: 15 }} />
+                  </span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--ws-text)' }}>{title}</span>
+                    <span className="ws-cell-sub">انقر للتفاصيل</span>
+                  </span>
+                  <span style={{ fontSize: 20, fontWeight: 800, color: 'var(--ws-accent-2)' }}>
+                    {value.toLocaleString('ar-SA')}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </WsBlock>
+        </WsSideCol>
+
+        {/* الوسط: الإعدادات + القوالب */}
+        <WsMain>
+          {isLoadingCore ? (
+            <WsBlock fill>
+              <WsEmpty loading>جاري التحميل...</WsEmpty>
+            </WsBlock>
+          ) : (
+            <>
+              {/* الإعدادات */}
+              <WsBlock
+                title="إعدادات النظام"
+                icon={Settings2}
+                tools={
+                  <WsBtn size="sm" onClick={() => setEditingSettings(!editingSettings)}>
+                    {editingSettings ? 'إلغاء' : 'تعديل الإعدادات'}
+                  </WsBtn>
+                }
+              >
+                {editingSettings ? (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      const formData = new FormData(e.currentTarget)
+                      updateSettingsMutation.mutate({
+                        is_enabled: formData.get('is_enabled') === 'on',
+                        daily_limit_per_teacher: Number(formData.get('daily_limit')),
+                        allowed_start_hour: Number(formData.get('start_hour')),
+                        allowed_end_hour: Number(formData.get('end_hour')),
+                        enable_replies: formData.get('enable_replies') === 'on',
+                        reply_expiry_days: Number(formData.get('reply_expiry_days')),
+                        allow_custom_messages: formData.get('allow_custom_messages') === 'on',
+                        ai_review_enabled: formData.get('ai_review_enabled') === 'on',
+                      })
+                    }}
+                    style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}
+                  >
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                      <SettingCheckboxRow
+                        name="is_enabled"
+                        defaultChecked={settings.is_enabled}
+                        title="تفعيل الميزة"
+                        sub="السماح للمعلمين بإرسال الرسائل"
+                      />
+                      <WsField label="الحد اليومي العام لكل معلم" htmlFor="tm-daily-limit">
+                        <WsInput id="tm-daily-limit" type="number" name="daily_limit" defaultValue={settings.daily_limit_per_teacher} min="1" max="500" />
+                        <span style={{ fontSize: 9.5, color: 'var(--ws-amber)', lineHeight: 1.7 }}>
+                          ⚠️ يطبّق على الجميع افتراضياً — الأرقام العالية قد تعرّض رقم المدرسة للتقييد من واتساب.
+                        </span>
+                      </WsField>
+                      <WsField label="بداية الوقت المسموح" htmlFor="tm-start-hour">
+                        <WsInput id="tm-start-hour" type="number" name="start_hour" defaultValue={settings.allowed_start_hour} min="0" max="23" />
+                      </WsField>
+                      <WsField label="نهاية الوقت المسموح" htmlFor="tm-end-hour">
+                        <WsInput id="tm-end-hour" type="number" name="end_hour" defaultValue={settings.allowed_end_hour} min="0" max="23" />
+                      </WsField>
+                      <SettingCheckboxRow
+                        name="enable_replies"
+                        defaultChecked={settings.enable_replies}
+                        title="تفعيل ردود أولياء الأمور"
+                        sub="إضافة رابط رد سحري للرسائل"
+                      />
+                      <WsField label="صلاحية رابط الرد (أيام)" htmlFor="tm-expiry">
+                        <WsInput id="tm-expiry" type="number" name="reply_expiry_days" defaultValue={settings.reply_expiry_days} min="1" max="30" />
+                      </WsField>
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <SettingCheckboxRow
+                          name="allow_custom_messages"
+                          defaultChecked={settings.allow_custom_messages}
+                          title="السماح بالرسائل المخصصة"
+                          sub="يتيح للمعلمين كتابة رسائل خاصة بدلاً من القوالب الجاهزة"
+                        />
+                      </div>
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <SettingCheckboxRow
+                          name="ai_review_enabled"
+                          defaultChecked={settings.ai_review_enabled}
+                          title="🛡️ المراجعة الذكية للرسائل المخصصة"
+                          sub="تفحص الرسائل المخصصة قبل الإرسال: تُمرّر النظيفة كما هي، وتُهذّب المخالفة تلقائياً (إخفاء أسماء الطلاب، تلطيف الألفاظ، تحسين النبرة). لا تتأثر القوالب الجاهزة."
+                        />
+                      </div>
+                    </div>
+                    <WsBtn type="submit" variant="primary" disabled={updateSettingsMutation.isPending} style={{ justifyContent: 'center' }}>
+                      {updateSettingsMutation.isPending ? 'جاري الحفظ...' : 'حفظ التعديلات'}
+                    </WsBtn>
+                  </form>
+                ) : (
+                  <div style={{ padding: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 6 }}>
+                    {[
+                      { label: 'حالة النظام', value: settings.is_enabled ? 'مفعّل' : 'معطّل', tone: settings.is_enabled ? 'var(--ws-green)' : 'var(--ws-red)' },
+                      { label: 'رسائل يومياً / معلم', value: String(settings.daily_limit_per_teacher), tone: 'var(--ws-text)' },
+                      { label: 'الوقت المسموح', value: `${settings.allowed_start_hour}:00 — ${settings.allowed_end_hour}:00`, tone: 'var(--ws-text)' },
+                      { label: 'ردود أولياء الأمور', value: settings.enable_replies ? 'مفعّلة' : 'معطّلة', tone: settings.enable_replies ? 'var(--ws-green)' : 'var(--ws-text-2)' },
+                      { label: 'صلاحية رابط الرد', value: `${settings.reply_expiry_days} أيام`, tone: 'var(--ws-text)' },
+                      { label: 'الرسائل المخصصة', value: settings.allow_custom_messages ? 'مسموحة' : 'ممنوعة', tone: settings.allow_custom_messages ? 'var(--ws-green)' : 'var(--ws-text-2)' },
+                      { label: '🛡️ المراجعة الذكية', value: settings.ai_review_enabled ? 'مفعّلة' : 'معطّلة', tone: settings.ai_review_enabled ? 'var(--ws-sky)' : 'var(--ws-text-2)' },
+                    ].map(({ label, value, tone }) => (
+                      <div key={label} style={{ borderRadius: 8, border: '1px solid var(--ws-hairline)', padding: '8px 10px', textAlign: 'center' }}>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: tone }}>{value}</div>
+                        <div style={{ fontSize: 10, color: 'var(--ws-text-2)', marginTop: 2 }}>{label}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </WsBlock>
+
+              {/* القوالب */}
+              <WsBlock
+                title="قوالب الرسائل المتاحة"
+                icon={FileText}
+                count={`${templates.length} • ${templates.filter(t => t.is_active).length} مفعّل`}
+                tools={
+                  <WsBtn size="sm" variant="primary" icon={Plus} onClick={() => setCreatingTemplate(true)}>
+                    قالب جديد
+                  </WsBtn>
+                }
+                fill
+                scroll
+              >
+                {templates.length === 0 ? (
+                  <WsEmpty icon={FileText}>لا توجد قوالب بعد — أضف أول قالب لرسائل المعلمين.</WsEmpty>
+                ) : (
+                  <div>
+                    {templates.map((template) => (
+                      <div
+                        key={template.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: 10,
+                          padding: '10px 14px',
+                          borderBottom: '1px solid var(--ws-hairline)',
+                          opacity: template.is_active ? 1 : 0.55,
+                        }}
+                      >
+                        <span
+                          style={{
+                            display: 'grid',
+                            placeItems: 'center',
+                            width: 38,
+                            height: 38,
+                            borderRadius: 10,
+                            background: 'var(--ws-surface-2)',
+                            fontSize: 19,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {template.icon}
+                        </span>
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 12.5, fontWeight: 700 }}>{template.title}</span>
+                            <WsChip tone={template.is_active ? 'green' : undefined}>
+                              {template.is_active ? 'مفعّل' : 'معطّل'}
+                            </WsChip>
+                            <span className="ws-cell-sub">#{template.sort_order} • {template.template_key}</span>
+                          </span>
+                          <span
+                            className="ws-cell-sub"
+                            style={{
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                              marginTop: 3,
+                              lineHeight: 1.7,
+                            }}
+                          >
+                            {template.content}
+                          </span>
+                        </span>
+                        <span style={{ display: 'inline-flex', gap: 4, flexShrink: 0 }}>
+                          <WsBtn size="sm" icon={Pencil} onClick={() => setEditingTemplate(template)}>
+                            تعديل
+                          </WsBtn>
+                          <WsBtn
+                            size="sm"
+                            variant="danger"
+                            icon={Trash2}
+                            onClick={() => {
+                              if (confirm(`هل تريد حذف قالب "${template.title}"؟\n\nملاحظة: الرسائل المرسلة سابقاً تبقى محفوظة في السجل.`)) {
+                                deleteTemplateMutation.mutate(template.id)
+                              }
+                            }}
+                            disabled={deleteTemplateMutation.isPending}
+                          />
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </WsBlock>
+            </>
+          )}
+        </WsMain>
+
+        {/* العمود الأيسر: الحدود الخاصة */}
+        <WsSideCol title="حدود خاصة للمعلمين" icon={SlidersHorizontal} width={310} storageKey="ws:teacher-messages:overrides">
           <div
-            className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-300"
-            onClick={(e) => e.stopPropagation()}
+            style={{
+              flexShrink: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+              padding: '8px 10px',
+              borderBottom: '1px solid var(--ws-hairline)',
+            }}
           >
+            <WsInput
+              type="text"
+              value={overridesSearch}
+              onChange={(e) => setOverridesSearch(e.target.value)}
+              placeholder="ابحث باسم المعلم أو الهوية..."
+            />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+              <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                الحد العام: <b style={{ color: 'var(--ws-text)' }}>{overridesData?.general_limit ?? settings.daily_limit_per_teacher}</b>/يوم
+                {' • '}
+                <b style={{ color: 'var(--ws-amber)' }}>{overridesData?.teachers.filter(t => t.has_override).length ?? 0}</b> بحد خاص
+              </span>
+              <WsChip tone={overridesShowAll ? 'sky' : undefined} onClick={() => setOverridesShowAll(!overridesShowAll)}>
+                {overridesShowAll ? 'الكل' : 'الخاص فقط'}
+              </WsChip>
+            </div>
+          </div>
+
+          <WsBlock fill scroll>
+            {overridesLoading ? (
+              <WsEmpty loading>جاري التحميل...</WsEmpty>
+            ) : filteredOverrides.length === 0 ? (
+              <WsEmpty icon={SlidersHorizontal}>
+                {overridesShowAll
+                  ? 'لا يوجد معلمون مطابقون للبحث.'
+                  : 'لا حدود خاصة حالياً — اعرض «الكل» لتعيين حد خاص لمعلم.'}
+              </WsEmpty>
+            ) : (
+              <div>
+                {filteredOverrides.map((t) => (
+                  <div
+                    key={t.teacher_id}
+                    style={{
+                      padding: '8px 12px',
+                      borderBottom: '1px solid var(--ws-hairline)',
+                      background: t.has_override ? 'var(--ws-amber-bg)' : 'transparent',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, minWidth: 0 }}>{t.teacher_name}</span>
+                      <WsChip tone={t.has_override ? 'amber' : undefined}>
+                        {t.effective_limit} رسالة{t.has_override ? ' • خاص' : ''}
+                      </WsChip>
+                    </div>
+                    {t.teacher_national_id && (
+                      <span className="ws-cell-sub" style={{ display: 'block', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
+                        {t.teacher_national_id}
+                      </span>
+                    )}
+                    {t.note && (
+                      <span className="ws-cell-sub" style={{ display: 'block', color: 'var(--ws-amber)' }}>📝 {t.note}</span>
+                    )}
+                    <span style={{ display: 'inline-flex', gap: 4, marginTop: 5 }}>
+                      <WsBtn size="sm" onClick={() => setEditingOverride(t)}>
+                        {t.has_override ? 'تعديل الحد' : 'تعيين حد خاص'}
+                      </WsBtn>
+                      {t.has_override && (
+                        <WsBtn
+                          size="sm"
+                          variant="danger"
+                          onClick={() => {
+                            if (confirm(`هل تريد حذف الحد الخاص للمعلم "${t.teacher_name}" والعودة للحد العام؟`)) {
+                              deleteOverrideMutation.mutate(t.teacher_id)
+                            }
+                          }}
+                          disabled={deleteOverrideMutation.isPending}
+                        >
+                          حذف
+                        </WsBtn>
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </WsBlock>
+        </WsSideCol>
+      </WsLayout>
+
+      {/* مودال الحد الخاص */}
+      {editingOverride && (
+        <div className="ws-modal" onClick={() => setEditingOverride(null)}>
+          <div className="ws-modal__panel" style={{ maxWidth: 400 }} onClick={(e) => e.stopPropagation()}>
             <form
               onSubmit={(e) => {
                 e.preventDefault()
@@ -672,163 +696,67 @@ export function AdminTeacherMessagesPage() {
                   note: (formData.get('note') as string) || null,
                 })
               }}
-              className="space-y-4 text-right"
             >
-              <h2 className="text-2xl font-bold text-slate-900">
-                {editingOverride.has_override ? 'تعديل الحد الخاص' : 'تعيين حد خاص'}
-              </h2>
-              <div className="rounded-lg bg-slate-50 p-3 text-sm">
-                <p className="font-semibold text-slate-900">{editingOverride.teacher_name}</p>
-                {editingOverride.teacher_national_id && (
-                  <p className="text-xs text-muted font-mono">{editingOverride.teacher_national_id}</p>
+              <header className="ws-modal__head">
+                <h3 className="ws-modal__title">
+                  {editingOverride.has_override ? 'تعديل الحد الخاص' : 'تعيين حد خاص'}
+                </h3>
+              </header>
+              <div className="ws-modal__body">
+                <WsFactsList>
+                  <WsFactRow label="المعلم">{editingOverride.teacher_name}</WsFactRow>
+                  {editingOverride.teacher_national_id && (
+                    <WsFactRow label="الهوية">{editingOverride.teacher_national_id}</WsFactRow>
+                  )}
+                  <WsFactRow label="الحد العام الحالي">{overridesData?.general_limit} رسالة/يوم</WsFactRow>
+                </WsFactsList>
+
+                <WsField label="الحد اليومي الخاص" htmlFor="override-limit">
+                  <WsInput
+                    id="override-limit"
+                    type="number"
+                    name="daily_limit"
+                    defaultValue={editingOverride.override_limit ?? editingOverride.effective_limit}
+                    required
+                    min="1"
+                    max="500"
+                    style={{ textAlign: 'center', fontWeight: 800, fontSize: 15 }}
+                  />
+                  <span style={{ fontSize: 10, color: 'var(--ws-text-2)' }}>
+                    عدد الرسائل التي يستطيع هذا المعلم إرسالها يومياً (يلغي الحد العام).
+                  </span>
+                </WsField>
+
+                <WsField label="ملاحظة (اختياري)" htmlFor="override-note">
+                  <WsInput
+                    id="override-note"
+                    type="text"
+                    name="note"
+                    defaultValue={editingOverride.note ?? ''}
+                    maxLength={255}
+                    placeholder="مثلاً: مرشد طلابي يحتاج حد أعلى"
+                  />
+                </WsField>
+
+                {upsertOverrideMutation.isError && (
+                  <span style={{ fontSize: 11, color: 'var(--ws-red)' }}>حدث خطأ أثناء الحفظ. حاول مرة أخرى.</span>
                 )}
-                <p className="mt-2 text-xs text-muted">
-                  الحد العام الحالي: <span className="font-semibold">{overridesData?.general_limit}</span> رسالة/يوم
-                </p>
               </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-900">الحد اليومي الخاص</label>
-                <input
-                  type="number"
-                  name="daily_limit"
-                  defaultValue={editingOverride.override_limit ?? editingOverride.effective_limit}
-                  required
-                  min="1"
-                  max="500"
-                  className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-2 text-center text-lg font-bold"
-                />
-                <p className="mt-1 text-xs text-muted">عدد الرسائل التي يستطيع هذا المعلم إرسالها يومياً (يلغي الحد العام).</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-900">ملاحظة (اختياري)</label>
-                <input
-                  type="text"
-                  name="note"
-                  defaultValue={editingOverride.note ?? ''}
-                  maxLength={255}
-                  placeholder="مثلاً: مرشد طلابي يحتاج حد أعلى"
-                  className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-2"
-                />
-              </div>
-
-              {upsertOverrideMutation.isError && (
-                <p className="text-sm text-rose-600">حدث خطأ أثناء الحفظ. حاول مرة أخرى.</p>
-              )}
-
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setEditingOverride(null)}
-                  className="button-secondary flex-1"
-                >
-                  إلغاء
-                </button>
-                <button
-                  type="submit"
-                  disabled={upsertOverrideMutation.isPending}
-                  className="button-primary flex-1 disabled:opacity-50"
-                >
+              <footer className="ws-modal__foot">
+                <WsBtn onClick={() => setEditingOverride(null)}>إلغاء</WsBtn>
+                <WsBtn type="submit" variant="primary" disabled={upsertOverrideMutation.isPending}>
                   {upsertOverrideMutation.isPending ? 'جاري الحفظ...' : 'حفظ'}
-                </button>
-              </div>
+                </WsBtn>
+              </footer>
             </form>
           </div>
         </div>
       )}
 
-      {/* Templates */}
-      <div className="glass-card space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setCreatingTemplate(true)}
-              className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-700"
-            >
-              ➕ قالب جديد
-            </button>
-            <div className="text-sm text-muted">
-              <span className="font-semibold text-slate-900">{templates.length}</span> قالب •{' '}
-              <span className="font-semibold text-emerald-600">{templates.filter(t => t.is_active).length}</span> مفعّل
-            </div>
-          </div>
-          <h2 className="text-xl font-semibold text-slate-900">قوالب الرسائل المتاحة</h2>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {templates.map((template) => (
-            <div
-              key={template.id}
-              className={clsx(
-                'group relative rounded-2xl border-2 p-6 transition-all duration-300 hover:shadow-lg',
-                template.is_active
-                  ? 'border-emerald-300 bg-gradient-to-br from-emerald-50 to-white'
-                  : 'border-slate-200 bg-slate-50 opacity-60 hover:opacity-80'
-              )}
-            >
-              <div className="space-y-3 text-right">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex flex-col gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setEditingTemplate(template)}
-                      className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-teal-600 shadow-sm transition hover:bg-teal-50 hover:text-teal-700"
-                    >
-                      ✏️ تعديل
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (confirm(`هل تريد حذف قالب "${template.title}"؟\n\nملاحظة: الرسائل المرسلة سابقاً تبقى محفوظة في السجل.`)) {
-                          deleteTemplateMutation.mutate(template.id)
-                        }
-                      }}
-                      disabled={deleteTemplateMutation.isPending}
-                      className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-rose-600 shadow-sm transition hover:bg-rose-50 disabled:opacity-50"
-                    >
-                      🗑️ حذف
-                    </button>
-                  </div>
-                  <div className="flex-1 text-center">
-                    <div className="text-5xl drop-shadow-sm">{template.icon}</div>
-                    <div className={clsx(
-                      'mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold shadow-sm',
-                      template.is_active
-                        ? 'bg-emerald-500 text-white'
-                        : 'bg-slate-300 text-slate-700'
-                    )}>
-                      {template.is_active ? '✓ مفعّل' : '✕ معطّل'}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-xl bg-white/80 p-4 shadow-sm">
-                  <h3 className="text-lg font-bold text-slate-900">{template.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-700">{template.content}</p>
-                </div>
-
-                <div className="flex items-center justify-between text-xs text-muted">
-                  <span>الترتيب: {template.sort_order}</span>
-                  <span className="font-mono">{template.template_key}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Edit Template Modal */}
+      {/* مودال تعديل القالب */}
       {editingTemplate && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200"
-          onClick={() => setEditingTemplate(null)}
-        >
-          <div
-            className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-300"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="ws-modal" onClick={() => setEditingTemplate(null)}>
+          <div className="ws-modal__panel" style={{ maxWidth: 480 }} onClick={(e) => e.stopPropagation()}>
             <form
               onSubmit={(e) => {
                 e.preventDefault()
@@ -841,84 +769,49 @@ export function AdminTeacherMessagesPage() {
                   is_active: formData.get('is_active') === 'on',
                 })
               }}
-              className="space-y-4 text-right"
             >
-              <h2 className="text-2xl font-bold text-slate-900">تعديل القالب</h2>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-900">العنوان</label>
-                <input
-                  type="text"
-                  name="title"
-                  defaultValue={editingTemplate.title}
-                  required
-                  className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-2"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-900">الأيقونة (Emoji)</label>
-                <input
-                  type="text"
-                  name="icon"
-                  defaultValue={editingTemplate.icon}
-                  required
-                  className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-2 text-center text-3xl"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-900">محتوى الرسالة</label>
-                <textarea
-                  name="content"
-                  defaultValue={editingTemplate.content}
-                  required
-                  rows={4}
-                  className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-2"
-                />
-              </div>
-
-              <label className="flex items-center gap-3">
-                <input
-                  type="checkbox"
+              <header className="ws-modal__head">
+                <h3 className="ws-modal__title">تعديل القالب</h3>
+              </header>
+              <div className="ws-modal__body">
+                <WsField label="العنوان" htmlFor="edit-template-title">
+                  <WsInput id="edit-template-title" type="text" name="title" defaultValue={editingTemplate.title} required />
+                </WsField>
+                <WsField label="الأيقونة (Emoji)" htmlFor="edit-template-icon">
+                  <WsInput
+                    id="edit-template-icon"
+                    type="text"
+                    name="icon"
+                    defaultValue={editingTemplate.icon}
+                    required
+                    style={{ textAlign: 'center', fontSize: 20 }}
+                  />
+                </WsField>
+                <WsField label="محتوى الرسالة" htmlFor="edit-template-content">
+                  <WsTextarea id="edit-template-content" name="content" defaultValue={editingTemplate.content} required rows={4} />
+                </WsField>
+                <SettingCheckboxRow
                   name="is_active"
                   defaultChecked={editingTemplate.is_active}
-                  className="h-5 w-5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                  title="تفعيل هذا القالب"
+                  sub="يظهر للمعلمين كخيار إرسال سريع"
                 />
-                <span className="font-semibold text-slate-900">تفعيل هذا القالب</span>
-              </label>
-
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setEditingTemplate(null)}
-                  className="button-secondary flex-1"
-                >
-                  إلغاء
-                </button>
-                <button
-                  type="submit"
-                  disabled={updateTemplateMutation.isPending}
-                  className="button-primary flex-1 disabled:opacity-50"
-                >
-                  {updateTemplateMutation.isPending ? 'جاري الحفظ...' : 'حفظ التعديلات'}
-                </button>
               </div>
+              <footer className="ws-modal__foot">
+                <WsBtn onClick={() => setEditingTemplate(null)}>إلغاء</WsBtn>
+                <WsBtn type="submit" variant="primary" disabled={updateTemplateMutation.isPending}>
+                  {updateTemplateMutation.isPending ? 'جاري الحفظ...' : 'حفظ التعديلات'}
+                </WsBtn>
+              </footer>
             </form>
           </div>
         </div>
       )}
 
-      {/* Create Template Modal */}
+      {/* مودال إنشاء قالب */}
       {creatingTemplate && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200"
-          onClick={() => setCreatingTemplate(false)}
-        >
-          <div
-            className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-300"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="ws-modal" onClick={() => setCreatingTemplate(false)}>
+          <div className="ws-modal__panel" style={{ maxWidth: 480 }} onClick={(e) => e.stopPropagation()}>
             <form
               onSubmit={(e) => {
                 e.preventDefault()
@@ -930,89 +823,73 @@ export function AdminTeacherMessagesPage() {
                   is_active: formData.get('is_active') === 'on',
                 })
               }}
-              className="space-y-4 text-right"
             >
-              <h2 className="text-2xl font-bold text-slate-900">قالب جديد</h2>
-              <p className="text-xs text-muted">سيُضاف هذا القالب لمدرستك فقط، ولن يظهر في المدارس الأخرى.</p>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-900">العنوان</label>
-                <input
-                  type="text"
-                  name="title"
-                  required
-                  maxLength={255}
-                  placeholder="مثلاً: تنبيه سلوكي"
-                  className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-2"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-900">الأيقونة (Emoji)</label>
-                <input
-                  type="text"
-                  name="icon"
-                  required
-                  maxLength={10}
-                  defaultValue="📌"
-                  className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-2 text-center text-3xl"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-900">محتوى الرسالة</label>
-                <textarea
-                  name="content"
-                  required
-                  rows={4}
-                  placeholder="اكتب نص الرسالة الذي سيظهر لولي الأمر..."
-                  className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-2"
-                />
-              </div>
-
-              <label className="flex items-center gap-3">
-                <input
-                  type="checkbox"
+              <header className="ws-modal__head">
+                <h3 className="ws-modal__title">قالب جديد</h3>
+                <p className="ws-modal__sub">سيُضاف هذا القالب لمدرستك فقط، ولن يظهر في المدارس الأخرى.</p>
+              </header>
+              <div className="ws-modal__body">
+                <WsField label="العنوان" htmlFor="create-template-title">
+                  <WsInput
+                    id="create-template-title"
+                    type="text"
+                    name="title"
+                    required
+                    maxLength={255}
+                    placeholder="مثلاً: تنبيه سلوكي"
+                    autoFocus
+                  />
+                </WsField>
+                <WsField label="الأيقونة (Emoji)" htmlFor="create-template-icon">
+                  <WsInput
+                    id="create-template-icon"
+                    type="text"
+                    name="icon"
+                    required
+                    maxLength={10}
+                    defaultValue="📌"
+                    style={{ textAlign: 'center', fontSize: 20 }}
+                  />
+                </WsField>
+                <WsField label="محتوى الرسالة" htmlFor="create-template-content">
+                  <WsTextarea
+                    id="create-template-content"
+                    name="content"
+                    required
+                    rows={4}
+                    placeholder="اكتب نص الرسالة الذي سيظهر لولي الأمر..."
+                  />
+                </WsField>
+                <SettingCheckboxRow
                   name="is_active"
                   defaultChecked
-                  className="h-5 w-5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                  title="تفعيل القالب فور إنشائه"
+                  sub="يظهر للمعلمين مباشرة بعد الحفظ"
                 />
-                <span className="font-semibold text-slate-900">تفعيل القالب فور إنشائه</span>
-              </label>
-
-              {createTemplateMutation.isError && (
-                <p className="text-sm text-rose-600">حدث خطأ أثناء الحفظ. حاول مرة أخرى.</p>
-              )}
-
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setCreatingTemplate(false)}
-                  className="button-secondary flex-1"
-                >
-                  إلغاء
-                </button>
-                <button
-                  type="submit"
-                  disabled={createTemplateMutation.isPending}
-                  className="button-primary flex-1 disabled:opacity-50"
-                >
-                  {createTemplateMutation.isPending ? 'جاري الإضافة...' : 'إضافة القالب'}
-                </button>
+                {createTemplateMutation.isError && (
+                  <span style={{ fontSize: 11, color: 'var(--ws-red)' }}>حدث خطأ أثناء الحفظ. حاول مرة أخرى.</span>
+                )}
               </div>
+              <footer className="ws-modal__foot">
+                <WsBtn onClick={() => setCreatingTemplate(false)}>إلغاء</WsBtn>
+                <WsBtn type="submit" variant="primary" disabled={createTemplateMutation.isPending}>
+                  {createTemplateMutation.isPending ? 'جاري الإضافة...' : 'إضافة القالب'}
+                </WsBtn>
+              </footer>
             </form>
           </div>
         </div>
       )}
 
-      {/* Teacher Messages Modal */}
+      {/* مودال رسائل الفترة */}
       {modalState && (
         <>
           {modalLoading ? (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-              <div className="rounded-3xl bg-white p-8 text-center shadow-2xl">
-                <div className="mx-auto h-16 w-16 animate-spin rounded-full border-4 border-teal-500/30 border-t-teal-500" />
-                <p className="mt-4 text-lg font-semibold text-slate-900">جاري تحميل البيانات...</p>
+            <div className="ws-modal">
+              <div className="ws-modal__panel" style={{ maxWidth: 320 }}>
+                <div className="ws-modal__body">
+                  <WsEmpty loading>جاري تحميل البيانات...</WsEmpty>
+                </div>
               </div>
             </div>
           ) : (
@@ -1025,6 +902,6 @@ export function AdminTeacherMessagesPage() {
           )}
         </>
       )}
-    </section>
+    </WsPage>
   )
 }
