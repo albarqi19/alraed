@@ -2,7 +2,7 @@
  * لوحة تفاصيل تأخير معلم (Sheet)
  */
 
-import { Phone, User, Calendar, AlertTriangle, FileWarning, Check, Printer, ArrowLeftRight } from 'lucide-react'
+import { AlertTriangle, ArrowLeftRight, Calendar, Check, Eye, FileWarning, Printer } from 'lucide-react'
 import {
   Sheet,
   SheetContent,
@@ -12,6 +12,14 @@ import {
 } from '@/components/ui/sheet'
 import { useTeacherDelayDetailsQuery } from '../hooks'
 import type { DelayActionType, DelayActionRecord } from '../types'
+import {
+  WsAlert,
+  WsBtn,
+  WsChip,
+  WsEmpty,
+  WsFactRow,
+  WsFactsList,
+} from '@/shared/workspace'
 
 interface TeacherDelayDetailsSheetProps {
   userId: number | null
@@ -53,46 +61,40 @@ function ActionHistoryItem({ action, onPrint }: { action: DelayActionRecord; onP
 
   return (
     <div
-      className={`rounded-xl border p-3 ${
-        isWarning ? 'border-amber-200 bg-amber-50/50' : 'border-rose-200 bg-rose-50/50'
-      }`}
+      style={{
+        padding: '7px 10px',
+        borderBottom: '1px solid var(--ws-hairline)',
+      }}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, minWidth: 0 }}>
           {isWarning ? (
-            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <AlertTriangle style={{ width: 12, height: 12, color: 'var(--ws-amber)' }} />
           ) : (
-            <FileWarning className="h-4 w-4 text-rose-600" />
+            <FileWarning style={{ width: 12, height: 12, color: 'var(--ws-red)' }} />
           )}
-          <div>
-            <p className="text-sm font-medium">{action.action_type_label} #{action.sequence_number}</p>
-            <p className="text-xs text-slate-500">{formatDate(action.created_at)}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
+          {action.action_type_label} #{action.sequence_number}
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           {action.is_signed && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-              <Check className="h-3 w-3" />
+            <WsChip tone="green" icon={Check}>
               موقع
-            </span>
+            </WsChip>
           )}
-          <button
-            type="button"
-            onClick={() => onPrint(action.id)}
-            className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
-          >
-            <Printer className="h-3 w-3" />
+          <WsBtn size="sm" icon={Printer} onClick={() => onPrint(action.id)}>
             طباعة
-          </button>
-        </div>
+          </WsBtn>
+        </span>
       </div>
-      {/* عرض المرحّل للحسومات */}
+      <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ws-text-2)', marginTop: 2 }}>
+        {formatDate(action.created_at)}
+      </span>
       {hasCarriedOver && (
-        <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-violet-50 px-2 py-1 text-[11px]">
-          <ArrowLeftRight className="h-3 w-3 text-violet-600" />
-          <span className="text-slate-600">مرحّل للدورة القادمة:</span>
-          <span className="font-semibold text-violet-700">{action.formatted_carried_over}</span>
-        </div>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+          <WsChip tone="sky" icon={ArrowLeftRight}>
+            مرحّل للدورة القادمة: {action.formatted_carried_over}
+          </WsChip>
+        </span>
       )}
     </div>
   )
@@ -116,182 +118,151 @@ export function TeacherDelayDetailsSheet({
 
   const canRecordDeduction = data && data.delay_summary.total_minutes >= data.thresholds.deduction
 
+  const progressColor = data
+    ? data.delay_summary.total_minutes >= data.thresholds.deduction
+      ? 'var(--ws-red)'
+      : data.delay_summary.total_minutes >= data.thresholds.warning
+        ? 'var(--ws-amber)'
+        : 'var(--ws-green)'
+    : 'var(--ws-green)'
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="left" className="w-full overflow-y-auto sm:max-w-lg">
-        <SheetHeader className="text-right">
-          <SheetTitle>تفاصيل التأخير</SheetTitle>
-          <SheetDescription>معلومات تفصيلية عن تأخير المعلم</SheetDescription>
+      <SheetContent side="left" className="w-full overflow-y-auto p-0 sm:max-w-lg">
+        <SheetHeader className="text-right" style={{ padding: '12px 16px', borderBottom: '1px solid var(--ws-hairline)', background: 'var(--ws-surface-2)' }}>
+          <SheetTitle style={{ fontSize: 14 }}>تفاصيل التأخير</SheetTitle>
+          <SheetDescription style={{ fontSize: 12 }}>معلومات تفصيلية عن تأخير المعلم</SheetDescription>
         </SheetHeader>
 
-        <div className="mt-6 space-y-6">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 14 }}>
           {isLoading ? (
-            <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 text-sm text-muted">
-              <span className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
-              جاري تحميل البيانات...
-            </div>
+            <WsEmpty loading>جاري تحميل البيانات...</WsEmpty>
           ) : isError || !data ? (
-            <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 text-center text-sm text-rose-600">
-              <i className="bi bi-exclamation-triangle text-3xl" />
-              تعذر تحميل بيانات المعلم
-            </div>
+            <WsEmpty icon={AlertTriangle}>تعذر تحميل بيانات المعلم.</WsEmpty>
           ) : (
             <>
               {/* معلومات المعلم */}
-              <section className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100">
-                    <User className="h-6 w-6 text-indigo-600" />
-                  </div>
-                  <div className="flex-1 text-right">
-                    <h3 className="text-lg font-bold text-slate-900">{data.teacher.name}</h3>
-                    {data.teacher.phone && (
-                      <p className="flex items-center gap-1 text-sm text-slate-500">
-                        <Phone className="h-3.5 w-3.5" />
-                        {data.teacher.phone}
-                      </p>
-                    )}
-                    {data.teacher.national_id && (
-                      <p className="text-xs text-slate-400">هوية: {data.teacher.national_id}</p>
-                    )}
-                  </div>
-                </div>
-              </section>
+              <WsFactsList
+                style={{
+                  border: '1px solid var(--ws-hairline)',
+                  borderRadius: 8,
+                  padding: '8px 10px',
+                  background: 'var(--ws-surface-2)',
+                }}
+              >
+                <WsFactRow label="المعلم">{data.teacher.name}</WsFactRow>
+                {data.teacher.phone && <WsFactRow label="الجوال">{data.teacher.phone}</WsFactRow>}
+                {data.teacher.national_id && <WsFactRow label="الهوية">{data.teacher.national_id}</WsFactRow>}
+              </WsFactsList>
 
               {/* ملخص التأخير */}
-              <section className="rounded-2xl border border-slate-200 p-4">
-                <h4 className="mb-3 text-sm font-semibold text-slate-700">ملخص التأخير</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <span className="ws-label">ملخص التأخير</span>
 
-                {/* شريط التقدم */}
-                <div className="mb-3">
-                  <div className="flex items-center justify-between text-xs text-slate-500">
+                {/* شريط التقدم مع العتبات */}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
                     <span>0</span>
-                    <span className="text-amber-600">{data.thresholds.warning} د (تنبيه)</span>
-                    <span className="text-rose-600">{data.thresholds.deduction} د (حسم)</span>
+                    <span style={{ color: 'var(--ws-amber)' }}>{data.thresholds.warning} د (تنبيه)</span>
+                    <span style={{ color: 'var(--ws-red)' }}>{data.thresholds.deduction} د (حسم)</span>
                   </div>
-                  <div className="mt-1 h-3 w-full overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className={`h-full transition-all ${
-                        data.delay_summary.total_minutes >= data.thresholds.deduction
-                          ? 'bg-rose-500'
-                          : data.delay_summary.total_minutes >= data.thresholds.warning
-                            ? 'bg-amber-500'
-                            : 'bg-emerald-500'
-                      }`}
+                  <span className="ws-progressbar" style={{ display: 'block', marginTop: 3, height: 8 }}>
+                    <span
                       style={{
                         width: `${Math.min(100, (data.delay_summary.total_minutes / data.thresholds.deduction) * 100)}%`,
+                        background: progressColor,
                       }}
                     />
-                  </div>
+                  </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 text-center">
-                  <div className="rounded-xl bg-indigo-50 p-3">
-                    <p className="text-2xl font-bold text-indigo-700">{data.delay_summary.formatted_delay}</p>
-                    <p className="text-xs text-indigo-600">إجمالي التأخير</p>
-                  </div>
-                  <div className="rounded-xl bg-slate-100 p-3">
-                    <p className="text-2xl font-bold text-slate-700">
-                      {data.delay_summary.records_count.toLocaleString('ar-SA')}
-                    </p>
-                    <p className="text-xs text-slate-500">يوم تأخير</p>
-                  </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                  <WsChip tone="sky">إجمالي التأخير: {data.delay_summary.formatted_delay}</WsChip>
+                  <WsChip>{data.delay_summary.records_count.toLocaleString('ar-SA')} يوم تأخير</WsChip>
                 </div>
 
                 {/* تفاصيل التأخير الجديد والمرحّل */}
                 {(data.delay_summary.carried_over_minutes > 0 || data.delay_summary.new_delay_minutes > 0) && (
-                  <div className="mt-3 rounded-xl border border-violet-200 bg-violet-50/50 p-3">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-violet-700 mb-2">
-                      <ArrowLeftRight className="h-3.5 w-3.5" />
-                      تفاصيل حساب التأخير
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">تأخير جديد:</span>
-                        <span className="font-medium text-slate-900">
-                          {data.delay_summary.formatted_new_delay || data.delay_summary.formatted_delay}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">مرحّل من حسم سابق:</span>
-                        <span className="font-medium text-violet-700">
-                          {data.delay_summary.formatted_carried_over || '0 دقيقة'}
-                        </span>
-                      </div>
-                    </div>
-                    {data.delay_summary.carried_over_minutes > 0 && (
-                      <p className="mt-2 text-[11px] text-slate-500">
-                        * المرحّل هو الفائض من الحسم السابق (الإجمالي - 7 ساعات)
-                      </p>
-                    )}
-                  </div>
+                  <WsFactsList
+                    style={{
+                      border: '1px solid var(--ws-sky-bd)',
+                      borderRadius: 8,
+                      padding: '8px 10px',
+                      background: 'var(--ws-sky-bg)',
+                    }}
+                  >
+                    <WsFactRow label="تأخير جديد">
+                      {data.delay_summary.formatted_new_delay || data.delay_summary.formatted_delay}
+                    </WsFactRow>
+                    <WsFactRow label="مرحّل من حسم سابق">
+                      {data.delay_summary.formatted_carried_over || '0 دقيقة'}
+                    </WsFactRow>
+                  </WsFactsList>
                 )}
 
-                <div className="mt-3 flex items-center justify-center gap-2 text-xs text-slate-500">
-                  <Calendar className="h-3.5 w-3.5" />
+                <span className="ws-fact">
+                  <Calendar />
                   <span>
                     من {formatDate(data.delay_summary.calculation_start_date)} إلى{' '}
                     {formatDate(data.delay_summary.calculation_end_date)}
                   </span>
-                </div>
-              </section>
+                </span>
+              </div>
 
               {/* سجل أيام التأخير */}
-              <section className="rounded-2xl border border-slate-200 p-4">
-                <h4 className="mb-3 text-sm font-semibold text-slate-700">سجل أيام التأخير</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                <span className="ws-label">سجل أيام التأخير</span>
                 {data.delay_records.length === 0 ? (
-                  <p className="text-center text-sm text-slate-400">لا توجد سجلات تأخير</p>
+                  <WsAlert tone="info" boxed>
+                    لا توجد سجلات تأخير.
+                  </WsAlert>
                 ) : (
-                  <div className="max-h-48 overflow-y-auto">
-                    <table className="w-full text-sm">
-                      <thead className="sticky top-0 bg-white text-[11px] text-slate-500">
+                  <div style={{ maxHeight: 190, overflowY: 'auto', border: '1px solid var(--ws-hairline)', borderRadius: 8 }}>
+                    <table className="ws-table">
+                      <thead>
                         <tr>
-                          <th className="px-2 py-1.5 text-right">التاريخ</th>
-                          <th className="px-2 py-1.5 text-right">وقت الحضور</th>
-                          <th className="px-2 py-1.5 text-right">التأخير</th>
+                          <th>التاريخ</th>
+                          <th>وقت الحضور</th>
+                          <th>التأخير</th>
                         </tr>
                       </thead>
                       <tbody>
                         {data.delay_records.map((record, index) => (
-                          <tr key={index} className="border-t border-slate-100">
-                            <td className="px-2 py-2 text-slate-700">{formatDate(record.date)}</td>
-                            <td className="px-2 py-2 text-slate-600">
-                              {record.check_in_time ? formatTime(record.check_in_time) : '—'}
-                            </td>
-                            <td className="px-2 py-2 font-medium text-rose-600">
-                              {record.delay_minutes} دقيقة
-                            </td>
+                          <tr key={index}>
+                            <td>{formatDate(record.date)}</td>
+                            <td>{record.check_in_time ? formatTime(record.check_in_time) : '—'}</td>
+                            <td style={{ color: 'var(--ws-red)', fontWeight: 700 }}>{record.delay_minutes} دقيقة</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
                 )}
-              </section>
+              </div>
 
               {/* الإجراءات السابقة */}
               {data.actions_history.length > 0 && (
-                <section className="rounded-2xl border border-slate-200 p-4">
-                  <h4 className="mb-3 text-sm font-semibold text-slate-700">الإجراءات السابقة</h4>
-                  <div className="space-y-2">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <span className="ws-label">الإجراءات السابقة</span>
+                  <div style={{ border: '1px solid var(--ws-hairline)', borderRadius: 8, overflow: 'hidden' }}>
                     {data.actions_history.map((action) => (
                       <ActionHistoryItem key={action.id} action={action} onPrint={onPrint} />
                     ))}
                   </div>
-                </section>
+                </div>
               )}
 
               {/* أزرار الإجراءات */}
               {readOnly ? (
-                <section className="flex items-center justify-center gap-2 border-t border-slate-200 pt-4 text-sm text-amber-600">
-                  <i className="bi bi-eye text-lg" />
-                  <span>وضع العرض فقط - لا يمكن تسجيل إجراءات للسنة السابقة</span>
-                </section>
+                <WsAlert tone="warn" icon={Eye} boxed>
+                  وضع العرض فقط — لا يمكن تسجيل إجراءات للسنة السابقة.
+                </WsAlert>
               ) : (
-                <section className="flex flex-wrap items-center justify-center gap-3 border-t border-slate-200 pt-4">
+                <div style={{ display: 'flex', gap: 6, borderTop: '1px solid var(--ws-hairline)', paddingTop: 10 }}>
                   {canRecordWarning && (
-                    <button
-                      type="button"
+                    <WsBtn
+                      variant="primary"
+                      icon={AlertTriangle}
                       onClick={() =>
                         onRecordAction({
                           type: 'warning',
@@ -299,15 +270,15 @@ export function TeacherDelayDetailsSheet({
                           teacherName: data.teacher.name,
                         })
                       }
-                      className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-100"
+                      style={{ flex: 1 }}
                     >
-                      <AlertTriangle className="h-4 w-4" />
                       تسجيل تنبيه
-                    </button>
+                    </WsBtn>
                   )}
                   {canRecordDeduction && (
-                    <button
-                      type="button"
+                    <WsBtn
+                      variant="danger"
+                      icon={FileWarning}
                       onClick={() =>
                         onRecordAction({
                           type: 'deduction',
@@ -315,16 +286,17 @@ export function TeacherDelayDetailsSheet({
                           teacherName: data.teacher.name,
                         })
                       }
-                      className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
+                      style={{ flex: 1 }}
                     >
-                      <FileWarning className="h-4 w-4" />
                       تسجيل حسم
-                    </button>
+                    </WsBtn>
                   )}
                   {!canRecordWarning && !canRecordDeduction && (
-                    <p className="text-sm text-slate-400">لا يوجد إجراء مستحق حالياً</p>
+                    <span style={{ fontSize: 12, color: 'var(--ws-text-2)', margin: '0 auto' }}>
+                      لا يوجد إجراء مستحق حالياً
+                    </span>
                   )}
-                </section>
+                </div>
               )}
             </>
           )}

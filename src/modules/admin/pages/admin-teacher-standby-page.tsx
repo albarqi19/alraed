@@ -1,8 +1,45 @@
 import { useState } from 'react'
+import type { CSSProperties } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/services/api/client'
 import { useToast } from '@/shared/feedback/use-toast'
 import { StandbyStatsModal } from '../components/standby-stats-modal'
+import {
+  AlertTriangle,
+  BarChart3,
+  Calculator,
+  CalendarDays,
+  CalendarX,
+  ClipboardList,
+  FlaskConical,
+  Save,
+  Settings,
+  Sparkles,
+  UserRound,
+  Users,
+  X,
+} from 'lucide-react'
+import {
+  WsAlert,
+  WsBlock,
+  WsBtn,
+  WsChip,
+  WsEmpty,
+  WsFact,
+  WsField,
+  WsHeader,
+  WsIconBtn,
+  WsInput,
+  WsLayout,
+  WsMain,
+  WsModal,
+  WsPage,
+  WsSelect,
+  WsSideCol,
+  WsSwitch,
+  WsTextarea,
+  WsToolbar,
+} from '@/shared/workspace'
 
 // ========== Types ==========
 interface TeacherQuota {
@@ -40,16 +77,20 @@ interface WeeklyScheduleData {
     }
 }
 
-// ألوان المنتظرين
-const STANDBY_COLORS = [
-    'bg-emerald-100 text-emerald-700 font-medium', // م1
-    'bg-blue-100 text-blue-700',                     // م2
-    'bg-slate-100 text-slate-600',                   // م3
-    'bg-violet-100 text-violet-700',                 // م4
-    'bg-amber-100 text-amber-700',                   // م5
-    'bg-rose-100 text-rose-700',                     // م6
-    'bg-cyan-100 text-cyan-700',                     // م7
+// ألوان المنتظرين حسب الأولوية (درجات النظام الهادئة)
+const STANDBY_TONES: Array<{ bg: string; bd: string; tx: string }> = [
+    { bg: 'var(--ws-accent-soft)', bd: 'var(--ws-accent-2)', tx: 'var(--ws-accent)' }, // م1
+    { bg: 'var(--ws-sky-bg)', bd: 'var(--ws-sky-bd)', tx: 'var(--ws-sky)' },           // م2
+    { bg: 'var(--ws-surface-2)', bd: 'var(--ws-border)', tx: 'var(--ws-text-2)' },     // م3
+    { bg: '#F1EAFB', bd: '#D6C3F0', tx: '#6D3FA9' },                                    // م4
+    { bg: 'var(--ws-amber-bg)', bd: 'var(--ws-amber-bd)', tx: 'var(--ws-amber)' },     // م5
+    { bg: 'var(--ws-red-bg)', bd: 'var(--ws-red-bd)', tx: 'var(--ws-red)' },           // م6
+    { bg: '#E4F5F5', bd: '#BCE4E4', tx: '#1D7A7A' },                                    // م7
 ]
+
+function standbyTone(index: number) {
+    return STANDBY_TONES[index] ?? STANDBY_TONES[2]
+}
 
 // ========== API Functions ==========
 async function fetchWeeklySchedule(): Promise<WeeklyScheduleData> {
@@ -78,11 +119,13 @@ const DAY_LABELS: Record<string, string> = {
     thursday: 'الخميس',
 }
 
+type ActiveTab = 'quotas' | 'weekly' | 'simulation' | 'preferences'
+
 // ========== Main Component ==========
 export function AdminTeacherStandbyPage() {
     const toast = useToast()
     const queryClient = useQueryClient()
-    const [activeTab, setActiveTab] = useState<'quotas' | 'weekly' | 'simulation' | 'preferences'>('quotas')
+    const [activeTab, setActiveTab] = useState<ActiveTab>('quotas')
     const [showBetaWarning, setShowBetaWarning] = useState(true)
     const [showSettingsModal, setShowSettingsModal] = useState(false)
     const [showStatsModal, setShowStatsModal] = useState(false)
@@ -130,97 +173,26 @@ export function AdminTeacherStandbyPage() {
         onConfirm: () => void;
     }>({ isOpen: false, message: '', onConfirm: () => { } })
 
-    // ... (rest of queries/mutations)
-
     return (
-        <>
-            {/* نافذة التأكيد المخصصة */}
-            {confirmModal.isOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-                    <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-                        <div className="p-6 text-center">
-                            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100">
-                                <svg className="h-7 w-7 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                </svg>
-                            </div>
-                            <h2 className="text-xl font-bold text-slate-900 mb-2">تأكيد الإجراء</h2>
-                            <p className="text-sm text-slate-600 mb-6 leading-relaxed">
-                                {confirmModal.message}
-                            </p>
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => {
-                                        confirmModal.onConfirm()
-                                        setConfirmModal(prev => ({ ...prev, isOpen: false }))
-                                    }}
-                                    className="flex-1 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
-                                >
-                                    نعم، متأكد
-                                </button>
-                                <button
-                                    onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-                                    className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                                >
-                                    إلغاء
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* نافذة التحذير التجريبية */}
-            {showBetaWarning && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-                    <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
-                        <div className="p-8 text-center">
-                            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
-                                <svg className="h-8 w-8 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                </svg>
-                            </div>
-                            <h2 className="text-xl font-bold text-slate-900 mb-2">ميزة تجريبية</h2>
-                            <p className="text-sm text-muted mb-6">
-                                هذه الميزة لا تزال قيد التطوير والاختبار. قد تواجه بعض الأخطاء غير المتوقعة.
-                            </p>
-                            <button
-                                onClick={() => setShowBetaWarning(false)}
-                                className="w-full rounded-2xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
-                            >
-                                موافق، أفهم ذلك
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            <section className="space-y-6">
-                {/* Header */}
-                <header className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="space-y-1 text-right">
-                        <h1 className="text-3xl font-bold text-slate-900">جدول الانتظار</h1>
-                        <p className="text-sm text-muted">
-                            النظام يحسب مدى الإسناد تلقائياً ويوزع المنتظرين
-                        </p>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={() => setShowStatsModal(true)}
-                            className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100"
-                            title="الإحصائيات"
-                        >
-                            📊 الإحصائيات
-                        </button>
-                        <button
-                            onClick={() => setShowSettingsModal(true)}
-                            className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                            title="إعدادات الانتظار"
-                        >
-                            ⚙️
-                        </button>
-                        <button
+        <WsPage>
+            <WsHeader
+                title="جدول الانتظار"
+                badge={
+                    <>
+                        <Sparkles style={{ width: 11, height: 11 }} />
+                        تجريبي
+                    </>
+                }
+                actions={
+                    <>
+                        <WsBtn icon={BarChart3} onClick={() => setShowStatsModal(true)}>
+                            الإحصائيات
+                        </WsBtn>
+                        <WsBtn icon={Settings} onClick={() => setShowSettingsModal(true)}>
+                            الإعدادات
+                        </WsBtn>
+                        <WsBtn
+                            icon={Calculator}
                             onClick={() => {
                                 setConfirmModal({
                                     isOpen: true,
@@ -229,11 +201,12 @@ export function AdminTeacherStandbyPage() {
                                 })
                             }}
                             disabled={calculateMutation.isPending}
-                            className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
                         >
-                            {calculateMutation.isPending ? '...' : 'حساب الإسناد'}
-                        </button>
-                        <button
+                            {calculateMutation.isPending ? 'جارٍ الحساب...' : 'حساب الإسناد'}
+                        </WsBtn>
+                        <WsBtn
+                            variant="primary"
+                            icon={CalendarDays}
                             onClick={() => {
                                 setConfirmModal({
                                     isOpen: true,
@@ -242,68 +215,137 @@ export function AdminTeacherStandbyPage() {
                                 })
                             }}
                             disabled={generateMutation.isPending || !hasQuotas}
-                            className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
                         >
-                            {generateMutation.isPending ? '...' : 'توليد الجدول'}
-                        </button>
-                    </div>
-                </header>
+                            {generateMutation.isPending ? 'جارٍ التوليد...' : 'توليد الجدول'}
+                        </WsBtn>
+                    </>
+                }
+                facts={
+                    <>
+                        <WsFact icon={ClipboardList} label="النصاب الكامل:">
+                            {settings?.standard_weekly_load ?? '—'} حصة/أسبوع
+                        </WsFact>
+                        <WsFact icon={Users} label="معلمون لديهم إسناد:">
+                            {quotas.length.toLocaleString('ar-SA')}
+                        </WsFact>
+                        <WsFact icon={CalendarDays} label="الحصص/اليوم:">
+                            {settings?.periods_per_day ?? 7}
+                        </WsFact>
+                        <WsFact icon={UserRound} label="منتظرون لكل حصة:">
+                            {maxStandbyCount}
+                        </WsFact>
+                    </>
+                }
+            />
 
-                {/* Info Cards */}
-                <div className="grid gap-4 md:grid-cols-3">
-                    <InfoCard
-                        icon=""
-                        label="النصاب الكامل"
-                        value={settings?.standard_weekly_load ?? '-'}
-                        subtitle="حصة/أسبوع لكل معلم"
-                    />
-                    <InfoCard
-                        icon=""
-                        label="المعلمين"
-                        value={quotas.length}
-                        subtitle="لديهم حصص إسناد"
-                    />
-                    <InfoCard
-                        icon=""
-                        label="الحصص/اليوم"
-                        value={settings?.periods_per_day ?? 7}
-                        subtitle="حصص دراسية"
-                    />
+            {/* تنبيه الميزة التجريبية — شريط قابل للإغلاق بدل المودال */}
+            {showBetaWarning && (
+                <WsAlert tone="warn">
+                    <b>ميزة تجريبية:</b> هذه الميزة لا تزال قيد التطوير والاختبار، قد تواجه بعض الأخطاء غير المتوقعة.
+                    <span style={{ marginInlineStart: 'auto' }}>
+                        <WsIconBtn icon={X} label="إغلاق التنبيه" onClick={() => setShowBetaWarning(false)} />
+                    </span>
+                </WsAlert>
+            )}
+
+            <WsToolbar>
+                <div className="ws-seg" style={{ alignSelf: 'flex-end' }}>
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('quotas')}
+                        className={`ws-seg__btn ${activeTab === 'quotas' ? 'is-active' : ''}`}
+                    >
+                        مدى الإسناد
+                        <span className="ws-count">{quotas.length.toLocaleString('ar-SA')}</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('weekly')}
+                        className={`ws-seg__btn ${activeTab === 'weekly' ? 'is-active' : ''}`}
+                    >
+                        الجدول الأسبوعي
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('simulation')}
+                        className={`ws-seg__btn ${activeTab === 'simulation' ? 'is-active' : ''}`}
+                    >
+                        محاكاة الغياب
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('preferences')}
+                        className={`ws-seg__btn ${activeTab === 'preferences' ? 'is-active' : ''}`}
+                    >
+                        إعدادات المعلمين
+                    </button>
                 </div>
 
-                {/* Tabs */}
-                <div className="flex justify-center w-full">
-                    <div className="inline-flex rounded-3xl border border-slate-200 bg-white p-1 text-sm shadow-sm">
-                        <TabButton active={activeTab === 'quotas'} onClick={() => setActiveTab('quotas')}>
-                            مدى الإسناد ({quotas.length})
-                        </TabButton>
-                        <TabButton active={activeTab === 'weekly'} onClick={() => setActiveTab('weekly')}>
-                            الجدول الأسبوعي
-                        </TabButton>
-                        <TabButton active={activeTab === 'simulation'} onClick={() => setActiveTab('simulation')}>
-                            محاكاة الغياب
-                        </TabButton>
-                        <TabButton active={activeTab === 'preferences'} onClick={() => setActiveTab('preferences')}>
-                            إعدادات المعلمين
-                        </TabButton>
-                    </div>
-                </div>
+                {/* مفتاح ألوان الأولويات */}
+                {(activeTab === 'weekly' || activeTab === 'quotas') && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', alignSelf: 'flex-end', paddingBottom: 4 }}>
+                        {Array.from({ length: maxStandbyCount }, (_, i) => {
+                            const tone = standbyTone(i)
+                            return (
+                                <span
+                                    key={i}
+                                    className="ws-chip"
+                                    style={{ background: tone.bg, borderColor: tone.bd, color: tone.tx }}
+                                >
+                                    م{i + 1}
+                                </span>
+                            )
+                        })}
+                    </span>
+                )}
+            </WsToolbar>
 
-                {/* Content */}
+            <WsLayout>
                 {isLoading ? (
-                    <div className="flex items-center justify-center py-20">
-                        <div className="h-10 w-10 animate-spin rounded-full border-4 border-teal-500/30 border-t-teal-500" />
-                    </div>
+                    <WsMain>
+                        <WsBlock fill>
+                            <WsEmpty loading>جاري تحميل بيانات الانتظار...</WsEmpty>
+                        </WsBlock>
+                    </WsMain>
                 ) : activeTab === 'quotas' ? (
-                    <QuotasTab quotas={quotas} maxStandbyCount={maxStandbyCount} />
+                    <WsMain>
+                        <QuotasTab quotas={quotas} maxStandbyCount={maxStandbyCount} />
+                    </WsMain>
                 ) : activeTab === 'weekly' ? (
-                    <WeeklyTab schedule={schedule} periodsPerDay={settings?.periods_per_day ?? 7} maxStandbyCount={maxStandbyCount} />
+                    <WsMain>
+                        <WeeklyTab schedule={schedule} periodsPerDay={settings?.periods_per_day ?? 7} maxStandbyCount={maxStandbyCount} />
+                    </WsMain>
                 ) : activeTab === 'simulation' ? (
                     <SimulationTab schedule={schedule} periodsPerDay={settings?.periods_per_day ?? 7} quotas={quotas} maxStandbyCount={maxStandbyCount} />
                 ) : (
                     <PreferencesTab quotas={quotas} maxStandbyCount={maxStandbyCount} />
                 )}
-            </section>
+            </WsLayout>
+
+            {/* نافذة التأكيد */}
+            <WsModal
+                open={confirmModal.isOpen}
+                onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                title="تأكيد الإجراء"
+                footer={
+                    <>
+                        <WsBtn onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}>إلغاء</WsBtn>
+                        <WsBtn
+                            variant="primary"
+                            onClick={() => {
+                                confirmModal.onConfirm()
+                                setConfirmModal(prev => ({ ...prev, isOpen: false }))
+                            }}
+                        >
+                            نعم، متأكد
+                        </WsBtn>
+                    </>
+                }
+            >
+                <WsAlert tone="warn" boxed>
+                    {confirmModal.message}
+                </WsAlert>
+            </WsModal>
 
             {/* Settings Modal */}
             {showSettingsModal && (
@@ -322,103 +364,85 @@ export function AdminTeacherStandbyPage() {
                 isOpen={showStatsModal}
                 onClose={() => setShowStatsModal(false)}
             />
-        </>
+        </WsPage>
     )
 }
 
 // ========== Sub Components ==========
 
-function InfoCard({ label, value, subtitle }: { icon: string; label: string; value: number | string; subtitle: string }) {
-    return (
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="text-center">
-                <p className="text-3xl font-bold text-slate-900">{value}</p>
-                <p className="text-sm font-semibold text-indigo-600 mt-1">{label}</p>
-                <p className="text-xs text-muted mt-0.5">{subtitle}</p>
-            </div>
-        </div>
-    )
-}
-
-function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-    return (
-        <button
-            onClick={onClick}
-            className={`rounded-3xl px-4 py-1.5 text-sm font-semibold transition ${active
-                ? 'bg-indigo-600 text-white shadow'
-                : 'text-slate-600 hover:bg-slate-100'
-                }`}
-        >
-            {children}
-        </button>
-    )
-}
-
 function QuotasTab({ quotas, maxStandbyCount }: { quotas: TeacherQuota[]; maxStandbyCount: number }) {
-    if (quotas.length === 0) {
-        return (
-            <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 text-sm text-muted rounded-3xl border border-slate-200 bg-white shadow-sm">
-                <div className="text-5xl">📊</div>
-                <p className="font-semibold text-slate-900">لم يتم حساب مدى الإسناد بعد</p>
-                <p className="text-xs">اضغط على زر "حساب الإسناد" لحساب مدى الإسناد لكل معلم</p>
-            </div>
-        )
-    }
-
     return (
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-sm text-muted mb-4">
-                المعلمين مرتبون من الأقل نصاباً (أكثر إسناداً) إلى الأكثر نصاباً
-            </p>
-
-            <div className="overflow-x-auto rounded-2xl border border-slate-200">
-                <table className="w-full text-sm">
-                    <thead>
-                        <tr style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
-                            <th className="px-4 py-3 text-right font-semibold">#</th>
-                            <th className="px-4 py-3 text-right font-semibold">المعلم</th>
-                            <th className="px-4 py-3 text-center font-semibold">نصابه</th>
-                            <th className="px-4 py-3 text-center font-semibold">إسناده</th>
-                            {Array.from({ length: maxStandbyCount }, (_, i) => (
-                                <th key={i} className="px-4 py-3 text-center font-semibold">م{i + 1}</th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {quotas.map((quota, index) => (
-                            <tr
-                                key={quota.id}
-                                className="border-t transition hover:bg-slate-50"
-                                style={{ borderColor: 'var(--color-border)' }}
-                            >
-                                <td className="px-4 py-3 text-center font-medium text-slate-500">{index + 1}</td>
-                                <td className="px-4 py-3 font-medium" style={{ color: 'var(--color-text-primary)' }}>
-                                    {quota.teacher?.name}
-                                </td>
-                                <td className="px-4 py-3 text-center">
-                                    <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700">
-                                        {quota.current_load} حصة
-                                    </span>
-                                </td>
-                                <td className="px-4 py-3 text-center">
-                                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${quota.standby_quota > 4 ? 'bg-emerald-100 text-emerald-700' :
-                                        quota.standby_quota > 2 ? 'bg-amber-100 text-amber-700' :
-                                            'bg-slate-100 text-slate-600'
-                                        }`}>
-                                        {quota.standby_quota} حصص
-                                    </span>
-                                </td>
+        <WsBlock
+            title="مدى الإسناد"
+            icon={Calculator}
+            count={quotas.length.toLocaleString('ar-SA')}
+            tools={
+                <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                    مرتبون من الأقل نصاباً (أكثر إسناداً) إلى الأكثر نصاباً
+                </span>
+            }
+            fill
+        >
+            {quotas.length === 0 ? (
+                <WsEmpty icon={Calculator}>
+                    لم يتم حساب مدى الإسناد بعد.
+                    <span style={{ fontSize: 11 }}>اضغط على زر «حساب الإسناد» بالأعلى لحساب مدى الإسناد لكل معلم.</span>
+                </WsEmpty>
+            ) : (
+                <div className="ws-tablewrap">
+                    <table className="ws-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>المعلم</th>
+                                <th style={{ textAlign: 'center' }}>نصابه</th>
+                                <th style={{ textAlign: 'center' }}>إسناده</th>
                                 {Array.from({ length: maxStandbyCount }, (_, i) => {
-                                    const count = (quota as unknown as Record<string, number>)[`priority_${i + 1}_count`] ?? 0
-                                    const colors = ['text-teal-600 font-semibold', 'text-blue-600 font-medium', 'text-slate-600', 'text-violet-600', 'text-amber-600', 'text-rose-600', 'text-cyan-600']
-                                    return <td key={i} className={`px-4 py-3 text-center ${colors[i] ?? 'text-slate-600'}`}>{count}</td>
+                                    const tone = standbyTone(i)
+                                    return (
+                                        <th key={i} style={{ textAlign: 'center', color: tone.tx }}>
+                                            م{i + 1}
+                                        </th>
+                                    )
                                 })}
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        </section>
+                        </thead>
+                        <tbody>
+                            {quotas.map((quota, index) => (
+                                <tr key={quota.id}>
+                                    <td style={{ color: 'var(--ws-text-2)' }}>{index + 1}</td>
+                                    <td style={{ fontWeight: 600 }}>{quota.teacher?.name}</td>
+                                    <td style={{ textAlign: 'center' }}>
+                                        <WsChip tone="sky">{quota.current_load} حصة</WsChip>
+                                    </td>
+                                    <td style={{ textAlign: 'center' }}>
+                                        <WsChip tone={quota.standby_quota > 4 ? 'green' : quota.standby_quota > 2 ? 'amber' : undefined}>
+                                            {quota.standby_quota} حصص
+                                        </WsChip>
+                                    </td>
+                                    {Array.from({ length: maxStandbyCount }, (_, i) => {
+                                        const count = (quota as unknown as Record<string, number>)[`priority_${i + 1}_count`] ?? 0
+                                        const tone = standbyTone(i)
+                                        return (
+                                            <td
+                                                key={i}
+                                                style={{
+                                                    textAlign: 'center',
+                                                    fontWeight: count > 0 ? 700 : 400,
+                                                    color: count > 0 ? tone.tx : 'var(--ws-text-2)',
+                                                }}
+                                            >
+                                                {count}
+                                            </td>
+                                        )
+                                    })}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </WsBlock>
     )
 }
 
@@ -510,22 +534,12 @@ function WeeklyTab({ schedule, periodsPerDay, maxStandbyCount }: { schedule: Rec
         return pendingChanges.has(`${slotId}-${position}`)
     }
 
-    if (Object.keys(schedule).length === 0) {
-        return (
-            <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 text-sm text-muted rounded-3xl border border-slate-200 bg-white shadow-sm">
-                <div className="text-5xl">📅</div>
-                <p className="font-semibold text-slate-900">لم يتم توليد الجدول بعد</p>
-                <p className="text-xs">اضغط على زر "توليد الجدول" لإنشاء جدول الانتظار الأسبوعي</p>
-            </div>
-        )
-    }
-
     const isHighlighted = (teacherId: number | null | undefined) => {
         return hoveredTeacherId !== null && teacherId === hoveredTeacherId
     }
 
     // مكون عرض خانة المعلم
-    const TeacherSlot = ({ slot, position, colorClass }: { slot: WeeklySlot; position: number; colorClass: string }) => {
+    const TeacherSlot = ({ slot, position }: { slot: WeeklySlot; position: number }) => {
         const name = getDisplayName(slot, position)
         const modified = isModified(slot.id, position)
         const teacherId = (slot as unknown as Record<string, { id: number; name: string } | null>)[`standby${position}`]?.id ?? null
@@ -536,115 +550,182 @@ function WeeklyTab({ schedule, periodsPerDay, maxStandbyCount }: { schedule: Rec
 
         if (isEditing) {
             return (
-                <div className="relative">
-                    <select
-                        autoFocus
-                        className="w-full rounded border border-indigo-400 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        onChange={(e) => {
-                            const selected = staffForSlot.find(s => s.id === Number(e.target.value))
-                            if (selected) handleSelectTeacher(selected.id, selected.name)
-                        }}
-                        onBlur={() => setEditingSlot(null)}
-                    >
-                        <option value="">-- اختر معلم --</option>
-                        {loadingStaff ? (
-                            <option disabled>جاري التحميل...</option>
-                        ) : (
-                            <>
-                                {staffForSlot.filter(s => s.status === 'available').map(s => (
-                                    <option key={s.id} value={s.id}>✅ {s.name}</option>
-                                ))}
-                                {staffForSlot.filter(s => s.status === 'warning').map(s => (
-                                    <option key={s.id} value={s.id}>⚠️ {s.name} ({s.status_label})</option>
-                                ))}
-                                {staffForSlot.filter(s => s.status === 'busy').map(s => (
-                                    <option key={s.id} value={s.id} disabled>🚫 {s.name} ({s.status_label})</option>
-                                ))}
-                            </>
-                        )}
-                    </select>
-                </div>
+                <WsSelect
+                    autoFocus
+                    style={{ width: '100%', height: 26, fontSize: 11 }}
+                    onChange={(e) => {
+                        const selected = staffForSlot.find(s => s.id === Number(e.target.value))
+                        if (selected) handleSelectTeacher(selected.id, selected.name)
+                    }}
+                    onBlur={() => setEditingSlot(null)}
+                >
+                    <option value="">-- اختر معلم --</option>
+                    {loadingStaff ? (
+                        <option disabled>جاري التحميل...</option>
+                    ) : (
+                        <>
+                            {staffForSlot.filter(s => s.status === 'available').map(s => (
+                                <option key={s.id} value={s.id}>✓ {s.name}</option>
+                            ))}
+                            {staffForSlot.filter(s => s.status === 'warning').map(s => (
+                                <option key={s.id} value={s.id}>⚠ {s.name} ({s.status_label})</option>
+                            ))}
+                            {staffForSlot.filter(s => s.status === 'busy').map(s => (
+                                <option key={s.id} value={s.id} disabled>✗ {s.name} ({s.status_label})</option>
+                            ))}
+                        </>
+                    )}
+                </WsSelect>
             )
         }
+
+        const tone = standbyTone(position - 1)
+        const highlighted = isHighlighted(teacherId)
+
+        const style: CSSProperties = modified
+            ? {
+                background: 'var(--ws-amber-bg)',
+                border: '1px solid var(--ws-amber)',
+                color: 'var(--ws-amber)',
+                boxShadow: '0 0 0 1.5px var(--ws-amber)',
+            }
+            : {
+                background: tone.bg,
+                border: `1px solid ${highlighted ? 'var(--ws-accent-2)' : tone.bd}`,
+                color: tone.tx,
+                ...(highlighted ? { boxShadow: '0 0 0 1.5px var(--ws-accent-2)', fontWeight: 800 } : null),
+            }
 
         return (
             <span
                 onClick={() => handleSlotClick(slot.id, position, slot.day, slot.period_number)}
-                className={`rounded px-2 py-1 cursor-pointer transition-all ${modified
-                    ? 'bg-orange-200 text-orange-800 ring-2 ring-orange-400'
-                    : isHighlighted(teacherId)
-                        ? 'bg-yellow-300 text-yellow-900 ring-2 ring-yellow-500'
-                        : colorClass
-                    }`}
                 onMouseEnter={() => setHoveredTeacherId(teacherId ?? null)}
                 onMouseLeave={() => setHoveredTeacherId(null)}
                 title="اضغط لتغيير المعلم"
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    padding: '3px 8px',
+                    borderRadius: 7,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'box-shadow 0.12s',
+                    ...style,
+                }}
             >
-                {position} {name}
+                <span
+                    style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minWidth: 16,
+                        height: 16,
+                        borderRadius: 5,
+                        fontSize: 9.5,
+                        fontWeight: 800,
+                        background: 'color-mix(in srgb, currentColor 14%, transparent)',
+                        flexShrink: 0,
+                    }}
+                >
+                    {position}
+                </span>
+                <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
             </span>
         )
     }
 
     return (
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-                <p className="text-sm text-muted">
-                    جدول الانتظار الأسبوعي - {maxStandbyCount} منتظرين لكل حصة (اضغط على الاسم للتعديل)
-                </p>
-                {pendingChanges.size > 0 && (
-                    <button
-                        onClick={() => saveMutation.mutate()}
-                        disabled={saveMutation.isPending}
-                        className="flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:opacity-50"
-                    >
-                        {saveMutation.isPending ? '...' : `💾 حفظ (${pendingChanges.size})`}
-                    </button>
-                )}
-            </div>
-
-            <div className="overflow-x-auto rounded-2xl border border-slate-200">
-                <table className="w-full text-sm">
-                    <thead>
-                        <tr style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
-                            <th className="px-4 py-3 text-center font-semibold">الحصة</th>
-                            {days.map(day => (
-                                <th key={day} className="px-4 py-3 text-center font-semibold">{DAY_LABELS[day]}</th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {Array.from({ length: periodsPerDay }, (_, i) => i + 1).map(period => (
-                            <tr
-                                key={period}
-                                className="border-t transition"
-                                style={{ borderColor: 'var(--color-border)' }}
+        <WsBlock
+            title="الجدول الأسبوعي"
+            icon={CalendarDays}
+            tools={
+                <>
+                    <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                        {maxStandbyCount} منتظرين لكل حصة — اضغط على الاسم للتعديل
+                    </span>
+                    {pendingChanges.size > 0 && (
+                        <>
+                            <WsChip tone="amber" className="ws-soft-pulse">
+                                {pendingChanges.size} تعديل غير محفوظ
+                            </WsChip>
+                            <WsBtn
+                                variant="primary"
+                                size="sm"
+                                icon={Save}
+                                onClick={() => saveMutation.mutate()}
+                                disabled={saveMutation.isPending}
                             >
-                                <td className="px-4 py-3 text-center">
-                                    <span className="inline-flex items-center justify-center rounded-full bg-slate-200 h-8 w-8 font-bold text-slate-700">
-                                        {period}
-                                    </span>
-                                </td>
-                                {days.map(day => {
-                                    const slot = schedule[day]?.find(s => s.period_number === period)
-                                    if (!slot) {
-                                        return <td key={day} className="px-2 py-2 text-center text-slate-400">-</td>
-                                    }
-                                    return (
-                                        <td key={day} className="px-2 py-2">
-                                            <div className="flex flex-col gap-1 text-xs">
-                                                {Array.from({ length: maxStandbyCount }, (_, i) => (
-                                                    <TeacherSlot key={i} slot={slot} position={i + 1} colorClass={STANDBY_COLORS[i] ?? 'bg-slate-100 text-slate-600'} />
-                                                ))}
-                                            </div>
-                                        </td>
-                                    )
-                                })}
+                                {saveMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ'}
+                            </WsBtn>
+                        </>
+                    )}
+                </>
+            }
+            fill
+        >
+            {Object.keys(schedule).length === 0 ? (
+                <WsEmpty icon={CalendarX}>
+                    لم يتم توليد الجدول بعد.
+                    <span style={{ fontSize: 11 }}>اضغط على زر «توليد الجدول» بالأعلى لإنشاء جدول الانتظار الأسبوعي.</span>
+                </WsEmpty>
+            ) : (
+                <div className="ws-tablewrap">
+                    <table className="ws-matrix">
+                        <thead>
+                            <tr>
+                                <th className="ws-matrix__stick" style={{ minWidth: 60, textAlign: 'center' }}>
+                                    الحصة
+                                </th>
+                                {days.map(day => (
+                                    <th key={day} style={{ minWidth: 150 }}>{DAY_LABELS[day]}</th>
+                                ))}
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        </section>
+                        </thead>
+                        <tbody>
+                            {Array.from({ length: periodsPerDay }, (_, i) => i + 1).map(period => (
+                                <tr key={period}>
+                                    <td className="ws-matrix__stick" style={{ textAlign: 'center' }}>
+                                        <span
+                                            style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                width: 26,
+                                                height: 26,
+                                                borderRadius: 8,
+                                                fontSize: 12,
+                                                fontWeight: 800,
+                                                background: 'var(--ws-accent-soft)',
+                                                color: 'var(--ws-accent)',
+                                            }}
+                                        >
+                                            {period}
+                                        </span>
+                                    </td>
+                                    {days.map(day => {
+                                        const slot = schedule[day]?.find(s => s.period_number === period)
+                                        if (!slot) {
+                                            return <td key={day} style={{ color: 'var(--ws-text-2)' }}>—</td>
+                                        }
+                                        return (
+                                            <td key={day} style={{ padding: '5px 6px', verticalAlign: 'top' }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                                    {Array.from({ length: maxStandbyCount }, (_, i) => (
+                                                        <TeacherSlot key={i} slot={slot} position={i + 1} />
+                                                    ))}
+                                                </div>
+                                            </td>
+                                        )
+                                    })}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </WsBlock>
     )
 }
 
@@ -784,173 +865,202 @@ function SimulationTab({
     const sortedPeriods = Array.from(periodGroups.keys()).sort((a, b) => a - b)
 
     return (
-        <div className="grid gap-6 lg:grid-cols-[320px,1fr]">
-            {/* قسم الاختيار */}
-            <aside className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 className="text-lg font-bold text-slate-900 mb-2">
-                    محاكاة غياب المعلمين
-                </h3>
-                <p className="text-sm text-muted mb-4">
-                    اختر المعلمين الغائبين واليوم لرؤية توزيع البدلاء والتعارضات
-                </p>
+        <>
+            {/* العمود الأيمن: اختيار الغائبين */}
+            <WsSideCol
+                title="محاكاة الغياب"
+                icon={FlaskConical}
+                side="start"
+                width={300}
+                storageKey="ws:standby:simulation"
+            >
+                <WsBlock padded style={{ background: 'var(--ws-accent-softer)' }}>
+                    <p style={{ margin: 0, fontSize: 11.5, color: 'var(--ws-accent)', fontWeight: 600 }}>
+                        اختر المعلمين الغائبين واليوم لرؤية توزيع البدلاء واكتشاف التعارضات قبل وقوعها.
+                    </p>
+                </WsBlock>
 
-                {/* اختيار اليوم */}
-                <div className="mb-4">
-                    <label className="block text-sm font-medium text-muted mb-2">اليوم</label>
-                    <select
-                        value={selectedDay}
-                        onChange={(e) => setSelectedDay(e.target.value)}
-                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900"
-                    >
-                        {days.map(day => (
-                            <option key={day} value={day}>{DAY_LABELS[day]}</option>
-                        ))}
-                    </select>
+                <div style={{ flexShrink: 0, padding: '8px 10px', borderBottom: '1px solid var(--ws-hairline)' }}>
+                    <WsField label="اليوم">
+                        <WsSelect value={selectedDay} onChange={(e) => setSelectedDay(e.target.value)}>
+                            {days.map(day => (
+                                <option key={day} value={day}>{DAY_LABELS[day]}</option>
+                            ))}
+                        </WsSelect>
+                    </WsField>
                 </div>
 
-                {/* اختيار المعلمين */}
-                <div>
-                    <label className="block text-sm font-medium text-muted mb-2">
-                        المعلمين الغائبين ({selectedTeacherIds.length})
-                    </label>
-                    <div className="max-h-[300px] overflow-y-auto space-y-1 rounded-2xl border border-slate-200 p-2">
-                        {quotas.filter(q => q.current_load > 0).map(q => (
-                            <label
-                                key={q.teacher_id}
-                                className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition ${selectedTeacherIds.includes(q.teacher_id)
-                                    ? 'bg-red-100 border border-red-300'
-                                    : 'hover:bg-slate-50'
-                                    }`}
-                            >
-                                <input
-                                    type="checkbox"
-                                    checked={selectedTeacherIds.includes(q.teacher_id)}
-                                    onChange={() => toggleTeacher(q.teacher_id)}
-                                    className="h-4 w-4 text-red-600 rounded"
-                                />
-                                <span className="text-sm">{q.teacher?.name}</span>
-                                <span className="text-xs text-muted">({q.current_load} حصة)</span>
-                            </label>
-                        ))}
-                    </div>
-                </div>
-
-                {selectedTeacherIds.length > 0 && (
-                    <button
-                        onClick={() => setSelectedTeacherIds([])}
-                        className="mt-3 w-full rounded-xl border border-slate-200 py-2 text-sm text-slate-600 hover:bg-slate-50"
-                    >
-                        إلغاء الكل
-                    </button>
-                )}
-            </aside>
-
-            {/* نتيجة المحاكاة */}
-            <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="text-lg font-bold text-slate-900 mb-4">
-                    توزيع البدلاء - يوم {DAY_LABELS[selectedDay]}
-                    {selectedTeacherIds.length > 0 && (
-                        <span className="text-sm font-normal text-muted mr-2">
-                            ({selectedTeacherIds.length} غائب)
-                        </span>
-                    )}
-                </h3>
-
-                {simulationQueries.isLoading ? (
-                    <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 text-sm text-muted">
-                        <div className="text-5xl">⏳</div>
-                        <p>جاري تحميل بيانات المحاكاة...</p>
-                    </div>
-                ) : selectedTeacherIds.length === 0 ? (
-                    <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 text-sm text-muted">
-                        <div className="text-5xl">👉</div>
-                        <p>اختر معلم أو أكثر من القائمة لمحاكاة غيابهم</p>
-                    </div>
-                ) : sortedPeriods.length === 0 ? (
-                    <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 text-sm text-muted">
-                        <div className="text-5xl">📅</div>
-                        <p>لا توجد حصص للمعلمين المختارين في هذا اليوم</p>
-                    </div>
-                ) : (
-                    <div className="space-y-4">
-                        {sortedPeriods.map(period => {
-                            const periodAssignments = periodGroups.get(period)!
-                            const hasConflict = periodAssignments.some(a => a.conflict || a.allBusy)
-
+                <WsBlock
+                    title="المعلمون الغائبون"
+                    count={selectedTeacherIds.length.toLocaleString('ar-SA')}
+                    tools={
+                        selectedTeacherIds.length > 0 ? (
+                            <WsBtn size="sm" onClick={() => setSelectedTeacherIds([])}>
+                                إلغاء الكل
+                            </WsBtn>
+                        ) : undefined
+                    }
+                    fill
+                    scroll
+                >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5, padding: 8 }}>
+                        {quotas.filter(q => q.current_load > 0).map(q => {
+                            const checked = selectedTeacherIds.includes(q.teacher_id)
                             return (
-                                <div
-                                    key={period}
-                                    className={`rounded-xl border p-4 ${hasConflict ? 'border-amber-300 bg-amber-50' : 'border-slate-200'
-                                        }`}
+                                <label
+                                    key={q.teacher_id}
+                                    className={`ws-pick ${checked ? 'is-checked' : ''}`}
+                                    style={checked ? { borderColor: 'var(--ws-red)', background: 'var(--ws-red-bg)' } : undefined}
                                 >
-                                    <div className="flex items-center gap-3 mb-3">
-                                        <span className="inline-flex items-center justify-center rounded-full bg-slate-800 text-white h-10 w-10 font-bold text-lg">
-                                            {period}
+                                    <span style={{ minWidth: 0 }}>
+                                        <span className="ws-pick__name" style={checked ? { color: 'var(--ws-red)' } : undefined}>
+                                            {q.teacher?.name}
                                         </span>
-                                        <span className="text-lg font-semibold text-slate-900">
-                                            الحصة {period}
-                                        </span>
-                                        {hasConflict && (
-                                            <span className="text-xs bg-amber-200 text-amber-800 px-2 py-1 rounded-full">
-                                                تعارض
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        {periodAssignments.map((a, idx) => (
-                                            <div
-                                                key={idx}
-                                                className={`flex items-center justify-between p-3 rounded-lg ${a.allBusy
-                                                    ? 'bg-red-100 border border-red-300'
-                                                    : a.conflict
-                                                        ? 'bg-amber-100 border border-amber-300'
-                                                        : 'bg-emerald-50 border border-emerald-200'
-                                                    }`}
-                                            >
-                                                <div className="flex flex-col gap-1">
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="text-red-600 font-medium">❌ {a.absentTeacherName}</span>
-                                                        <span className="text-slate-400">→</span>
-                                                        {a.allBusy ? (
-                                                            <span className="text-red-700 font-medium">⚠️ لا يوجد بديل متاح!</span>
-                                                        ) : (
-                                                            <span className={`font-medium ${a.priority === 1 ? 'text-emerald-700' :
-                                                                a.priority === 2 ? 'text-blue-700' : 'text-slate-700'
-                                                                }`}>
-                                                                ✅ {a.assignedSubstitute}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <div className="text-xs text-muted">
-                                                        📚 {a.subject} • {a.className}
-                                                    </div>
-                                                </div>
-                                                <div className="flex flex-col items-end gap-1">
-                                                    {!a.allBusy && (
-                                                        <span className={`text-xs px-2 py-1 rounded-full ${a.priority === 1 ? 'bg-emerald-200 text-emerald-800' :
-                                                            a.priority === 2 ? 'bg-blue-200 text-blue-800' : 'bg-slate-200 text-slate-700'
-                                                            }`}>
-                                                            م{a.priority}
-                                                        </span>
-                                                    )}
-                                                    <div className="text-[10px] text-muted">
-                                                        {Array.from({ length: maxStandbyCount }, (_, i) => {
-                                                            const name = a.standbys[`standby${i + 1}`]
-                                                            return name ? <span key={i} className="mr-2">م{i + 1}: {name}</span> : null
-                                                        })}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
+                                        <span className="ws-pick__sub">{q.current_load} حصة</span>
+                                    </span>
+                                    <input
+                                        type="checkbox"
+                                        checked={checked}
+                                        onChange={() => toggleTeacher(q.teacher_id)}
+                                        style={checked ? { accentColor: 'var(--ws-red)' } : undefined}
+                                    />
+                                </label>
                             )
                         })}
                     </div>
-                )}
-            </section>
-        </div>
+                </WsBlock>
+            </WsSideCol>
+
+            {/* الوسط: نتيجة المحاكاة */}
+            <WsMain>
+                <WsBlock
+                    title={`توزيع البدلاء — يوم ${DAY_LABELS[selectedDay]}`}
+                    icon={Users}
+                    count={selectedTeacherIds.length > 0 ? `${selectedTeacherIds.length} غائب` : undefined}
+                    fill
+                    scroll
+                >
+                    {simulationQueries.isLoading ? (
+                        <WsEmpty loading>جاري تحميل بيانات المحاكاة...</WsEmpty>
+                    ) : selectedTeacherIds.length === 0 ? (
+                        <WsEmpty icon={FlaskConical}>اختر معلماً أو أكثر من القائمة اليمنى لمحاكاة غيابهم.</WsEmpty>
+                    ) : sortedPeriods.length === 0 ? (
+                        <WsEmpty icon={CalendarX}>لا توجد حصص للمعلمين المختارين في هذا اليوم.</WsEmpty>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 12 }}>
+                            {sortedPeriods.map(period => {
+                                const periodAssignments = periodGroups.get(period)!
+                                const hasConflict = periodAssignments.some(a => a.conflict || a.allBusy)
+
+                                return (
+                                    <div
+                                        key={period}
+                                        style={{
+                                            border: `1px solid ${hasConflict ? 'var(--ws-amber-bd)' : 'var(--ws-border)'}`,
+                                            borderRadius: 10,
+                                            overflow: 'hidden',
+                                            background: 'var(--ws-surface)',
+                                        }}
+                                    >
+                                        <div
+                                            className="ws-block__head"
+                                            style={hasConflict ? { background: 'var(--ws-amber-bg)' } : undefined}
+                                        >
+                                            <span className="ws-block__title">
+                                                <span
+                                                    style={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        width: 22,
+                                                        height: 22,
+                                                        borderRadius: 7,
+                                                        fontSize: 11,
+                                                        fontWeight: 800,
+                                                        background: 'var(--ws-accent)',
+                                                        color: '#fff',
+                                                    }}
+                                                >
+                                                    {period}
+                                                </span>
+                                                الحصة {period}
+                                            </span>
+                                            {hasConflict && (
+                                                <WsChip tone="amber" icon={AlertTriangle}>
+                                                    تعارض
+                                                </WsChip>
+                                            )}
+                                        </div>
+
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: 8 }}>
+                                            {periodAssignments.map((a, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'space-between',
+                                                        gap: 10,
+                                                        flexWrap: 'wrap',
+                                                        padding: '7px 10px',
+                                                        borderRadius: 8,
+                                                        border: `1px solid ${a.allBusy ? 'var(--ws-red-bd)' : a.conflict ? 'var(--ws-amber-bd)' : 'var(--ws-green-bd)'}`,
+                                                        background: a.allBusy ? 'var(--ws-red-bg)' : a.conflict ? 'var(--ws-amber-bg)' : 'var(--ws-green-bg)',
+                                                    }}
+                                                >
+                                                    <span style={{ minWidth: 0 }}>
+                                                        <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                                            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ws-red)', textDecoration: 'line-through' }}>
+                                                                {a.absentTeacherName}
+                                                            </span>
+                                                            <span style={{ color: 'var(--ws-text-2)' }}>←</span>
+                                                            {a.allBusy ? (
+                                                                <WsChip tone="red" icon={AlertTriangle}>
+                                                                    لا يوجد بديل متاح!
+                                                                </WsChip>
+                                                            ) : (
+                                                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                                                                    <span style={{ fontSize: 12.5, fontWeight: 800, color: standbyTone(a.priority - 1).tx }}>
+                                                                        {a.assignedSubstitute}
+                                                                    </span>
+                                                                    <span
+                                                                        className="ws-chip"
+                                                                        style={{
+                                                                            background: standbyTone(a.priority - 1).bg,
+                                                                            borderColor: standbyTone(a.priority - 1).bd,
+                                                                            color: standbyTone(a.priority - 1).tx,
+                                                                        }}
+                                                                    >
+                                                                        م{a.priority}
+                                                                    </span>
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                        <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ws-text-2)', marginTop: 3 }}>
+                                                            {a.subject} • {a.className}
+                                                        </span>
+                                                    </span>
+                                                    <span style={{ fontSize: 10, color: 'var(--ws-text-2)', textAlign: 'left' }}>
+                                                        {Array.from({ length: maxStandbyCount }, (_, i) => {
+                                                            const name = a.standbys[`standby${i + 1}`]
+                                                            return name ? (
+                                                                <span key={i} style={{ display: 'block' }}>
+                                                                    م{i + 1}: {name}
+                                                                </span>
+                                                            ) : null
+                                                        })}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )}
+                </WsBlock>
+            </WsMain>
+        </>
     )
 }
 
@@ -1038,155 +1148,179 @@ function PreferencesTab({ quotas, maxStandbyCount }: { quotas: TeacherQuota[]; m
         }
     }
 
+    const selectedTeacherName = quotas.find(q => q.teacher_id === selectedTeacherId)?.teacher?.name
+
     return (
-        <div className="space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
-                {/* قائمة المعلمين */}
-                <div className="rounded-2xl p-6" style={{ backgroundColor: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }}>
-                    <h3 className="text-lg font-bold mb-4" style={{ color: 'var(--color-text-primary)' }}>
-                        👥 اختر معلم
-                    </h3>
-                    <div className="space-y-2 max-h-96 overflow-y-auto">
+        <>
+            {/* العمود الأيمن: قائمة المعلمين */}
+            <WsSideCol title="المعلمون" icon={Users} side="start" width={280} storageKey="ws:standby:preferences">
+                <WsBlock count={quotas.length.toLocaleString('ar-SA')} title="القائمة" fill scroll>
+                    <div>
                         {quotas.map(q => {
                             const pref = prefData?.preferences?.find((p: TeacherPreference) => p.teacher_id === q.teacher_id)
+                            const isSelected = selectedTeacherId === q.teacher_id
                             return (
                                 <button
                                     key={q.teacher_id}
+                                    type="button"
                                     onClick={() => handleTeacherSelect(q.teacher_id)}
-                                    className={`w-full text-right p-3 rounded-xl transition ${selectedTeacherId === q.teacher_id ? 'bg-teal-100 border-teal-500' : 'hover:bg-slate-100'
-                                        }`}
-                                    style={{ border: '1px solid var(--color-border)' }}
+                                    style={{
+                                        display: 'block',
+                                        width: '100%',
+                                        textAlign: 'right',
+                                        padding: '7px 12px',
+                                        border: 'none',
+                                        borderBottom: '1px solid var(--ws-hairline)',
+                                        background: isSelected ? 'var(--ws-accent-soft)' : 'transparent',
+                                        cursor: 'pointer',
+                                        fontFamily: 'inherit',
+                                    }}
                                 >
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-medium">{q.teacher?.name}</span>
-                                        <div className="flex gap-2">
-                                            {pref?.is_excluded && <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">مستثنى</span>}
-                                            <span className="text-xs bg-slate-200 px-2 py-0.5 rounded">{q.current_load} حصة</span>
-                                        </div>
-                                    </div>
+                                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                                        <span style={{ fontSize: 12, fontWeight: isSelected ? 700 : 600, color: 'var(--ws-text)', minWidth: 0 }}>
+                                            {q.teacher?.name}
+                                        </span>
+                                        <span style={{ display: 'inline-flex', gap: 4, flexShrink: 0 }}>
+                                            {pref?.is_excluded && <WsChip tone="red">مستثنى</WsChip>}
+                                            <WsChip>{q.current_load} حصة</WsChip>
+                                        </span>
+                                    </span>
                                 </button>
                             )
                         })}
                     </div>
-                </div>
+                </WsBlock>
+            </WsSideCol>
 
-                {/* نموذج الإعدادات */}
-                <div className="rounded-2xl p-6" style={{ backgroundColor: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }}>
-                    <h3 className="text-lg font-bold mb-4" style={{ color: 'var(--color-text-primary)' }}>
-                        ⚙️ إعدادات المعلم
-                    </h3>
-
+            {/* الوسط: نموذج الإعدادات */}
+            <WsMain>
+                <WsBlock
+                    title={selectedTeacherName ? `إعدادات: ${selectedTeacherName}` : 'إعدادات المعلم'}
+                    icon={Settings}
+                    fill
+                    scroll
+                >
                     {selectedTeacherId ? (
-                        <div className="space-y-4">
-                            {/* استثناء */}
-                            <label className="flex items-center gap-3 cursor-pointer">
-                                <input
-                                    type="checkbox"
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 14, maxWidth: 560 }}>
+                            {/* استثناء من الانتظار */}
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: 10,
+                                    padding: '8px 10px',
+                                    border: `1px solid ${formData.is_excluded ? 'var(--ws-red-bd)' : 'var(--ws-hairline)'}`,
+                                    borderRadius: 8,
+                                    background: formData.is_excluded ? 'var(--ws-red-bg)' : 'var(--ws-surface-2)',
+                                }}
+                            >
+                                <span style={{ minWidth: 0 }}>
+                                    <span style={{ display: 'block', fontSize: 12, fontWeight: 700 }}>استثناء من الانتظار</span>
+                                    <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                                        لن يُدرج المعلم في أي جدول انتظار.
+                                    </span>
+                                </span>
+                                <WsSwitch
                                     checked={formData.is_excluded}
-                                    onChange={(e) => setFormData({ ...formData, is_excluded: e.target.checked })}
-                                    className="w-5 h-5 rounded"
+                                    onChange={(checked) => setFormData({ ...formData, is_excluded: checked })}
                                 />
-                                <span className="font-medium">🚫 استثناء من الانتظار</span>
-                            </label>
+                            </div>
 
                             {formData.is_excluded && (
-                                <input
-                                    type="text"
-                                    placeholder="سبب الاستثناء"
-                                    value={formData.exclusion_reason}
-                                    onChange={(e) => setFormData({ ...formData, exclusion_reason: e.target.value })}
-                                    className="w-full rounded-xl border px-4 py-2 text-sm"
-                                    style={{ borderColor: 'var(--color-border)' }}
-                                />
+                                <WsField label="سبب الاستثناء">
+                                    <WsInput
+                                        type="text"
+                                        placeholder="سبب الاستثناء"
+                                        value={formData.exclusion_reason}
+                                        onChange={(e) => setFormData({ ...formData, exclusion_reason: e.target.value })}
+                                    />
+                                </WsField>
                             )}
 
-                            {/* لا تكرار */}
-                            <label className="flex items-center gap-3 cursor-pointer">
-                                <input
-                                    type="checkbox"
+                            {/* لا تكرار في نفس اليوم */}
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: 10,
+                                    padding: '8px 10px',
+                                    border: '1px solid var(--ws-hairline)',
+                                    borderRadius: 8,
+                                    background: 'var(--ws-surface-2)',
+                                }}
+                            >
+                                <span style={{ minWidth: 0 }}>
+                                    <span style={{ display: 'block', fontSize: 12, fontWeight: 700 }}>لا تكرار في نفس اليوم</span>
+                                    <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                                        منع إسناد أكثر من انتظار للمعلم في اليوم الواحد.
+                                    </span>
+                                </span>
+                                <WsSwitch
                                     checked={formData.no_same_day_repeat}
-                                    onChange={(e) => setFormData({ ...formData, no_same_day_repeat: e.target.checked })}
-                                    className="w-5 h-5 rounded"
-                                />
-                                <span className="font-medium">🔄 لا تكرار في نفس اليوم</span>
-                            </label>
-
-                            {/* الحد الأقصى اليومي */}
-                            <div>
-                                <label className="block text-sm font-medium mb-1">⏰ الحد الأقصى اليومي</label>
-                                <select
-                                    value={formData.max_daily_standby}
-                                    onChange={(e) => setFormData({ ...formData, max_daily_standby: Number(e.target.value) })}
-                                    className="w-full rounded-xl border px-4 py-2 text-sm"
-                                    style={{ borderColor: 'var(--color-border)' }}
-                                >
-                                    <option value={1}>1 حصة</option>
-                                    <option value={2}>2 حصة</option>
-                                    <option value={3}>3 حصص</option>
-                                </select>
-                            </div>
-
-                            {/* الحد الأقصى الأسبوعي */}
-                            <div>
-                                <label className="block text-sm font-medium mb-1">📊 الحد الأقصى الأسبوعي (اختياري)</label>
-                                <input
-                                    type="number"
-                                    placeholder="تلقائي"
-                                    value={formData.max_weekly_standby}
-                                    onChange={(e) => setFormData({ ...formData, max_weekly_standby: e.target.value })}
-                                    className="w-full rounded-xl border px-4 py-2 text-sm"
-                                    style={{ borderColor: 'var(--color-border)' }}
+                                    onChange={(checked) => setFormData({ ...formData, no_same_day_repeat: checked })}
                                 />
                             </div>
 
-                            {/* أولوية ثابتة */}
-                            <div>
-                                <label className="block text-sm font-medium mb-1">🎯 أولوية ثابتة</label>
-                                <select
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                                <WsField label="الحد الأقصى اليومي">
+                                    <WsSelect
+                                        value={formData.max_daily_standby}
+                                        onChange={(e) => setFormData({ ...formData, max_daily_standby: Number(e.target.value) })}
+                                    >
+                                        <option value={1}>1 حصة</option>
+                                        <option value={2}>2 حصة</option>
+                                        <option value={3}>3 حصص</option>
+                                    </WsSelect>
+                                </WsField>
+
+                                <WsField label="الحد الأقصى الأسبوعي (اختياري)">
+                                    <WsInput
+                                        type="number"
+                                        placeholder="تلقائي"
+                                        value={formData.max_weekly_standby}
+                                        onChange={(e) => setFormData({ ...formData, max_weekly_standby: e.target.value })}
+                                    />
+                                </WsField>
+                            </div>
+
+                            <WsField label="أولوية ثابتة">
+                                <WsSelect
                                     value={formData.fixed_priority}
                                     onChange={(e) => setFormData({ ...formData, fixed_priority: e.target.value })}
-                                    className="w-full rounded-xl border px-4 py-2 text-sm"
-                                    style={{ borderColor: 'var(--color-border)' }}
                                 >
                                     <option value="">تلقائي (الكل)</option>
                                     {Array.from({ length: maxStandbyCount }, (_, i) => (
                                         <option key={i} value={i + 1}>م{i + 1} فقط</option>
                                     ))}
-                                </select>
-                            </div>
+                                </WsSelect>
+                            </WsField>
 
-                            {/* ملاحظات */}
-                            <div>
-                                <label className="block text-sm font-medium mb-1">📝 ملاحظات</label>
-                                <textarea
+                            <WsField label="ملاحظات">
+                                <WsTextarea
                                     placeholder="ملاحظات إضافية..."
                                     value={formData.notes}
                                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                                    className="w-full rounded-xl border px-4 py-2 text-sm"
-                                    style={{ borderColor: 'var(--color-border)' }}
                                     rows={2}
                                 />
-                            </div>
+                            </WsField>
 
-                            <button
+                            <WsBtn
+                                variant="primary"
+                                icon={Save}
                                 onClick={() => saveMutation.mutate(selectedTeacherId)}
                                 disabled={saveMutation.isPending}
-                                className="w-full rounded-xl bg-teal-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:opacity-50"
                             >
-                                {saveMutation.isPending ? '⏳ جاري الحفظ...' : '💾 حفظ الإعدادات'}
-                            </button>
+                                {saveMutation.isPending ? 'جاري الحفظ...' : 'حفظ الإعدادات'}
+                            </WsBtn>
                         </div>
                     ) : (
-                        <div className="text-center py-8">
-                            <div className="text-5xl mb-4">👉</div>
-                            <p style={{ color: 'var(--color-text-secondary)' }}>
-                                اختر معلم من القائمة لتعديل إعداداته
-                            </p>
-                        </div>
+                        <WsEmpty icon={UserRound}>اختر معلماً من القائمة اليمنى لتعديل إعداداته.</WsEmpty>
                     )}
-                </div>
-            </div>
-        </div>
+                </WsBlock>
+            </WsMain>
+        </>
     )
 }
 
@@ -1262,143 +1396,131 @@ function StandbySettingsModal({ onClose, onSave, currentMaxCount }: { onClose: (
     const enabledStaff = staff.filter(s => s.standby_enabled && !s.is_teacher)
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl">
-                {/* Header */}
-                <div className="border-b border-slate-200 p-6">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-xl font-bold text-slate-900">⚙️ إعدادات الانتظار</h2>
-                        <button
-                            onClick={onClose}
-                            className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                        >
-                            ✕
-                        </button>
-                    </div>
-                    <p className="text-sm text-muted mt-1">
-                        إضافة موظفين لجدول الانتظار
-                    </p>
-                </div>
-
-                {/* Content */}
-                <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-                    {/* عدد المنتظرين */}
-                    <div className="rounded-xl border border-slate-200 p-4 bg-slate-50">
-                        <label className="block text-sm font-semibold text-slate-700 mb-2">
-                            عدد المنتظرين لكل حصة
-                        </label>
-                        <div className="flex items-center gap-3">
-                            <select
-                                value={maxCount}
-                                onChange={(e) => setMaxCount(Number(e.target.value))}
-                                className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            >
-                                {[1, 2, 3, 4, 5, 6, 7].map(n => (
-                                    <option key={n} value={n}>{n} منتظر{n > 2 ? 'ين' : ''}</option>
-                                ))}
-                            </select>
-                            {maxCount !== currentMaxCount && (
-                                <button
-                                    onClick={() => saveCountMutation.mutate(maxCount)}
-                                    disabled={saveCountMutation.isPending}
-                                    className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50"
-                                >
-                                    {saveCountMutation.isPending ? '...' : 'حفظ'}
-                                </button>
-                            )}
-                        </div>
-                        <p className="text-xs text-muted mt-2">
-                            بعد تغيير العدد، أعد حساب الإسناد وتوليد الجدول الأسبوعي
-                        </p>
-                    </div>
-
-                    {/* Enabled Staff */}
-                    {enabledStaff.length > 0 && (
-                        <div className="mb-4">
-                            <h3 className="text-sm font-semibold text-slate-700 mb-2">✅ المفعل لهم الانتظار</h3>
-                            <div className="flex flex-wrap gap-2">
-                                {enabledStaff.map(s => (
-                                    <span
-                                        key={s.id}
-                                        className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-full text-sm"
-                                    >
-                                        {s.name}
-                                        <button
-                                            onClick={() => toggleMutation.mutate(s.id)}
-                                            className="hover:text-red-600"
-                                            title="إزالة"
-                                        >
-                                            ✕
-                                        </button>
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Search */}
-                    <input
-                        type="text"
-                        placeholder="🔍 ابحث عن موظف..."
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                        className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-
-                    {/* Staff List */}
-                    {isLoading ? (
-                        <div className="py-8 text-center text-muted">جاري التحميل...</div>
-                    ) : filteredStaff.length === 0 ? (
-                        <div className="py-8 text-center text-muted">
-                            {searchTerm ? 'لا توجد نتائج' : 'لا يوجد موظفين'}
-                        </div>
-                    ) : (
-                        <div className="space-y-2">
-                            {filteredStaff.map(s => (
-                                <div
-                                    key={s.id}
-                                    className={`flex items-center justify-between p-3 rounded-xl border transition ${s.standby_enabled
-                                        ? 'bg-emerald-50 border-emerald-200'
-                                        : 'bg-white border-slate-200 hover:bg-slate-50'
-                                        }`}
-                                >
-                                    <div>
-                                        <span className="font-medium text-slate-900">{s.name}</span>
-                                        <span className="text-xs text-muted mr-2">({s.role_label || s.role})</span>
-                                    </div>
-                                    <button
-                                        onClick={() => toggleMutation.mutate(s.id)}
-                                        disabled={toggleMutation.isPending}
-                                        className={`rounded-lg px-4 py-1.5 text-sm font-medium transition ${s.standby_enabled
-                                            ? 'bg-red-100 text-red-600 hover:bg-red-200'
-                                            : 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200'
-                                            }`}
-                                    >
-                                        {s.standby_enabled ? 'إزالة' : 'إضافة'}
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                {/* Footer */}
-                <div className="border-t border-slate-200 p-4 flex justify-end gap-3">
-                    <button
-                        onClick={onClose}
-                        className="rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                    >
-                        إغلاق
-                    </button>
-                    <button
-                        onClick={onSave}
-                        className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
-                    >
+        <WsModal
+            open
+            onClose={onClose}
+            title="إعدادات الانتظار"
+            sub="ضبط عدد المنتظرين وإضافة موظفين لجدول الانتظار."
+            maxWidth={520}
+            footer={
+                <>
+                    <WsBtn onClick={onClose}>إغلاق</WsBtn>
+                    <WsBtn variant="primary" icon={Calculator} onClick={onSave}>
                         حفظ وإعادة حساب
-                    </button>
+                    </WsBtn>
+                </>
+            }
+        >
+            {/* عدد المنتظرين */}
+            <div
+                style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6,
+                    padding: '8px 10px',
+                    border: '1px solid var(--ws-hairline)',
+                    borderRadius: 8,
+                    background: 'var(--ws-surface-2)',
+                }}
+            >
+                <span className="ws-label">عدد المنتظرين لكل حصة</span>
+                <div style={{ display: 'flex', gap: 6 }}>
+                    <WsSelect value={maxCount} onChange={(e) => setMaxCount(Number(e.target.value))} style={{ flex: 1 }}>
+                        {[1, 2, 3, 4, 5, 6, 7].map(n => (
+                            <option key={n} value={n}>{n} منتظر{n > 2 ? 'ين' : ''}</option>
+                        ))}
+                    </WsSelect>
+                    {maxCount !== currentMaxCount && (
+                        <WsBtn
+                            variant="primary"
+                            size="sm"
+                            icon={Save}
+                            onClick={() => saveCountMutation.mutate(maxCount)}
+                            disabled={saveCountMutation.isPending}
+                            style={{ height: 30 }}
+                        >
+                            {saveCountMutation.isPending ? '...' : 'حفظ'}
+                        </WsBtn>
+                    )}
                 </div>
+                <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                    بعد تغيير العدد، أعد حساب الإسناد وتوليد الجدول الأسبوعي.
+                </span>
             </div>
-        </div>
+
+            {/* المفعل لهم الانتظار */}
+            {enabledStaff.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    <span className="ws-label">المفعل لهم الانتظار</span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {enabledStaff.map(s => (
+                            <WsChip key={s.id} tone="green">
+                                {s.name}
+                                <button
+                                    type="button"
+                                    onClick={() => toggleMutation.mutate(s.id)}
+                                    style={{ display: 'inline-flex', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 0 }}
+                                    title="إزالة"
+                                >
+                                    <X style={{ width: 10, height: 10 }} />
+                                </button>
+                            </WsChip>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* البحث */}
+            <WsInput
+                type="search"
+                placeholder="ابحث عن موظف..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+            />
+
+            {/* قائمة الموظفين */}
+            {isLoading ? (
+                <WsAlert tone="info" boxed>
+                    جاري التحميل...
+                </WsAlert>
+            ) : filteredStaff.length === 0 ? (
+                <WsAlert tone="info" boxed>
+                    {searchTerm ? 'لا توجد نتائج.' : 'لا يوجد موظفون.'}
+                </WsAlert>
+            ) : (
+                <div style={{ maxHeight: '36vh', overflowY: 'auto', border: '1px solid var(--ws-hairline)', borderRadius: 8 }}>
+                    {filteredStaff.map(s => (
+                        <div
+                            key={s.id}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: 10,
+                                padding: '7px 10px',
+                                borderBottom: '1px solid var(--ws-hairline)',
+                                background: s.standby_enabled ? 'var(--ws-green-bg)' : 'transparent',
+                            }}
+                        >
+                            <span style={{ minWidth: 0 }}>
+                                <span style={{ display: 'block', fontSize: 12, fontWeight: 600 }}>{s.name}</span>
+                                <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                                    {s.role_label || s.role}
+                                </span>
+                            </span>
+                            <WsBtn
+                                size="sm"
+                                variant={s.standby_enabled ? 'danger' : undefined}
+                                onClick={() => toggleMutation.mutate(s.id)}
+                                disabled={toggleMutation.isPending}
+                            >
+                                {s.standby_enabled ? 'إزالة' : 'إضافة'}
+                            </WsBtn>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </WsModal>
     )
 }
 

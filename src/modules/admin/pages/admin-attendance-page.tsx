@@ -1,5 +1,47 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  AlertTriangle,
+  CalendarDays,
+  CheckCircle2,
+  ClipboardList,
+  ClipboardX,
+  Clock3,
+  DoorOpen,
+  FileSpreadsheet,
+  FileText,
+  Info,
+  ListChecks,
+  Pencil,
+  RotateCcw,
+  UserRound,
+  Users,
+  XCircle,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import {
+  WsAlert,
+  WsBlock,
+  WsBtn,
+  WsChip,
+  WsEmpty,
+  WsFact,
+  WsFactRow,
+  WsFactsList,
+  WsField,
+  WsHeader,
+  WsInput,
+  WsLayout,
+  WsMain,
+  WsModal,
+  WsPage,
+  WsProgress,
+  WsSelect,
+  WsSideCol,
+  WsTable,
+  WsToolbar,
+  type WsChipTone,
+} from '@/shared/workspace'
+import {
   useAttendanceReportsQuery,
   useAttendanceSessionDetailsQuery,
   useExportAttendanceReportMutation,
@@ -20,11 +62,11 @@ type FilterState = {
 
 type StatusKey = 'present' | 'absent' | 'late' | 'excused'
 
-const statusMeta: Record<StatusKey, { label: string; tone: string; icon: string }> = {
-  present: { label: 'حاضر', tone: 'bg-emerald-50 text-emerald-700 border border-emerald-200', icon: 'bi-check-circle-fill' },
-  absent: { label: 'غائب', tone: 'bg-rose-50 text-rose-700 border border-rose-200', icon: 'bi-x-circle-fill' },
-  late: { label: 'متأخر', tone: 'bg-amber-50 text-amber-700 border border-amber-200', icon: 'bi-clock-fill' },
-  excused: { label: 'مستأذن', tone: 'bg-sky-50 text-sky-700 border border-sky-200', icon: 'bi-person-badge-fill' },
+const statusMeta: Record<StatusKey, { label: string; tone: WsChipTone; icon: LucideIcon }> = {
+  present: { label: 'حاضر', tone: 'green', icon: CheckCircle2 },
+  absent: { label: 'غائب', tone: 'red', icon: XCircle },
+  late: { label: 'متأخر', tone: 'amber', icon: Clock3 },
+  excused: { label: 'مستأذن', tone: 'sky', icon: DoorOpen },
 }
 
 function formatDate(value?: string | null, options: Intl.DateTimeFormatOptions = { dateStyle: 'medium' }) {
@@ -38,21 +80,18 @@ function formatDate(value?: string | null, options: Intl.DateTimeFormatOptions =
   }
 }
 
-function StatusBadge({ status, onClick, isEditable }: { status: StatusKey; onClick?: () => void; isEditable?: boolean }) {
+function StatusChip({ status, onClick, isEditable }: { status: StatusKey; onClick?: () => void; isEditable?: boolean }) {
   const meta = statusMeta[status]
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={!isEditable}
-      className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold transition ${meta.tone} ${
-        isEditable ? 'cursor-pointer hover:opacity-80 hover:shadow-md' : 'cursor-default'
-      }`}
+    <WsChip
+      tone={meta.tone}
+      icon={meta.icon}
+      onClick={isEditable ? onClick : undefined}
+      title={isEditable ? 'اضغط لتغيير الحالة' : undefined}
     >
-      <i className={`bi ${meta.icon}`} />
       {meta.label}
-      {isEditable && <i className="bi bi-pencil-fill text-[10px] opacity-60" />}
-    </button>
+      {isEditable && <Pencil style={{ width: 9, height: 9, opacity: 0.6 }} />}
+    </WsChip>
   )
 }
 
@@ -88,139 +127,88 @@ function ChangeStatusModal({
   // رسالة التحذير حسب التغيير
   const getWarningMessage = () => {
     if (!selectedStatus) return null
-    
+
     if (currentStatus === 'absent' && selectedStatus === 'present') {
-      return '⚠️ سيتم إرسال رسالة تصحيح لولي الأمر تفيد بأن ابنه حاضر وليس غائباً.'
+      return 'سيتم إرسال رسالة تصحيح لولي الأمر تفيد بأن ابنه حاضر وليس غائباً.'
     }
     if ((currentStatus === 'present' || currentStatus === 'late') && selectedStatus === 'absent') {
-      return '⚠️ سيتم إرسال رسالة غياب لولي الأمر.'
+      return 'سيتم إرسال رسالة غياب لولي الأمر.'
     }
     if (selectedStatus === 'late' && currentStatus !== 'late') {
-      return '⚠️ سيتم إرسال رسالة تأخر لولي الأمر.'
+      return 'سيتم إرسال رسالة تأخر لولي الأمر.'
     }
     return null
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
-        <header className="mb-4 text-right">
-          <h3 className="text-lg font-bold text-slate-900">تغيير حالة الطالب</h3>
-          <p className="text-sm text-slate-500">{student.name}</p>
-        </header>
-
-        {!isToday ? (
-          <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-right">
-            <p className="text-sm font-semibold text-rose-700">
-              <i className="bi bi-exclamation-triangle-fill ml-2" />
-              لا يمكن تعديل سجلات الحضور لأيام سابقة
-            </p>
-            <p className="mt-1 text-xs text-rose-600">التعديل متاح فقط لسجلات اليوم الحالي.</p>
-          </div>
-        ) : (
-          <>
-            <div className="mb-4">
-              <p className="mb-2 text-xs font-semibold text-slate-600">الحالة الحالية:</p>
-              <StatusBadge status={currentStatus} />
-            </div>
-
-            <div className="mb-4">
-              <p className="mb-2 text-xs font-semibold text-slate-600">اختر الحالة الجديدة:</p>
-              <div className="grid grid-cols-2 gap-2">
-                {availableStatuses.map((status) => {
-                  const meta = statusMeta[status]
-                  const isSelected = selectedStatus === status
-                  const isCurrent = currentStatus === status
-                  return (
-                    <button
-                      key={status}
-                      type="button"
-                      onClick={() => !isCurrent && setSelectedStatus(status)}
-                      disabled={isCurrent}
-                      className={`flex items-center justify-center gap-2 rounded-2xl border-2 px-4 py-3 text-sm font-semibold transition ${
-                        isCurrent
-                          ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400'
-                          : isSelected
-                          ? 'border-teal-500 bg-teal-50 text-teal-700 shadow-md'
-                          : `${meta.tone} hover:shadow-md`
-                      }`}
-                    >
-                      <i className={`bi ${meta.icon}`} />
-                      {meta.label}
-                      {isCurrent && <span className="text-[10px]">(الحالية)</span>}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            {getWarningMessage() && (
-              <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-right">
-                <p className="text-xs text-amber-700">{getWarningMessage()}</p>
-              </div>
-            )}
-          </>
-        )}
-
-        <footer className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
-          >
-            إلغاء
-          </button>
+    <WsModal
+      open={isOpen}
+      onClose={onClose}
+      title="تغيير حالة الطالب"
+      sub={student.name}
+      footer={
+        <>
+          <WsBtn onClick={onClose}>إلغاء</WsBtn>
           {isToday && (
-            <button
-              type="button"
+            <WsBtn
+              variant="primary"
               onClick={() => selectedStatus && onConfirm(selectedStatus)}
               disabled={!selectedStatus || isLoading}
-              className="rounded-xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isLoading ? (
-                <>
-                  <i className="bi bi-arrow-repeat animate-spin ml-2" />
-                  جاري التحديث...
-                </>
-              ) : (
-                <>
-                  <i className="bi bi-check-lg ml-2" />
-                  تأكيد التغيير
-                </>
-              )}
-            </button>
+              {isLoading ? 'جاري التحديث...' : 'تأكيد التغيير'}
+            </WsBtn>
           )}
-        </footer>
-      </div>
-    </div>
-  )
-}
+        </>
+      }
+    >
+      {!isToday ? (
+        <WsAlert boxed>لا يمكن تعديل سجلات الحضور لأيام سابقة — التعديل متاح فقط لسجلات اليوم الحالي.</WsAlert>
+      ) : (
+        <>
+          <div className="flex items-center justify-between gap-2">
+            <span className="ws-label">الحالة الحالية</span>
+            <StatusChip status={currentStatus} />
+          </div>
 
-function StatsGrid({ records }: { records: AttendanceReportRecord[] }) {
-  const totalSessions = records.length
-  const totalStudents = records.reduce((sum, record) => sum + (record.students_count || 0), 0)
+          <div className="flex flex-col gap-1.5">
+            <span className="ws-label">اختر الحالة الجديدة</span>
+            <div className="ws-choice-grid">
+              {availableStatuses.map((status) => {
+                const meta = statusMeta[status]
+                const Icon = meta.icon
+                const isSelected = selectedStatus === status
+                const isCurrent = currentStatus === status
+                return (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => !isCurrent && setSelectedStatus(status)}
+                    disabled={isCurrent}
+                    className={`ws-choice ${isSelected ? 'is-selected' : ''}`}
+                  >
+                    <Icon />
+                    {meta.label}
+                    {isCurrent && <span style={{ fontSize: 10 }}>(الحالية)</span>}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
 
-  return (
-    <div className="grid gap-3 md:grid-cols-3">
-      <article className="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-4 text-right shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">إجمالي السجلات</p>
-        <p className="mt-2 text-2xl font-bold text-teal-700">{totalSessions.toLocaleString('ar-SA')}</p>
-      </article>
-      <article className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-4 text-right shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">إجمالي الطلاب</p>
-        <p className="mt-2 text-2xl font-bold text-blue-700">{totalStudents.toLocaleString('ar-SA')}</p>
-      </article>
-      <article className="rounded-2xl border border-purple-200 bg-purple-50 px-4 py-4 text-right shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">المعلمين النشطين</p>
-        <p className="mt-2 text-2xl font-bold text-purple-700">{new Set(records.map(r => r.teacher_id)).size.toLocaleString('ar-SA')}</p>
-      </article>
-    </div>
+          {getWarningMessage() && (
+            <WsAlert tone="warn" boxed>
+              {getWarningMessage()}
+            </WsAlert>
+          )}
+        </>
+      )}
+    </WsModal>
   )
 }
 
 export function AdminAttendancePage() {
   const today = getTodayRiyadh() // تاريخ اليوم بصيغة YYYY-MM-DD بتوقيت الرياض
-  
+
   const [filters, setFilters] = useState<FilterState>({
     grade: '',
     className: '',
@@ -281,6 +269,18 @@ export function AdminAttendancePage() {
     return isTodayRiyadh(selectedRecord.attendance_date)
   }, [selectedRecord])
 
+  // حقائق الترويسة
+  const totalStudents = useMemo(
+    () => records.reduce((sum, record: AttendanceReportRecord) => sum + (record.students_count || 0), 0),
+    [records],
+  )
+  const activeTeachers = useMemo(() => new Set(records.map((r) => r.teacher_id)).size, [records])
+  const dateRangeLabel = useMemo(() => {
+    if (filters.fromDate === today && (filters.toDate === today || !filters.toDate)) return 'اليوم'
+    if (!filters.toDate || filters.toDate === filters.fromDate) return formatDate(filters.fromDate)
+    return `${formatDate(filters.fromDate)} — ${formatDate(filters.toDate)}`
+  }, [filters.fromDate, filters.toDate, today])
+
   const handleFilterChange = (field: keyof FilterState, value: string) => {
     setFilters((prev) => {
       const next = { ...prev, [field]: value }
@@ -292,10 +292,6 @@ export function AdminAttendancePage() {
   const handleResetFilters = () => {
     const today = getTodayRiyadh()
     setFilters({ grade: '', className: '', status: 'all', fromDate: today, toDate: today, search: '' })
-  }
-
-  const handleSelectRecord = (recordId: number) => {
-    setSelectedRecordId(recordId)
   }
 
   const handleExport = (format: 'excel' | 'pdf') => {
@@ -340,323 +336,266 @@ export function AdminAttendancePage() {
   }
 
   return (
-    <section className="space-y-6">
-      <header className="space-y-2">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="space-y-1 text-right">
-            <h1 className="text-3xl font-bold text-slate-900">تقارير الحضور</h1>
-            <p className="text-sm text-muted">
-              استعرض سجلات الحضور اليومية وقم بالتصفية والتصدير حسب الحاجة.
-              {isSelectedDateToday && (
-                <span className="mr-2 inline-flex items-center gap-1 rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700">
-                  <i className="bi bi-pencil-square" />
-                  يمكنك تعديل حالة الطلاب
-                </span>
-              )}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => handleExport('excel')}
-              className="button-secondary"
-              disabled={exportMutation.isPending}
-            >
-              <i className="bi bi-file-earmark-spreadsheet" /> تصدير Excel
-            </button>
-            <button
-              type="button"
-              onClick={() => handleExport('pdf')}
-              className="button-secondary"
-              disabled={exportMutation.isPending}
-            >
-              <i className="bi bi-filetype-pdf" /> تصدير PDF
-            </button>
-          </div>
-        </div>
-        {reportsQuery.isError ? (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4 text-sm text-rose-700">
-            حدث خطأ أثناء تحميل السجلات. حاول مجددًا أو تحقق من الاتصال.
-            <button
-              type="button"
-              onClick={() => reportsQuery.refetch()}
-              className="mr-3 inline-flex items-center gap-2 rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-700"
-            >
-              <i className="bi bi-arrow-repeat" /> إعادة المحاولة
-            </button>
-          </div>
-        ) : null}
-      </header>
+    <WsPage>
+      <WsHeader
+        title="تقارير الحضور"
+        badge="الحضور اليومي"
+        actions={
+          <>
+            <WsBtn icon={FileSpreadsheet} onClick={() => handleExport('excel')} disabled={exportMutation.isPending}>
+              تصدير Excel
+            </WsBtn>
+            <WsBtn icon={FileText} onClick={() => handleExport('pdf')} disabled={exportMutation.isPending}>
+              تصدير PDF
+            </WsBtn>
+          </>
+        }
+        facts={
+          <>
+            <WsFact icon={ClipboardList} label="السجلات:">
+              {records.length.toLocaleString('ar-SA')}
+            </WsFact>
+            <WsFact icon={Users} label="الطلاب:">
+              {totalStudents.toLocaleString('ar-SA')}
+            </WsFact>
+            <WsFact icon={UserRound} label="معلمون نشطون:">
+              {activeTeachers.toLocaleString('ar-SA')}
+            </WsFact>
+            <WsFact icon={CalendarDays} label="المدى:">
+              {dateRangeLabel}
+            </WsFact>
+          </>
+        }
+      >
+        {isSelectedDateToday && (
+          <WsChip tone="green" icon={Pencil}>
+            التعديل متاح لسجلات اليوم
+          </WsChip>
+        )}
+      </WsHeader>
 
-      <section className="glass-card space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-right">
-            <h2 className="text-xl font-semibold text-slate-900">البحث والتصفية</h2>
-            <p className="text-sm text-muted">اضبط المعايير لعرض نطاق محدد من السجلات.</p>
-          </div>
-          <button type="button" className="button-secondary" onClick={handleResetFilters}>
-            <i className="bi bi-arrow-counterclockwise" /> إعادة التعيين
-          </button>
-        </div>
+      <WsToolbar>
+        <WsField label="الصف الدراسي" htmlFor="ws-att-grade">
+          <WsSelect
+            id="ws-att-grade"
+            value={filters.grade}
+            onChange={(event) => handleFilterChange('grade', event.target.value)}
+          >
+            <option value="">جميع الصفوف</option>
+            {gradeOptions.map((g) => (
+              <option key={g.grade} value={g.grade}>
+                {g.grade}
+              </option>
+            ))}
+          </WsSelect>
+        </WsField>
 
-        <div className="grid gap-4 lg:grid-cols-3">
-          <div className="space-y-2 text-right">
-            <label className="text-xs font-semibold text-slate-600">الصف الدراسي</label>
-            <select
-              value={filters.grade}
-              onChange={(event) => handleFilterChange('grade', event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-            >
-              <option value="">جميع الصفوف</option>
-              {gradeOptions.map((g) => (
-                <option key={g.grade} value={g.grade}>
-                  {g.grade}
-                </option>
-              ))}
-            </select>
-          </div>
+        <WsField label="الفصل" htmlFor="ws-att-class">
+          <WsSelect
+            id="ws-att-class"
+            value={filters.className}
+            onChange={(event) => handleFilterChange('className', event.target.value)}
+            disabled={!filters.grade}
+          >
+            <option value="">جميع الفصول</option>
+            {classOptions.map((className) => (
+              <option key={className} value={className}>
+                {className}
+              </option>
+            ))}
+          </WsSelect>
+        </WsField>
 
-          <div className="space-y-2 text-right">
-            <label className="text-xs font-semibold text-slate-600">الفصل</label>
-            <select
-              value={filters.className}
-              onChange={(event) => handleFilterChange('className', event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-              disabled={!filters.grade}
-            >
-              <option value="">جميع الفصول</option>
-              {classOptions.map((className) => (
-                <option key={className} value={className}>
-                  {className}
-                </option>
-              ))}
-            </select>
-          </div>
+        <WsField label="حالة السجل" htmlFor="ws-att-status">
+          <WsSelect
+            id="ws-att-status"
+            value={filters.status}
+            onChange={(event) => handleFilterChange('status', event.target.value as FilterState['status'])}
+          >
+            <option value="all">جميع الحالات</option>
+            <option value="present">حاضر</option>
+            <option value="absent">غائب</option>
+            <option value="late">متأخر</option>
+            <option value="excused">مستأذن</option>
+          </WsSelect>
+        </WsField>
 
-          <div className="space-y-2 text-right">
-            <label className="text-xs font-semibold text-slate-600">حالة السجل</label>
-            <select
-              value={filters.status}
-              onChange={(event) => handleFilterChange('status', event.target.value as FilterState['status'])}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm focus:border-teal-500 focus:outline-none"
-            >
-              <option value="all">جميع الحالات</option>
-              <option value="present">حاضر</option>
-              <option value="absent">غائب</option>
-              <option value="late">متأخر</option>
-              <option value="excused">مستأذن</option>
-            </select>
-          </div>
+        <WsField label="من تاريخ" htmlFor="ws-att-from">
+          <WsInput
+            id="ws-att-from"
+            type="date"
+            value={filters.fromDate}
+            onChange={(event) => handleFilterChange('fromDate', event.target.value)}
+          />
+        </WsField>
 
-          <div className="space-y-2 text-right">
-            <label className="text-xs font-semibold text-slate-600">من تاريخ</label>
-            <input
-              type="date"
-              value={filters.fromDate}
-              onChange={(event) => handleFilterChange('fromDate', event.target.value)}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-            />
-          </div>
+        <WsField label="إلى تاريخ" htmlFor="ws-att-to">
+          <WsInput
+            id="ws-att-to"
+            type="date"
+            value={filters.toDate}
+            onChange={(event) => handleFilterChange('toDate', event.target.value)}
+          />
+        </WsField>
 
-          <div className="space-y-2 text-right">
-            <label className="text-xs font-semibold text-slate-600">إلى تاريخ</label>
-            <input
-              type="date"
-              value={filters.toDate}
-              onChange={(event) => handleFilterChange('toDate', event.target.value)}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-            />
-          </div>
+        <WsField label="بحث سريع" htmlFor="ws-att-search" grow>
+          <WsInput
+            id="ws-att-search"
+            type="search"
+            value={filters.search}
+            onChange={(event) => handleFilterChange('search', event.target.value)}
+            placeholder="اسم الطالب أو المعلم"
+          />
+        </WsField>
 
-          <div className="space-y-2 text-right">
-            <label className="text-xs font-semibold text-slate-600">بحث سريع</label>
-            <input
-              type="search"
-              value={filters.search}
-              onChange={(event) => handleFilterChange('search', event.target.value)}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-              placeholder="اسم الطالب أو المعلم"
-            />
-          </div>
-        </div>
+        <WsBtn icon={RotateCcw} onClick={handleResetFilters}>
+          إعادة التعيين
+        </WsBtn>
+      </WsToolbar>
 
-        <StatsGrid records={records} />
+      {reportsQuery.isError && (
+        <WsAlert>
+          حدث خطأ أثناء تحميل السجلات. حاول مجددًا أو تحقق من الاتصال.
+          <WsBtn size="sm" icon={RotateCcw} onClick={() => reportsQuery.refetch()}>
+            إعادة المحاولة
+          </WsBtn>
+        </WsAlert>
+      )}
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(600px,1fr),420px]">
-          <div className="min-w-0 rounded-3xl border border-slate-100 bg-white/80 shadow-sm">
+      <WsLayout>
+        <WsMain>
+          <WsBlock title="سجلات التحضير" icon={ClipboardList} count={records.length.toLocaleString('ar-SA')} fill>
             {reportsQuery.isLoading ? (
-              <div className="flex min-h-[360px] flex-col items-center justify-center gap-3 text-sm text-muted">
-                <span className="h-10 w-10 animate-spin rounded-full border-2 border-teal-500 border-t-transparent" />
-                جاري تحميل سجلات الحضور...
-              </div>
+              <WsEmpty loading>جاري تحميل سجلات الحضور...</WsEmpty>
             ) : records.length === 0 ? (
-              <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 p-6 text-sm text-muted">
-                <i className="bi bi-clipboard-x text-3xl text-slate-300" />
-                لا توجد سجلات مطابقة لمعايير البحث الحالية.
-              </div>
+              <WsEmpty icon={ClipboardX}>لا توجد سجلات مطابقة لمعايير البحث الحالية.</WsEmpty>
             ) : (
-              <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-inner">
-                <table className="w-full min-w-[600px] text-right text-sm">
-                  <thead className="bg-slate-50/80 text-xs uppercase text-slate-500">
-                    <tr>
-                      <th className="px-3 py-3 font-semibold sm:px-4">المعلم</th>
-                      <th className="px-3 py-3 font-semibold sm:px-4">الصف / الشعبة</th>
-                      <th className="px-3 py-3 font-semibold sm:px-4">عدد الطلاب</th>
-                      <th className="px-3 py-3 font-semibold sm:px-4">التاريخ</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {records.map((record) => {
-                      const recordId = record.first_id || record.id || 0
-                      const isSelected = recordId === selectedRecordId
-                      return (
-                        <tr
-                          key={recordId}
-                          onClick={() => handleSelectRecord(recordId)}
-                          className={`cursor-pointer border-t border-slate-100 transition ${
-                            isSelected ? 'bg-teal-50/80' : 'hover:bg-slate-50'
-                          }`}
-                        >
-                          <td className="px-3 py-3 sm:px-4">
-                            <div className="space-y-0.5">
-                              <p className="text-xs font-semibold text-slate-900 sm:text-sm">{record.teacher_name}</p>
-                              <p className="text-[10px] text-muted sm:text-xs">
-                                {record.teacher_id_number}
-                              </p>
-                            </div>
-                          </td>
-                          <td className="px-3 py-3 sm:px-4">
-                            <p className="text-xs font-semibold text-slate-900 sm:text-sm">
-                              {record.grade} - {record.class_name}
-                            </p>
-                          </td>
-                          <td className="px-3 py-3 sm:px-4">
-                            <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-semibold text-teal-700 sm:px-3 sm:py-1 sm:text-xs">
-                              <i className="bi bi-people-fill" />
-                              {record.students_count}
-                            </span>
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3 text-xs text-slate-600 sm:px-4 sm:text-sm">{formatDate(record.attendance_date)}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <WsTable>
+                <thead>
+                  <tr>
+                    <th>المعلم</th>
+                    <th>الصف / الفصل</th>
+                    <th>عدد الطلاب</th>
+                    <th>التاريخ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {records.map((record) => {
+                    const recordId = record.first_id || record.id || 0
+                    const isSelected = recordId === selectedRecordId
+                    return (
+                      <tr
+                        key={recordId}
+                        onClick={() => setSelectedRecordId(recordId)}
+                        className={`is-clickable ${isSelected ? 'is-selected' : ''}`}
+                      >
+                        <td>
+                          <span style={{ fontWeight: 600 }}>{record.teacher_name}</span>
+                          <span className="ws-cell-sub">{record.teacher_id_number}</span>
+                        </td>
+                        <td>
+                          {record.grade} - {record.class_name}
+                        </td>
+                        <td>
+                          <WsChip icon={Users}>{record.students_count}</WsChip>
+                        </td>
+                        <td style={{ whiteSpace: 'nowrap' }}>{formatDate(record.attendance_date)}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </WsTable>
             )}
-          </div>
+          </WsBlock>
+        </WsMain>
 
-          <aside className="space-y-4 rounded-3xl border border-slate-100 bg-white/70 p-5 shadow-sm">
-            {selectedRecord ? (
-              <div className="space-y-4">
-                <header className="space-y-1 text-right">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-teal-600">تفاصيل السجل</p>
-                  <h3 className="text-xl font-semibold text-slate-900">
+        <WsSideCol title="تفاصيل السجل" icon={ListChecks} storageKey="ws:attendance:sidecol">
+          {selectedRecord ? (
+            <>
+              {isSelectedDateToday && (
+                <WsAlert tone="info" icon={Info} style={{ flexShrink: 0 }}>
+                  اضغط على حالة الطالب لتغييرها
+                </WsAlert>
+              )}
+
+              <WsBlock padded>
+                <WsFactsList>
+                  <WsFactRow label="الصف والفصل">
                     {selectedRecord.grade} - {selectedRecord.class_name}
-                  </h3>
-                  <p className="text-xs text-muted">
-                    {selectedRecord.teacher_name}
-                  </p>
-                  {selectedRecord.students_count && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700">
-                      <i className="bi bi-people-fill" />
-                      {selectedRecord.students_count} طالب
-                    </span>
-                  )}
-                </header>
+                  </WsFactRow>
+                  <WsFactRow label="المعلم">{selectedRecord.teacher_name}</WsFactRow>
+                  <WsFactRow label="رقم الهوية">{selectedRecord.teacher_id_number || '—'}</WsFactRow>
+                  <WsFactRow label="التاريخ">
+                    {formatDate(selectedRecord.attendance_date, { dateStyle: 'full' })}
+                  </WsFactRow>
+                </WsFactsList>
+              </WsBlock>
 
-                <dl className="grid gap-2 text-xs text-muted">
-                  <div className="flex items-center justify-between">
-                    <dt className="font-semibold text-slate-600">التاريخ:</dt>
-                    <dd>{formatDate(selectedRecord.attendance_date, { dateStyle: 'full' })}</dd>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <dt className="font-semibold text-slate-600">رقم هوية المعلم:</dt>
-                    <dd className="font-medium text-slate-900">{selectedRecord.teacher_id_number || '-'}</dd>
-                  </div>
-                </dl>
-
-                {isSelectedDateToday && (
-                  <div className="rounded-2xl border border-teal-200 bg-teal-50 p-3 text-right">
-                    <p className="text-xs font-semibold text-teal-700">
-                      <i className="bi bi-info-circle-fill ml-1" />
-                      اضغط على حالة الطالب لتغييرها
-                    </p>
-                  </div>
-                )}
-
-                <div className="rounded-3xl border border-slate-100 bg-slate-50/70 p-4">
-                  {detailsQuery.isLoading ? (
-                    <div className="space-y-2 text-xs text-muted">
-                      <p className="font-semibold text-slate-500">جاري تحميل قائمة الطلاب...</p>
-                      <div className="h-24 animate-pulse rounded-2xl bg-slate-200" />
-                    </div>
-                  ) : detailsQuery.isError ? (
-                    <p className="text-xs text-rose-600">تعذر تحميل قائمة الطلاب. حاول مرة أخرى.</p>
-                  ) : detailsQuery.data ? (
-                    <div className="space-y-3 text-xs">
-                      <div className="grid gap-2 rounded-2xl border border-slate-200 bg-white/80 p-3">
-                        <p className="text-[11px] font-semibold text-slate-500">إحصائيات الحصة</p>
-                        <div className="grid grid-cols-2 gap-2">
-                          <span className="rounded-2xl bg-emerald-50 px-3 py-2 text-center font-semibold text-emerald-700">
-                            حاضر: {detailsQuery.data.statistics.present_count.toLocaleString('ar-SA')}
-                          </span>
-                          <span className="rounded-2xl bg-rose-50 px-3 py-2 text-center font-semibold text-rose-700">
-                            غائب: {detailsQuery.data.statistics.absent_count.toLocaleString('ar-SA')}
-                          </span>
-                          <span className="rounded-2xl bg-amber-50 px-3 py-2 text-center font-semibold text-amber-700">
-                            متأخر: {detailsQuery.data.statistics.late_count.toLocaleString('ar-SA')}
-                          </span>
-                          <span className="rounded-2xl bg-sky-50 px-3 py-2 text-center font-semibold text-sky-700">
-                            مستأذن: {detailsQuery.data.statistics.excused_count.toLocaleString('ar-SA')}
-                          </span>
-                        </div>
-                        <p className="text-center text-[11px] text-muted">
-                          نسبة الحضور: {Math.round(detailsQuery.data.statistics.attendance_rate)}%
-                        </p>
+              {detailsQuery.isLoading ? (
+                <WsEmpty loading>جاري تحميل قائمة الطلاب...</WsEmpty>
+              ) : detailsQuery.isError ? (
+                <WsEmpty icon={AlertTriangle}>تعذر تحميل قائمة الطلاب. حاول مرة أخرى.</WsEmpty>
+              ) : detailsQuery.data ? (
+                <>
+                  <WsBlock title="إحصائيات الحصة" padded>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                        <WsChip tone="green" icon={CheckCircle2}>
+                          حاضر {detailsQuery.data.statistics.present_count.toLocaleString('ar-SA')}
+                        </WsChip>
+                        <WsChip tone="red" icon={XCircle}>
+                          غائب {detailsQuery.data.statistics.absent_count.toLocaleString('ar-SA')}
+                        </WsChip>
+                        <WsChip tone="amber" icon={Clock3}>
+                          متأخر {detailsQuery.data.statistics.late_count.toLocaleString('ar-SA')}
+                        </WsChip>
+                        <WsChip tone="sky" icon={DoorOpen}>
+                          مستأذن {detailsQuery.data.statistics.excused_count.toLocaleString('ar-SA')}
+                        </WsChip>
                       </div>
-
-                      <div className="space-y-2">
-                        <p className="text-[11px] font-semibold text-slate-500">قائمة الطلاب ({detailsQuery.data.students.length.toLocaleString('ar-SA')} طالب)</p>
-                        <ul className="space-y-2 max-h-96 overflow-y-auto">
-                          {detailsQuery.data.students.map((student) => (
-                            <li
-                              key={student.attendance_id}
-                              className={`flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/70 px-3 py-2 transition ${
-                                isSelectedDateToday ? 'hover:bg-slate-100 hover:shadow-sm cursor-pointer' : ''
-                              }`}
-                              onClick={() => isSelectedDateToday && handleStudentClick(student)}
-                            >
-                              <span className="text-[11px] font-semibold text-slate-700">{student.name}</span>
-                              <StatusBadge
-                                status={student.status}
-                                isEditable={isSelectedDateToday}
-                                onClick={() => isSelectedDateToday && handleStudentClick(student)}
-                              />
-                            </li>
-                          ))}
-                        </ul>
-                        {detailsQuery.data.students.length > 6 ? (
-                          <p className="text-center text-[11px] text-muted">
-                            يوجد سجلات إضافية يمكن مراجعتها من تقرير التفصيلي الكامل.
-                          </p>
-                        ) : null}
-                      </div>
+                      <WsProgress
+                        value={detailsQuery.data.statistics.attendance_rate}
+                        label={
+                          <>
+                            نسبة الحضور: <b>{Math.round(detailsQuery.data.statistics.attendance_rate)}%</b>
+                          </>
+                        }
+                      />
                     </div>
-                  ) : (
-                    <p className="text-xs text-muted">اختر سجلًا لعرض التفاصيل.</p>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-sm text-muted">
-                <i className="bi bi-info-circle text-3xl text-slate-300" />
-                اختر سجلًا من الجدول لعرض التفاصيل هنا.
-              </div>
-            )}
-          </aside>
-        </div>
-      </section>
+                  </WsBlock>
+
+                  <WsBlock
+                    title="قائمة الطلاب"
+                    count={detailsQuery.data.students.length.toLocaleString('ar-SA')}
+                    fill
+                    scroll
+                  >
+                    <ul className="ws-rows" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                      {detailsQuery.data.students.map((student) => (
+                        <li
+                          key={student.attendance_id}
+                          className="ws-row"
+                          style={isSelectedDateToday ? { cursor: 'pointer' } : undefined}
+                          onClick={() => isSelectedDateToday && handleStudentClick(student)}
+                        >
+                          <span className="ws-row__name">{student.name}</span>
+                          <StatusChip
+                            status={student.status}
+                            isEditable={isSelectedDateToday}
+                            onClick={() => handleStudentClick(student)}
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  </WsBlock>
+                </>
+              ) : null}
+            </>
+          ) : (
+            <WsEmpty icon={Info}>اختر سجلًا من الجدول لعرض التفاصيل هنا.</WsEmpty>
+          )}
+        </WsSideCol>
+      </WsLayout>
 
       {/* مودال تغيير الحالة */}
       <ChangeStatusModal
@@ -670,6 +609,6 @@ export function AdminAttendancePage() {
         isLoading={updateStatusMutation.isPending}
         isToday={isSelectedDateToday}
       />
-    </section>
+    </WsPage>
   )
 }

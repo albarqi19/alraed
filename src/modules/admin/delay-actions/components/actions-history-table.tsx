@@ -3,9 +3,10 @@
  */
 
 import { useState } from 'react'
-import { AlertTriangle, FileWarning, Check, Printer, ChevronLeft, ChevronRight, ArrowLeftRight } from 'lucide-react'
+import { AlertTriangle, FileWarning, Check, Printer, ChevronLeft, ChevronRight, ArrowLeftRight, Inbox } from 'lucide-react'
 import type { DelayActionRecord, PaginationMeta } from '../types'
 import { fetchAndOpenPrintPage } from '../api'
+import { WsBtn, WsChip, WsEmpty, WsField, WsInput, WsModal, WsTable } from '@/shared/workspace'
 
 interface ActionsHistoryTableProps {
   data: DelayActionRecord[]
@@ -26,42 +27,24 @@ function formatDate(value?: string | null) {
   }
 }
 
-function ActionTypeBadge({ type, label }: { type: 'warning' | 'deduction'; label: string }) {
-  const styles =
-    type === 'warning'
-      ? 'bg-amber-50 text-amber-700 border-amber-200'
-      : 'bg-rose-50 text-rose-700 border-rose-200'
-
-  const Icon = type === 'warning' ? AlertTriangle : FileWarning
-
+function ActionTypeChip({ type, label }: { type: 'warning' | 'deduction'; label: string }) {
   return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${styles}`}
-    >
-      <Icon className="h-3 w-3" />
+    <WsChip tone={type === 'warning' ? 'amber' : 'red'} icon={type === 'warning' ? AlertTriangle : FileWarning}>
       {label}
-    </span>
+    </WsChip>
   )
 }
 
-function SignedBadge({ isSigned, signedByName }: { isSigned: boolean; signedByName?: string | null }) {
+function SignedChip({ isSigned, signedByName }: { isSigned: boolean; signedByName?: string | null }) {
   if (isSigned) {
     return (
-      <span
-        className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"
-        title={signedByName ? `موقع بواسطة: ${signedByName}` : undefined}
-      >
-        <Check className="h-3 w-3" />
+      <WsChip tone="green" icon={Check} title={signedByName ? `موقع بواسطة: ${signedByName}` : undefined}>
         موقع
-      </span>
+      </WsChip>
     )
   }
 
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
-      غير موقع
-    </span>
-  )
+  return <WsChip>غير موقع</WsChip>
 }
 
 function SignDialog({
@@ -92,56 +75,32 @@ function SignDialog({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
-      role="dialog"
-    >
-      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-        <h3 className="mb-4 text-lg font-bold text-slate-900 text-right">تأكيد التوقيع</h3>
-        <div className="mb-4 space-y-2 text-right">
-          <label htmlFor="signed-by-name" className="text-sm font-medium text-slate-700">
-            اسم الموقّع
-          </label>
-          <input
-            id="signed-by-name"
-            type="text"
-            value={signedByName}
-            onChange={(e) => setSignedByName(e.target.value)}
-            placeholder="أدخل اسم الموقّع..."
-            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-right shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            disabled={isSubmitting}
-          />
-        </div>
-        <div className="flex items-center justify-end gap-3">
-          <button
-            type="button"
-            onClick={handleClose}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
-            disabled={isSubmitting}
-          >
+    <WsModal
+      open={isOpen}
+      onClose={() => !isSubmitting && handleClose()}
+      title="تأكيد التوقيع"
+      footer={
+        <>
+          <WsBtn onClick={handleClose} disabled={isSubmitting}>
             إلغاء
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
-            disabled={isSubmitting || !signedByName.trim()}
-          >
-            {isSubmitting ? (
-              <>
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                جاري الحفظ...
-              </>
-            ) : (
-              <>
-                <Check className="h-4 w-4" />
-                تأكيد التوقيع
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
+          </WsBtn>
+          <WsBtn variant="primary" icon={Check} onClick={handleSubmit} disabled={isSubmitting || !signedByName.trim()}>
+            {isSubmitting ? 'جاري الحفظ...' : 'تأكيد التوقيع'}
+          </WsBtn>
+        </>
+      }
+    >
+      <WsField label="اسم الموقّع" htmlFor="signed-by-name">
+        <WsInput
+          id="signed-by-name"
+          type="text"
+          value={signedByName}
+          onChange={(e) => setSignedByName(e.target.value)}
+          placeholder="أدخل اسم الموقّع..."
+          disabled={isSubmitting}
+        />
+      </WsField>
+    </WsModal>
   )
 }
 
@@ -171,135 +130,110 @@ export function ActionsHistoryTable({
   }
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-sm text-muted">
-        <span className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
-        جاري تحميل البيانات...
-      </div>
-    )
+    return <WsEmpty loading>جاري تحميل البيانات...</WsEmpty>
   }
 
   if (data.length === 0) {
-    return (
-      <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-sm text-muted">
-        <i className="bi bi-inbox text-4xl text-slate-300" />
-        <p>لا يوجد إجراءات مسجلة</p>
-      </div>
-    )
+    return <WsEmpty icon={Inbox}>لا يوجد إجراءات مسجلة.</WsEmpty>
   }
 
   return (
     <>
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-inner">
-        <table className="w-full min-w-[900px] text-right text-sm">
-          <thead className="bg-slate-50/80 text-[11px] uppercase tracking-wide text-slate-500">
-            <tr>
-              <th className="px-4 py-3 font-semibold">النوع</th>
-              <th className="px-4 py-3 font-semibold">المعلم</th>
-              <th className="px-4 py-3 font-semibold">إجمالي التأخير</th>
-              <th className="px-4 py-3 font-semibold">المرحّل</th>
-              <th className="px-4 py-3 font-semibold">الرقم التسلسلي</th>
-              <th className="px-4 py-3 font-semibold">تاريخ التسجيل</th>
-              <th className="px-4 py-3 font-semibold">الحالة</th>
-              <th className="px-4 py-3 font-semibold">بواسطة</th>
-              <th className="px-4 py-3 font-semibold">الإجراءات</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((action) => (
-              <tr
-                key={action.id}
-                className="border-t border-slate-100 text-[13px] transition hover:bg-slate-50"
-              >
-                <td className="px-4 py-3">
-                  <ActionTypeBadge type={action.action_type} label={action.action_type_label} />
-                </td>
-                <td className="px-4 py-3">
-                  <p className="font-semibold text-slate-900">{action.teacher_name ?? '—'}</p>
-                </td>
-                <td className="px-4 py-3 text-slate-700">{action.formatted_delay}</td>
-                <td className="px-4 py-3">
-                  {action.action_type === 'deduction' && action.carried_over_minutes > 0 ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700">
-                      <ArrowLeftRight className="h-3 w-3" />
-                      {action.formatted_carried_over}
-                    </span>
-                  ) : (
-                    <span className="text-slate-400">—</span>
+      <WsTable>
+        <thead>
+          <tr>
+            <th>النوع</th>
+            <th>المعلم</th>
+            <th>إجمالي التأخير</th>
+            <th>المرحّل</th>
+            <th>الرقم التسلسلي</th>
+            <th>تاريخ التسجيل</th>
+            <th>الحالة</th>
+            <th>بواسطة</th>
+            <th>الإجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((action) => (
+            <tr key={action.id}>
+              <td>
+                <ActionTypeChip type={action.action_type} label={action.action_type_label} />
+              </td>
+              <td style={{ fontWeight: 600 }}>{action.teacher_name ?? '—'}</td>
+              <td>{action.formatted_delay}</td>
+              <td>
+                {action.action_type === 'deduction' && action.carried_over_minutes > 0 ? (
+                  <WsChip tone="sky" icon={ArrowLeftRight}>
+                    {action.formatted_carried_over}
+                  </WsChip>
+                ) : (
+                  <span style={{ color: 'var(--ws-text-2)' }}>—</span>
+                )}
+              </td>
+              <td>
+                <WsChip>#{action.sequence_number}</WsChip>
+              </td>
+              <td style={{ whiteSpace: 'nowrap' }}>{formatDate(action.created_at)}</td>
+              <td>
+                <SignedChip isSigned={action.is_signed} signedByName={action.signed_by_name} />
+              </td>
+              <td style={{ color: 'var(--ws-text-2)', fontSize: 11.5 }}>{action.performed_by?.name ?? '—'}</td>
+              <td>
+                <span style={{ display: 'inline-flex', gap: 6 }}>
+                  <WsBtn size="sm" icon={Printer} onClick={() => handlePrint(action.id)}>
+                    طباعة
+                  </WsBtn>
+                  {!action.is_signed && (
+                    <WsBtn size="sm" icon={Check} onClick={() => setSignDialogActionId(action.id)}>
+                      توقيع
+                    </WsBtn>
                   )}
-                </td>
-                <td className="px-4 py-3 text-slate-600">
-                  <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
-                    #{action.sequence_number}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-slate-600">{formatDate(action.created_at)}</td>
-                <td className="px-4 py-3">
-                  <SignedBadge isSigned={action.is_signed} signedByName={action.signed_by_name} />
-                </td>
-                <td className="px-4 py-3 text-slate-500 text-xs">
-                  {action.performed_by?.name ?? '—'}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handlePrint(action.id)}
-                      className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
-                      title="طباعة"
-                    >
-                      <Printer className="h-3.5 w-3.5" />
-                      طباعة
-                    </button>
-                    {!action.is_signed && (
-                      <button
-                        type="button"
-                        onClick={() => setSignDialogActionId(action.id)}
-                        className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-100"
-                        title="تأكيد التوقيع"
-                      >
-                        <Check className="h-3.5 w-3.5" />
-                        توقيع
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </WsTable>
 
-      {/* Pagination */}
+      {/* ترقيم الصفحات */}
       {meta && meta.last_page > 1 && (
-        <div className="mt-4 flex items-center justify-between text-sm">
-          <p className="text-slate-500">
+        <div
+          style={{
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 8,
+            padding: '7px 14px',
+            borderTop: '1px solid var(--ws-hairline)',
+          }}
+        >
+          <span style={{ fontSize: 11.5, color: 'var(--ws-text-2)' }}>
             عرض {(meta.current_page - 1) * meta.per_page + 1} -{' '}
             {Math.min(meta.current_page * meta.per_page, meta.total)} من {meta.total.toLocaleString('ar-SA')}
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <WsBtn
+              size="sm"
+              icon={ChevronRight}
               onClick={() => onPageChange(meta.current_page - 1)}
               disabled={meta.current_page <= 1}
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <ChevronRight className="h-4 w-4" />
               السابق
-            </button>
-            <span className="px-3 text-slate-600">
+            </WsBtn>
+            <span style={{ fontSize: 11.5, fontWeight: 700 }}>
               {meta.current_page.toLocaleString('ar-SA')} / {meta.last_page.toLocaleString('ar-SA')}
             </span>
-            <button
-              type="button"
+            <WsBtn
+              size="sm"
+              icon={ChevronLeft}
               onClick={() => onPageChange(meta.current_page + 1)}
               disabled={meta.current_page >= meta.last_page}
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               التالي
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-          </div>
+            </WsBtn>
+          </span>
         </div>
       )}
 

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { RefreshCcw, Settings2, X } from 'lucide-react'
+import { WsAlert, WsBtn, WsInput } from '@/shared/workspace'
 import type { TeacherScheduleDayLimits, TeacherScheduleDayLimitsResponse } from '../types'
 
 const fallbackDays = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس']
@@ -87,93 +89,122 @@ export function TeacherDayLimitsDialog({
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4 py-6" role="dialog" aria-modal>
-      <div className="relative flex w-full max-w-3xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
-        <header className="border-b border-slate-100 px-6 py-4 text-right">
-          <p className="text-xs font-semibold text-slate-500">التحكم في الحد اليومي للحصص</p>
-          <h2 className="text-2xl font-bold text-slate-900">ضبط عدد الحصص لكل يوم</h2>
-          <p className="mt-1 text-sm text-muted">
+    <div className="ws-modal" role="dialog" aria-modal onClick={onClose}>
+      <div
+        className="ws-modal__panel"
+        style={{ maxWidth: 560, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="ws-modal__head" style={{ position: 'relative' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10.5, fontWeight: 700, color: 'var(--ws-accent-2)' }}>
+            <Settings2 style={{ width: 12, height: 12 }} />
+            التحكم في الحد اليومي للحصص
+          </span>
+          <h3 className="ws-modal__title" style={{ fontSize: 15 }}>ضبط عدد الحصص لكل يوم</h3>
+          <p className="ws-modal__sub">
             سيتم استخدام هذه الحدود أثناء اقتراحات النقل الذكي لمنع الحصص الإضافية في الأيام المزدحمة.
           </p>
           <button
             type="button"
-            className="absolute left-6 top-4 rounded-full p-2 text-slate-500 transition hover:bg-slate-100"
+            className="ws-icon-btn"
+            style={{ position: 'absolute', insetInlineEnd: 12, top: 10 }}
             aria-label="إغلاق"
             onClick={onClose}
           >
-            <span aria-hidden>×</span>
+            <X />
           </button>
         </header>
 
-        <form onSubmit={handleSubmit} className="flex max-h-[70vh] flex-col divide-y divide-slate-100">
-          <section className="space-y-4 px-6 py-5">
-            <div className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-600 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p>
-                  الحد الحالي للأيام: <span className="font-semibold text-slate-900">{configuredMax} حصص</span>
-                </p>
-                <p>
-                  متوسط الحمل الحالي: <span className="font-semibold text-slate-900">{averageLoad} حصص</span>
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button type="button" className="button-secondary" onClick={onRefresh} disabled={isLoading}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div className="ws-modal__body" style={{ overflowY: 'auto', maxHeight: '58vh' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 10,
+                flexWrap: 'wrap',
+                borderRadius: 8,
+                border: '1px solid var(--ws-hairline)',
+                background: 'var(--ws-surface-2)',
+                padding: '9px 12px',
+                fontSize: 11.5,
+              }}
+            >
+              <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span>
+                  الحد الحالي للأيام: <b>{configuredMax} حصص</b>
+                </span>
+                <span>
+                  متوسط الحمل الحالي: <b>{averageLoad} حصص</b>
+                </span>
+              </span>
+              <span style={{ display: 'inline-flex', gap: 6 }}>
+                <WsBtn size="sm" icon={RefreshCcw} onClick={onRefresh} disabled={isLoading}>
                   {isLoading ? 'جارٍ التحديث...' : 'تحديث القيم'}
-                </button>
-                <button type="button" className="button-secondary" onClick={handleResetDefaults}>
+                </WsBtn>
+                <WsBtn size="sm" onClick={handleResetDefaults}>
                   إعادة ضبط القيم
-                </button>
-              </div>
+                </WsBtn>
+              </span>
             </div>
 
-            {error ? (
-              <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-                تعذر تحميل القيم الحالية: {error}
-              </div>
-            ) : null}
+            {error ? <WsAlert boxed>تعذر تحميل القيم الحالية: {error}</WsAlert> : null}
 
-            {hasData ? (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {effectiveDays.map((day) => (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 8 }}>
+              {effectiveDays.map((day) =>
+                hasData ? (
                   <label
                     key={day}
-                    className="flex flex-col rounded-2xl border border-slate-100 bg-white p-4 text-right shadow-sm"
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 3,
+                      borderRadius: 8,
+                      border: '1px solid var(--ws-hairline)',
+                      padding: '8px 10px',
+                      textAlign: 'right',
+                    }}
                   >
-                    <span className="text-sm font-semibold text-slate-900">{day}</span>
-                    <span className="text-xs text-slate-500">أقصى عدد حصص في هذا اليوم</span>
-                    <input
+                    <span style={{ fontSize: 12, fontWeight: 700 }}>{day}</span>
+                    <span style={{ fontSize: 10, color: 'var(--ws-text-2)' }}>أقصى عدد حصص في هذا اليوم</span>
+                    <WsInput
                       type="number"
                       min={0}
                       max={maxPeriods}
                       step={1}
                       value={formLimits[day] ?? maxPeriods}
                       onChange={(event) => handleInputChange(day, event.target.value)}
-                      className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-base font-semibold text-slate-900 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                      style={{ marginTop: 4, fontWeight: 700 }}
                     />
                   </label>
-                ))}
-              </div>
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {effectiveDays.map((day) => (
-                  <div key={day} className="h-24 animate-pulse rounded-2xl bg-slate-100" />
-                ))}
-              </div>
-            )}
-          </section>
+                ) : (
+                  <div
+                    key={day}
+                    style={{
+                      height: 84,
+                      borderRadius: 8,
+                      background: 'var(--ws-surface-2)',
+                      animation: 'pulse 1.5s ease-in-out infinite',
+                    }}
+                  />
+                ),
+              )}
+            </div>
+          </div>
 
-          <footer className="flex flex-col gap-3 px-6 py-4 text-right sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-xs text-slate-500">
+          <footer className="ws-modal__foot" style={{ justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)', textAlign: 'right' }}>
               سيتم منع اقتراح أي نقل يؤدي إلى تجاوز الحدود المحددة لكل يوم.
-            </div>
-            <div className="flex flex-row-reverse gap-2">
-              <button type="button" className="button-secondary" onClick={onClose} disabled={isSaving}>
+            </span>
+            <span style={{ display: 'inline-flex', gap: 6, flexShrink: 0 }}>
+              <WsBtn onClick={onClose} disabled={isSaving}>
                 إلغاء
-              </button>
-              <button type="submit" className="button-primary" disabled={isBusy}>
+              </WsBtn>
+              <WsBtn type="submit" variant="primary" disabled={isBusy}>
                 {isSaving ? 'جارٍ الحفظ...' : 'حفظ الحدود'}
-              </button>
-            </div>
+              </WsBtn>
+            </span>
           </footer>
         </form>
       </div>

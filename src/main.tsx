@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './styles/index.css'
+import './styles/workspace.css'
 
 // ✅ تسجيل Firebase Service Worker فقط للإشعارات
 if ('serviceWorker' in navigator) {

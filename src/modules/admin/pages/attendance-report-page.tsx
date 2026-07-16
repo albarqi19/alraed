@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import clsx from 'classnames'
 import {
   useAttendanceReportMatrixQuery,
   useExportAttendanceReportMutation,
@@ -16,7 +15,43 @@ import { AbsentStudentsPDFModal } from '../components/absent-students-pdf-modal'
 import { NoorSyncStatusModal } from '../components/noor-sync-status-modal'
 import { NoorExcuseSyncStatusModal } from '../components/noor-excuse-sync-status-modal'
 import { AttendanceStatsModal } from '../components/attendance-stats-modal'
-import { BarChart3 } from 'lucide-react'
+import {
+  AlertTriangle,
+  BarChart3,
+  CalendarDays,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardCheck,
+  ClipboardList,
+  Clock3,
+  DoorOpen,
+  FileDown,
+  FileSpreadsheet,
+  FileText,
+  Play,
+  Printer,
+  RotateCcw,
+  Search,
+  Settings2,
+  UserRoundCheck,
+  Users,
+  XCircle,
+} from 'lucide-react'
+import {
+  WsBlock,
+  WsBtn,
+  WsEmpty,
+  WsFact,
+  WsField,
+  WsHeader,
+  WsInput,
+  WsLayout,
+  WsMain,
+  WsPage,
+  WsSelect,
+  WsSideCol,
+} from '@/shared/workspace'
 
 const REPORT_TYPES = [
   { value: 'class', label: 'كشف فصل كامل', description: 'حدد الصف والشعبة لعرض جميع الطلاب في الفصل.' },
@@ -30,7 +65,7 @@ const PERIOD_OPTIONS = [
   { value: 'today', label: 'اليوم' },
   { value: 'week', label: 'آخر ٧ أيام' },
   { value: 'month', label: 'آخر ٣٠ يوم' },
-  { value: 'custom', label: 'فترة مخصصة' },
+  { value: 'custom', label: 'مخصصة' },
 ] as const
 
 type ReportPeriod = (typeof PERIOD_OPTIONS)[number]['value']
@@ -46,44 +81,15 @@ const STATUS_CONFIG: Record<
   {
     label: string
     symbol: string
-    cellClass: string
-    toggleActiveClass: string
-    toggleInactiveClass: string
-    summaryClass: string
+    color: string
+    bg: string
+    border: string
   }
 > = {
-  present: {
-    label: 'الحضور',
-    symbol: '✓',
-    cellClass: 'bg-emerald-50 text-emerald-700',
-    toggleActiveClass: 'border-emerald-400 bg-emerald-50 text-emerald-700',
-    toggleInactiveClass: 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
-    summaryClass: 'text-emerald-600',
-  },
-  absent: {
-    label: 'الغياب',
-    symbol: '✗',
-    cellClass: 'bg-rose-50 text-rose-700',
-    toggleActiveClass: 'border-rose-300 bg-rose-50 text-rose-700',
-    toggleInactiveClass: 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
-    summaryClass: 'text-rose-600',
-  },
-  late: {
-    label: 'التأخير',
-    symbol: '⚠',
-    cellClass: 'bg-amber-50 text-amber-700',
-    toggleActiveClass: 'border-amber-300 bg-amber-50 text-amber-700',
-    toggleInactiveClass: 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
-    summaryClass: 'text-amber-600',
-  },
-  excused: {
-    label: 'الاستئذان',
-    symbol: 'ℹ',
-    cellClass: 'bg-sky-50 text-sky-700',
-    toggleActiveClass: 'border-sky-300 bg-sky-50 text-sky-700',
-    toggleInactiveClass: 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
-    summaryClass: 'text-sky-600',
-  },
+  present: { label: 'الحضور', symbol: '✓', color: 'var(--ws-green)', bg: 'var(--ws-green-bg)', border: 'var(--ws-green-bd)' },
+  absent: { label: 'الغياب', symbol: '✗', color: 'var(--ws-red)', bg: 'var(--ws-red-bg)', border: 'var(--ws-red-bd)' },
+  late: { label: 'التأخير', symbol: '⚠', color: 'var(--ws-amber)', bg: 'var(--ws-amber-bg)', border: 'var(--ws-amber-bd)' },
+  excused: { label: 'الاستئذان', symbol: 'ℹ', color: 'var(--ws-sky)', bg: 'var(--ws-sky-bg)', border: 'var(--ws-sky-bd)' },
 }
 
 interface FilterState {
@@ -188,8 +194,6 @@ function buildDefaultFilterState(): FilterState {
     },
   }
 }
-
-// تم نقل هذه الدالة للاستخدام مع البيانات الديناميكية داخل المكون
 
 function formatRange(start: string, end: string) {
   if (!start || !end) return '—'
@@ -302,6 +306,33 @@ function buildAttendanceIndex(row: AttendanceReportStudentRow) {
   return index
 }
 
+// شريحة تبديل حالة (تمييز/إجمالي) بألوان الحالة
+function StatusToggleChip({
+  status,
+  active,
+  onClick,
+}: {
+  status: StatusKey
+  active: boolean
+  onClick: () => void
+}) {
+  const config = STATUS_CONFIG[status]
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="ws-chip"
+      style={
+        active
+          ? { color: config.color, background: config.bg, borderColor: config.border }
+          : undefined
+      }
+    >
+      {config.symbol} {config.label}
+    </button>
+  )
+}
+
 export function AttendanceReportPage() {
   const [filters, setFilters] = useState<FilterState>(() => buildDefaultFilterState())
   const [submittedFilters, setSubmittedFilters] = useState<AttendanceReportFiltersPayload | null>(null)
@@ -378,14 +409,6 @@ export function AttendanceReportPage() {
 
   const statusesForTotals = STATUS_ORDER.filter((status) => filters.showTotals[status])
 
-  const summaryItems = report
-    ? STATUS_ORDER.map((status) => ({
-        status,
-        value: getSummaryValue(report.summary, status),
-        label: STATUS_CONFIG[status].label,
-      }))
-    : []
-
   const totalStudents = report?.students.length ?? 0
   const totalPages = totalStudents ? Math.max(1, Math.ceil(totalStudents / pageSize)) : 1
 
@@ -393,6 +416,7 @@ export function AttendanceReportPage() {
     if (page !== 1) {
       setPage(1)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [submittedFilters, report?.students?.length, pageSize])
 
   useEffect(() => {
@@ -410,7 +434,7 @@ export function AttendanceReportPage() {
   if (reportMeta.grade) metaPieces.push(`الصف: ${reportMeta.grade}`)
   if (reportMeta.className) metaPieces.push(`الشعبة: ${reportMeta.className}`)
 
-  const metaLabel = metaPieces.length ? metaPieces.join(' • ') : 'حدد نطاق الكشف ثم اضغط على زر "إنشاء التقرير".'
+  const metaLabel = metaPieces.length ? metaPieces.join(' • ') : null
 
   const isExporting = exportMutation.isPending
   const canExport = hasData && Boolean(submittedFilters)
@@ -436,28 +460,6 @@ export function AttendanceReportPage() {
         className: classes.includes(prev.className) ? prev.className : '',
       }
     })
-  }
-
-  const handleClassChange = (value: string) => {
-    setFilters((prev) => ({
-      ...prev,
-      className: value,
-    }))
-  }
-
-  const handleStudentSearchChange = (value: string) => {
-    setFilters((prev) => ({
-      ...prev,
-      studentSearch: value,
-    }))
-  }
-
-  const handleStudentSelect = (value: string) => {
-    const parsed = Number(value)
-    setFilters((prev) => ({
-      ...prev,
-      studentId: Number.isFinite(parsed) && parsed > 0 ? parsed : null,
-    }))
   }
 
   const handlePeriodChange = (value: ReportPeriod) => {
@@ -570,59 +572,446 @@ export function AttendanceReportPage() {
   }
 
   return (
-  <section className="w-full space-y-8">
-      <header className="flex flex-col gap-4 text-right sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold text-slate-900">كشف الغياب</h1>
-          <p className="text-sm text-muted">
-            أنشئ كشف حضور وغياب شامل مع إمكان التصفية حسب الصف، الشعبة، الطالب، والفترة الزمنية، ثم صدّره إلى PDF أو Excel بسهولة.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <button
-            type="button"
-            onClick={() => setShowStatsModal(true)}
-            className="button-secondary flex items-center gap-1.5 whitespace-nowrap text-xs sm:gap-2 sm:text-sm"
+    <WsPage>
+      <WsHeader
+        title="كشف الغياب"
+        badge="مصفوفة الحضور"
+        actions={
+          <>
+            <WsBtn icon={BarChart3} onClick={() => setShowStatsModal(true)}>
+              الإحصائيات
+            </WsBtn>
+            <WsBtn icon={UserRoundCheck} onClick={() => setShowNoorSyncModal(true)}>
+              رصد نور
+            </WsBtn>
+            <WsBtn icon={ClipboardCheck} onClick={() => setShowNoorExcuseSyncModal(true)}>
+              رصد الأعذار
+            </WsBtn>
+            <WsBtn variant="primary" icon={FileDown} onClick={() => setShowAbsentPDFModal(true)}>
+              كشف الغائبين
+            </WsBtn>
+          </>
+        }
+        facts={
+          report ? (
+            <>
+              <WsFact icon={Users} label="الطلاب:">
+                {totalStudents.toLocaleString('ar-SA')}
+              </WsFact>
+              {STATUS_ORDER.map((status) => (
+                <WsFact
+                  key={status}
+                  icon={
+                    status === 'present' ? CheckCircle2 : status === 'absent' ? XCircle : status === 'late' ? Clock3 : DoorOpen
+                  }
+                  label={`${STATUS_CONFIG[status].label}:`}
+                >
+                  {getSummaryValue(report.summary, status).toLocaleString('ar-SA')}
+                </WsFact>
+              ))}
+              <WsFact icon={CalendarDays} label="الفترة:">
+                {rangeLabel}
+              </WsFact>
+            </>
+          ) : (
+            <>
+              <WsFact icon={CalendarDays} label="الفترة المحددة:">
+                {rangeLabel}
+              </WsFact>
+              <WsFact icon={ClipboardList}>حدد نطاق الكشف من اليمين ثم اضغط «إنشاء التقرير»</WsFact>
+            </>
+          )
+        }
+      >
+        {metaLabel && <span className="ws-chip">{metaLabel}</span>}
+      </WsHeader>
+
+      <WsLayout>
+        {/* عمود إعدادات التقرير — يمين */}
+        <WsSideCol
+          title="إعدادات التقرير"
+          icon={Settings2}
+          side="start"
+          width={300}
+          storageKey="ws:attendance-report:builder"
+        >
+          <form
+            className="ws-sidecol__scroll"
+            onSubmit={(event) => {
+              event.preventDefault()
+              handleGenerateReport()
+            }}
           >
-            <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="hidden sm:inline">الإحصائيات</span>
-            <span className="sm:hidden">إحصائيات</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowNoorSyncModal(true)}
-            className="button-secondary flex items-center gap-1.5 whitespace-nowrap text-xs sm:gap-2 sm:text-sm"
+            <WsBlock title="نوع الكشف" padded>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {REPORT_TYPES.map((option) => {
+                  const checked = filters.reportType === option.value
+                  return (
+                    <label key={option.value} className={`ws-pick ${checked ? 'is-checked' : ''}`}>
+                      <span style={{ minWidth: 0 }}>
+                        <span className="ws-pick__name">{option.label}</span>
+                        <span className="ws-pick__sub" style={{ whiteSpace: 'normal' }}>
+                          {option.description}
+                        </span>
+                      </span>
+                      <input
+                        type="radio"
+                        name="report-type"
+                        checked={checked}
+                        onChange={() => handleReportTypeChange(option.value)}
+                      />
+                    </label>
+                  )
+                })}
+              </div>
+            </WsBlock>
+
+            {(filters.reportType === 'class' || filters.reportType === 'grade') && (
+              <WsBlock title="الصف والشعبة" padded>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <WsField label="الصف الدراسي" htmlFor="ws-rep-grade">
+                    <WsSelect
+                      id="ws-rep-grade"
+                      value={filters.grade}
+                      onChange={(event) => handleGradeChange(event.target.value)}
+                    >
+                      <option value="">اختر الصف</option>
+                      {gradeOptions.map((g) => (
+                        <option key={g.grade} value={g.grade}>
+                          {g.grade}
+                        </option>
+                      ))}
+                    </WsSelect>
+                  </WsField>
+
+                  {filters.reportType === 'class' && (
+                    <WsField label="الشعبة" htmlFor="ws-rep-class">
+                      <WsSelect
+                        id="ws-rep-class"
+                        value={filters.className}
+                        onChange={(event) => setFilters((prev) => ({ ...prev, className: event.target.value }))}
+                        disabled={!filters.grade}
+                      >
+                        <option value="">اختر الشعبة</option>
+                        {classOptions.map((className) => (
+                          <option key={className} value={className}>
+                            {className}
+                          </option>
+                        ))}
+                      </WsSelect>
+                    </WsField>
+                  )}
+                </div>
+              </WsBlock>
+            )}
+
+            {filters.reportType === 'student' && (
+              <WsBlock title="البحث عن طالب" padded>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <WsField label="البحث بالاسم أو الهوية" htmlFor="ws-rep-student-search">
+                    <WsInput
+                      id="ws-rep-student-search"
+                      type="text"
+                      value={filters.studentSearch}
+                      onChange={(event) => setFilters((prev) => ({ ...prev, studentSearch: event.target.value }))}
+                      placeholder="جزء من الاسم أو الهوية"
+                    />
+                  </WsField>
+
+                  <WsField label="قائمة الطلاب" htmlFor="ws-rep-student">
+                    <WsSelect
+                      id="ws-rep-student"
+                      value={filters.studentId ?? ''}
+                      onChange={(event) => {
+                        const parsed = Number(event.target.value)
+                        setFilters((prev) => ({
+                          ...prev,
+                          studentId: Number.isFinite(parsed) && parsed > 0 ? parsed : null,
+                        }))
+                      }}
+                    >
+                      <option value="">اختر الطالب</option>
+                      {filteredStudents.map((student) => (
+                        <option key={student.id} value={student.id}>
+                          {student.name} — {student.grade} ({student.class_name})
+                        </option>
+                      ))}
+                    </WsSelect>
+                    {studentsQuery.isLoading ? (
+                      <span style={{ fontSize: 11, color: 'var(--ws-text-2)' }}>جارٍ تحميل قائمة الطلاب...</span>
+                    ) : null}
+                    {studentsQuery.isError ? (
+                      <span style={{ fontSize: 11, color: 'var(--ws-red)' }}>تعذر تحميل قائمة الطلاب.</span>
+                    ) : null}
+                  </WsField>
+                </div>
+              </WsBlock>
+            )}
+
+            <WsBlock title="الفترة الزمنية" padded>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div className="ws-seg" style={{ alignSelf: 'stretch', display: 'flex' }}>
+                  {PERIOD_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => handlePeriodChange(option.value)}
+                      className={`ws-seg__btn ${filters.period === option.value ? 'is-active' : ''}`}
+                      style={{ flex: 1, justifyContent: 'center' }}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+
+                {filters.period === 'custom' ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                    <WsField label="البداية" htmlFor="ws-rep-start">
+                      <WsInput
+                        id="ws-rep-start"
+                        type="date"
+                        value={filters.startDate}
+                        onChange={(event) => handleDateChange('startDate', event.target.value)}
+                      />
+                    </WsField>
+                    <WsField label="النهاية" htmlFor="ws-rep-end">
+                      <WsInput
+                        id="ws-rep-end"
+                        type="date"
+                        value={filters.endDate}
+                        onChange={(event) => handleDateChange('endDate', event.target.value)}
+                      />
+                    </WsField>
+                  </div>
+                ) : (
+                  <span className="ws-fact">
+                    <CalendarDays />
+                    <span>الفترة:</span>
+                    <b>{formatRange(filters.startDate, filters.endDate)}</b>
+                  </span>
+                )}
+              </div>
+            </WsBlock>
+
+            <WsBlock padded>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <WsBtn variant="primary" icon={Play} type="submit" style={{ flex: 1 }}>
+                  إنشاء التقرير
+                </WsBtn>
+                <WsBtn icon={RotateCcw} onClick={handleResetFilters}>
+                  تعيين
+                </WsBtn>
+              </div>
+            </WsBlock>
+          </form>
+        </WsSideCol>
+
+        <WsMain>
+          <WsBlock
+            title="نتيجة الكشف"
+            icon={ClipboardList}
+            count={hasData ? totalStudents.toLocaleString('ar-SA') : undefined}
+            tools={
+              <>
+                {isRefetching && <span style={{ fontSize: 10.5, color: 'var(--ws-accent)' }}>يُحدَّث...</span>}
+                <WsBtn size="sm" icon={FileSpreadsheet} onClick={() => handleExport('excel')} disabled={!canExport || isExporting}>
+                  Excel
+                </WsBtn>
+                <WsBtn size="sm" icon={FileText} onClick={() => handleExport('pdf')} disabled={!canExport || isExporting}>
+                  PDF
+                </WsBtn>
+                <WsBtn size="sm" icon={Printer} onClick={handlePrint} disabled={!hasData}>
+                  طباعة
+                </WsBtn>
+              </>
+            }
+            fill
           >
-            <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span className="hidden sm:inline">حالة الرصد في نور</span>
-            <span className="sm:hidden">نور</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowNoorExcuseSyncModal(true)}
-            className="button-secondary flex items-center gap-1.5 whitespace-nowrap text-xs sm:gap-2 sm:text-sm"
-          >
-            <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-            </svg>
-            <span className="hidden sm:inline">حالة رصد الأعذار</span>
-            <span className="sm:hidden">أعذار</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowAbsentPDFModal(true)}
-            className="button-primary flex items-center gap-1.5 whitespace-nowrap text-xs sm:gap-2 sm:text-sm"
-          >
-            <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <span className="hidden sm:inline">كشف الغائبين</span>
-            <span className="sm:hidden">الغائبين</span>
-          </button>
-        </div>
-      </header>
+            {/* شريط تبديل الحالات وأعمدة الإجمالي */}
+            {hasData && (
+              <div
+                style={{
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '4px 14px',
+                  padding: '6px 14px',
+                  borderBottom: '1px solid var(--ws-hairline)',
+                }}
+              >
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--ws-text-2)' }}>تمييز الحالات:</span>
+                  {STATUS_ORDER.map((status) => (
+                    <StatusToggleChip
+                      key={status}
+                      status={status}
+                      active={filters.showStatuses[status]}
+                      onClick={() => handleToggleStatus(status)}
+                    />
+                  ))}
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--ws-text-2)' }}>أعمدة الإجمالي:</span>
+                  {STATUS_ORDER.map((status) => (
+                    <StatusToggleChip
+                      key={`total-${status}`}
+                      status={status}
+                      active={filters.showTotals[status]}
+                      onClick={() => handleToggleTotals(status)}
+                    />
+                  ))}
+                </span>
+              </div>
+            )}
+
+            {submittedFilters === null ? (
+              <WsEmpty icon={ClipboardList}>
+                ابدأ بتحديد نوع الكشف والفترة الزمنية من العمود الأيمن ثم اضغط «إنشاء التقرير».
+              </WsEmpty>
+            ) : isLoadingReport ? (
+              <WsEmpty loading>جارٍ إنشاء الكشف، يرجى الانتظار...</WsEmpty>
+            ) : reportQuery.isError ? (
+              <WsEmpty icon={AlertTriangle}>{errorMessage}</WsEmpty>
+            ) : showNoData ? (
+              <WsEmpty icon={Search}>لا توجد سجلات حضور ضمن النطاق المحدد.</WsEmpty>
+            ) : report ? (
+              <>
+                <div className="ws-tablewrap">
+                  <table className="ws-matrix">
+                    <thead>
+                      <tr>
+                        <th className="ws-matrix__stick">الطالب</th>
+                        {report.dates.map((date) => (
+                          <th key={date}>{formatDateLabel(date)}</th>
+                        ))}
+                        {statusesForTotals.map((status) => (
+                          <th key={`total-header-${status}`} style={{ color: STATUS_CONFIG[status].color }}>
+                            {STATUS_CONFIG[status].label}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginatedStudents.map((student) => {
+                        const attendanceIndex = buildAttendanceIndex(student)
+
+                        return (
+                          <tr key={student.student_id}>
+                            <td className="ws-matrix__stick">
+                              <span style={{ display: 'block', fontWeight: 600, fontSize: 12 }}>{student.name}</span>
+                              <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                                {student.grade} — {student.class_name}
+                                {student.national_id ? ` • ${student.national_id}` : ''}
+                              </span>
+                            </td>
+
+                            {report.dates.map((date) => {
+                              const entry = attendanceIndex[date]
+                              if (!entry) {
+                                return (
+                                  <td key={`${student.student_id}-${date}`} style={{ color: 'var(--ws-text-2)' }}>
+                                    —
+                                  </td>
+                                )
+                              }
+
+                              const status = entry.status
+                              const isHighlighted = filters.showStatuses[status]
+
+                              return (
+                                <td
+                                  key={`${student.student_id}-${date}`}
+                                  style={
+                                    isHighlighted
+                                      ? {
+                                          background: STATUS_CONFIG[status].bg,
+                                          color: STATUS_CONFIG[status].color,
+                                          fontWeight: 700,
+                                        }
+                                      : { color: 'var(--ws-text-2)' }
+                                  }
+                                  title={entry.notes ?? undefined}
+                                >
+                                  {STATUS_CONFIG[status].symbol}
+                                </td>
+                              )
+                            })}
+
+                            {statusesForTotals.map((status) => (
+                              <td
+                                key={`${student.student_id}-total-${status}`}
+                                style={{ fontWeight: 700, color: STATUS_CONFIG[status].color }}
+                              >
+                                {getRowTotal(student, status)}
+                              </td>
+                            ))}
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* شريط الترقيم وحجم الصفحة */}
+                {totalStudents > 0 && (
+                  <div
+                    style={{
+                      flexShrink: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: 8,
+                      padding: '7px 14px',
+                      borderTop: '1px solid var(--ws-hairline)',
+                    }}
+                  >
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--ws-text-2)' }}>
+                      عرض
+                      <WsSelect
+                        value={pageSize}
+                        onChange={(event) => setPageSize(Number(event.target.value))}
+                        style={{ height: 26, fontSize: 11.5 }}
+                      >
+                        {PAGE_SIZE_OPTIONS.map((option) => (
+                          <option key={option} value={option}>
+                            {option.toLocaleString('ar-SA')}
+                          </option>
+                        ))}
+                      </WsSelect>
+                      سجل — {startIndex + 1}-{endIndex} من {totalStudents.toLocaleString('ar-SA')}
+                    </span>
+
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <WsBtn size="sm" onClick={() => setPage(1)} disabled={page === 1}>
+                        الأولى
+                      </WsBtn>
+                      <WsBtn size="sm" icon={ChevronRight} onClick={() => setPage((prev) => Math.max(1, prev - 1))} disabled={page === 1}>
+                        السابق
+                      </WsBtn>
+                      <span style={{ fontSize: 11.5, fontWeight: 700 }}>
+                        {page} / {totalPages}
+                      </span>
+                      <WsBtn
+                        size="sm"
+                        icon={ChevronLeft}
+                        onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                        disabled={page === totalPages}
+                      >
+                        التالي
+                      </WsBtn>
+                      <WsBtn size="sm" onClick={() => setPage(totalPages)} disabled={page === totalPages}>
+                        الأخيرة
+                      </WsBtn>
+                    </span>
+                  </div>
+                )}
+              </>
+            ) : null}
+          </WsBlock>
+        </WsMain>
+      </WsLayout>
 
       <AbsentStudentsPDFModal
         open={showAbsentPDFModal}
@@ -639,466 +1028,10 @@ export function AttendanceReportPage() {
         onClose={() => setShowNoorExcuseSyncModal(false)}
       />
 
-  <div className="grid gap-6 lg:grid-cols-[minmax(320px,360px),1fr] xl:grid-cols-[minmax(320px,380px),1fr]">
-        <form
-          className="glass-card space-y-6"
-          onSubmit={(event) => {
-            event.preventDefault()
-            handleGenerateReport()
-          }}
-        >
-          <header className="space-y-1 text-right">
-            <h2 className="text-xl font-semibold text-slate-900">إعدادات التقرير</h2>
-            <p className="text-sm text-muted">اختر نوع الكشف وحدد الفترة الزمنية قبل إنشاء التقرير.</p>
-          </header>
-
-          <section className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">نوع الكشف</p>
-            <div className="grid gap-2">
-              {REPORT_TYPES.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => handleReportTypeChange(option.value)}
-                  className={clsx(
-                    'flex items-center justify-between rounded-2xl border px-4 py-3 text-right transition',
-                    filters.reportType === option.value
-                      ? 'border-teal-500 bg-teal-50 text-teal-700 shadow-sm'
-                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100',
-                  )}
-                >
-                  <div>
-                    <p className="text-sm font-semibold">{option.label}</p>
-                    <p className="text-xs text-muted">{option.description}</p>
-                  </div>
-                  {filters.reportType === option.value ? <i className="bi bi-check-circle-fill text-lg" /> : null}
-                </button>
-              ))}
-            </div>
-          </section>
-
-          {(filters.reportType === 'class' || filters.reportType === 'grade') && (
-            <section className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">الصف والشعبة</p>
-              <div className="grid gap-3">
-                <label className="grid gap-2 text-right text-sm font-medium text-slate-800">
-                  <span>الصف الدراسي</span>
-                  <select
-                    value={filters.grade}
-                    onChange={(event) => handleGradeChange(event.target.value)}
-                    className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-                  >
-                    <option value="">اختر الصف</option>
-                    {gradeOptions.map((g) => (
-                      <option key={g.grade} value={g.grade}>
-                        {g.grade}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                {filters.reportType === 'class' && (
-                  <label className="grid gap-2 text-right text-sm font-medium text-slate-800">
-                    <span>الشعبة</span>
-                    <select
-                      value={filters.className}
-                      onChange={(event) => handleClassChange(event.target.value)}
-                      className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-                      disabled={!filters.grade}
-                    >
-                      <option value="">اختر الشعبة</option>
-                      {classOptions.map((className) => (
-                        <option key={className} value={className}>
-                          {className}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-              </div>
-            </section>
-          )}
-
-          {filters.reportType === 'student' && (
-            <section className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">البحث عن طالب</p>
-              <div className="grid gap-3">
-                <label className="grid gap-2 text-right text-sm font-medium text-slate-800">
-                  <span>البحث بالاسم أو الهوية</span>
-                  <input
-                    type="text"
-                    value={filters.studentSearch}
-                    onChange={(event) => handleStudentSearchChange(event.target.value)}
-                    placeholder="أدخل جزءًا من اسم الطالب أو الهوية الوطنية"
-                    className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-                  />
-                </label>
-
-                <label className="grid gap-2 text-right text-sm font-medium text-slate-800">
-                  <span>قائمة الطلاب</span>
-                  <select
-                    value={filters.studentId ?? ''}
-                    onChange={(event) => handleStudentSelect(event.target.value)}
-                    className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-                  >
-                    <option value="">اختر الطالب</option>
-                    {filteredStudents.map((student) => (
-                      <option key={student.id} value={student.id}>
-                        {student.name} — {student.grade} ({student.class_name})
-                      </option>
-                    ))}
-                  </select>
-                  {studentsQuery.isLoading ? <span className="text-xs text-muted">جارٍ تحميل قائمة الطلاب...</span> : null}
-                  {studentsQuery.isError ? (
-                    <span className="text-xs text-rose-600">تعذر تحميل قائمة الطلاب، يرجى المحاولة لاحقًا.</span>
-                  ) : null}
-                </label>
-              </div>
-            </section>
-          )}
-
-          <section className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">الفترة الزمنية</p>
-            <label className="grid gap-2 text-right text-sm font-medium text-slate-800">
-              <span>نوع الفترة</span>
-              <select
-                value={filters.period}
-                onChange={(event) => handlePeriodChange(event.target.value as ReportPeriod)}
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-              >
-                {PERIOD_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            {filters.period === 'custom' ? (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="grid gap-2 text-right text-sm font-medium text-slate-800">
-                  <span>تاريخ البداية</span>
-                  <input
-                    type="date"
-                    value={filters.startDate}
-                    onChange={(event) => handleDateChange('startDate', event.target.value)}
-                    className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-                  />
-                </label>
-                <label className="grid gap-2 text-right text-sm font-medium text-slate-800">
-                  <span>تاريخ النهاية</span>
-                  <input
-                    type="date"
-                    value={filters.endDate}
-                    onChange={(event) => handleDateChange('endDate', event.target.value)}
-                    className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-                  />
-                </label>
-              </div>
-            ) : (
-              <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-600">
-                سيتم استخدام الفترة: {formatRange(filters.startDate, filters.endDate)}
-              </p>
-            )}
-          </section>
-
-          <footer className="flex flex-wrap items-center justify-between gap-3 pt-4">
-            <button
-              type="button"
-              onClick={handleResetFilters}
-              className="rounded-2xl border border-slate-200 px-4 py-2 text-sm text-slate-600 transition hover:bg-slate-100"
-            >
-              إعادة التعيين
-            </button>
-            <button
-              type="submit"
-              className="rounded-2xl bg-teal-600 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-            >
-              إنشاء التقرير
-            </button>
-          </footer>
-        </form>
-
-        <div className="min-w-0 space-y-4">
-          <div className="flex flex-col gap-3 rounded-3xl bg-white/60 px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-right">
-              <p className="text-sm font-medium text-slate-800">{metaLabel}</p>
-              <p className="text-xs text-slate-500">الفترة: {rangeLabel}</p>
-            </div>
-            <div className="flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => handleExport('excel')}
-                disabled={!canExport || isExporting}
-                className="flex items-center gap-1.5 rounded-2xl border border-slate-200 px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-                title="تصدير Excel"
-              >
-                <i className="bi bi-file-earmark-excel" />
-                <span className="hidden sm:inline">Excel</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleExport('pdf')}
-                disabled={!canExport || isExporting}
-                className="flex items-center gap-1.5 rounded-2xl border border-slate-200 px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-                title="تصدير PDF"
-              >
-                <i className="bi bi-filetype-pdf" />
-                <span className="hidden sm:inline">PDF</span>
-              </button>
-              <button
-                type="button"
-                onClick={handlePrint}
-                disabled={!hasData}
-                className="flex items-center gap-1.5 rounded-2xl border border-slate-200 px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-                title="طباعة"
-              >
-                <i className="bi bi-printer" />
-                <span className="hidden sm:inline">طباعة</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="glass-card space-y-5">
-            {submittedFilters === null ? (
-              <div className="grid place-items-center gap-2 py-12 text-center text-slate-500">
-                <i className="bi bi-clipboard-data text-4xl text-slate-300" />
-                <p className="text-sm">ابدأ بتحديد نوع الكشف والفترة الزمنية ثم اضغط على "إنشاء التقرير" لعرض البيانات.</p>
-              </div>
-            ) : isLoadingReport ? (
-              <div className="grid place-items-center gap-3 py-12 text-center">
-                <span className="h-8 w-8 animate-spin rounded-full border-2 border-teal-200 border-t-teal-600" />
-                <p className="text-sm text-slate-500">جارٍ إنشاء الكشف، يرجى الانتظار...</p>
-              </div>
-            ) : reportQuery.isError ? (
-              <div className="grid place-items-center gap-2 py-12 text-center">
-                <i className="bi bi-exclamation-triangle text-4xl text-rose-400" />
-                <p className="text-sm text-rose-600">{errorMessage}</p>
-              </div>
-            ) : showNoData ? (
-              <div className="grid place-items-center gap-2 py-12 text-center text-slate-500">
-                <i className="bi bi-search text-4xl text-slate-300" />
-                <p className="text-sm">لا توجد سجلات حضور ضمن النطاق المحدد.</p>
-              </div>
-            ) : report ? (
-              <div className="space-y-5">
-                {isRefetching ? (
-                  <p className="text-xs text-teal-600">جارٍ تحديث التقرير بالبيانات الأحدث...</p>
-                ) : null}
-
-                <section className="space-y-3">
-                  <h3 className="text-right text-sm font-semibold text-slate-700">ملخص سريع</h3>
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    {summaryItems.map((item) => (
-                      <div
-                        key={item.status}
-                        className={clsx(
-                          'rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-right shadow-sm',
-                          STATUS_CONFIG[item.status].summaryClass,
-                        )}
-                      >
-                        <p className="text-xs text-slate-600">{STATUS_CONFIG[item.status].label}</p>
-                        <p className="text-2xl font-bold">{item.value}</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-end gap-2 text-xs text-slate-500">
-                    <span>تمييز حالات التتبع:</span>
-                    {STATUS_ORDER.map((status) => (
-                      <button
-                        key={status}
-                        type="button"
-                        onClick={() => handleToggleStatus(status)}
-                        className={clsx(
-                          'rounded-2xl border px-3 py-1 transition',
-                          filters.showStatuses[status]
-                            ? STATUS_CONFIG[status].toggleActiveClass
-                            : STATUS_CONFIG[status].toggleInactiveClass,
-                        )}
-                      >
-                        {STATUS_CONFIG[status].label}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-end gap-2 text-xs text-slate-500">
-                    <span>أعمدة الإجمالي:</span>
-                    {STATUS_ORDER.map((status) => (
-                      <button
-                        key={`total-${status}`}
-                        type="button"
-                        onClick={() => handleToggleTotals(status)}
-                        className={clsx(
-                          'rounded-2xl border px-3 py-1 transition',
-                          filters.showTotals[status]
-                            ? 'border-teal-400 bg-teal-50 text-teal-700'
-                            : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
-                        )}
-                      >
-                        {STATUS_CONFIG[status].label}
-                      </button>
-                    ))}
-                  </div>
-                </section>
-
-                <div className="relative max-h-[70vh] overflow-x-auto overflow-y-auto rounded-2xl border border-slate-200 shadow-inner">
-                  <div className="inline-block min-w-full">
-                    <table className="w-full border-collapse text-sm">
-                      <thead>
-                        <tr className="bg-slate-100 text-right text-xs font-semibold uppercase tracking-wider text-slate-600">
-                          <th className="sticky right-0 top-0 z-30 w-48 border-b border-l border-slate-200 bg-slate-100 px-3 py-3 shadow-[2px_0_8px_rgba(0,0,0,0.08)] sm:w-56 lg:w-64">
-                            الطالب
-                          </th>
-                          {report.dates.map((date) => (
-                            <th
-                              key={date}
-                              className="sticky top-0 z-10 min-w-[80px] border-b border-slate-200 bg-slate-100 px-2 py-3 text-center shadow-sm sm:min-w-[100px] sm:px-3"
-                            >
-                              {formatDateLabel(date)}
-                            </th>
-                          ))}
-                          {statusesForTotals.map((status) => (
-                            <th
-                              key={`total-header-${status}`}
-                              className="sticky top-0 z-10 min-w-[70px] border-b border-slate-200 bg-slate-100 px-2 py-3 text-center shadow-sm sm:min-w-[80px] sm:px-3"
-                            >
-                              <span className="hidden sm:inline">{STATUS_CONFIG[status].label}</span>
-                              <span className="sm:hidden">{STATUS_CONFIG[status].symbol}</span>
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {paginatedStudents.map((student) => {
-                          const attendanceIndex = buildAttendanceIndex(student)
-
-                          return (
-                            <tr key={student.student_id} className="border-b border-slate-100 last:border-b-0">
-                              <td className="sticky right-0 z-20 border-l border-slate-100 bg-white px-3 py-3 text-right shadow-[2px_0_8px_rgba(0,0,0,0.04)]">
-                              <div className="space-y-0.5">
-                                <p className="text-xs font-semibold text-slate-800 sm:text-sm">{student.name}</p>
-                                <p className="text-[10px] text-slate-500 sm:text-xs">
-                                  {student.grade} — {student.class_name}
-                                </p>
-                                {student.national_id ? (
-                                  <p className="hidden text-xs text-slate-400 lg:block">{student.national_id}</p>
-                                ) : null}
-                              </div>
-                            </td>
-
-                            {report.dates.map((date) => {
-                              const entry = attendanceIndex[date]
-                              if (!entry) {
-                                return (
-                                  <td key={`${student.student_id}-${date}`} className="px-2 py-2 text-center text-xs text-slate-400 sm:px-3">
-                                    —
-                                  </td>
-                                )
-                              }
-
-                              const status = entry.status
-                              const isHighlighted = filters.showStatuses[status]
-
-                              return (
-                                <td
-                                  key={`${student.student_id}-${date}`}
-                                  className={clsx(
-                                    'px-2 py-2 text-center text-sm transition sm:px-3',
-                                    isHighlighted ? STATUS_CONFIG[status].cellClass : 'text-slate-500',
-                                  )}
-                                  title={entry.notes ?? undefined}
-                                >
-                                  {STATUS_CONFIG[status].symbol}
-                                </td>
-                              )
-                            })}
-
-                            {statusesForTotals.map((status) => (
-                              <td key={`${student.student_id}-total-${status}`} className="px-2 py-2 text-center text-xs font-semibold text-slate-700 sm:px-3 sm:text-sm">
-                                {getRowTotal(student, status)}
-                              </td>
-                            ))}
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                  </div>
-                </div>
-
-                {totalStudents > 0 ? (
-                  <div className="flex flex-col gap-4 rounded-2xl border border-slate-100 bg-white/70 px-4 py-4 text-sm text-slate-600 shadow-sm lg:flex-row lg:items-center lg:justify-between">
-                    <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
-                      <span className="hidden sm:inline">عرض</span>
-                      <select
-                        value={pageSize}
-                        onChange={(event) => setPageSize(Number(event.target.value))}
-                        className="rounded-2xl border border-slate-200 bg-white px-2 py-1 text-xs shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 sm:px-3 sm:text-sm"
-                      >
-                        {PAGE_SIZE_OPTIONS.map((option) => (
-                          <option key={option} value={option}>
-                            {option.toLocaleString('ar-SA')}
-                          </option>
-                        ))}
-                      </select>
-                      <span className="hidden sm:inline">سجل</span>
-                      <span className="text-xs text-slate-400 sm:text-sm">
-                        {startIndex + 1}-{endIndex} من {totalStudents.toLocaleString('ar-SA')}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-center gap-1.5 sm:gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setPage(1)}
-                        disabled={page === 1}
-                        className="hidden rounded-2xl border border-slate-200 px-3 py-1 text-xs transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 sm:inline-block sm:text-sm"
-                      >
-                        الأولى
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-                        disabled={page === 1}
-                        className="rounded-2xl border border-slate-200 px-2.5 py-1 text-xs transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:text-sm"
-                      >
-                        <span className="hidden sm:inline">السابق</span>
-                        <span className="sm:hidden">←</span>
-                      </button>
-                      <span className="rounded-2xl bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 sm:px-4 sm:text-sm">
-                        <span className="hidden sm:inline">الصفحة </span>{page}<span className="hidden sm:inline"> من {totalPages}</span><span className="sm:hidden">/{totalPages}</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-                        disabled={page === totalPages}
-                        className="rounded-2xl border border-slate-200 px-2.5 py-1 text-xs transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:text-sm"
-                      >
-                        <span className="hidden sm:inline">التالي</span>
-                        <span className="sm:hidden">→</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPage(totalPages)}
-                        disabled={page === totalPages}
-                        className="hidden rounded-2xl border border-slate-200 px-3 py-1 text-xs transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 sm:inline-block sm:text-sm"
-                      >
-                        الأخيرة
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </div>
-      
       <AttendanceStatsModal
         isOpen={showStatsModal}
         onClose={() => setShowStatsModal(false)}
       />
-    </section>
+    </WsPage>
   )
 }

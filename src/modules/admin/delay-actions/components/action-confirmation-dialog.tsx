@@ -3,8 +3,9 @@
  */
 
 import { useState } from 'react'
-import { AlertTriangle, FileWarning, MessageCircle, Printer } from 'lucide-react'
+import { MessageCircle, Printer } from 'lucide-react'
 import type { DelayActionType } from '../types'
+import { WsAlert, WsBtn, WsFactRow, WsFactsList, WsField, WsModal, WsSwitch, WsTextarea } from '@/shared/workspace'
 
 interface ActionConfirmationDialogProps {
   action: { type: DelayActionType; userId: number; teacherName: string } | null
@@ -46,108 +47,74 @@ export function ActionConfirmationDialog({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
-      role="dialog"
-    >
-      <div
-        className={`w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ${
-          isWarning ? 'border-t-4 border-amber-500' : 'border-t-4 border-rose-500'
-        }`}
-      >
-        {/* Header */}
-        <div className="mb-4 flex items-start gap-4 text-right">
-          <div
-            className={`rounded-full p-3 ${
-              isWarning ? 'bg-amber-100' : 'bg-rose-100'
-            }`}
-          >
-            {isWarning ? (
-              <AlertTriangle className="h-6 w-6 text-amber-600" />
-            ) : (
-              <FileWarning className="h-6 w-6 text-rose-600" />
-            )}
-          </div>
-          <div className="flex-1">
-            <h2 className="text-lg font-bold text-slate-900">{title}</h2>
-            <p className="mt-1 text-sm text-slate-500">{description}</p>
-          </div>
-        </div>
-
-        {/* Teacher Name */}
-        <div className="mb-4 rounded-xl bg-slate-50 p-3 text-right">
-          <p className="text-xs text-slate-500">المعلم</p>
-          <p className="text-lg font-semibold text-slate-900">{action.teacherName}</p>
-        </div>
-
-        {/* Notes */}
-        <div className="mb-4 space-y-2 text-right">
-          <label htmlFor="action-notes" className="text-sm font-medium text-slate-700">
-            ملاحظات (اختياري)
-          </label>
-          <textarea
-            id="action-notes"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="أضف ملاحظات إن وجدت..."
-            rows={3}
-            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-right shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            disabled={isSubmitting}
-          />
-        </div>
-
-        {/* Send Notification Toggle */}
-        <label className="mb-6 flex items-center justify-end gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
-          <div className="flex-1 text-right">
-            <p className="font-medium text-slate-700">إرسال إشعار واتساب</p>
-            <p className="text-xs text-slate-500">إرسال رسالة للمعلم عبر الواتساب</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <MessageCircle className="h-4 w-4 text-emerald-600" />
-            <input
-              type="checkbox"
-              checked={sendNotification}
-              onChange={(e) => setSendNotification(e.target.checked)}
-              className="h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-              disabled={isSubmitting}
-            />
-          </div>
-        </label>
-
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-3">
-          <button
-            type="button"
-            onClick={handleClose}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
-            disabled={isSubmitting}
-          >
+    <WsModal
+      open
+      onClose={handleClose}
+      title={title}
+      sub={description}
+      footer={
+        <>
+          <WsBtn onClick={handleClose} disabled={isSubmitting}>
             إلغاء
-          </button>
-          <button
-            type="button"
+          </WsBtn>
+          <WsBtn
+            variant={isWarning ? 'primary' : 'danger'}
+            icon={Printer}
             onClick={handleSubmit}
-            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white transition ${
-              isWarning
-                ? 'bg-amber-600 hover:bg-amber-700'
-                : 'bg-rose-600 hover:bg-rose-700'
-            }`}
             disabled={isSubmitting}
           >
-            {isSubmitting ? (
-              <>
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                جاري التسجيل...
-              </>
-            ) : (
-              <>
-                <Printer className="h-4 w-4" />
-                تأكيد وطباعة
-              </>
-            )}
-          </button>
-        </div>
+            {isSubmitting ? 'جاري التسجيل...' : 'تأكيد وطباعة'}
+          </WsBtn>
+        </>
+      }
+    >
+      <WsFactsList
+        style={{
+          border: '1px solid var(--ws-hairline)',
+          borderRadius: 8,
+          padding: '8px 10px',
+          background: 'var(--ws-surface-2)',
+        }}
+      >
+        <WsFactRow label="المعلم">{action.teacherName}</WsFactRow>
+        <WsFactRow label="نوع الإجراء">{isWarning ? 'تنبيه' : 'قرار حسم'}</WsFactRow>
+      </WsFactsList>
+
+      <WsField label="ملاحظات (اختياري)" htmlFor="action-notes">
+        <WsTextarea
+          id="action-notes"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="أضف ملاحظات إن وجدت..."
+          rows={3}
+          disabled={isSubmitting}
+        />
+      </WsField>
+
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 10,
+          padding: '7px 10px',
+          border: '1px solid var(--ws-hairline)',
+          borderRadius: 8,
+          background: 'var(--ws-surface-2)',
+        }}
+      >
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600 }}>
+          <MessageCircle style={{ width: 13, height: 13, color: 'var(--ws-green)' }} />
+          إرسال إشعار واتساب للمعلم
+        </span>
+        <WsSwitch checked={sendNotification} onChange={setSendNotification} disabled={isSubmitting} />
       </div>
-    </div>
+
+      {!isWarning && (
+        <WsAlert tone="warn" boxed>
+          قرار الحسم إجراء رسمي لا يمكن التراجع عنه بعد التسجيل — تأكد من البيانات قبل المتابعة.
+        </WsAlert>
+      )}
+    </WsModal>
   )
 }

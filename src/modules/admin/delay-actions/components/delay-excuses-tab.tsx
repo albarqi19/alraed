@@ -1,45 +1,46 @@
 /**
- * تبويب أعذار التأخير
- * عرض قائمة الأعذار المقدمة من المعلمين مع إمكانية القبول أو الرفض
+ * بانل أعذار التأخير — عمود جانبي حي
+ * عرض قائمة الأعذار المقدمة من المعلمين مع إمكانية القبول أو الرفض من مكانها
  */
 
 import { useState, useCallback, useMemo } from 'react'
-import { Search, Filter, Check, X, Eye, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Check, X, Eye, Clock3, ChevronLeft, ChevronRight, Inbox } from 'lucide-react'
 import { useDelayExcusesQuery, useApproveExcuseMutation, useRejectExcuseMutation } from '../hooks'
 import type { DelayExcusesFilters, ExcuseStatus, DelayExcuse } from '../types'
 import { ExcuseReviewDialog } from './excuse-review-dialog'
+import { WsBlock, WsBtn, WsChip, WsEmpty, WsIconBtn, WsInput, type WsChipTone } from '@/shared/workspace'
 
-interface DelayExcusesTabProps {
+interface DelayExcusesPanelProps {
   fiscalYear: number
   readOnly?: boolean
 }
 
-// شارة الحالة
-function StatusBadge({ status, label }: { status: ExcuseStatus; label: string }) {
-  const colors = {
-    pending: 'bg-amber-100 text-amber-700 border-amber-200',
-    approved: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-    rejected: 'bg-red-100 text-red-700 border-red-200',
-  }
+const STATUS_TONES: Record<ExcuseStatus, WsChipTone | undefined> = {
+  pending: 'amber',
+  approved: 'green',
+  rejected: 'red',
+}
 
-  const icons = {
-    pending: <Clock className="h-3 w-3" />,
-    approved: <Check className="h-3 w-3" />,
-    rejected: <X className="h-3 w-3" />,
-  }
+const STATUS_FILTERS: Array<{ value: ExcuseStatus | 'all'; label: string }> = [
+  { value: 'pending', label: 'معلقة' },
+  { value: 'all', label: 'الكل' },
+  { value: 'approved', label: 'مقبول' },
+  { value: 'rejected', label: 'مرفوض' },
+]
 
+function StatusChip({ status, label }: { status: ExcuseStatus; label: string }) {
+  const icon = status === 'pending' ? Clock3 : status === 'approved' ? Check : X
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${colors[status]}`}>
-      {icons[status]}
+    <WsChip tone={STATUS_TONES[status]} icon={icon}>
       {label}
-    </span>
+    </WsChip>
   )
 }
 
-export function DelayExcusesTab({ fiscalYear, readOnly = false }: DelayExcusesTabProps) {
+export function DelayExcusesPanel({ fiscalYear, readOnly = false }: DelayExcusesPanelProps) {
   const [filters, setFilters] = useState<DelayExcusesFilters>({
     fiscal_year: fiscalYear,
-    status: 'all',
+    status: 'pending',
     search: '',
     page: 1,
     per_page: 20,
@@ -94,168 +95,154 @@ export function DelayExcusesTab({ fiscalYear, readOnly = false }: DelayExcusesTa
   const meta = useMemo(() => excusesQuery.data?.meta, [excusesQuery.data])
 
   return (
-    <div className="space-y-6">
-      {/* الفلاتر */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="space-y-2 text-right">
-          <label className="text-xs font-semibold text-slate-600">البحث</label>
-          <div className="relative">
-            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              type="search"
-              value={filters.search ?? ''}
-              onChange={(e) => handleFilterChange('search', e.target.value)}
-              placeholder="ابحث باسم المعلم..."
-              className="w-full rounded-xl border border-slate-200 bg-white py-2 pr-10 pl-4 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            />
-          </div>
-        </div>
-        <div className="space-y-2 text-right">
-          <label className="text-xs font-semibold text-slate-600">حالة العذر</label>
-          <div className="relative">
-            <Filter className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <select
-              value={filters.status ?? 'all'}
-              onChange={(e) => handleFilterChange('status', e.target.value as ExcuseStatus | 'all')}
-              className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-2 pr-10 pl-4 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+    <>
+      {/* الفلاتر: شرائح الحالة + بحث */}
+      <div
+        style={{
+          flexShrink: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+          padding: '8px 10px',
+          borderBottom: '1px solid var(--ws-hairline)',
+        }}
+      >
+        <div className="ws-seg" style={{ display: 'flex' }}>
+          {STATUS_FILTERS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => handleFilterChange('status', option.value)}
+              className={`ws-seg__btn ${(filters.status ?? 'all') === option.value ? 'is-active' : ''}`}
+              style={{ flex: 1, justifyContent: 'center' }}
             >
-              <option value="all">جميع الحالات</option>
-              <option value="pending">قيد المراجعة</option>
-              <option value="approved">مقبول</option>
-              <option value="rejected">مرفوض</option>
-            </select>
-          </div>
+              {option.label}
+            </button>
+          ))}
         </div>
+        <WsInput
+          type="search"
+          value={filters.search ?? ''}
+          onChange={(e) => handleFilterChange('search', e.target.value)}
+          placeholder="ابحث باسم المعلم..."
+        />
       </div>
 
-      {/* الجدول */}
-      <div className="overflow-x-auto rounded-xl border border-slate-200">
-        <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50/50">
-            <tr>
-              <th className="whitespace-nowrap px-4 py-3 text-right font-semibold text-slate-700">المعلم</th>
-              <th className="whitespace-nowrap px-4 py-3 text-right font-semibold text-slate-700">تاريخ التأخير</th>
-              <th className="whitespace-nowrap px-4 py-3 text-right font-semibold text-slate-700">دقائق التأخير</th>
-              <th className="whitespace-nowrap px-4 py-3 text-right font-semibold text-slate-700">نص العذر</th>
-              <th className="whitespace-nowrap px-4 py-3 text-right font-semibold text-slate-700">تاريخ التقديم</th>
-              <th className="whitespace-nowrap px-4 py-3 text-right font-semibold text-slate-700">الحالة</th>
-              <th className="whitespace-nowrap px-4 py-3 text-right font-semibold text-slate-700">الإجراءات</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {excusesQuery.isLoading ? (
-              <tr>
-                <td colSpan={7} className="py-12 text-center">
-                  <div className="inline-flex items-center gap-2 text-slate-500">
-                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
-                    جاري التحميل...
-                  </div>
-                </td>
-              </tr>
-            ) : excuses.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="py-12 text-center text-slate-500">
-                  لا توجد أعذار مقدمة
-                </td>
-              </tr>
-            ) : (
-              excuses.map((excuse) => (
-                <tr key={excuse.id} className="transition hover:bg-slate-50/50">
-                  <td className="whitespace-nowrap px-4 py-3">
-                    <div>
-                      <div className="font-medium text-slate-900">{excuse.teacher_name}</div>
-                      {excuse.national_id && (
-                        <div className="text-xs text-slate-500">{excuse.national_id}</div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-slate-600">
-                    {excuse.delay_date_formatted}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
-                      <Clock className="h-3 w-3" />
-                      {excuse.delay_minutes} دقيقة
-                    </span>
-                  </td>
-                  <td className="max-w-xs truncate px-4 py-3 text-slate-600" title={excuse.excuse_text}>
-                    {excuse.excuse_text}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">
-                    {new Date(excuse.submitted_at).toLocaleDateString('ar-SA')}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3">
-                    <StatusBadge status={excuse.status} label={excuse.status_label} />
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      {excuse.status === 'pending' && !readOnly && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => handleReview(excuse, 'approve')}
-                            className="rounded-lg p-1.5 text-emerald-600 transition hover:bg-emerald-50"
-                            title="قبول العذر"
-                          >
-                            <Check className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleReview(excuse, 'reject')}
-                            className="rounded-lg p-1.5 text-red-600 transition hover:bg-red-50"
-                            title="رفض العذر"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        </>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedExcuse(excuse)
-                          setReviewAction(null)
-                        }}
-                        className="rounded-lg p-1.5 text-slate-600 transition hover:bg-slate-100"
-                        title="عرض التفاصيل"
+      {/* القائمة */}
+      <WsBlock
+        title="الأعذار"
+        count={(meta?.total ?? excuses.length).toLocaleString('ar-SA')}
+        fill
+        scroll
+      >
+        {excusesQuery.isLoading ? (
+          <WsEmpty loading>جاري تحميل الأعذار...</WsEmpty>
+        ) : excuses.length === 0 ? (
+          <WsEmpty icon={Inbox}>لا توجد أعذار مقدمة بالمعايير الحالية.</WsEmpty>
+        ) : (
+          <div>
+            {excuses.map((excuse) => (
+              <div
+                key={excuse.id}
+                style={{
+                  padding: '8px 12px',
+                  borderBottom: '1px solid var(--ws-hairline)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, minWidth: 0 }}>{excuse.teacher_name}</span>
+                  <StatusChip status={excuse.status} label={excuse.status_label} />
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    flexWrap: 'wrap',
+                    marginTop: 3,
+                    fontSize: 10.5,
+                    color: 'var(--ws-text-2)',
+                  }}
+                >
+                  <span>{excuse.delay_date_formatted}</span>
+                  <span style={{ color: 'var(--ws-red)', fontWeight: 700 }}>{excuse.delay_minutes} دقيقة</span>
+                  <span>قُدّم {new Date(excuse.submitted_at).toLocaleDateString('ar-SA')}</span>
+                </div>
+                <p
+                  style={{
+                    margin: '4px 0 0',
+                    fontSize: 11.5,
+                    lineHeight: 1.6,
+                    color: 'var(--ws-text)',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                  }}
+                  title={excuse.excuse_text}
+                >
+                  {excuse.excuse_text}
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6 }}>
+                  {excuse.status === 'pending' && !readOnly && (
+                    <>
+                      <WsBtn size="sm" icon={Check} onClick={() => handleReview(excuse, 'approve')} style={{ flex: 1 }}>
+                        قبول
+                      </WsBtn>
+                      <WsBtn
+                        size="sm"
+                        variant="danger"
+                        icon={X}
+                        onClick={() => handleReview(excuse, 'reject')}
+                        style={{ flex: 1 }}
                       >
-                        <Eye className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                        رفض
+                      </WsBtn>
+                    </>
+                  )}
+                  <WsIconBtn
+                    icon={Eye}
+                    label="عرض التفاصيل"
+                    onClick={() => {
+                      setSelectedExcuse(excuse)
+                      setReviewAction(null)
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </WsBlock>
 
       {/* ترقيم الصفحات */}
       {meta && meta.last_page > 1 && (
-        <div className="flex items-center justify-between border-t border-slate-200 pt-4">
-          <div className="text-sm text-slate-500">
-            عرض {(meta.current_page - 1) * meta.per_page + 1} - {Math.min(meta.current_page * meta.per_page, meta.total)} من {meta.total}
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => handleFilterChange('page', meta.current_page - 1)}
-              disabled={meta.current_page === 1}
-              className="rounded-lg border border-slate-200 p-2 text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-            <span className="text-sm text-slate-600">
-              صفحة {meta.current_page} من {meta.last_page}
-            </span>
-            <button
-              type="button"
-              onClick={() => handleFilterChange('page', meta.current_page + 1)}
-              disabled={meta.current_page === meta.last_page}
-              className="rounded-lg border border-slate-200 p-2 text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-          </div>
+        <div
+          style={{
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            padding: '6px 10px',
+            borderTop: '1px solid var(--ws-hairline)',
+          }}
+        >
+          <WsIconBtn
+            icon={ChevronRight}
+            label="السابق"
+            onClick={() => handleFilterChange('page', meta.current_page - 1)}
+            disabled={meta.current_page === 1}
+          />
+          <span style={{ fontSize: 11, color: 'var(--ws-text-2)' }}>
+            {meta.current_page} / {meta.last_page}
+          </span>
+          <WsIconBtn
+            icon={ChevronLeft}
+            label="التالي"
+            onClick={() => handleFilterChange('page', meta.current_page + 1)}
+            disabled={meta.current_page === meta.last_page}
+          />
         </div>
       )}
 
@@ -268,6 +255,6 @@ export function DelayExcusesTab({ fiscalYear, readOnly = false }: DelayExcusesTa
         onCancel={handleCancelReview}
         readOnly={readOnly}
       />
-    </div>
+    </>
   )
 }

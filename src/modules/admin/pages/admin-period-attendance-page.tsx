@@ -1,13 +1,18 @@
 import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { AlertTriangle, Clock, Users, CheckCircle, XCircle, Loader2, RefreshCw } from 'lucide-react'
+import type { CSSProperties } from 'react'
+import {
+  AlertTriangle,
+  BellRing,
+  CalendarDays,
+  CheckCircle2,
+  Clock3,
+  Grid3X3,
+  Info,
+  ListChecks,
+  RefreshCw,
+  Users,
+  XCircle,
+} from 'lucide-react'
 import {
   usePeriodAttendanceGridQuery,
   usePeriodAttendanceDetailsQuery,
@@ -17,10 +22,56 @@ import {
   useUpdatePeriodAlertStatusMutation,
 } from '../hooks/period-attendance-hooks'
 import type { PeriodCell, ClassPeriodRow } from '../types'
+import {
+  WsBlock,
+  WsBtn,
+  WsChip,
+  WsEmpty,
+  WsFact,
+  WsFactRow,
+  WsFactsList,
+  WsField,
+  WsHeader,
+  WsInput,
+  WsLayout,
+  WsMain,
+  WsPage,
+  WsSelect,
+  WsSideCol,
+  WsSpinner,
+} from '@/shared/workspace'
 
 function formatToday(): string {
   const d = new Date()
   return d.toISOString().split('T')[0]
+}
+
+// شارة حالة الطالب (يومي/حصة)
+function StatusChip({ status, lateMinutes }: { status: string | null; lateMinutes?: number | null }) {
+  if (!status) return <span style={{ color: 'var(--ws-text-2)', fontSize: 11 }}>—</span>
+
+  if (status === 'present') {
+    return (
+      <WsChip tone="green" icon={CheckCircle2}>
+        حاضر
+      </WsChip>
+    )
+  }
+  if (status === 'absent') {
+    return (
+      <WsChip tone="red" icon={XCircle}>
+        غائب
+      </WsChip>
+    )
+  }
+  if (status === 'late') {
+    return (
+      <WsChip tone="amber" icon={Clock3}>
+        {lateMinutes ? `متأخر (${lateMinutes} د)` : 'متأخر'}
+      </WsChip>
+    )
+  }
+  return <span style={{ fontSize: 11 }}>{status}</span>
 }
 
 export function AdminPeriodAttendancePage() {
@@ -49,6 +100,7 @@ export function AdminPeriodAttendancePage() {
 
   const grid = gridQuery.data
   const alerts = alertsQuery.data
+  const newAlerts = alerts?.alerts.filter((a) => a.alert_status === 'new') ?? []
 
   function handleCellClick(row: ClassPeriodRow, periodNumber: number, cell: PeriodCell) {
     if (cell.status === 'no_session' || cell.status === 'not_submitted') return
@@ -63,38 +115,54 @@ export function AdminPeriodAttendancePage() {
     updateStatusMutation.mutate({ attendanceId, status: newStatus })
   }
 
-  function getCellColor(cell: PeriodCell): string {
-    if (cell.status === 'no_session') return 'bg-gray-50 text-gray-400'
-    if (cell.status === 'not_submitted') return 'bg-gray-100 text-gray-500 cursor-default'
-    if (cell.alerts_count > 0) return 'bg-amber-50 border-amber-300 cursor-pointer hover:bg-amber-100'
-    if (cell.attendance_type === 'daily') return 'bg-green-50 border-green-300 cursor-pointer hover:bg-green-100'
-    return 'bg-blue-50 border-blue-300 cursor-pointer hover:bg-blue-100'
+  function getCellStyle(cell: PeriodCell): CSSProperties {
+    if (cell.status === 'no_session') return { background: 'var(--ws-surface-2)', color: 'var(--ws-text-2)' }
+    if (cell.status === 'not_submitted') return { background: 'var(--ws-surface-2)', color: 'var(--ws-text-2)' }
+    if (cell.alerts_count > 0) return { background: 'var(--ws-amber-bg)', cursor: 'pointer' }
+    if (cell.attendance_type === 'daily') return { background: 'var(--ws-green-bg)', cursor: 'pointer' }
+    return { background: 'var(--ws-sky-bg)', cursor: 'pointer' }
   }
 
-  function getCellBadge(cell: PeriodCell) {
-    if (cell.status === 'no_session') return <span className="text-xs text-gray-400">--</span>
-    if (cell.status === 'not_submitted') return <span className="text-xs text-gray-400">لم يُحضّر</span>
+  function renderCellContent(cell: PeriodCell) {
+    if (cell.status === 'no_session') return <span style={{ fontSize: 11 }}>—</span>
+    if (cell.status === 'not_submitted') return <span style={{ fontSize: 10.5 }}>لم يُحضّر</span>
     return (
-      <div className="flex flex-col items-center gap-0.5">
-        <Badge
-          variant={cell.attendance_type === 'daily' ? 'default' : 'secondary'}
-          className={`text-[10px] px-1 py-0 ${
-            cell.attendance_type === 'daily'
-              ? 'bg-green-600'
-              : 'bg-blue-600 text-white'
-          }`}
-        >
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+        <WsChip tone={cell.attendance_type === 'daily' ? 'green' : 'sky'}>
           {cell.attendance_type === 'daily' ? 'يومي' : 'حصة'}
-        </Badge>
-        <span className="text-[10px] leading-tight">
-          <span className="text-green-700">{cell.present}</span>
-          {cell.absent > 0 && <span className="text-red-600 mr-1">/{cell.absent}</span>}
-          {cell.late > 0 && <span className="text-amber-600 mr-1">/{cell.late}</span>}
+        </WsChip>
+        <span style={{ fontSize: 10.5, fontWeight: 700 }}>
+          <span style={{ color: 'var(--ws-green)' }}>{cell.present}</span>
+          {cell.absent > 0 && <span style={{ color: 'var(--ws-red)' }}> / {cell.absent}</span>}
+          {cell.late > 0 && <span style={{ color: 'var(--ws-amber)' }}> / {cell.late}</span>}
         </span>
         {cell.alerts_count > 0 && (
-          <span className="text-[10px] text-amber-600 font-bold flex items-center gap-0.5">
-            <AlertTriangle className="w-3 h-3" />
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 3,
+              fontSize: 10,
+              fontWeight: 700,
+              color: 'var(--ws-amber)',
+            }}
+          >
+            <AlertTriangle style={{ width: 10, height: 10 }} />
             {cell.alerts_count}
+          </span>
+        )}
+        {cell.subject_name && (
+          <span
+            style={{
+              fontSize: 9.5,
+              color: 'var(--ws-text-2)',
+              maxWidth: 80,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {cell.subject_name}
           </span>
         )}
       </div>
@@ -102,328 +170,275 @@ export function AdminPeriodAttendancePage() {
   }
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">تحضير الحصص</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            متابعة تحضير المعلمين لكل حصة - الأخضر: يومي، الأزرق: حصة
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            gridQuery.refetch()
-            alertsQuery.refetch()
-          }}
-          disabled={gridQuery.isFetching}
-        >
-          <RefreshCw className={`w-4 h-4 ml-2 ${gridQuery.isFetching ? 'animate-spin' : ''}`} />
-          تحديث
-        </Button>
+    <WsPage>
+      <WsHeader
+        title="تحضير الحصص"
+        badge="متابعة الحصص"
+        actions={
+          <WsBtn
+            icon={RefreshCw}
+            onClick={() => {
+              gridQuery.refetch()
+              alertsQuery.refetch()
+            }}
+            disabled={gridQuery.isFetching}
+          >
+            تحديث
+          </WsBtn>
+        }
+        facts={
+          <>
+            <WsFact icon={Grid3X3} label="الفصول:">
+              {(grid?.classes.length ?? 0).toLocaleString('ar-SA')}
+            </WsFact>
+            <WsFact icon={BellRing} label="تنبيهات جديدة:">
+              {(alerts?.counts.new ?? 0).toLocaleString('ar-SA')}
+            </WsFact>
+            {grid?.day_name && (
+              <WsFact icon={CalendarDays} label="اليوم:">
+                {grid.day_name}
+              </WsFact>
+            )}
+          </>
+        }
+      >
+        {/* مفتاح الألوان */}
+        <WsChip tone="green">يومي</WsChip>
+        <WsChip tone="sky">حصة</WsChip>
+        <WsChip>لم يُحضّر</WsChip>
+        <WsChip tone="amber" icon={AlertTriangle}>
+          تنبيه
+        </WsChip>
+      </WsHeader>
+
+      <div className="ws-toolbar">
+        <WsField label="التاريخ" htmlFor="ws-period-date">
+          <WsInput id="ws-period-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        </WsField>
+        <WsField label="الصف" htmlFor="ws-period-grade">
+          <WsSelect id="ws-period-grade" value={selectedGrade} onChange={(e) => setSelectedGrade(e.target.value)}>
+            <option value="all">جميع الصفوف</option>
+            {gradesQuery.data?.map((g) => (
+              <option key={g} value={g}>
+                {g}
+              </option>
+            ))}
+          </WsSelect>
+        </WsField>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-4">
-          <div className="flex flex-wrap gap-4 items-end">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-gray-700">التاريخ</label>
-              <Input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-44"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-gray-700">الصف</label>
-              <Select value={selectedGrade} onValueChange={setSelectedGrade}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="جميع الصفوف" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">جميع الصفوف</SelectItem>
-                  {gradesQuery.data?.map((g) => (
-                    <SelectItem key={g} value={g}>
-                      {g}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {grid?.day_name && (
-              <Badge variant="outline" className="text-sm h-9 px-3">
-                {grid.day_name}
-              </Badge>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Alerts Section */}
-      {alerts && alerts.counts.new > 0 && (
-        <Card className="border-amber-200 bg-amber-50/50">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2 text-amber-800">
-              <AlertTriangle className="w-5 h-5" />
-              تنبيهات عاجلة ({alerts.counts.new})
-              <span className="text-xs font-normal text-amber-600">
-                طلاب حاضرون يومياً لكن غائبون في حصة
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {alerts.alerts
-                .filter((a) => a.alert_status === 'new')
-                .map((alert) => (
-                  <Alert key={alert.id} className="bg-white border-amber-200">
-                    <AlertDescription className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                        <div>
-                          <span className="font-medium">{alert.student_name}</span>
-                          <span className="text-gray-500 text-sm mr-2">
-                            {alert.grade} {alert.class_name} - الحصة {alert.period_number}
-                            {alert.subject_name && ` (${alert.subject_name})`}
-                          </span>
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
+      <WsLayout>
+        {/* العمود الأيمن: التنبيهات العاجلة */}
+        <WsSideCol
+          title="تنبيهات عاجلة"
+          icon={BellRing}
+          side="start"
+          width={290}
+          storageKey="ws:period-attendance:alerts"
+        >
+          <WsBlock padded style={{ background: 'var(--ws-amber-bg)' }}>
+            <p style={{ margin: 0, fontSize: 11.5, color: 'var(--ws-amber)', fontWeight: 600 }}>
+              طلاب حاضرون في التحضير اليومي لكنهم غائبون في حصة — تحقق من وضعهم.
+            </p>
+          </WsBlock>
+          <WsBlock title="بانتظار الاطلاع" count={newAlerts.length.toLocaleString('ar-SA')} fill scroll>
+            {alertsQuery.isLoading ? (
+              <WsEmpty loading>جاري تحميل التنبيهات...</WsEmpty>
+            ) : newAlerts.length === 0 ? (
+              <WsEmpty icon={CheckCircle2}>لا توجد تنبيهات جديدة لهذا اليوم.</WsEmpty>
+            ) : (
+              <div>
+                {newAlerts.map((alert) => (
+                  <div
+                    key={alert.id}
+                    style={{
+                      padding: '7px 12px',
+                      borderBottom: '1px solid var(--ws-hairline)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, minWidth: 0 }}>{alert.student_name}</span>
+                      <WsBtn
                         size="sm"
-                        onClick={() =>
-                          updateAlertMutation.mutate({ alertId: alert.id, alertStatus: 'seen' })
-                        }
+                        onClick={() => updateAlertMutation.mutate({ alertId: alert.id, alertStatus: 'seen' })}
+                        disabled={updateAlertMutation.isPending}
                       >
                         تم الاطلاع
-                      </Button>
-                    </AlertDescription>
-                  </Alert>
+                      </WsBtn>
+                    </div>
+                    <p style={{ margin: '3px 0 0', fontSize: 11, color: 'var(--ws-text-2)' }}>
+                      {alert.grade} {alert.class_name} — الحصة {alert.period_number}
+                      {alert.subject_name && ` (${alert.subject_name})`}
+                    </p>
+                  </div>
                 ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Grid */}
-      {gridQuery.isLoading ? (
-        <Card>
-          <CardContent className="flex items-center justify-center py-16">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            <span className="mr-3 text-gray-500">جاري تحميل الشبكة...</span>
-          </CardContent>
-        </Card>
-      ) : !grid || grid.classes.length === 0 ? (
-        <Card>
-          <CardContent className="text-center py-16 text-gray-500">
-            <Clock className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-            <p className="text-lg font-medium">لا توجد حصص لهذا اليوم</p>
-            <p className="text-sm">تأكد من وجود جدول دراسي وأن اليوم يوم عمل</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardContent className="p-0 overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="sticky right-0 bg-white z-10 min-w-[140px]">الفصل</TableHead>
-                  {grid.period_headers.map((h) => (
-                    <TableHead key={h.period_number} className="text-center min-w-[90px]">
-                      <div className="flex flex-col items-center">
-                        <span className="text-xs font-bold">{h.name}</span>
-                        {h.start_time && (
-                          <span className="text-[10px] text-gray-400">
-                            {h.start_time} - {h.end_time}
-                          </span>
-                        )}
-                      </div>
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {grid.classes.map((row, idx) => (
-                  <TableRow key={idx}>
-                    <TableCell className="sticky right-0 bg-white z-10 font-medium whitespace-nowrap">
-                      <div className="flex items-center gap-1.5">
-                        <Users className="w-3.5 h-3.5 text-gray-400" />
-                        {row.grade} {row.class_name}
-                      </div>
-                    </TableCell>
-                    {grid.period_headers.map((h) => {
-                      const cell = row.periods[h.period_number]
-                      if (!cell) {
-                        return <TableCell key={h.period_number} className="text-center bg-gray-50">--</TableCell>
-                      }
-                      return (
-                        <TableCell
-                          key={h.period_number}
-                          className={`text-center p-1 border ${getCellColor(cell)}`}
-                          onClick={() => handleCellClick(row, h.period_number, cell)}
-                        >
-                          {getCellBadge(cell)}
-                          {cell.subject_name && (
-                            <div className="text-[9px] text-gray-500 mt-0.5 truncate max-w-[80px]">
-                              {cell.subject_name}
-                            </div>
-                          )}
-                        </TableCell>
-                      )
-                    })}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Legend */}
-      <div className="flex flex-wrap gap-4 text-xs text-gray-600">
-        <div className="flex items-center gap-1.5">
-          <div className="w-4 h-4 rounded bg-green-100 border border-green-300" />
-          <span>تحضير يومي</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-4 h-4 rounded bg-blue-100 border border-blue-300" />
-          <span>تحضير حصة</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-4 h-4 rounded bg-gray-100 border border-gray-300" />
-          <span>لم يُحضّر</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-4 h-4 rounded bg-amber-100 border border-amber-300" />
-          <span>تنبيه عاجل</span>
-        </div>
-      </div>
-
-      {/* Details Dialog */}
-      <Dialog open={!!selectedCell} onOpenChange={(open) => !open && setSelectedCell(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-right">
-              {detailsQuery.data?.session_info && (
-                <span>
-                  تفاصيل الحصة {detailsQuery.data.session_info.period_number} -{' '}
-                  {detailsQuery.data.session_info.grade} {detailsQuery.data.session_info.class_name}
-                  {detailsQuery.data.session_info.subject_name &&
-                    ` (${detailsQuery.data.session_info.subject_name})`}
-                </span>
-              )}
-            </DialogTitle>
-          </DialogHeader>
-
-          {detailsQuery.isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin" />
-            </div>
-          ) : detailsQuery.data ? (
-            <div className="space-y-4">
-              {/* Summary */}
-              <div className="grid grid-cols-4 gap-3">
-                <div className="text-center p-2 bg-gray-50 rounded-lg">
-                  <div className="text-lg font-bold">{detailsQuery.data.summary.total}</div>
-                  <div className="text-xs text-gray-500">إجمالي</div>
-                </div>
-                <div className="text-center p-2 bg-green-50 rounded-lg">
-                  <div className="text-lg font-bold text-green-700">{detailsQuery.data.summary.present}</div>
-                  <div className="text-xs text-green-600">حاضر</div>
-                </div>
-                <div className="text-center p-2 bg-red-50 rounded-lg">
-                  <div className="text-lg font-bold text-red-700">{detailsQuery.data.summary.absent}</div>
-                  <div className="text-xs text-red-600">غائب</div>
-                </div>
-                <div className="text-center p-2 bg-amber-50 rounded-lg">
-                  <div className="text-lg font-bold text-amber-700">{detailsQuery.data.summary.late}</div>
-                  <div className="text-xs text-amber-600">متأخر</div>
-                </div>
               </div>
+            )}
+          </WsBlock>
+        </WsSideCol>
 
-              {/* Students Table */}
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>الطالب</TableHead>
-                    <TableHead className="text-center">الحالة اليومية</TableHead>
-                    <TableHead className="text-center">حالة الحصة</TableHead>
-                    <TableHead className="text-center">تنبيه</TableHead>
-                    <TableHead className="text-center">إجراء</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+        {/* الوسط: شبكة الفصول × الحصص */}
+        <WsMain>
+          <WsBlock title="شبكة التحضير" icon={Grid3X3} count={(grid?.classes.length ?? 0).toLocaleString('ar-SA')} fill>
+            {gridQuery.isLoading ? (
+              <WsEmpty loading>جاري تحميل الشبكة...</WsEmpty>
+            ) : !grid || grid.classes.length === 0 ? (
+              <WsEmpty icon={Clock3}>
+                لا توجد حصص لهذا اليوم.
+                <span style={{ fontSize: 11 }}>تأكد من وجود جدول دراسي وأن اليوم يوم عمل.</span>
+              </WsEmpty>
+            ) : (
+              <div className="ws-tablewrap">
+                <table className="ws-matrix">
+                  <thead>
+                    <tr>
+                      <th className="ws-matrix__stick" style={{ minWidth: 140 }}>
+                        الفصل
+                      </th>
+                      {grid.period_headers.map((h) => (
+                        <th key={h.period_number} style={{ minWidth: 90 }}>
+                          <span style={{ display: 'block', fontWeight: 700 }}>{h.name}</span>
+                          {h.start_time && (
+                            <span style={{ display: 'block', fontSize: 9.5, fontWeight: 400, direction: 'ltr' }}>
+                              {h.start_time} - {h.end_time}
+                            </span>
+                          )}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {grid.classes.map((row, idx) => (
+                      <tr key={idx}>
+                        <td className="ws-matrix__stick" style={{ minWidth: 140 }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 600, fontSize: 12 }}>
+                            <Users style={{ width: 12, height: 12, color: 'var(--ws-text-2)' }} />
+                            {row.grade} {row.class_name}
+                          </span>
+                        </td>
+                        {grid.period_headers.map((h) => {
+                          const cell = row.periods[h.period_number]
+                          if (!cell) {
+                            return (
+                              <td key={h.period_number} style={{ background: 'var(--ws-surface-2)', color: 'var(--ws-text-2)' }}>
+                                —
+                              </td>
+                            )
+                          }
+                          const isSelectedCell =
+                            selectedCell &&
+                            selectedCell.grade === row.grade &&
+                            selectedCell.className === row.class_name &&
+                            selectedCell.periodNumber === h.period_number
+                          return (
+                            <td
+                              key={h.period_number}
+                              style={{
+                                ...getCellStyle(cell),
+                                padding: '4px 6px',
+                                ...(isSelectedCell ? { boxShadow: 'inset 0 0 0 2px var(--ws-accent-2)' } : null),
+                              }}
+                              onClick={() => handleCellClick(row, h.period_number, cell)}
+                            >
+                              {renderCellContent(cell)}
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </WsBlock>
+        </WsMain>
+
+        {/* اليسار: تفاصيل الحصة المحددة — بدل المودال */}
+        <WsSideCol title="تفاصيل الحصة" icon={ListChecks} storageKey="ws:period-attendance:details" width={360}>
+          {!selectedCell ? (
+            <WsEmpty icon={Info}>اضغط على خلية محضَّرة من الشبكة لعرض تفاصيلها هنا.</WsEmpty>
+          ) : detailsQuery.isLoading ? (
+            <WsEmpty loading>جاري تحميل التفاصيل...</WsEmpty>
+          ) : detailsQuery.data ? (
+            <>
+              <WsBlock padded>
+                <WsFactsList>
+                  <WsFactRow label="الفصل">
+                    {detailsQuery.data.session_info?.grade} {detailsQuery.data.session_info?.class_name}
+                  </WsFactRow>
+                  <WsFactRow label="الحصة">{detailsQuery.data.session_info?.period_number}</WsFactRow>
+                  {detailsQuery.data.session_info?.subject_name && (
+                    <WsFactRow label="المادة">{detailsQuery.data.session_info.subject_name}</WsFactRow>
+                  )}
+                </WsFactsList>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
+                  <WsChip icon={Users}>إجمالي {detailsQuery.data.summary.total}</WsChip>
+                  <WsChip tone="green" icon={CheckCircle2}>
+                    حاضر {detailsQuery.data.summary.present}
+                  </WsChip>
+                  <WsChip tone="red" icon={XCircle}>
+                    غائب {detailsQuery.data.summary.absent}
+                  </WsChip>
+                  <WsChip tone="amber" icon={Clock3}>
+                    متأخر {detailsQuery.data.summary.late}
+                  </WsChip>
+                </div>
+              </WsBlock>
+
+              <WsBlock
+                title="طلاب الحصة"
+                count={detailsQuery.data.students.length.toLocaleString('ar-SA')}
+                fill
+                scroll
+              >
+                <div>
                   {detailsQuery.data.students.map((student) => (
-                    <TableRow key={student.id}>
-                      <TableCell className="font-medium">{student.student_name}</TableCell>
-                      <TableCell className="text-center">
-                        <StatusBadge status={student.daily_status} />
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <StatusBadge status={student.period_status} lateMinutes={student.late_minutes} />
-                      </TableCell>
-                      <TableCell className="text-center">
+                    <div
+                      key={student.id}
+                      style={{
+                        padding: '7px 12px',
+                        borderBottom: '1px solid var(--ws-hairline)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, minWidth: 0 }}>{student.student_name}</span>
                         {student.has_alert && (
-                          <Badge variant="destructive" className="text-[10px]">
-                            <AlertTriangle className="w-3 h-3 ml-1" />
+                          <WsChip tone="amber" icon={AlertTriangle}>
                             تنبيه
-                          </Badge>
+                          </WsChip>
                         )}
-                      </TableCell>
-                      <TableCell className="text-center">
+                      </div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          flexWrap: 'wrap',
+                          gap: 5,
+                          marginTop: 4,
+                        }}
+                      >
+                        <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>اليومي:</span>
+                        <StatusChip status={student.daily_status} />
+                        <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>الحصة:</span>
+                        <StatusChip status={student.period_status} lateMinutes={student.late_minutes} />
                         {student.period_status === 'absent' && student.attendance_type === 'period' && (
-                          <Button
+                          <WsBtn
                             size="sm"
-                            variant="outline"
-                            className="text-xs h-7"
                             onClick={() => handleStatusChange(student.id, 'present')}
                             disabled={updateStatusMutation.isPending}
                           >
-                            {updateStatusMutation.isPending ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                            ) : (
-                              'تغيير لحاضر'
-                            )}
-                          </Button>
+                            {updateStatusMutation.isPending ? <WsSpinner style={{ width: 11, height: 11 }} /> : 'تغيير لحاضر'}
+                          </WsBtn>
                         )}
-                      </TableCell>
-                    </TableRow>
+                      </div>
+                    </div>
                   ))}
-                </TableBody>
-              </Table>
-            </div>
+                </div>
+              </WsBlock>
+            </>
           ) : null}
-        </DialogContent>
-      </Dialog>
-    </div>
-  )
-}
-
-function StatusBadge({ status, lateMinutes }: { status: string | null; lateMinutes?: number | null }) {
-  if (!status) return <span className="text-gray-400 text-xs">--</span>
-
-  const config: Record<string, { label: string; className: string; icon: typeof CheckCircle }> = {
-    present: { label: 'حاضر', className: 'bg-green-100 text-green-700', icon: CheckCircle },
-    absent: { label: 'غائب', className: 'bg-red-100 text-red-700', icon: XCircle },
-    late: {
-      label: lateMinutes ? `متأخر (${lateMinutes} د)` : 'متأخر',
-      className: 'bg-amber-100 text-amber-700',
-      icon: Clock,
-    },
-  }
-
-  const c = config[status]
-  if (!c) return <span className="text-xs">{status}</span>
-
-  const Icon = c.icon
-  return (
-    <Badge variant="outline" className={`text-[10px] ${c.className}`}>
-      <Icon className="w-3 h-3 ml-1" />
-      {c.label}
-    </Badge>
+        </WsSideCol>
+      </WsLayout>
+    </WsPage>
   )
 }

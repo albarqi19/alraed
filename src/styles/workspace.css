@@ -1,0 +1,1367 @@
+/* ======================================================
+   WORKSPACE — «النمط الملتصق» لصفحات الأدمن
+   نظام تصميم موحّد: مساحة عمل بملء الشاشة، أعمدة ملتصقة
+   بالحواف وببعضها، بلا تمرير خارجي — كل عمود يتمرر داخلياً.
+   ------------------------------------------------------
+   الطبقة 1: Tokens (--ws-*) مشتقة من متغيرات الثيم --color-*
+             فتتكيف تلقائياً مع كل ثيمات النظام.
+   الطبقة 2: مكونات (ws-*) تُركّب منها أي صفحة أدمن.
+   القاعدة: خطوط 11–13px، حدود 1px بدل الظلال، استدارة
+   خفيفة (7-10px) للعناصر الصغيرة فقط، البلوكات بلا استدارة.
+   ====================================================== */
+
+/* ── الطبقة 1: Tokens ── */
+:root {
+    --ws-bg: var(--color-background, #F8F5F0);
+    --ws-surface: var(--color-surface, #FFFFFF);
+    --ws-text: var(--color-text-primary, #333333);
+    --ws-text-2: var(--color-text-secondary, #777777);
+    --ws-border: var(--color-border, #D6CEC2);
+    --ws-accent: var(--color-primary-dark, #3F6F55);
+    --ws-accent-2: var(--color-primary, #4CAF50);
+
+    /* مشتقات: رؤوس البلوكات، التمييز الخافت، الخطوط الرفيعة */
+    --ws-surface-2: color-mix(in srgb, var(--ws-surface) 96%, var(--ws-text) 4%);
+    --ws-hover: color-mix(in srgb, var(--ws-surface) 97%, var(--ws-text) 3%);
+    --ws-hairline: color-mix(in srgb, var(--ws-border) 60%, var(--ws-surface) 40%);
+    --ws-accent-soft: color-mix(in srgb, var(--ws-accent) 7%, var(--ws-surface) 93%);
+    --ws-accent-softer: color-mix(in srgb, var(--ws-accent) 3.5%, var(--ws-surface) 96.5%);
+    --ws-focus: color-mix(in srgb, var(--ws-accent-2) 28%, transparent);
+
+    /* ألوان الحالات (فاتح) */
+    --ws-green: #2E7D46;
+    --ws-green-bg: #E9F5EC;
+    --ws-green-bd: #BFE3C9;
+    --ws-red: #C43D3D;
+    --ws-red-bg: #FBEAEA;
+    --ws-red-bd: #EFC5C5;
+    --ws-amber: #A8690A;
+    --ws-amber-bg: #FCF3E1;
+    --ws-amber-bd: #EFD9AC;
+    --ws-sky: #21689E;
+    --ws-sky-bg: #E8F2FA;
+    --ws-sky-bd: #BFDCF0;
+}
+
+/* حالات بنسخ داكنة للثيم الداكن */
+[data-theme='dark-green'] {
+    --ws-green: #7ACB8B;
+    --ws-green-bg: #12301C;
+    --ws-green-bd: #1F4A2C;
+    --ws-red: #F08A8A;
+    --ws-red-bg: #391414;
+    --ws-red-bd: #542020;
+    --ws-amber: #F0C060;
+    --ws-amber-bg: #362A0C;
+    --ws-amber-bd: #544014;
+    --ws-sky: #86C0EA;
+    --ws-sky-bg: #0F2638;
+    --ws-sky-bd: #1C3D57;
+}
+
+/* ── الطبقة 2: المكونات ── */
+
+/* الجذر: يملأ المساحة المتبقية من الـ shell، لا تمرير خارجي */
+.ws-page {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--ws-bg);
+    color: var(--ws-text);
+}
+
+/* ── الترويسة: صف العنوان والأزرار + صف الحقائق ── */
+.ws-header {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--ws-surface);
+    border-bottom: 1px solid var(--ws-border);
+}
+
+.ws-header__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    padding: 9px 16px;
+}
+
+.ws-header__info {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    min-width: 0;
+}
+
+.ws-header__title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--ws-text);
+}
+
+.ws-header__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2.5px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ws-accent);
+    background: var(--ws-accent-soft);
+    border: 1px solid color-mix(in srgb, var(--ws-accent) 35%, var(--ws-surface) 65%);
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.ws-header__actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+/* صف الحقائق أسفل العنوان */
+.ws-header__facts {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    padding: 6px 16px 8px;
+    border-top: 1px solid var(--ws-hairline);
+}
+
+.ws-fact {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--ws-text-2);
+}
+
+.ws-fact svg {
+    width: 13px;
+    height: 13px;
+    color: var(--ws-accent-2);
+    flex-shrink: 0;
+}
+
+.ws-fact b {
+    color: var(--ws-text);
+    font-weight: 700;
+}
+
+.ws-fact__sep {
+    width: 1px;
+    height: 14px;
+    background: var(--ws-border);
+}
+
+/* فواصل تلقائية بين الحقائق المتجاورة مباشرة (مكونات WsFact) —
+   لا تتفعل عند وجود ws-fact__sep يدوي بينها */
+.ws-header__facts > .ws-fact + .ws-fact::before {
+    content: '';
+    width: 1px;
+    height: 14px;
+    background: var(--ws-border);
+    margin-inline-end: 14px;
+    flex-shrink: 0;
+}
+
+/* ── شريط الأدوات (فلاتر/إجراءات) ── */
+.ws-toolbar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    padding: 8px 16px 10px;
+    background: var(--ws-surface);
+    border-bottom: 1px solid var(--ws-border);
+}
+
+.ws-field {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.ws-field--grow {
+    flex: 1;
+    min-width: 160px;
+}
+
+.ws-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--ws-text-2);
+    padding-inline-start: 2px;
+}
+
+.ws-input,
+.ws-select {
+    height: 30px;
+    padding: 0 10px;
+    font-size: 12px;
+    font-family: inherit;
+    color: var(--ws-text);
+    background-color: var(--ws-surface);
+    border: 1px solid var(--ws-border);
+    border-radius: 7px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.ws-select {
+    padding-inline-end: 26px;
+    cursor: pointer;
+}
+
+.ws-input:focus,
+.ws-select:focus {
+    outline: none;
+    border-color: var(--ws-accent-2);
+    box-shadow: 0 0 0 2px var(--ws-focus);
+}
+
+.ws-input:disabled,
+.ws-select:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    background-color: var(--ws-surface-2);
+}
+
+.ws-textarea {
+    width: 100%;
+    min-height: 70px;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-family: inherit;
+    line-height: 1.6;
+    color: var(--ws-text);
+    background-color: var(--ws-surface);
+    border: 1px solid var(--ws-border);
+    border-radius: 7px;
+    resize: vertical;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.ws-textarea:focus {
+    outline: none;
+    border-color: var(--ws-accent-2);
+    box-shadow: 0 0 0 2px var(--ws-focus);
+}
+
+.ws-textarea:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    background-color: var(--ws-surface-2);
+}
+
+/* مفتاح تبديل صغير (admin بالعربية RTL دائماً) */
+.ws-switch {
+    position: relative;
+    display: inline-flex;
+    width: 34px;
+    height: 19px;
+    padding: 0;
+    border-radius: 999px;
+    border: 1px solid var(--ws-border);
+    background: var(--ws-surface-2);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.ws-switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    inset-inline-start: 2px;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+    transition: transform 0.15s;
+}
+
+.ws-switch[aria-checked='true'] {
+    background: var(--ws-accent-2);
+    border-color: var(--ws-accent-2);
+}
+
+.ws-switch[aria-checked='true']::after {
+    transform: translateX(-15px);
+}
+
+.ws-switch:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ── الأزرار ── */
+.ws-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 12px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    color: var(--ws-text);
+    background: var(--ws-surface);
+    border: 1px solid var(--ws-border);
+    border-radius: 7px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.ws-btn svg {
+    width: 13px;
+    height: 13px;
+}
+
+.ws-btn:hover:not(:disabled) {
+    border-color: var(--ws-accent);
+}
+
+.ws-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.ws-btn--primary {
+    background: var(--ws-accent);
+    border-color: var(--ws-accent);
+    color: #fff;
+}
+
+.ws-btn--primary:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--ws-accent) 88%, #000 12%);
+}
+
+.ws-btn--danger {
+    background: var(--ws-red);
+    border-color: var(--ws-red);
+    color: #fff;
+}
+
+.ws-btn--danger:hover:not(:disabled) {
+    filter: brightness(0.92);
+    border-color: var(--ws-red);
+}
+
+.ws-btn--sm {
+    height: 26px;
+    padding: 0 9px;
+    font-size: 11.5px;
+}
+
+.ws-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: var(--ws-text-2);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s;
+}
+
+.ws-icon-btn svg {
+    width: 15px;
+    height: 15px;
+}
+
+.ws-icon-btn:hover:not(:disabled) {
+    background: var(--ws-surface-2);
+    color: var(--ws-text);
+}
+
+/* ── التقسيم العمودي بملء الشاشة ── */
+.ws-layout {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    overflow: hidden;
+}
+
+/* العمود الأوسط (الرئيسي) */
+.ws-main {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--ws-surface);
+}
+
+/* عمود جانبي ملتصق (يسار افتراضياً في RTL) قابل للطي */
+.ws-sidecol {
+    width: 340px;
+    flex-shrink: 0;
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--ws-surface);
+    border-inline-start: 1px solid var(--ws-border);
+}
+
+/* عمود جهة اليمين (start في RTL): الفاصل على يساره */
+.ws-sidecol--start {
+    border-inline-start: none;
+    border-inline-end: 1px solid var(--ws-border);
+}
+
+.ws-sidecol--min {
+    width: 46px;
+}
+
+/* شريط إعادة الفتح: نص عمودي */
+.ws-sidecol__reopen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 0;
+    background: var(--ws-surface);
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    color: var(--ws-text-2);
+    transition: background 0.15s;
+}
+
+.ws-sidecol__reopen:hover {
+    background: var(--ws-hover);
+}
+
+.ws-sidecol__reopen svg {
+    width: 15px;
+    height: 15px;
+    color: var(--ws-accent-2);
+    flex-shrink: 0;
+}
+
+.ws-sidecol__reopen span {
+    writing-mode: vertical-rl;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: var(--ws-text);
+    white-space: nowrap;
+}
+
+.ws-sidecol__scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── البلوكات: مدمجة بلا إطار ولا استدارة، فواصل سفلية فقط ── */
+.ws-block {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: var(--ws-surface);
+    border-bottom: 1px solid var(--ws-hairline);
+}
+
+.ws-block:last-child {
+    border-bottom: none;
+}
+
+/* البلوك الذي يملأ الباقي ويتمرر داخلياً */
+.ws-block--fill {
+    flex: 1;
+    min-height: 0;
+}
+
+.ws-block__head {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 7px 14px;
+    background: var(--ws-surface-2);
+    border-bottom: 1px solid var(--ws-hairline);
+}
+
+.ws-block__title {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ws-text);
+}
+
+.ws-block__title svg {
+    width: 13px;
+    height: 13px;
+    color: var(--ws-accent-2);
+}
+
+.ws-block__tools {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ws-block__body {
+    padding: 10px 14px;
+}
+
+/* حاوية تمرير داخلي للبلوك الممتلئ (ws-block--fill) */
+.ws-block__scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+/* عدّاد صغير في رؤوس البلوكات */
+.ws-count {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 7px;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--ws-text-2);
+    background: var(--ws-surface);
+    border: 1px solid var(--ws-border);
+    border-radius: 999px;
+}
+
+/* ── الجدول الكثيف ── */
+.ws-tablewrap {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+}
+
+.ws-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    text-align: right;
+    font-size: 12px;
+}
+
+.ws-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    padding: 6px 14px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    color: var(--ws-text-2);
+    background: var(--ws-surface-2);
+    border-bottom: 1px solid var(--ws-border);
+    white-space: nowrap;
+}
+
+.ws-table tbody td {
+    padding: 6px 14px;
+    font-size: 12px;
+    color: var(--ws-text);
+    border-bottom: 1px solid var(--ws-hairline);
+    vertical-align: middle;
+}
+
+.ws-table tbody tr {
+    cursor: default;
+    transition: background 0.1s;
+}
+
+.ws-table tbody tr:hover {
+    background: var(--ws-hover);
+}
+
+.ws-table tbody tr.is-clickable {
+    cursor: pointer;
+}
+
+.ws-table tbody tr.is-selected {
+    background: var(--ws-accent-soft);
+}
+
+.ws-table tbody tr.is-selected td:first-child {
+    box-shadow: inset 3px 0 0 var(--ws-accent-2);
+}
+
+.ws-table .ws-cell-sub {
+    display: block;
+    margin-top: 1px;
+    font-size: 10.5px;
+    color: var(--ws-text-2);
+}
+
+/* ── مصفوفة كشف (تواريخ × طلاب): رأس علوي وعمود أول لاصقان ── */
+.ws-matrix {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 12px;
+    text-align: center;
+}
+
+.ws-matrix th,
+.ws-matrix td {
+    padding: 5px 10px;
+    white-space: nowrap;
+}
+
+.ws-matrix thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--ws-surface-2);
+    color: var(--ws-text-2);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    border-bottom: 1px solid var(--ws-border);
+}
+
+.ws-matrix tbody td {
+    border-bottom: 1px solid var(--ws-hairline);
+    color: var(--ws-text);
+}
+
+/* العمود اللاصق (بيانات الطالب) */
+.ws-matrix .ws-matrix__stick {
+    position: sticky;
+    inset-inline-start: 0;
+    z-index: 5;
+    background: var(--ws-surface);
+    text-align: right;
+    border-inline-end: 1px solid var(--ws-border);
+    min-width: 180px;
+    white-space: normal;
+}
+
+.ws-matrix thead th.ws-matrix__stick {
+    z-index: 15;
+    background: var(--ws-surface-2);
+}
+
+/* ── الطباعة: تتمدد مساحة العمل وتُخفى الأدوات ── */
+@media print {
+    .ws-page,
+    .ws-layout,
+    .ws-main,
+    .ws-block,
+    .ws-tablewrap,
+    .ws-block__scroll {
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    .ws-sidecol,
+    .ws-header__actions,
+    .ws-toolbar,
+    .ws-icon-btn,
+    .ws-btn {
+        display: none !important;
+    }
+}
+
+/* ── الشرائح (chips) وحالات ── */
+.ws-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 999px;
+    border: 1px solid var(--ws-border);
+    background: var(--ws-surface-2);
+    color: var(--ws-text-2);
+    white-space: nowrap;
+}
+
+.ws-chip svg {
+    width: 11px;
+    height: 11px;
+}
+
+.ws-chip--green {
+    color: var(--ws-green);
+    background: var(--ws-green-bg);
+    border-color: var(--ws-green-bd);
+}
+
+.ws-chip--red {
+    color: var(--ws-red);
+    background: var(--ws-red-bg);
+    border-color: var(--ws-red-bd);
+}
+
+.ws-chip--amber {
+    color: var(--ws-amber);
+    background: var(--ws-amber-bg);
+    border-color: var(--ws-amber-bd);
+}
+
+.ws-chip--sky {
+    color: var(--ws-sky);
+    background: var(--ws-sky-bg);
+    border-color: var(--ws-sky-bd);
+}
+
+/* شريحة قابلة للنقر (كتغيير حالة الطالب) */
+button.ws-chip {
+    cursor: pointer;
+    font-family: inherit;
+    transition: filter 0.12s;
+}
+
+button.ws-chip:hover:not(:disabled) {
+    filter: brightness(0.96);
+}
+
+button.ws-chip:disabled {
+    cursor: default;
+}
+
+/* ── شرائح مدمجة (تبويبات/دورة حياة) ── */
+.ws-seg {
+    display: inline-flex;
+    align-items: stretch;
+    border: 1px solid var(--ws-border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--ws-surface);
+}
+
+.ws-seg__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 28px;
+    padding: 0 12px;
+    border: none;
+    border-inline-end: 1px solid var(--ws-hairline);
+    background: transparent;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--ws-text-2);
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+}
+
+.ws-seg__btn:last-child {
+    border-inline-end: none;
+}
+
+.ws-seg__btn:hover:not(:disabled):not(.is-active) {
+    background: var(--ws-hover);
+    color: var(--ws-text);
+}
+
+.ws-seg__btn.is-active {
+    background: var(--ws-accent);
+    color: #fff;
+    font-weight: 700;
+}
+
+.ws-seg__btn .ws-count {
+    height: 15px;
+    padding: 0 5px;
+}
+
+/* ── بطاقة اختيار صغيرة (checkbox ضمن قوائم اختيار متعددة) ── */
+.ws-pick {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 5px 9px;
+    border: 1px solid var(--ws-border);
+    border-radius: 7px;
+    background: var(--ws-surface);
+    cursor: pointer;
+    font-size: 12px;
+    min-width: 0;
+    transition: border-color 0.12s, background 0.12s;
+}
+
+.ws-pick:hover {
+    border-color: var(--ws-accent-2);
+}
+
+.ws-pick.is-checked {
+    border-color: var(--ws-accent-2);
+    background: var(--ws-accent-soft);
+}
+
+.ws-pick input[type='checkbox'] {
+    accent-color: var(--ws-accent-2);
+    flex-shrink: 0;
+}
+
+.ws-pick__name {
+    font-weight: 600;
+    color: var(--ws-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ws-pick__sub {
+    display: block;
+    font-size: 10.5px;
+    color: var(--ws-text-2);
+}
+
+/* ── قوائم صفوف كثيفة (كقائمة الطلاب) ── */
+.ws-rows {
+    display: flex;
+    flex-direction: column;
+}
+
+.ws-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 5.5px 14px;
+    border-bottom: 1px solid var(--ws-hairline);
+    font-size: 12px;
+}
+
+.ws-row:last-child {
+    border-bottom: none;
+}
+
+.ws-row:hover {
+    background: var(--ws-hover);
+}
+
+.ws-row__name {
+    font-weight: 600;
+    color: var(--ws-text);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ── حقائق مفصلة (dl) داخل البلوكات ── */
+.ws-facts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+}
+
+.ws-facts-list > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 12px;
+}
+
+.ws-facts-list dt {
+    color: var(--ws-text-2);
+    flex-shrink: 0;
+}
+
+.ws-facts-list dd {
+    margin: 0;
+    color: var(--ws-text);
+    font-weight: 600;
+    text-align: left;
+}
+
+/* ── شريط تقدم مصغّر ── */
+.ws-progress {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ws-progressbar {
+    flex: 1;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--ws-surface-2);
+    border: 1px solid var(--ws-hairline);
+    overflow: hidden;
+}
+
+.ws-progressbar > span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--ws-accent-2);
+    transition: width 0.3s;
+}
+
+/* ── تنبيه شريطي رفيع ── */
+.ws-alert {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    padding: 7px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ws-red);
+    background: var(--ws-red-bg);
+    border-bottom: 1px solid var(--ws-red-bd);
+}
+
+.ws-alert--warn {
+    color: var(--ws-amber);
+    background: var(--ws-amber-bg);
+    border-color: var(--ws-amber-bd);
+}
+
+.ws-alert--info {
+    color: var(--ws-accent);
+    background: var(--ws-accent-softer);
+    border-color: var(--ws-hairline);
+}
+
+.ws-alert--success {
+    color: var(--ws-green);
+    background: var(--ws-green-bg);
+    border-color: var(--ws-green-bd);
+}
+
+/* نسخة صندوقية للاستخدام داخل المودالات والبلوكات */
+.ws-alert--boxed {
+    border: 1px solid;
+    border-radius: 8px;
+    padding: 8px 12px;
+}
+
+/* ── حالات فارغة وتحميل ── */
+.ws-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 24px;
+    font-size: 12px;
+    color: var(--ws-text-2);
+    text-align: center;
+}
+
+.ws-empty svg {
+    width: 26px;
+    height: 26px;
+    color: var(--ws-border);
+}
+
+.ws-spinner {
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--ws-accent-2);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: ws-spin 0.7s linear infinite;
+}
+
+@keyframes ws-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* نقطة «مباشر» نابضة */
+.ws-pulse {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--ws-green);
+    flex-shrink: 0;
+    animation: ws-pulse 1.5s ease-in-out infinite;
+}
+
+.ws-pulse--red {
+    background: var(--ws-red);
+}
+
+/* نبض خافت لأي عنصر (كعدّاد «القادم قريباً») */
+.ws-soft-pulse {
+    animation: ws-pulse 2s ease-in-out infinite;
+}
+
+@keyframes ws-pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.35;
+    }
+}
+
+/* ── التايم لاين الحي ── */
+.ws-timeline {
+    position: relative;
+    padding: 14px 16px 14px 14px;
+}
+
+/* الخط العمودي */
+.ws-timeline::before {
+    content: '';
+    position: absolute;
+    top: 14px;
+    bottom: 14px;
+    inset-inline-start: 37px;
+    width: 2px;
+    border-radius: 2px;
+    background: linear-gradient(to bottom, transparent, var(--ws-accent-2) 6%, var(--ws-accent-2) 94%, transparent);
+    opacity: 0.3;
+}
+
+.ws-timeline__item {
+    position: relative;
+    padding-inline-start: 62px;
+    margin-bottom: 14px;
+    animation: ws-rise 0.3s ease both;
+}
+
+.ws-timeline__item:last-child {
+    margin-bottom: 0;
+}
+
+/* عقدة الوقت */
+.ws-timeline__node {
+    position: absolute;
+    inset-inline-start: 4px;
+    top: 0;
+    width: 66px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    z-index: 2;
+}
+
+.ws-timeline__dot {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ws-accent-soft);
+    color: var(--ws-accent);
+    border: 2px solid var(--ws-surface);
+    box-shadow: 0 0 0 1px var(--ws-border);
+}
+
+.ws-timeline__dot svg {
+    width: 15px;
+    height: 15px;
+}
+
+.ws-timeline__time {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--ws-text-2);
+    direction: ltr;
+    white-space: nowrap;
+}
+
+/* حالات العنصر الزمنية */
+.ws-timeline__item.is-past {
+    opacity: 0.55;
+    filter: saturate(0.55);
+}
+
+.ws-timeline__item.is-current .ws-timeline__dot {
+    animation: ws-ring 2s ease-out infinite;
+}
+
+.ws-timeline__item.is-current .ws-timeline__card {
+    box-shadow: 0 0 0 1.5px var(--ws-accent-2);
+}
+
+@keyframes ws-ring {
+    0% {
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--ws-accent-2) 45%, transparent);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px transparent;
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 transparent;
+    }
+}
+
+@keyframes ws-rise {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* بطاقة التايم لاين — بخط جانبي ملوّن حسب النوع */
+.ws-timeline__card {
+    border: 1px solid var(--ws-border);
+    border-inline-start: 3px solid var(--ws-accent-2);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--ws-surface);
+}
+
+.ws-timeline__card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--ws-hairline);
+    background: var(--ws-accent-softer);
+}
+
+/* خط «الآن» المتحرك */
+.ws-timeline__now {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0 14px;
+}
+
+.ws-timeline__now-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10.5px;
+    font-weight: 800;
+    color: var(--ws-red);
+    flex-shrink: 0;
+}
+
+.ws-timeline__now-line {
+    flex: 1;
+    height: 2px;
+    background: repeating-linear-gradient(to left, var(--ws-red) 0 6px, transparent 6px 12px);
+    opacity: 0.55;
+    border-radius: 2px;
+}
+
+/* ── المودال الكثيف ── */
+.ws-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.45);
+}
+
+.ws-modal__panel {
+    width: 100%;
+    max-width: 420px;
+    max-height: 90vh;
+    overflow-y: auto;
+    background: var(--ws-surface);
+    border: 1px solid var(--ws-border);
+    border-radius: 10px;
+    color: var(--ws-text);
+}
+
+.ws-modal__head {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 12px 16px;
+    background: var(--ws-surface-2);
+    border-bottom: 1px solid var(--ws-hairline);
+}
+
+.ws-modal__title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.ws-modal__sub {
+    margin: 0;
+    font-size: 12px;
+    color: var(--ws-text-2);
+}
+
+.ws-modal__body {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.ws-modal__foot {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 10px 16px;
+    border-top: 1px solid var(--ws-hairline);
+}
+
+/* أزرار اختيار الحالة داخل المودال */
+.ws-choice-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
+.ws-choice {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: inherit;
+    border: 1px solid var(--ws-border);
+    border-radius: 8px;
+    background: var(--ws-surface);
+    color: var(--ws-text-2);
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s;
+}
+
+.ws-choice svg {
+    width: 13px;
+    height: 13px;
+}
+
+.ws-choice:hover:not(:disabled) {
+    border-color: var(--ws-accent);
+}
+
+.ws-choice.is-selected {
+    border-color: var(--ws-accent);
+    background: var(--ws-accent-soft);
+    color: var(--ws-accent);
+    box-shadow: 0 0 0 1px var(--ws-accent);
+}
+
+.ws-choice:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    background: var(--ws-surface-2);
+}
+
+/* ── تمرير رفيع داخل الأعمدة ── */
+.ws-page ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.ws-page ::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.ws-page ::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--ws-text-2) 35%, transparent);
+    border-radius: 999px;
+    border: 2px solid var(--ws-surface);
+}
+
+.ws-page ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--ws-text-2) 55%, transparent);
+}
+
+/* ── التجاوب: تحت lg (1024px) تتراص الأعمدة ويعود التمرير الطبيعي ── */
+@media (max-width: 1023.98px) {
+    .ws-page {
+        height: auto;
+        overflow: visible;
+    }
+
+    .ws-layout {
+        flex-direction: column;
+        overflow: visible;
+    }
+
+    .ws-main {
+        overflow: visible;
+    }
+
+    .ws-tablewrap {
+        max-height: 60vh;
+        overflow: auto;
+    }
+
+    .ws-sidecol {
+        width: auto;
+        border-inline-start: none;
+        border-inline-end: none;
+        border-top: 1px solid var(--ws-border);
+    }
+
+    /* على الجوال: العمود الأوسط أولاً ثم الأعمدة الجانبية */
+    .ws-main {
+        order: -1;
+    }
+
+    /* المطوي يتحول لشريط أفقي رفيع */
+    .ws-sidecol--min {
+        width: auto;
+    }
+
+    .ws-sidecol__reopen {
+        flex-direction: row;
+        justify-content: center;
+        padding: 10px 14px;
+    }
+
+    .ws-sidecol__reopen span {
+        writing-mode: horizontal-tb;
+        letter-spacing: 0.3px;
+    }
+
+    .ws-sidecol__scroll {
+        overflow: visible;
+    }
+}

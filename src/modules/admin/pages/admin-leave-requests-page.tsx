@@ -16,6 +16,46 @@ import type {
   LeaveRequestSubmittedBy,
   StudentRecord,
 } from '../types'
+import {
+  Ban,
+  CheckCircle2,
+  ChevronRight,
+  ChevronLeft,
+  Clock3,
+  DoorOpen,
+  Inbox,
+  Info,
+  ListChecks,
+  Plus,
+  Printer,
+  RefreshCw,
+  UserRound,
+  XCircle,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import {
+  WsAlert,
+  WsBlock,
+  WsBtn,
+  WsChip,
+  WsEmpty,
+  WsFact,
+  WsFactRow,
+  WsFactsList,
+  WsField,
+  WsHeader,
+  WsInput,
+  WsLayout,
+  WsMain,
+  WsModal,
+  WsPage,
+  WsSelect,
+  WsSideCol,
+  WsTable,
+  WsTextarea,
+  WsToolbar,
+  type WsChipTone,
+} from '@/shared/workspace'
 
 const STATUS_LABELS: Record<LeaveRequestStatus, string> = {
   pending: 'بانتظار المراجعة',
@@ -24,11 +64,18 @@ const STATUS_LABELS: Record<LeaveRequestStatus, string> = {
   cancelled: 'ملغى',
 }
 
-const STATUS_STYLES: Record<LeaveRequestStatus, string> = {
-  pending: 'bg-amber-50 text-amber-700',
-  approved: 'bg-emerald-50 text-emerald-700',
-  rejected: 'bg-rose-50 text-rose-700',
-  cancelled: 'bg-slate-100 text-slate-500',
+const STATUS_TONES: Record<LeaveRequestStatus, WsChipTone | undefined> = {
+  pending: 'amber',
+  approved: 'green',
+  rejected: 'red',
+  cancelled: undefined,
+}
+
+const STATUS_ICONS: Record<LeaveRequestStatus, LucideIcon> = {
+  pending: Clock3,
+  approved: CheckCircle2,
+  rejected: XCircle,
+  cancelled: Ban,
 }
 
 const STATUS_OPTIONS: Array<{ value: LeaveRequestStatus | 'all'; label: string }> = [
@@ -88,81 +135,17 @@ function formatDateTime(value?: string | null) {
   return formatDate(value, { dateStyle: 'medium', timeStyle: 'short' })
 }
 
-function StatusBadge({ status }: { status: LeaveRequestStatus }) {
+function StatusChip({ status }: { status: LeaveRequestStatus }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLES[status]}`}>
+    <WsChip tone={STATUS_TONES[status]} icon={STATUS_ICONS[status]}>
       {STATUS_LABELS[status]}
-    </span>
+    </WsChip>
   )
 }
 
-function DetailsCard({ request }: { request: LeaveRequestRecord | null }) {
-  if (!request) {
-    return (
-      <aside className="rounded-3xl border border-dashed border-slate-200 bg-white/60 p-6 text-center text-sm text-muted">
-        <p>اختر طلباً من الجدول لعرض تفاصيل الاستئذان.</p>
-      </aside>
-    )
-  }
-
-  return (
-    <aside className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div className="text-right">
-          <p className="text-xs font-semibold text-slate-500">الطالب</p>
-          <h3 className="text-lg font-bold text-slate-900">{request.student.name}</h3>
-          <p className="text-sm text-muted">
-            {request.student.grade} • {request.student.class_name} • هوية {request.student.national_id || '—'}
-          </p>
-        </div>
-        <StatusBadge status={request.status} />
-      </header>
-
-      <section className="rounded-2xl bg-slate-50/80 p-4 text-right">
-        <p className="text-xs font-semibold text-slate-500">سبب الاستئذان</p>
-        <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{request.reason}</p>
-      </section>
-
-      <section className="grid gap-3 md:grid-cols-2">
-        <div className="rounded-2xl border border-slate-100 bg-white p-4 text-right shadow-sm">
-          <p className="text-xs font-semibold text-slate-500">ولي الأمر</p>
-          <p className="mt-1 text-sm font-semibold text-slate-900">{request.guardian_name || '—'}</p>
-          <p className="text-xs text-muted">{request.guardian_phone || '—'}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-100 bg-white p-4 text-right shadow-sm">
-          <p className="text-xs font-semibold text-slate-500">من سيستلم الطالب</p>
-          <p className="mt-1 text-sm font-semibold text-slate-900">{request.pickup_person_name}</p>
-          <p className="text-xs text-muted">{request.pickup_person_relation || '—'} • {request.pickup_person_phone || '—'}</p>
-        </div>
-      </section>
-
-      <section className="grid gap-3 md:grid-cols-2">
-        <div className="rounded-2xl border border-slate-100 bg-white p-4 text-right shadow-sm">
-          <p className="text-xs font-semibold text-slate-500">موعد الانصراف المتوقع</p>
-          <p className="mt-1 text-sm text-slate-900">{formatDateTime(request.expected_pickup_time)}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-100 bg-white p-4 text-right shadow-sm">
-          <p className="text-xs font-semibold text-slate-500">تاريخ الطلب</p>
-          <p className="mt-1 text-sm text-slate-900">{formatDateTime(request.created_at)}</p>
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4 text-right">
-        <p className="text-xs font-semibold text-indigo-600">قرار الإدارة</p>
-        <p className="mt-1 text-sm text-slate-800">
-          {request.decision_by_admin ? `${request.decision_by_admin.name}` : 'بانتظار القرار'}
-        </p>
-        <p className="text-xs text-muted">
-          {request.decision_at ? formatDateTime(request.decision_at) : '—'}
-        </p>
-        {request.decision_notes ? (
-          <p className="mt-2 rounded-2xl bg-white px-3 py-2 text-sm text-slate-700 shadow-sm">
-            {request.decision_notes}
-          </p>
-        ) : null}
-      </section>
-    </aside>
-  )
+function FieldError({ message }: { message: string | null }) {
+  if (!message) return null
+  return <span style={{ fontSize: 11, color: 'var(--ws-red)', fontWeight: 600 }}>{message}</span>
 }
 
 interface CreateLeaveRequestDialogProps {
@@ -175,6 +158,7 @@ interface CreateLeaveRequestDialogProps {
   onRefreshStudents: () => void
 }
 
+// مودال إنشاء طلب استئذان — نموذج بعمودين (كلاسات ws-modal الخام لأنه form)
 function CreateLeaveRequestDialog({
   open,
   onClose,
@@ -328,226 +312,189 @@ function CreateLeaveRequestDialog({
     await onSubmit(values)
   }
 
+  const errorStyle = { borderColor: 'var(--ws-red)' }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" role="dialog">
+    <div className="ws-modal" onClick={() => !isSubmitting && onClose()}>
       <form
-        className="relative w-full max-w-3xl rounded-3xl bg-white p-6 text-right shadow-xl"
+        className="ws-modal__panel"
+        style={{ maxWidth: 720 }}
         onSubmit={handleSubmit}
+        onClick={(event) => event.stopPropagation()}
         noValidate
       >
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute left-5 top-5 text-sm font-semibold text-slate-400 transition hover:text-slate-600"
-          disabled={isSubmitting}
-        >
-          إغلاق
-        </button>
-
-        <header className="mb-6 space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">طلب استئذان جديد</p>
-          <h2 className="text-2xl font-bold text-slate-900">سجّل إذن خروج لطالب وحدد المسؤولين عنه</h2>
-          <p className="text-sm text-muted">
+        <header className="ws-modal__head">
+          <h3 className="ws-modal__title">طلب استئذان جديد</h3>
+          <p className="ws-modal__sub">
             اختر الطالب، عرّف المستلم من المدرسة، وحدد وقت الانصراف المتوقع. يمكن اعتماد الطلب مباشرة أثناء الإنشاء.
           </p>
         </header>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          <section className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-600">الطالب</label>
-              <div className="grid grid-cols-2 gap-2">
-                <select
-                  value={gradeFilter}
-                  onChange={(event) => { setGradeFilter(event.target.value); setClassFilter(''); handleChange('student_id', '') }}
-                  className="rounded-2xl border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  disabled={isSubmitting}
-                >
-                  <option value="">كل الصفوف</option>
-                  {grades.map((g) => <option key={g} value={g}>{g}</option>)}
-                </select>
-                <select
-                  value={classFilter}
-                  onChange={(event) => { setClassFilter(event.target.value); handleChange('student_id', '') }}
-                  className="rounded-2xl border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  disabled={isSubmitting}
-                >
-                  <option value="">كل الفصول</option>
-                  {classes.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <input
-                type="text"
-                value={studentSearch}
-                onChange={(event) => setStudentSearch(event.target.value)}
-                className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                placeholder="ابحث باسم الطالب أو رقم الهوية..."
-                disabled={isSubmitting}
-              />
-              <div className="flex items-center gap-2">
-                <select
-                  value={values.student_id}
-                  onChange={(event) => handleChange('student_id', Number(event.target.value) || '')}
-                  className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${errors.student_id ? 'border-rose-300' : 'border-slate-200'}`}
-                  disabled={isSubmitting || isLoadingStudents}
-                >
-                  <option value="">اختر الطالب ({studentOptions.length})</option>
-                  {studentOptions.map((student) => (
-                    <option key={student.id} value={student.id}>
-                      {student.name} • {student.grade} - {student.class_name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={onRefreshStudents}
-                  className="rounded-2xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-500 transition hover:border-indigo-200 hover:text-indigo-600"
-                  disabled={isSubmitting}
-                >
-                  تحديث
-                </button>
-              </div>
-              {errors.student_id ? <p className="text-xs text-rose-600">{errors.student_id}</p> : null}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-600">سبب الاستئذان</label>
-              <textarea
-                value={values.reason}
-                onChange={(event) => handleChange('reason', event.target.value)}
-                rows={4}
-                className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${errors.reason ? 'border-rose-300' : 'border-slate-200'}`}
-                placeholder="مثال: مراجعة طبية في مستشفى المدينة"
-                disabled={isSubmitting}
-              />
-              {errors.reason ? <p className="text-xs text-rose-600">{errors.reason}</p> : null}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-600">موعد الانصراف</label>
-              <input
-                type="datetime-local"
-                value={values.expected_pickup_time}
-                onChange={(event) => handleChange('expected_pickup_time', event.target.value)}
-                className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${errors.expected_pickup_time ? 'border-rose-300' : 'border-slate-200'}`}
-                disabled={isSubmitting}
-              />
-              {errors.expected_pickup_time ? <p className="text-xs text-rose-600">{errors.expected_pickup_time}</p> : null}
-            </div>
-          </section>
-
-          <section className="space-y-4">
-            <div className="grid gap-3 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-600">ولي الأمر</label>
-                <input
+        <div className="ws-modal__body">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span className="ws-label">الطالب</span>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                  <WsSelect
+                    value={gradeFilter}
+                    onChange={(event) => { setGradeFilter(event.target.value); setClassFilter(''); handleChange('student_id', '') }}
+                    disabled={isSubmitting}
+                  >
+                    <option value="">كل الصفوف</option>
+                    {grades.map((g) => <option key={g} value={g}>{g}</option>)}
+                  </WsSelect>
+                  <WsSelect
+                    value={classFilter}
+                    onChange={(event) => { setClassFilter(event.target.value); handleChange('student_id', '') }}
+                    disabled={isSubmitting}
+                  >
+                    <option value="">كل الفصول</option>
+                    {classes.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </WsSelect>
+                </div>
+                <WsInput
                   type="text"
-                  value={values.guardian_name}
-                  onChange={(event) => handleChange('guardian_name', event.target.value)}
-                  className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${errors.guardian_name ? 'border-rose-300' : 'border-slate-200'}`}
-                  placeholder="اسم ولي الأمر"
+                  value={studentSearch}
+                  onChange={(event) => setStudentSearch(event.target.value)}
+                  placeholder="ابحث باسم الطالب أو رقم الهوية..."
                   disabled={isSubmitting}
                 />
-                {errors.guardian_name ? <p className="text-xs text-rose-600">{errors.guardian_name}</p> : null}
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <WsSelect
+                    value={values.student_id}
+                    onChange={(event) => handleChange('student_id', Number(event.target.value) || '')}
+                    disabled={isSubmitting || isLoadingStudents}
+                    style={{ flex: 1, ...(errors.student_id ? errorStyle : null) }}
+                  >
+                    <option value="">اختر الطالب ({studentOptions.length})</option>
+                    {studentOptions.map((student) => (
+                      <option key={student.id} value={student.id}>
+                        {student.name} • {student.grade} - {student.class_name}
+                      </option>
+                    ))}
+                  </WsSelect>
+                  <WsBtn icon={RefreshCw} onClick={onRefreshStudents} disabled={isSubmitting}>
+                    تحديث
+                  </WsBtn>
+                </div>
+                <FieldError message={errors.student_id} />
               </div>
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-600">هاتف ولي الأمر</label>
-                <input
+
+              <WsField label="سبب الاستئذان">
+                <WsTextarea
+                  value={values.reason}
+                  onChange={(event) => handleChange('reason', event.target.value)}
+                  rows={4}
+                  placeholder="مثال: مراجعة طبية في مستشفى المدينة"
+                  disabled={isSubmitting}
+                  style={errors.reason ? errorStyle : undefined}
+                />
+                <FieldError message={errors.reason} />
+              </WsField>
+
+              <WsField label="موعد الانصراف">
+                <WsInput
+                  type="datetime-local"
+                  value={values.expected_pickup_time}
+                  onChange={(event) => handleChange('expected_pickup_time', event.target.value)}
+                  disabled={isSubmitting}
+                  style={errors.expected_pickup_time ? errorStyle : undefined}
+                />
+                <FieldError message={errors.expected_pickup_time} />
+              </WsField>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                <WsField label="ولي الأمر">
+                  <WsInput
+                    type="text"
+                    value={values.guardian_name}
+                    onChange={(event) => handleChange('guardian_name', event.target.value)}
+                    placeholder="اسم ولي الأمر"
+                    disabled={isSubmitting}
+                  />
+                </WsField>
+                <WsField label="هاتف ولي الأمر">
+                  <WsInput
+                    type="tel"
+                    value={values.guardian_phone}
+                    onChange={(event) => handleChange('guardian_phone', event.target.value)}
+                    placeholder="05xxxxxxxx"
+                    disabled={isSubmitting}
+                  />
+                </WsField>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                <WsField label="اسم المستلم">
+                  <WsInput
+                    type="text"
+                    value={values.pickup_person_name}
+                    onChange={(event) => handleChange('pickup_person_name', event.target.value)}
+                    placeholder="من سيستلم الطالب"
+                    disabled={isSubmitting}
+                    style={errors.pickup_person_name ? errorStyle : undefined}
+                  />
+                  <FieldError message={errors.pickup_person_name} />
+                </WsField>
+                <WsField label="صلة القرابة">
+                  <WsInput
+                    type="text"
+                    value={values.pickup_person_relation}
+                    onChange={(event) => handleChange('pickup_person_relation', event.target.value)}
+                    placeholder="مثال: الأب / العم"
+                    disabled={isSubmitting}
+                  />
+                </WsField>
+              </div>
+
+              <WsField label="هاتف المستلم">
+                <WsInput
                   type="tel"
-                  value={values.guardian_phone}
-                  onChange={(event) => handleChange('guardian_phone', event.target.value)}
-                  className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${errors.guardian_phone ? 'border-rose-300' : 'border-slate-200'}`}
-                  placeholder="05xxxxxxxx"
+                  value={values.pickup_person_phone}
+                  onChange={(event) => handleChange('pickup_person_phone', event.target.value)}
+                  placeholder="رقم للتواصل"
                   disabled={isSubmitting}
                 />
-                {errors.guardian_phone ? <p className="text-xs text-rose-600">{errors.guardian_phone}</p> : null}
-              </div>
-            </div>
+              </WsField>
 
-            <div className="grid gap-3 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-600">اسم المستلم</label>
-                <input
-                  type="text"
-                  value={values.pickup_person_name}
-                  onChange={(event) => handleChange('pickup_person_name', event.target.value)}
-                  className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${errors.pickup_person_name ? 'border-rose-300' : 'border-slate-200'}`}
-                  placeholder="اسم الشخص الذي سيستلم الطالب"
+              <WsField label="حالة الطلب عند الإنشاء">
+                <WsSelect
+                  value={values.status}
+                  onChange={(event) => handleChange('status', event.target.value as LeaveRequestStatus)}
                   disabled={isSubmitting}
-                />
-                {errors.pickup_person_name ? <p className="text-xs text-rose-600">{errors.pickup_person_name}</p> : null}
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-600">صلة القرابة</label>
-                <input
-                  type="text"
-                  value={values.pickup_person_relation}
-                  onChange={(event) => handleChange('pickup_person_relation', event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  placeholder="مثال: الأب / العم"
-                  disabled={isSubmitting}
-                />
-              </div>
-            </div>
+                >
+                  <option value="pending">بانتظار الموافقة</option>
+                  <option value="approved">معتمد فوراً</option>
+                </WsSelect>
+              </WsField>
 
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-600">هاتف المستلم</label>
-              <input
-                type="tel"
-                value={values.pickup_person_phone}
-                onChange={(event) => handleChange('pickup_person_phone', event.target.value)}
-                className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                placeholder="رقم للتواصل"
-                disabled={isSubmitting}
-              />
+              {values.status === 'approved' ? (
+                <WsField label="ملاحظات القرار">
+                  <WsTextarea
+                    value={values.decision_notes}
+                    onChange={(event) => handleChange('decision_notes', event.target.value)}
+                    rows={3}
+                    placeholder="مثال: تم التحقق من الاتصال بولي الأمر"
+                    disabled={isSubmitting}
+                    style={errors.decision_notes ? errorStyle : undefined}
+                  />
+                  <FieldError message={errors.decision_notes} />
+                </WsField>
+              ) : null}
             </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-600">حالة الطلب عند الإنشاء</label>
-              <select
-                value={values.status}
-                onChange={(event) => handleChange('status', event.target.value as LeaveRequestStatus)}
-                className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${errors.status ? 'border-rose-300' : 'border-slate-200'}`}
-                disabled={isSubmitting}
-              >
-                <option value="pending">بانتظار الموافقة</option>
-                <option value="approved">معتمد فوراً</option>
-              </select>
-            </div>
-
-            {values.status === 'approved' ? (
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-600">ملاحظات القرار</label>
-                <textarea
-                  value={values.decision_notes}
-                  onChange={(event) => handleChange('decision_notes', event.target.value)}
-                  rows={3}
-                  className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${errors.decision_notes ? 'border-rose-300' : 'border-slate-200'}`}
-                  placeholder="مثال: تم التحقق من الاتصال بولي الأمر"
-                  disabled={isSubmitting}
-                />
-                {errors.decision_notes ? <p className="text-xs text-rose-600">{errors.decision_notes}</p> : null}
-              </div>
-            ) : null}
-          </section>
+          </div>
         </div>
 
-        <footer className="mt-6 flex flex-wrap items-center justify-end gap-3 border-t border-slate-100 pt-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300"
-            disabled={isSubmitting}
-          >
+        <footer className="ws-modal__foot">
+          <WsBtn onClick={onClose} disabled={isSubmitting}>
             إلغاء
-          </button>
-          <button
-            type="submit"
-            className="rounded-2xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-300"
-            disabled={isSubmitting}
-          >
+          </WsBtn>
+          <WsBtn variant="primary" icon={DoorOpen} type="submit" disabled={isSubmitting}>
             {isSubmitting ? 'جاري الحفظ...' : 'حفظ الطلب'}
-          </button>
+          </WsBtn>
         </footer>
       </form>
     </div>
@@ -593,8 +540,7 @@ function DecisionDialog({ state, onClose, onConfirm, isSubmitting }: DecisionDia
         ? 'يرجى كتابة سبب واضح لرفض الطلب، سيظهر لولي الأمر.'
         : 'يمكن كتابة سبب الإلغاء، وسيتم إشعار ولي الأمر في حال توفر رقم.'
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const handleConfirm = async () => {
     if (isReject && !notes.trim()) {
       setError('سبب الرفض مطلوب')
       return
@@ -604,232 +550,43 @@ function DecisionDialog({ state, onClose, onConfirm, isSubmitting }: DecisionDia
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" role="dialog">
-      <form className="w-full max-w-lg rounded-3xl bg-white p-6 text-right shadow-xl" onSubmit={handleSubmit}>
-        <header className="mb-4 space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">{title}</p>
-          <h3 className="text-xl font-bold text-slate-900">{state.request.student.name}</h3>
-          <p className="text-sm text-muted">{description}</p>
-        </header>
-
-        <section className="space-y-2">
-          <label className="text-xs font-semibold text-slate-600" htmlFor="decision-notes">
-            الملاحظات
-          </label>
-          <textarea
-            id="decision-notes"
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
-            rows={isReject ? 4 : 3}
-            placeholder={isReject ? 'اذكر سبب الرفض بالتفصيل' : 'أضف ملاحظات للقرار (اختياري)'}
-            className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${error ? 'border-rose-300' : 'border-slate-200'}`}
-            disabled={isSubmitting}
-          />
-          {error ? <p className="text-xs text-rose-600">{error}</p> : null}
-        </section>
-
-        <footer className="mt-6 flex items-center justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300"
-            disabled={isSubmitting}
-          >
+    <WsModal
+      open
+      onClose={() => !isSubmitting && onClose()}
+      title={title}
+      sub={`${state.request.student.name} — ${description}`}
+      footer={
+        <>
+          <WsBtn onClick={onClose} disabled={isSubmitting}>
             تراجع
-          </button>
-          <button
-            type="submit"
-            className={`rounded-2xl px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 disabled:cursor-not-allowed ${
-              state.type === 'approve'
-                ? 'bg-emerald-600 disabled:bg-emerald-300'
-                : isReject
-                  ? 'bg-rose-600 disabled:bg-rose-300'
-                  : 'bg-slate-500 disabled:bg-slate-300'
-            }`}
+          </WsBtn>
+          <WsBtn
+            variant={isReject ? 'danger' : 'primary'}
+            icon={isReject ? XCircle : state.type === 'approve' ? CheckCircle2 : Ban}
+            onClick={handleConfirm}
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'جاري التنفيذ...' : state.type === 'approve' ? 'اعتماد' : isReject ? 'رفض' : 'إلغاء'}
-          </button>
-        </footer>
-      </form>
-    </div>
-  )
-}
-
-function LeaveRequestsTable({
-  requests,
-  onSelect,
-  selectedId,
-  onApprove,
-  onReject,
-  onCancel,
-}: {
-  requests: LeaveRequestRecord[]
-  selectedId: number | null
-  onSelect: (request: LeaveRequestRecord) => void
-  onApprove: (request: LeaveRequestRecord) => void
-  onReject: (request: LeaveRequestRecord) => void
-  onCancel: (request: LeaveRequestRecord) => void
-}) {
-  if (!requests.length) {
-    return (
-      <div className="flex h-80 flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-slate-200 bg-white/70 text-center text-sm text-muted">
-        <i className="bi bi-inbox text-3xl text-slate-300" />
-        لا توجد طلبات استئذان مطابقة للمرشحات الحالية.
+            {isSubmitting ? 'جاري التنفيذ...' : state.type === 'approve' ? 'اعتماد' : isReject ? 'رفض' : 'إلغاء الطلب'}
+          </WsBtn>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-1.5">
+        <label className="ws-label" htmlFor="decision-notes">
+          الملاحظات
+        </label>
+        <WsTextarea
+          id="decision-notes"
+          value={notes}
+          onChange={(event) => setNotes(event.target.value)}
+          rows={isReject ? 4 : 3}
+          placeholder={isReject ? 'اذكر سبب الرفض بالتفصيل' : 'أضف ملاحظات للقرار (اختياري)'}
+          disabled={isSubmitting}
+          style={error ? { borderColor: 'var(--ws-red)' } : undefined}
+        />
+        <FieldError message={error} />
       </div>
-    )
-  }
-
-  return (
-    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-      <table className="min-w-full text-right text-sm">
-        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-widest text-slate-500">
-          <tr>
-            <th className="px-4 py-3">الطالب</th>
-            <th className="px-4 py-3">موعد الانصراف</th>
-            <th className="px-4 py-3">المستلم</th>
-            <th className="px-4 py-3">المصدر</th>
-            <th className="px-4 py-3">الحالة</th>
-            <th className="px-4 py-3">تاريخ الطلب</th>
-            <th className="px-4 py-3">الإجراءات</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-          {requests.map((request) => {
-            const isSelected = request.id === selectedId
-            return (
-              <tr
-                key={request.id}
-                className={`transition hover:bg-indigo-50/40 ${isSelected ? 'bg-indigo-50/40' : 'bg-white'}`}
-              >
-                <td className="px-4 py-3">
-                  <button
-                    type="button"
-                    onClick={() => onSelect(request)}
-                    className="text-right"
-                  >
-                    <div className="space-y-1">
-                      <p className="text-sm font-semibold text-slate-900">{request.student.name}</p>
-                      <p className="text-xs text-muted">
-                        {request.student.grade} • {request.student.class_name}
-                      </p>
-                      <p className="text-xs text-muted">سبب: {request.reason.slice(0, 80)}{request.reason.length > 80 ? '…' : ''}</p>
-                    </div>
-                  </button>
-                </td>
-                <td className="px-4 py-3 text-sm text-slate-700">{formatDateTime(request.expected_pickup_time)}</td>
-                <td className="px-4 py-3">
-                  <div className="space-y-1 text-xs text-slate-700">
-                    <p className="font-semibold text-slate-900">{request.pickup_person_name}</p>
-                    <p>{request.pickup_person_relation || '—'}</p>
-                    <p>{request.pickup_person_phone || '—'}</p>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-xs text-muted">
-                  {SUBMITTER_LABELS[request.submitted_by_type]}
-                  {request.submitted_by_type === 'admin' && request.submitted_by_admin ? (
-                    <span className="block text-[11px] text-slate-400">{request.submitted_by_admin.name}</span>
-                  ) : null}
-                </td>
-                <td className="px-4 py-3">
-                  <StatusBadge status={request.status} />
-                </td>
-                <td className="px-4 py-3 text-sm text-slate-700">{formatDateTime(request.created_at)}</td>
-                <td className="px-4 py-3">
-                  <div className="flex flex-wrap items-center gap-2 text-xs">
-                    {request.status === 'pending' ? (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => onApprove(request)}
-                          className="rounded-full bg-emerald-100 px-3 py-1 font-semibold text-emerald-700 transition hover:bg-emerald-200"
-                        >
-                          اعتماد
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onReject(request)}
-                          className="rounded-full bg-rose-100 px-3 py-1 font-semibold text-rose-700 transition hover:bg-rose-200"
-                        >
-                          رفض
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onCancel(request)}
-                          className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-600 transition hover:bg-slate-200"
-                        >
-                          إلغاء
-                        </button>
-                      </>
-                    ) : request.status === 'approved' ? (
-                      <button
-                        type="button"
-                        onClick={() => onCancel(request)}
-                        className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-600 transition hover:bg-slate-200"
-                      >
-                        إلغاء الموافقة
-                      </button>
-                    ) : (
-                      <span className="text-[11px] text-muted">لا توجد إجراءات</span>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-function PaginationControls({
-  currentPage,
-  totalPages,
-  onChange,
-}: {
-  currentPage: number
-  totalPages: number
-  onChange: (page: number) => void
-}) {
-  if (totalPages <= 1) return null
-
-  const pages = Array.from({ length: totalPages }, (_, index) => index + 1).slice(0, 10)
-  const clampedCurrent = Math.min(currentPage, totalPages)
-
-  return (
-    <div className="flex flex-wrap items-center justify-end gap-2 text-xs font-semibold text-slate-600">
-      <button
-        type="button"
-        onClick={() => onChange(Math.max(1, clampedCurrent - 1))}
-        className="rounded-full border border-slate-200 px-3 py-1 transition hover:border-indigo-200 hover:text-indigo-600"
-        disabled={clampedCurrent === 1}
-      >
-        السابق
-      </button>
-      {pages.map((page) => (
-        <button
-          key={page}
-          type="button"
-          onClick={() => onChange(page)}
-          className={`rounded-full px-3 py-1 transition ${
-            page === clampedCurrent
-              ? 'bg-indigo-600 text-white shadow-sm'
-              : 'border border-slate-200 hover:border-indigo-200 hover:text-indigo-600'
-          }`}
-        >
-          {page}
-        </button>
-      ))}
-      <button
-        type="button"
-        onClick={() => onChange(Math.min(totalPages, clampedCurrent + 1))}
-        className="rounded-full border border-slate-200 px-3 py-1 transition hover:border-indigo-200 hover:text-indigo-600"
-        disabled={clampedCurrent === totalPages}
-      >
-        التالي
-      </button>
-    </div>
+    </WsModal>
   )
 }
 
@@ -1058,7 +815,7 @@ export function AdminLeaveRequestsPage() {
       تم إعداد هذه الصفحة لأولياء الأمور من خلال نظام المتابعة المدرسية.
     </footer>
   </div>
-  
+
   <div class="actions-toolbar">
     <button onclick="window.print()">🖨️ طباعة</button>
     <button onclick="downloadAsImage()" id="btn-image">📸 تنزيل كصورة</button>
@@ -1161,144 +918,277 @@ export function AdminLeaveRequestsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div className="space-y-1 text-right">
-          <h1 className="text-2xl font-bold text-slate-900">طلبات الاستئذان</h1>
-          <p className="text-sm text-muted">تابع طلبات خروج الطلاب واعتمدها أو ارفضها بملاحظات واضحة.</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handlePrintGuardianSheet}
-            className="rounded-2xl border border-indigo-200 bg-white px-4 py-2 text-sm font-semibold text-indigo-600 shadow-sm transition hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-70"
-            disabled={isGeneratingPrintSheet}
-          >
-            {isGeneratingPrintSheet ? 'جاري تجهيز الصفحة...' : 'طباعة تعليمات أولياء الأمور'}
-          </button>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
-            disabled={isLoading}
-          >
-            تحديث القائمة
-          </button>
-          <button
-            type="button"
-            onClick={() => setCreateDialogOpen(true)}
-            className="rounded-2xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
-          >
-            إضافة طلب جديد
-          </button>
-        </div>
-      </header>
+    <WsPage>
+      <WsHeader
+        title="طلبات الاستئذان"
+        badge="خروج الطلاب"
+        actions={
+          <>
+            <WsBtn icon={Printer} onClick={handlePrintGuardianSheet} disabled={isGeneratingPrintSheet}>
+              {isGeneratingPrintSheet ? 'جاري التجهيز...' : 'تعليمات أولياء الأمور'}
+            </WsBtn>
+            <WsBtn icon={RefreshCw} onClick={() => refetch()} disabled={isLoading}>
+              تحديث القائمة
+            </WsBtn>
+            <WsBtn variant="primary" icon={Plus} onClick={() => setCreateDialogOpen(true)}>
+              إضافة طلب جديد
+            </WsBtn>
+          </>
+        }
+        facts={
+          <>
+            <WsFact icon={Clock3} label="بانتظار المراجعة:">
+              {stats.pending.toLocaleString('ar-SA')}
+            </WsFact>
+            <WsFact icon={CheckCircle2} label="تمت الموافقة:">
+              {stats.approved.toLocaleString('ar-SA')}
+            </WsFact>
+            <WsFact icon={XCircle} label="مرفوض:">
+              {stats.rejected.toLocaleString('ar-SA')}
+            </WsFact>
+            <WsFact icon={Ban} label="ملغى:">
+              {stats.cancelled.toLocaleString('ar-SA')}
+            </WsFact>
+          </>
+        }
+      />
 
-      <section className="grid gap-3 md:grid-cols-4">
-        {(Object.keys(stats) as LeaveRequestStatus[]).map((status) => (
-          <article key={status} className="rounded-3xl border border-slate-100 bg-white/70 p-4 text-right shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">{STATUS_LABELS[status]}</p>
-            <p className="mt-2 text-2xl font-bold text-slate-900">{stats[status].toLocaleString('ar-SA')}</p>
-          </article>
-        ))}
-      </section>
+      <WsToolbar>
+        <WsField label="الحالة" htmlFor="ws-leave-status">
+          <WsSelect
+            id="ws-leave-status"
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value as LeaveRequestStatus | 'all')}
+          >
+            {STATUS_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </WsSelect>
+        </WsField>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="grid gap-4 md:grid-cols-5">
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-500">الحالة</label>
-            <select
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as LeaveRequestStatus | 'all')}
-              className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            >
-              {STATUS_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-500">مصدر الطلب</label>
-            <select
-              value={submittedByFilter}
-              onChange={(event) => setSubmittedByFilter(event.target.value as LeaveRequestSubmittedBy | 'all')}
-              className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            >
-              {SUBMITTER_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-500">من تاريخ</label>
-            <input
-              type="date"
-              value={fromDate}
-              onChange={(event) => setFromDate(event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-500">إلى تاريخ</label>
-            <input
-              type="date"
-              value={toDate}
-              onChange={(event) => setToDate(event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-500">الصفحة</label>
-            <input
-              type="number"
-              min={1}
-              value={page}
-              onChange={(event) => setPage(Math.max(1, Number(event.target.value) || 1))}
-              className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            />
-          </div>
-        </div>
-      </section>
+        <WsField label="مصدر الطلب" htmlFor="ws-leave-submitter">
+          <WsSelect
+            id="ws-leave-submitter"
+            value={submittedByFilter}
+            onChange={(event) => setSubmittedByFilter(event.target.value as LeaveRequestSubmittedBy | 'all')}
+          >
+            {SUBMITTER_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </WsSelect>
+        </WsField>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr),360px]">
-        <div className="space-y-4">
-          {isLoading ? (
-            <div className="flex h-80 flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-slate-200 bg-white/70 text-sm text-muted">
-              <span className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
-              جاري تحميل طلبات الاستئذان...
-            </div>
-          ) : isError ? (
-            <div className="flex h-80 flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-rose-200 bg-rose-50/70 text-center text-sm text-rose-700">
-              <i className="bi bi-exclamation-triangle text-3xl" />
-              تعذر تحميل البيانات
-              <button
-                type="button"
-                onClick={() => refetch()}
-                className="rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-700 transition hover:border-rose-300 hover:text-rose-800"
+        <WsField label="من تاريخ" htmlFor="ws-leave-from">
+          <WsInput id="ws-leave-from" type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} />
+        </WsField>
+
+        <WsField label="إلى تاريخ" htmlFor="ws-leave-to">
+          <WsInput id="ws-leave-to" type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} />
+        </WsField>
+      </WsToolbar>
+
+      {isError && (
+        <WsAlert>
+          تعذر تحميل البيانات.
+          <WsBtn size="sm" icon={RefreshCw} onClick={() => refetch()}>
+            إعادة المحاولة
+          </WsBtn>
+        </WsAlert>
+      )}
+
+      <WsLayout>
+        <WsMain>
+          <WsBlock title="الطلبات" icon={DoorOpen} count={requests.length.toLocaleString('ar-SA')} fill>
+            {isLoading ? (
+              <WsEmpty loading>جاري تحميل طلبات الاستئذان...</WsEmpty>
+            ) : requests.length === 0 ? (
+              <WsEmpty icon={Inbox}>لا توجد طلبات استئذان مطابقة للمرشحات الحالية.</WsEmpty>
+            ) : (
+              <WsTable>
+                <thead>
+                  <tr>
+                    <th>الطالب</th>
+                    <th>موعد الانصراف</th>
+                    <th>المستلم</th>
+                    <th>المصدر</th>
+                    <th>الحالة</th>
+                    <th>تاريخ الطلب</th>
+                    <th>الإجراءات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {requests.map((request) => {
+                    const isSelected = request.id === selectedRequest?.id
+                    return (
+                      <tr
+                        key={request.id}
+                        onClick={() => setSelectedRequest(request)}
+                        className={`is-clickable ${isSelected ? 'is-selected' : ''}`}
+                      >
+                        <td>
+                          <span style={{ fontWeight: 600 }}>{request.student.name}</span>
+                          <span className="ws-cell-sub">
+                            {request.student.grade} • {request.student.class_name}
+                          </span>
+                        </td>
+                        <td style={{ whiteSpace: 'nowrap' }}>{formatDateTime(request.expected_pickup_time)}</td>
+                        <td>
+                          <span style={{ fontWeight: 600 }}>{request.pickup_person_name}</span>
+                          <span className="ws-cell-sub">
+                            {request.pickup_person_relation || '—'} • {request.pickup_person_phone || '—'}
+                          </span>
+                        </td>
+                        <td>
+                          <WsChip tone={request.submitted_by_type === 'guardian' ? 'sky' : undefined} icon={UserRound}>
+                            {SUBMITTER_LABELS[request.submitted_by_type]}
+                          </WsChip>
+                          {request.submitted_by_type === 'admin' && request.submitted_by_admin ? (
+                            <span className="ws-cell-sub">{request.submitted_by_admin.name}</span>
+                          ) : null}
+                        </td>
+                        <td>
+                          <StatusChip status={request.status} />
+                        </td>
+                        <td style={{ whiteSpace: 'nowrap' }}>{formatDateTime(request.created_at)}</td>
+                        <td onClick={(event) => event.stopPropagation()}>
+                          {request.status === 'pending' ? (
+                            <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
+                              <WsBtn size="sm" icon={CheckCircle2} onClick={() => setActionDialog({ type: 'approve', request })}>
+                                اعتماد
+                              </WsBtn>
+                              <WsBtn size="sm" icon={XCircle} onClick={() => setActionDialog({ type: 'reject', request })}>
+                                رفض
+                              </WsBtn>
+                              <WsBtn size="sm" icon={Ban} onClick={() => setActionDialog({ type: 'cancel', request })}>
+                                إلغاء
+                              </WsBtn>
+                            </span>
+                          ) : request.status === 'approved' ? (
+                            <WsBtn size="sm" icon={Ban} onClick={() => setActionDialog({ type: 'cancel', request })}>
+                              إلغاء الموافقة
+                            </WsBtn>
+                          ) : (
+                            <span style={{ fontSize: 11, color: 'var(--ws-text-2)' }}>لا توجد إجراءات</span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </WsTable>
+            )}
+
+            {/* ترقيم الصفحات — شريط مدمج أسفل الجدول */}
+            {totalPages > 1 && (
+              <div
+                style={{
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  padding: '7px 14px',
+                  borderTop: '1px solid var(--ws-hairline)',
+                }}
               >
-                إعادة المحاولة
-              </button>
-            </div>
+                <WsBtn size="sm" icon={ChevronRight} onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1}>
+                  السابق
+                </WsBtn>
+                {Array.from({ length: totalPages }, (_, index) => index + 1)
+                  .slice(0, 10)
+                  .map((pageNumber) => (
+                    <WsBtn
+                      key={pageNumber}
+                      size="sm"
+                      variant={pageNumber === Math.min(page, totalPages) ? 'primary' : undefined}
+                      onClick={() => setPage(pageNumber)}
+                    >
+                      {pageNumber}
+                    </WsBtn>
+                  ))}
+                <WsBtn
+                  size="sm"
+                  icon={ChevronLeft}
+                  onClick={() => setPage(Math.min(totalPages, page + 1))}
+                  disabled={page === totalPages}
+                >
+                  التالي
+                </WsBtn>
+              </div>
+            )}
+          </WsBlock>
+        </WsMain>
+
+        <WsSideCol title="تفاصيل الطلب" icon={ListChecks} storageKey="ws:leave-requests:sidecol">
+          {selectedRequest ? (
+            <>
+              <WsBlock padded>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 700 }}>{selectedRequest.student.name}</span>
+                  <StatusChip status={selectedRequest.status} />
+                </div>
+                <WsFactsList>
+                  <WsFactRow label="الصف والفصل">
+                    {selectedRequest.student.grade} • {selectedRequest.student.class_name}
+                  </WsFactRow>
+                  <WsFactRow label="رقم الهوية">{selectedRequest.student.national_id || '—'}</WsFactRow>
+                  <WsFactRow label="موعد الانصراف">{formatDateTime(selectedRequest.expected_pickup_time)}</WsFactRow>
+                  <WsFactRow label="تاريخ الطلب">{formatDateTime(selectedRequest.created_at)}</WsFactRow>
+                </WsFactsList>
+              </WsBlock>
+
+              <WsBlock title="سبب الاستئذان" padded>
+                <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+                  {selectedRequest.reason}
+                </p>
+              </WsBlock>
+
+              <WsBlock title="ولي الأمر والمستلم" padded>
+                <WsFactsList>
+                  <WsFactRow label="ولي الأمر">{selectedRequest.guardian_name || '—'}</WsFactRow>
+                  <WsFactRow label="هاتفه">{selectedRequest.guardian_phone || '—'}</WsFactRow>
+                  <WsFactRow label="المستلم">{selectedRequest.pickup_person_name}</WsFactRow>
+                  <WsFactRow label="الصلة والهاتف">
+                    {selectedRequest.pickup_person_relation || '—'} • {selectedRequest.pickup_person_phone || '—'}
+                  </WsFactRow>
+                </WsFactsList>
+              </WsBlock>
+
+              <WsBlock title="قرار الإدارة" padded fill style={{ background: 'var(--ws-accent-softer)' }}>
+                <WsFactsList>
+                  <WsFactRow label="القرار بواسطة">
+                    {selectedRequest.decision_by_admin ? selectedRequest.decision_by_admin.name : 'بانتظار القرار'}
+                  </WsFactRow>
+                  <WsFactRow label="تاريخ القرار">
+                    {selectedRequest.decision_at ? formatDateTime(selectedRequest.decision_at) : '—'}
+                  </WsFactRow>
+                </WsFactsList>
+                {selectedRequest.decision_notes ? (
+                  <p
+                    style={{
+                      margin: '8px 0 0',
+                      fontSize: 12,
+                      lineHeight: 1.7,
+                      padding: '6px 10px',
+                      background: 'var(--ws-surface)',
+                      border: '1px solid var(--ws-hairline)',
+                      borderRadius: 7,
+                    }}
+                  >
+                    {selectedRequest.decision_notes}
+                  </p>
+                ) : null}
+              </WsBlock>
+            </>
           ) : (
-            <LeaveRequestsTable
-              requests={requests}
-              selectedId={selectedRequest?.id ?? null}
-              onSelect={setSelectedRequest}
-              onApprove={(request) => setActionDialog({ type: 'approve', request })}
-              onReject={(request) => setActionDialog({ type: 'reject', request })}
-              onCancel={(request) => setActionDialog({ type: 'cancel', request })}
-            />
+            <WsEmpty icon={Info}>اختر طلباً من الجدول لعرض تفاصيل الاستئذان.</WsEmpty>
           )}
-
-          <PaginationControls currentPage={page} totalPages={totalPages} onChange={setPage} />
-        </div>
-
-        <DetailsCard request={selectedRequest} />
-      </div>
+        </WsSideCol>
+      </WsLayout>
 
       <CreateLeaveRequestDialog
         open={createDialogOpen}
@@ -1316,6 +1206,6 @@ export function AdminLeaveRequestsPage() {
         onConfirm={handleActionConfirm}
         isSubmitting={isActionSubmitting}
       />
-    </div>
+    </WsPage>
   )
 }

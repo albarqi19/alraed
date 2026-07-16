@@ -26,6 +26,32 @@ import type {
   TeacherScheduleMoveSuggestion,
   TeacherScheduleMoveSuggestionStep,
 } from '../types'
+import {
+  ArrowLeftRight,
+  BookOpen,
+  CalendarDays,
+  GraduationCap,
+  Layers,
+  Printer,
+  RefreshCcw,
+  Settings2,
+  Users,
+  UserRound,
+  AlertTriangle,
+} from 'lucide-react'
+import {
+  WsBlock,
+  WsBtn,
+  WsChip,
+  WsEmpty,
+  WsFact,
+  WsHeader,
+  WsInput,
+  WsLayout,
+  WsMain,
+  WsPage,
+  WsSideCol,
+} from '@/shared/workspace'
 
 const daysOfWeek: string[] = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس']
 const defaultPeriods = Array.from({ length: 8 }, (_, index) => index + 1)
@@ -36,16 +62,37 @@ const priorityLabels: Record<TeacherScheduleConflictPriority, string> = {
   P3: 'توصية',
 }
 
-const priorityStyles: Record<TeacherScheduleConflictPriority, string> = {
-  P1: 'bg-rose-100 text-rose-700 border border-rose-200',
-  P2: 'bg-amber-100 text-amber-700 border border-amber-200',
-  P3: 'bg-sky-100 text-sky-700 border border-sky-200',
+const priorityToneStyles: Record<TeacherScheduleConflictPriority, { bg: string; bd: string; tx: string }> = {
+  P1: { bg: 'var(--ws-red-bg)', bd: 'var(--ws-red-bd)', tx: 'var(--ws-red)' },
+  P2: { bg: 'var(--ws-amber-bg)', bd: 'var(--ws-amber-bd)', tx: 'var(--ws-amber)' },
+  P3: { bg: 'var(--ws-sky-bg)', bd: 'var(--ws-sky-bd)', tx: 'var(--ws-sky)' },
 }
 
 const strategyLabels: Record<string, string> = {
   chain_swap: 'سلسلة ذكية',
   single_swap: 'مبادلة مباشرة',
   delay: 'إعادة جدولة',
+}
+
+// لوحة ألوان المواد (تطعيمات هادئة — كل مادة لون ثابت عبر الجدول)
+const SUBJECT_COLORS: Array<{ bg: string; bd: string; tx: string }> = [
+  { bg: '#E9F5EC', bd: '#BFE3C9', tx: '#2E7D46' },
+  { bg: '#E8F2FA', bd: '#BFDCF0', tx: '#21689E' },
+  { bg: '#F1EAFB', bd: '#D6C3F0', tx: '#6D3FA9' },
+  { bg: '#FCF3E1', bd: '#EFD9AC', tx: '#A8690A' },
+  { bg: '#FBEAEA', bd: '#EFC5C5', tx: '#C43D3D' },
+  { bg: '#E4F5F5', bd: '#BCE4E4', tx: '#1D7A7A' },
+  { bg: '#FBEEE4', bd: '#F0D2B8', tx: '#B05E1D' },
+  { bg: '#EAF0EE', bd: '#C8D8D2', tx: '#3F6F55' },
+]
+
+function subjectColor(name?: string | null) {
+  if (!name) return SUBJECT_COLORS[7]
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash * 31 + name.charCodeAt(i)) | 0
+  }
+  return SUBJECT_COLORS[Math.abs(hash) % SUBJECT_COLORS.length]
 }
 
 function formatTime(value?: string | null) {
@@ -194,7 +241,7 @@ export function AdminTeacherSchedulesPage() {
     ? strategyLabels[hoverSuggestion.strategy ?? ''] ?? hoverSuggestion.title
     : null
   const hoverPriorityLabel = hoverSuggestion ? priorityLabels[hoverSuggestion.priority] : null
-  const hoverPriorityStyle = hoverSuggestion ? priorityStyles[hoverSuggestion.priority] : ''
+  const hoverPriorityTone = hoverSuggestion ? priorityToneStyles[hoverSuggestion.priority] : null
   const displayedHoverSteps = hoverSuggestionSteps.slice(0, 3)
   const hasMoreHoverSteps = hoverSuggestionSteps.length > displayedHoverSteps.length
   const tooltipPosition = useMemo(() => {
@@ -394,26 +441,26 @@ export function AdminTeacherSchedulesPage() {
     triggerHoverPreview(target)
   }
 
-    const handleDragLeave = (event: DragEvent<HTMLTableCellElement>, target: DropTargetMeta) => {
-      if (!dragSource) return
+  const handleDragLeave = (event: DragEvent<HTMLTableCellElement>, target: DropTargetMeta) => {
+    if (!dragSource) return
 
-      const currentTarget = event.currentTarget
-      const related = event.relatedTarget as Node | null
-      if (related && currentTarget.contains(related)) {
-        return
-      }
-
-      if (dragHover && dragHover.day === target.day && dragHover.period === target.period) {
-        setDragHover(null)
-      }
-      if (
-        hoverPreviewState &&
-        hoverPreviewState.target.day === target.day &&
-        hoverPreviewState.target.period === target.period
-      ) {
-        clearHoverPreview()
-      }
+    const currentTarget = event.currentTarget
+    const related = event.relatedTarget as Node | null
+    if (related && currentTarget.contains(related)) {
+      return
     }
+
+    if (dragHover && dragHover.day === target.day && dragHover.period === target.period) {
+      setDragHover(null)
+    }
+    if (
+      hoverPreviewState &&
+      hoverPreviewState.target.day === target.day &&
+      hoverPreviewState.target.period === target.period
+    ) {
+      clearHoverPreview()
+    }
+  }
 
   const requestMovePreview = (payload: TeacherScheduleMovePreviewPayload) => {
     setPendingMovePayload(payload)
@@ -527,408 +574,494 @@ export function AdminTeacherSchedulesPage() {
   }
 
   return (
-    <>
-      <section className="space-y-6">
-      <header className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-900">جداول المعلمين</h1>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handlePrintAllTeachers}
-            disabled={isPrintingAll || summariesQuery.isLoading}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
-              <path fillRule="evenodd" d="M5 2.75C5 1.784 5.784 1 6.75 1h6.5c.966 0 1.75.784 1.75 1.75v3.552c.377.338.75.753.75 1.248v4.2a.75.75 0 01-.75.75h-1.5v2.75c0 .966-.784 1.75-1.75 1.75h-3.5A1.75 1.75 0 017.5 15.25V12.5H6a.75.75 0 01-.75-.75v-4.2c0-.495.373-.91.75-1.248V2.75zm8.5.75a.25.25 0 00-.25-.25h-6.5a.25.25 0 00-.25.25V5h7V3.5zM9 15.25v-4h2v4a.25.25 0 01-.25.25h-1.5a.25.25 0 01-.25-.25z" clipRule="evenodd" />
-            </svg>
-            {isPrintingAll ? 'جارٍ التحضير...' : 'طباعة الكل'}
-          </button>
-          <button
-            type="button"
-            onClick={handlePrintMasterSchedule}
-            disabled={isPrintingMaster}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
-              <path fillRule="evenodd" d="M1 2.75A.75.75 0 011.75 2h16.5a.75.75 0 010 1.5H1.75A.75.75 0 011 2.75zm0 5A.75.75 0 011.75 7h16.5a.75.75 0 010 1.5H1.75A.75.75 0 011 7.75zM1.75 12a.75.75 0 000 1.5h16.5a.75.75 0 000-1.5H1.75z" clipRule="evenodd" />
-            </svg>
-            {isPrintingMaster ? 'جارٍ التحضير...' : 'الجدول العام'}
-          </button>
-          <button
-            type="button"
-            onClick={() => setMatchingDialogOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
-              <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm1.23-3.723a.75.75 0 00.219-.53V2.929a.75.75 0 00-1.5 0V5.36l-.31-.31A7 7 0 003.239 8.188a.75.75 0 101.448.389A5.5 5.5 0 0113.89 6.11l.311.31h-2.432a.75.75 0 000 1.5h4.243a.75.75 0 00.53-.219z" clipRule="evenodd" />
-            </svg>
-            المطابقة اليدوية
-          </button>
-        </div>
-      </header>
-
-      <div className="grid gap-6 lg:grid-cols-[300px,1fr]">
-        <aside className="glass-card flex min-h-[320px] flex-col gap-4 lg:sticky lg:top-24 lg:max-h-[calc(100vh-140px)] lg:overflow-hidden">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-lg font-semibold text-slate-900">قائمة المعلمين</h2>
-            <span className="rounded-full bg-teal-100 px-3 py-1 text-xs font-semibold text-teal-700">
-              {summariesQuery.isLoading
-                ? '…'
-                : `${filteredTeachers.length}${isFiltered ? ` / ${summariesQuery.data?.length ?? 0}` : ''}`}
-            </span>
-          </div>
-
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-            <div className="sm:w-40">
-              <label htmlFor="teacher-status-filter" className="sr-only">
-                تصفية حسب الحالة
-              </label>
-              <select
-                id="teacher-status-filter"
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value as 'all' | 'active' | 'inactive')}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-              >
-                <option value="all">جميع الحالات</option>
-                <option value="active">معلمون نشطون</option>
-                <option value="inactive">معلمون متوقفون</option>
-              </select>
-            </div>
-            <div className="flex-1">
-              <label htmlFor="teacher-search" className="sr-only">
-                بحث عن معلم
-              </label>
-              <input
-                id="teacher-search"
-                type="search"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="ابحث بالاسم أو الهوية أو رقم الجوال"
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-              />
-            </div>
-          </div>
-
-          <div className="flex-1 space-y-2 overflow-y-auto pr-1 lg:pr-2 custom-scrollbar">
-            {summariesQuery.isLoading ? (
-              Array.from({ length: 5 }).map((_, index) => (
-                <div key={index} className="h-12 animate-pulse rounded-2xl bg-slate-100" />
-              ))
-            ) : summariesQuery.isError ? (
-              <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-700">
-                <p>تعذر تحميل المعلمين: {summariesError}</p>
-                <button
-                  type="button"
-                  onClick={() => summariesQuery.refetch()}
-                  className="button-secondary mt-3"
-                  disabled={summariesQuery.isFetching}
-                >
-                  {summariesQuery.isFetching ? 'جارٍ إعادة المحاولة...' : 'إعادة المحاولة'}
-                </button>
-              </div>
-            ) : filteredTeachers.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-white/60 p-6 text-center text-sm text-muted">
-                لا توجد نتائج مطابقة للبحث الحالي.
-              </div>
-            ) : (
-              filteredTeachers.map((teacher) => {
-                const isSelected = selectedTeacher?.id === teacher.id
-                return (
-                  <button
-                    key={teacher.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedTeacherId(teacher.id)
-                      // على الجوال: فتح نافذة الأيام مباشرة
-                      if (window.innerWidth < 768) {
-                        setTimeout(() => {
-                          const event = new CustomEvent('openDaysPanel')
-                          window.dispatchEvent(event)
-                        }, 100)
-                      }
-                    }}
-                    className={`w-full rounded-2xl border px-3 py-2.5 text-right text-sm transition focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${
-                      isSelected
-                        ? 'border-teal-500 bg-teal-50 text-teal-900 shadow-sm'
-                        : 'border-transparent bg-white/80 hover:border-teal-300 hover:bg-white'
-                    }`}
-                    aria-pressed={isSelected}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-semibold text-slate-900">{teacher.name}</span>
-                      <span
-                        className={`text-[11px] font-semibold ${teacher.status === 'active' ? 'text-emerald-600' : 'text-slate-500'}`}
-                      >
-                        {teacher.status === 'active' ? 'نشط' : 'موقوف'}
-                      </span>
-                    </div>
-                    {teacher.national_id ? (
-                      <p className="mt-1 text-xs text-slate-500">رقم الهوية: {teacher.national_id}</p>
-                    ) : null}
-                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted">
-                      <span className="inline-flex items-center gap-1">
-                        <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
-                        {teacher.sessions_count} حصص
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                        {teacher.classes_count} فصول
-                      </span>
-                    </div>
-                  </button>
-                )
-              })
+    <WsPage>
+      <WsHeader
+        title="جداول المعلمين"
+        badge="سحب وإفلات ذكي"
+        actions={
+          <>
+            <WsBtn icon={ArrowLeftRight} onClick={() => setMatchingDialogOpen(true)}>
+              المطابقة اليدوية
+            </WsBtn>
+            <WsBtn icon={Layers} onClick={handlePrintMasterSchedule} disabled={isPrintingMaster}>
+              {isPrintingMaster ? 'جارٍ التحضير...' : 'الجدول العام'}
+            </WsBtn>
+            <WsBtn icon={Printer} onClick={handlePrintAllTeachers} disabled={isPrintingAll || summariesQuery.isLoading}>
+              {isPrintingAll ? 'جارٍ التحضير...' : 'طباعة الكل'}
+            </WsBtn>
+          </>
+        }
+        facts={
+          <>
+            <WsFact icon={Users} label="المعلمون:">
+              {(summariesQuery.data?.length ?? 0).toLocaleString('ar-SA')}
+            </WsFact>
+            {selectedTeacher && (
+              <>
+                <WsFact icon={UserRound} label="المحدد:">
+                  {selectedTeacher.name}
+                </WsFact>
+                <WsFact icon={CalendarDays} label="حصصه:">
+                  {selectedTeacher.sessions_count}
+                </WsFact>
+                <WsFact icon={GraduationCap} label="فصوله:">
+                  {selectedTeacher.classes_count}
+                </WsFact>
+                {scheduleQuery.data?.teacher_info?.subjects_count ? (
+                  <WsFact icon={BookOpen} label="مواده:">
+                    {scheduleQuery.data.teacher_info.subjects_count}
+                  </WsFact>
+                ) : null}
+              </>
             )}
-          </div>
-        </aside>
+          </>
+        }
+      >
+        {dragLocked && scheduleQuery.isFetching && <WsChip tone="sky">جارٍ التحديث...</WsChip>}
+      </WsHeader>
 
-        <div className="glass-card space-y-6">
-          {selectedTeacher ? (
-            <>
-              <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div className="space-y-1 text-right">
-                  <h2 className="text-lg font-bold text-slate-900">{selectedTeacher.name}</h2>
-                  <p className="text-xs text-muted">
-                    {selectedTeacher.status === 'active' ? 'نشط' : 'موقوف'}
-                    {' • '}{selectedTeacher.sessions_count} حصة
-                    {' • '}{selectedTeacher.classes_count} فصل
-                    {scheduleQuery.data?.teacher_info?.subjects_count ? ` • ${scheduleQuery.data.teacher_info.subjects_count} مادة` : ''}
-                    {scheduleQuery.isFetching ? ' • جارٍ التحديث...' : ''}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <button
-                    type="button"
+      <WsLayout>
+        {/* العمود الأيمن: قائمة المعلمين */}
+        <WsSideCol title="المعلمون" icon={Users} side="start" width={280} storageKey="ws:teacher-schedules:list">
+          <div
+            style={{
+              flexShrink: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+              padding: '8px 10px',
+              borderBottom: '1px solid var(--ws-hairline)',
+            }}
+          >
+            <div className="ws-seg" style={{ display: 'flex' }}>
+              {([
+                { value: 'all', label: 'الكل' },
+                { value: 'active', label: 'نشطون' },
+                { value: 'inactive', label: 'موقوفون' },
+              ] as const).map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setStatusFilter(option.value)}
+                  className={`ws-seg__btn ${statusFilter === option.value ? 'is-active' : ''}`}
+                  style={{ flex: 1, justifyContent: 'center' }}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <WsInput
+              type="search"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="ابحث بالاسم أو الهوية أو الجوال"
+            />
+          </div>
+
+          <WsBlock
+            title="القائمة"
+            count={
+              summariesQuery.isLoading
+                ? '…'
+                : `${filteredTeachers.length}${isFiltered ? ` / ${summariesQuery.data?.length ?? 0}` : ''}`
+            }
+            fill
+            scroll
+          >
+            {summariesQuery.isLoading ? (
+              <WsEmpty loading>جاري تحميل المعلمين...</WsEmpty>
+            ) : summariesQuery.isError ? (
+              <WsEmpty icon={AlertTriangle}>
+                تعذر تحميل المعلمين: {summariesError}
+                <WsBtn size="sm" icon={RefreshCcw} onClick={() => summariesQuery.refetch()} disabled={summariesQuery.isFetching}>
+                  {summariesQuery.isFetching ? 'جارٍ إعادة المحاولة...' : 'إعادة المحاولة'}
+                </WsBtn>
+              </WsEmpty>
+            ) : filteredTeachers.length === 0 ? (
+              <WsEmpty icon={Users}>لا توجد نتائج مطابقة للبحث الحالي.</WsEmpty>
+            ) : (
+              <div>
+                {filteredTeachers.map((teacher) => {
+                  const isSelected = selectedTeacher?.id === teacher.id
+                  return (
+                    <button
+                      key={teacher.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedTeacherId(teacher.id)
+                        // على الجوال: فتح نافذة الأيام مباشرة
+                        if (window.innerWidth < 768) {
+                          setTimeout(() => {
+                            const event = new CustomEvent('openDaysPanel')
+                            window.dispatchEvent(event)
+                          }, 100)
+                        }
+                      }}
+                      aria-pressed={isSelected}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        textAlign: 'right',
+                        padding: '8px 12px',
+                        border: 'none',
+                        borderBottom: '1px solid var(--ws-hairline)',
+                        background: isSelected ? 'var(--ws-accent-soft)' : 'transparent',
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                        <span style={{ fontSize: 12.5, fontWeight: isSelected ? 700 : 600, color: 'var(--ws-text)', minWidth: 0 }}>
+                          {teacher.name}
+                        </span>
+                        <span
+                          style={{
+                            width: 7,
+                            height: 7,
+                            borderRadius: '50%',
+                            flexShrink: 0,
+                            background: teacher.status === 'active' ? 'var(--ws-green)' : 'var(--ws-text-2)',
+                          }}
+                          title={teacher.status === 'active' ? 'نشط' : 'موقوف'}
+                        />
+                      </span>
+                      {teacher.national_id ? (
+                        <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ws-text-2)', marginTop: 2 }}>
+                          {teacher.national_id}
+                        </span>
+                      ) : null}
+                      <span style={{ display: 'inline-flex', gap: 4, marginTop: 4 }}>
+                        <WsChip tone="sky">{teacher.sessions_count} حصص</WsChip>
+                        <WsChip tone="amber">{teacher.classes_count} فصول</WsChip>
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </WsBlock>
+        </WsSideCol>
+
+        {/* الوسط: جدول المعلم */}
+        <WsMain>
+          <WsBlock
+            title={selectedTeacher ? `جدول ${selectedTeacher.name}` : 'جدول المعلم'}
+            icon={CalendarDays}
+            count={selectedTeacher ? `${totalSessions} حصة` : undefined}
+            tools={
+              selectedTeacher ? (
+                <>
+                  <WsBtn
+                    size="sm"
+                    icon={Printer}
                     onClick={handlePrintTeacher}
                     disabled={!scheduleQuery.data?.schedule || totalSessions === 0}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
-                      <path fillRule="evenodd" d="M5 2.75C5 1.784 5.784 1 6.75 1h6.5c.966 0 1.75.784 1.75 1.75v3.552c.377.338.75.753.75 1.248v4.2a.75.75 0 01-.75.75h-1.5v2.75c0 .966-.784 1.75-1.75 1.75h-3.5A1.75 1.75 0 017.5 15.25V12.5H6a.75.75 0 01-.75-.75v-4.2c0-.495.373-.91.75-1.248V2.75zm8.5.75a.25.25 0 00-.25-.25h-6.5a.25.25 0 00-.25.25V5h7V3.5zM9 15.25v-4h2v4a.25.25 0 01-.25.25h-1.5a.25.25 0 01-.25-.25z" clipRule="evenodd" />
-                    </svg>
                     طباعة
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => scheduleQuery.refetch()}
-                    disabled={scheduleQuery.isFetching}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
-                      <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm1.23-3.723a.75.75 0 00.219-.53V2.929a.75.75 0 00-1.5 0V5.36l-.31-.31A7 7 0 003.239 8.188a.75.75 0 101.448.389A5.5 5.5 0 0113.89 6.11l.311.31h-2.432a.75.75 0 000 1.5h4.243a.75.75 0 00.53-.219z" clipRule="evenodd" />
-                    </svg>
+                  </WsBtn>
+                  <WsBtn size="sm" icon={RefreshCcw} onClick={() => scheduleQuery.refetch()} disabled={scheduleQuery.isFetching}>
                     تحديث
-                  </button>
-                  <button
-                    type="button"
+                  </WsBtn>
+                  <WsBtn
+                    size="sm"
+                    variant="primary"
+                    icon={Settings2}
                     onClick={() => setDayLimitsDialogOpen(true)}
                     disabled={updateDayLimitsMutation.isPending}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-teal-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-teal-700 disabled:opacity-50"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
-                      <path d="M10 3.75a2 2 0 10-4 0 2 2 0 004 0zM17.25 4.5a.75.75 0 000-1.5h-5.5a.75.75 0 000 1.5h5.5zM5 3.75a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5a.75.75 0 01.75.75zM4.25 17a.75.75 0 000-1.5h-1.5a.75.75 0 000 1.5h1.5zM17.25 17a.75.75 0 000-1.5h-5.5a.75.75 0 000 1.5h5.5zM9 10a.75.75 0 01-.75.75h-5.5a.75.75 0 010-1.5h5.5A.75.75 0 019 10zM17.25 10.75a.75.75 0 000-1.5h-1.5a.75.75 0 000 1.5h1.5zM14 10a2 2 0 10-4 0 2 2 0 004 0zM10 16.25a2 2 0 10-4 0 2 2 0 004 0z" />
-                    </svg>
                     الحصص
-                  </button>
-                </div>
-              </header>
-
-              {scheduleQuery.isLoading ? (
-                <div className="flex flex-col items-center justify-center gap-3 py-16 text-center text-sm text-muted">
-                  <span className="h-12 w-12 animate-spin rounded-full border-2 border-teal-500 border-t-transparent" />
-                  جاري تحميل جدول المعلم...
-                </div>
-              ) : scheduleQuery.isError ? (
-                <div className="rounded-3xl border border-rose-100 bg-rose-50 p-6 text-center text-sm text-rose-700">
-                  <p>تعذر تحميل جدول المعلم: {scheduleError}</p>
-                  <button type="button" onClick={() => scheduleQuery.refetch()} className="button-primary mt-4">
-                    إعادة المحاولة
-                  </button>
-                </div>
-              ) : totalSessions === 0 ? (
-                <div className="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-10 text-center text-sm text-muted">
-                  لا توجد حصص مجدولة لهذا المعلم حالياً.
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {/* عرض الجدول للشاشات الكبيرة */}
-                  <div className="hidden md:block overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-                    <table className="w-full min-w-[720px] border-collapse text-right text-xs md:text-sm">
-                      <thead className="bg-slate-100 text-slate-600">
-                        <tr>
-                          <th className="sticky right-0 w-28 border border-slate-200 bg-slate-100 px-2.5 py-2 text-[11px] font-semibold text-slate-600">
-                            اليوم / الحصة
-                          </th>
-                          {periods.map((period) => {
-                            const timeLabel = getPeriodTimeLabel(scheduleQuery.data?.schedule, period)
-                            return (
-                              <th key={period} className="border border-slate-200 px-2.5 py-2 text-[11px] font-semibold">
-                                <div className="flex flex-col items-end gap-0.5">
-                                  <span>الحصة {period}</span>
-                                  {timeLabel ? <span className="text-[10px] text-slate-500">{timeLabel}</span> : null}
-                                </div>
-                              </th>
-                            )
-                          })}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {daysOfWeek.map((day) => {
-                          const daySessions = scheduleQuery.data?.schedule?.[day] ?? {}
+                  </WsBtn>
+                </>
+              ) : undefined
+            }
+            fill
+          >
+            {!selectedTeacher ? (
+              <WsEmpty icon={UserRound}>اختر معلمًا من القائمة اليمنى لاستعراض جدول حصصه الأسبوعي.</WsEmpty>
+            ) : scheduleQuery.isLoading ? (
+              <WsEmpty loading>جاري تحميل جدول المعلم...</WsEmpty>
+            ) : scheduleQuery.isError ? (
+              <WsEmpty icon={AlertTriangle}>
+                تعذر تحميل جدول المعلم: {scheduleError}
+                <WsBtn size="sm" icon={RefreshCcw} onClick={() => scheduleQuery.refetch()}>
+                  إعادة المحاولة
+                </WsBtn>
+              </WsEmpty>
+            ) : totalSessions === 0 ? (
+              <WsEmpty icon={CalendarDays}>لا توجد حصص مجدولة لهذا المعلم حالياً.</WsEmpty>
+            ) : (
+              <>
+                {/* الجدول للشاشات الكبيرة — سحب وإفلات */}
+                <div className="ws-tablewrap hidden md:block">
+                  <table className="ws-matrix">
+                    <thead>
+                      <tr>
+                        <th className="ws-matrix__stick" style={{ minWidth: 88 }}>
+                          اليوم / الحصة
+                        </th>
+                        {periods.map((period) => {
+                          const timeLabel = getPeriodTimeLabel(scheduleQuery.data?.schedule, period)
                           return (
-                            <tr key={day} className="bg-white even:bg-slate-50/70">
-                              <th
-                                scope="row"
-                                className="sticky right-0 border border-slate-200 bg-slate-100 px-2.5 py-2 text-[11px] font-semibold text-slate-700"
-                              >
-                                {day}
-                              </th>
-                              {periods.map((period) => {
-                                const slot = daySessions?.[period] ?? null
-                                const isHoverTarget = dragHover?.day === day && dragHover?.period === period
-                                return (
-                                  <td
-                                    key={period}
-                                    className={`border border-slate-200 p-0 transition ${
-                                      isHoverTarget ? 'bg-teal-50 shadow-inner ring-1 ring-teal-400' : ''
-                                    }`}
-                                    onDragOver={(event) => handleDragOver(event)}
-                                    onDragEnter={(event) => handleDragEnter(event, { day, period })}
-                                    onDragLeave={(event) => handleDragLeave(event, { day, period })}
-                                    onDrop={(event) => handleDrop(event, { day, period })}
-                                  >
-                                    {slot ? (
-                                      <div
-                                        className={`flex min-h-[70px] cursor-grab flex-col justify-center gap-1 px-3 py-2 transition hover:bg-slate-50 focus-within:outline-none focus-within:ring-2 focus-within:ring-teal-500/40 ${
-                                          dragSource?.slot.id === slot.id ? 'opacity-70 ring-1 ring-teal-500' : ''
-                                        }`}
-                                        draggable={!dragLocked}
-                                        onDragStart={(event) => handleDragStart(event, slot, day, period)}
-                                        onDragEnd={handleDragEnd}
-                                        aria-grabbed={dragSource?.slot.id === slot.id}
-                                        role="button"
-                                        tabIndex={0}
-                                        title="اسحب الحصة لتغيير وقتها"
-                                      >
-                                        <div className="flex flex-col gap-1">
-                                          <p className="text-sm font-semibold leading-tight text-slate-900">{slot.subject_name}</p>
-                                          <p className="text-xs text-slate-500">
-                                            {slot.grade} / {slot.class_name}
-                                          </p>
-                                        </div>
-                                        <span className="text-[11px] text-muted">
-                                          {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
-                                        </span>
-                                      </div>
-                                    ) : (
-                                      <div className="flex min-h-[70px] items-center justify-center border border-dashed border-slate-200 bg-white text-[11px] text-muted">
-                                        لا يوجد حصة
-                                      </div>
-                                    )}
-                                  </td>
-                                )
-                              })}
-                            </tr>
+                            <th key={period} style={{ minWidth: 118 }}>
+                              <span style={{ display: 'block', fontWeight: 700 }}>الحصة {period}</span>
+                              {timeLabel ? (
+                                <span style={{ display: 'block', fontSize: 9.5, fontWeight: 400, direction: 'ltr' }}>
+                                  {timeLabel}
+                                </span>
+                              ) : null}
+                            </th>
                           )
                         })}
-                      </tbody>
-                    </table>
-                  </div>
-                  <p className="text-xs text-muted">
-                    يتم احتساب الحصص بناءً على الجداول المعتمدة للفصول. أي تعديل على جداول الفصول ينعكس تلقائياً في عرض جداول المعلمين.
-                  </p>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {daysOfWeek.map((day) => {
+                        const daySessions = scheduleQuery.data?.schedule?.[day] ?? {}
+                        return (
+                          <tr key={day}>
+                            <td className="ws-matrix__stick" style={{ fontWeight: 700, fontSize: 12 }}>
+                              {day}
+                            </td>
+                            {periods.map((period) => {
+                              const slot = daySessions?.[period] ?? null
+                              const isHoverTarget = dragHover?.day === day && dragHover?.period === period
+                              const isDragSourceCell = dragSource?.day === day && dragSource?.period === period
+                              const tone = slot ? subjectColor(slot.subject_name) : null
+                              return (
+                                <td
+                                  key={period}
+                                  style={{
+                                    padding: 3,
+                                    verticalAlign: 'stretch',
+                                    ...(isHoverTarget
+                                      ? { background: 'var(--ws-accent-soft)', boxShadow: 'inset 0 0 0 2px var(--ws-accent-2)' }
+                                      : null),
+                                  }}
+                                  onDragOver={(event) => handleDragOver(event)}
+                                  onDragEnter={(event) => handleDragEnter(event, { day, period })}
+                                  onDragLeave={(event) => handleDragLeave(event, { day, period })}
+                                  onDrop={(event) => handleDrop(event, { day, period })}
+                                >
+                                  {slot && tone ? (
+                                    <div
+                                      draggable={!dragLocked}
+                                      onDragStart={(event) => handleDragStart(event, slot, day, period)}
+                                      onDragEnd={handleDragEnd}
+                                      aria-grabbed={dragSource?.slot.id === slot.id}
+                                      role="button"
+                                      tabIndex={0}
+                                      title="اسحب الحصة لتغيير وقتها"
+                                      style={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        justifyContent: 'center',
+                                        gap: 2,
+                                        minHeight: 62,
+                                        padding: '6px 9px',
+                                        borderRadius: 8,
+                                        border: `1px solid ${tone.bd}`,
+                                        background: tone.bg,
+                                        cursor: dragLocked ? 'wait' : 'grab',
+                                        textAlign: 'right',
+                                        ...(isDragSourceCell || dragSource?.slot.id === slot.id
+                                          ? { opacity: 0.55, borderStyle: 'dashed' }
+                                          : null),
+                                      }}
+                                    >
+                                      <span style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.3, color: tone.tx }}>
+                                        {slot.subject_name}
+                                      </span>
+                                      <span style={{ fontSize: 10.5, color: 'var(--ws-text)' }}>
+                                        {slot.grade} / {slot.class_name}
+                                      </span>
+                                      <span style={{ fontSize: 9.5, color: 'var(--ws-text-2)', direction: 'ltr', textAlign: 'right' }}>
+                                        {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <div
+                                      style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        minHeight: 62,
+                                        borderRadius: 8,
+                                        border: '1px dashed var(--ws-hairline)',
+                                        fontSize: 10,
+                                        color: 'var(--ws-text-2)',
+                                        opacity: isHoverTarget ? 0 : 0.8,
+                                      }}
+                                    >
+                                      —
+                                    </div>
+                                  )}
+                                </td>
+                              )
+                            })}
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-              )}
-            </>
-          ) : (
-            <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-3 text-center text-sm text-muted">
-              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-2xl text-slate-400">👩‍🏫</span>
-              اختر معلمًا من القائمة لاستعراض جدول حصصه الأسبوعي.
-            </div>
-          )}
-        </div>
-      </div>
-      </section>
 
+                {/* ملاحظة */}
+                <div
+                  style={{
+                    flexShrink: 0,
+                    padding: '6px 14px',
+                    borderTop: '1px solid var(--ws-hairline)',
+                    fontSize: 10.5,
+                    color: 'var(--ws-text-2)',
+                  }}
+                  className="hidden md:block"
+                >
+                  اسحب أي حصة لخانة فارغة لتغيير وقتها — النظام يحلل التعارضات ويقترح سلاسل مبادلات ذكية أثناء السحب. أي
+                  تعديل على جداول الفصول ينعكس تلقائياً هنا.
+                </div>
+
+                {/* عرض الجوال: زر فتح الأيام */}
+                <div className="md:hidden" style={{ padding: 14 }}>
+                  <WsBtn
+                    variant="primary"
+                    icon={CalendarDays}
+                    onClick={() => setShowDaysPanel(true)}
+                    style={{ width: '100%' }}
+                  >
+                    عرض أيام الأسبوع
+                  </WsBtn>
+                </div>
+              </>
+            )}
+          </WsBlock>
+        </WsMain>
+      </WsLayout>
+
+      {/* تلميح السحب الحي — تحليل السلسلة الذكية */}
       {dragPointerPosition && hoverPreviewState && tooltipPosition ? (
         <div
           ref={tooltipRef}
-          className="pointer-events-none fixed z-50 w-60 max-w-[260px] rounded-xl border border-slate-200 bg-white/95 p-2.5 text-right text-[11px] shadow-xl backdrop-blur"
-          style={{ top: tooltipPosition.top, left: tooltipPosition.left }}
+          className="pointer-events-none fixed z-50"
+          style={{
+            top: tooltipPosition.top,
+            left: tooltipPosition.left,
+            width: 250,
+            maxWidth: 260,
+            background: 'var(--ws-surface)',
+            border: '1px solid var(--ws-border)',
+            borderRadius: 10,
+            boxShadow: '0 10px 30px rgba(0,0,0,0.16)',
+            padding: 10,
+            textAlign: 'right',
+            fontSize: 11,
+          }}
         >
           {hoverPreviewState.status === 'loading' ? (
-            <div className="flex flex-col gap-2">
-              <span className="text-[12px] font-semibold text-slate-900">جارٍ تحليل السلسلة الذكية…</span>
-              <p className="text-[11px] text-slate-600">نقوم بالتحقق من أفضل سلسلة مبادلات للحصة الحالية.</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <span className="ws-spinner" style={{ width: 12, height: 12 }} />
+                جارٍ تحليل السلسلة الذكية…
+              </span>
+              <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                نتحقق من أفضل سلسلة مبادلات للحصة الحالية.
+              </span>
             </div>
           ) : hoverPreviewState.status === 'error' ? (
-            <div className="flex flex-col gap-1">
-              <span className="text-[12px] font-semibold text-rose-700">تعذر تحليل السلسلة</span>
-              <p className="text-[11px] text-rose-600">{hoverPreviewState.error ?? 'حاول مرة أخرى عند التمرير على خانة أخرى.'}</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ws-red)' }}>تعذر تحليل السلسلة</span>
+              <span style={{ fontSize: 10.5, color: 'var(--ws-red)' }}>
+                {hoverPreviewState.error ?? 'حاول مرة أخرى عند التمرير على خانة أخرى.'}
+              </span>
             </div>
           ) : hoverPreviewState.status === 'success' && hoverPreviewState.result ? (
             hoverSuggestion ? (
-              <div className="space-y-2">
-                <div className="flex flex-row-reverse items-center justify-between gap-2">
-                  <span className="text-[11px] font-semibold text-slate-900">{hoverSuggestionTitle ?? hoverSuggestion.title}</span>
-                  {hoverPriorityLabel ? (
-                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${hoverPriorityStyle}`}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                  <span style={{ fontSize: 11.5, fontWeight: 700 }}>{hoverSuggestionTitle ?? hoverSuggestion.title}</span>
+                  {hoverPriorityLabel && hoverPriorityTone ? (
+                    <span
+                      className="ws-chip"
+                      style={{ background: hoverPriorityTone.bg, borderColor: hoverPriorityTone.bd, color: hoverPriorityTone.tx }}
+                    >
                       {hoverPriorityLabel}
                     </span>
                   ) : null}
                 </div>
 
                 {hoverSuggestion.strategy === 'chain_swap' && hoverChainLength ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-semibold text-teal-600">
+                  <span className="ws-chip ws-chip--green" style={{ alignSelf: 'flex-start' }}>
                     {hoverChainLength} خطوة
                   </span>
                 ) : null}
 
                 {displayedHoverSteps.length ? (
-                  <ul className="space-y-1.5">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {displayedHoverSteps.map((step, index) => (
-                      <li
+                      <div
                         key={`${step.session_id ?? index}-hover-step`}
-                        className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5"
+                        style={{
+                          border: '1px solid var(--ws-hairline)',
+                          borderRadius: 8,
+                          padding: '5px 8px',
+                          background: 'var(--ws-surface-2)',
+                        }}
                       >
-                        <div className="flex flex-row-reverse items-center justify-between text-[10px] font-semibold text-slate-800">
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 10, fontWeight: 700 }}>
                           <span>الخطوة {index + 1}</span>
                           <span>{step.subject_name ?? 'حصة'}</span>
                         </div>
                         {step.teacher_name ? (
-                          <p className="text-[10px] text-slate-600">{step.teacher_name}</p>
+                          <span style={{ display: 'block', fontSize: 10, color: 'var(--ws-text-2)' }}>{step.teacher_name}</span>
                         ) : null}
-                        <p className="text-[10px] text-slate-500">
+                        <span style={{ display: 'block', fontSize: 10, color: 'var(--ws-text-2)' }}>
                           الصف {step.grade}/{step.class_name}
-                        </p>
-                        <div className="mt-1 flex flex-row-reverse items-center gap-1 text-[9px] text-slate-600">
-                          <span className="rounded bg-rose-50 px-1.5 py-0.5 font-medium text-rose-700">
+                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3, fontSize: 9 }}>
+                          <span
+                            style={{
+                              borderRadius: 5,
+                              padding: '1px 6px',
+                              fontWeight: 600,
+                              background: 'var(--ws-red-bg)',
+                              color: 'var(--ws-red)',
+                            }}
+                          >
                             من: {step.from_day} • {step.from_period}
                           </span>
-                          <span className="text-slate-400">→</span>
-                          <span className="rounded bg-emerald-50 px-1.5 py-0.5 font-medium text-emerald-700">
+                          <span style={{ color: 'var(--ws-text-2)' }}>←</span>
+                          <span
+                            style={{
+                              borderRadius: 5,
+                              padding: '1px 6px',
+                              fontWeight: 600,
+                              background: 'var(--ws-green-bg)',
+                              color: 'var(--ws-green)',
+                            }}
+                          >
                             إلى: {step.to_day} • {step.to_period}
                           </span>
                         </div>
-                      </li>
+                      </div>
                     ))}
                     {hasMoreHoverSteps ? (
-                      <li className="text-center text-[9px] text-slate-400">… بقية الخطوات داخل النافذة المنبثقة.</li>
+                      <span style={{ textAlign: 'center', fontSize: 9, color: 'var(--ws-text-2)' }}>
+                        … بقية الخطوات داخل النافذة المنبثقة.
+                      </span>
                     ) : null}
-                  </ul>
+                  </div>
                 ) : null}
               </div>
             ) : hoverPreviewState.result.can_move ? (
-              <div className="flex flex-col gap-1">
-                <span className="text-[12px] font-semibold text-emerald-700">الخانة متاحة للنقل المباشر</span>
-                <p className="text-[11px] text-slate-600">لا توجد سلسلة ذكية مطلوبة لهذه الخانة.</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ws-green)' }}>الخانة متاحة للنقل المباشر</span>
+                <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>لا توجد سلسلة ذكية مطلوبة لهذه الخانة.</span>
               </div>
             ) : (
-              <div className="flex flex-col gap-1">
-                <span className="text-[12px] font-semibold text-slate-900">تحليل الحصة</span>
-                <p className="text-[11px] text-slate-600">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <span style={{ fontSize: 12, fontWeight: 700 }}>تحليل الحصة</span>
+                <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>
                   {hoverPreviewState.result.conflicts[0]?.message ?? 'لا توجد سلسلة ذكية متاحة حالياً.'}
-                </p>
+                </span>
               </div>
             )
           ) : null}
@@ -957,37 +1090,32 @@ export function AdminTeacherSchedulesPage() {
 
       {/* نافذة قائمة الأيام للجوال */}
       {showDaysPanel && scheduleQuery.data?.schedule && (
-        <div 
+        <div
           className="fixed inset-0 z-50 md:hidden"
           onClick={() => setShowDaysPanel(false)}
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div 
-            className="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto rounded-t-3xl bg-white shadow-2xl"
+          <div
+            className="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto rounded-t-3xl shadow-2xl"
+            style={{ background: 'var(--ws-surface)' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="sticky top-0 z-10 flex justify-center bg-white pt-3 pb-2 border-b border-slate-100">
-              <div className="h-1.5 w-12 rounded-full bg-slate-300" />
+            <div className="sticky top-0 z-10 flex justify-center pt-3 pb-2" style={{ background: 'var(--ws-surface)', borderBottom: '1px solid var(--ws-hairline)' }}>
+              <div className="h-1.5 w-12 rounded-full" style={{ background: 'var(--ws-border)' }} />
             </div>
-            
+
             <div className="p-4 space-y-4">
-              <header className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <header className="flex items-center justify-between pb-3" style={{ borderBottom: '1px solid var(--ws-hairline)' }}>
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-900">أيام الأسبوع</h2>
-                  <p className="text-xs text-muted">اختر يوم لعرض حصصه</p>
+                  <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>أيام الأسبوع</h2>
+                  <p style={{ fontSize: 11, color: 'var(--ws-text-2)', margin: '2px 0 0' }}>اختر يوماً لعرض حصصه</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowDaysPanel(false)}
-                  className="rounded-full p-2 hover:bg-slate-100 text-slate-500"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+                <WsBtn size="sm" onClick={() => setShowDaysPanel(false)}>
+                  إغلاق
+                </WsBtn>
               </header>
 
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {daysOfWeek.map((day) => {
                   const daySessions = scheduleQuery.data.schedule?.[day] ?? {}
                   const sessionsCount = Object.values(daySessions).filter(s => s !== null).length
@@ -999,17 +1127,14 @@ export function AdminTeacherSchedulesPage() {
                         const event = new CustomEvent('openDaySchedule', { detail: { day, sessions: daySessions } })
                         window.dispatchEvent(event)
                       }}
-                      className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-right shadow-sm hover:border-teal-300 hover:bg-teal-50/50 transition"
+                      className="ws-pick"
+                      style={{ width: '100%' }}
                     >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-semibold text-slate-900">{day}</p>
-                          <p className="text-xs text-muted mt-1">{sessionsCount} حصة</p>
-                        </div>
-                        <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                        </svg>
-                      </div>
+                      <span style={{ minWidth: 0 }}>
+                        <span className="ws-pick__name">{day}</span>
+                        <span className="ws-pick__sub">{sessionsCount} حصة</span>
+                      </span>
+                      <CalendarDays style={{ width: 14, height: 14, color: 'var(--ws-accent-2)', flexShrink: 0 }} />
                     </button>
                   )
                 })}
@@ -1021,57 +1146,59 @@ export function AdminTeacherSchedulesPage() {
 
       {/* نافذة عرض حصص اليوم للجوال */}
       {selectedDay && (
-        <div 
+        <div
           className="fixed inset-0 z-50 md:hidden"
           onClick={() => setSelectedDay(null)}
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div 
-            className="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto rounded-t-3xl bg-white shadow-2xl"
+          <div
+            className="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto rounded-t-3xl shadow-2xl"
+            style={{ background: 'var(--ws-surface)' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="sticky top-0 z-10 flex justify-center bg-white pt-3 pb-2 border-b border-slate-100">
-              <div className="h-1.5 w-12 rounded-full bg-slate-300" />
+            <div className="sticky top-0 z-10 flex justify-center pt-3 pb-2" style={{ background: 'var(--ws-surface)', borderBottom: '1px solid var(--ws-hairline)' }}>
+              <div className="h-1.5 w-12 rounded-full" style={{ background: 'var(--ws-border)' }} />
             </div>
-            
+
             <div className="p-4 space-y-4">
-              <header className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <header className="flex items-center justify-between pb-3" style={{ borderBottom: '1px solid var(--ws-hairline)' }}>
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-900">{selectedDay.day}</h2>
-                  <p className="text-xs text-muted">{Object.values(selectedDay.sessions).filter(s => s !== null).length} حصة</p>
+                  <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{selectedDay.day}</h2>
+                  <p style={{ fontSize: 11, color: 'var(--ws-text-2)', margin: '2px 0 0' }}>
+                    {Object.values(selectedDay.sessions).filter(s => s !== null).length} حصة
+                  </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedDay(null)}
-                  className="rounded-full p-2 hover:bg-slate-100 text-slate-500"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+                <WsBtn size="sm" onClick={() => setSelectedDay(null)}>
+                  إغلاق
+                </WsBtn>
               </header>
 
-              <div className="space-y-3">
-                {Object.values(selectedDay.sessions).filter(slot => slot !== null).map((slot) => (
-                  <div key={slot.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <div className="flex items-start justify-between mb-2">
-                      <span className="font-semibold text-teal-600">الحصة {slot.period_number}</span>
-                      <span className="text-xs text-slate-500">
-                        {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+              <div className="space-y-2">
+                {Object.values(selectedDay.sessions).filter(slot => slot !== null).map((slot) => {
+                  const tone = subjectColor(slot.subject_name)
+                  return (
+                    <div
+                      key={slot.id}
+                      style={{
+                        borderRadius: 9,
+                        border: `1px solid ${tone.bd}`,
+                        background: tone.bg,
+                        padding: '9px 12px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span style={{ fontSize: 12.5, fontWeight: 700, color: tone.tx }}>الحصة {slot.period_number}</span>
+                        <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)', direction: 'ltr' }}>
+                          {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+                        </span>
+                      </div>
+                      <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700 }}>{slot.subject_name}</span>
+                      <span style={{ display: 'block', fontSize: 11, color: 'var(--ws-text-2)', marginTop: 2 }}>
+                        {slot.grade} / {slot.class_name}
                       </span>
                     </div>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <span className="text-slate-600">الصف:</span>
-                        <span className="font-semibold text-slate-900">{slot.grade} / {slot.class_name}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-slate-600">المادة:</span>
-                        <span className="font-semibold text-slate-900">{slot.subject_name}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           </div>
@@ -1082,6 +1209,6 @@ export function AdminTeacherSchedulesPage() {
         isOpen={matchingDialogOpen}
         onClose={() => setMatchingDialogOpen(false)}
       />
-    </>
+    </WsPage>
   )
 }

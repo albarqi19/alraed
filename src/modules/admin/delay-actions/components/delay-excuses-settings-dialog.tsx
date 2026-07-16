@@ -4,13 +4,23 @@
  */
 
 import { useState, useEffect } from 'react'
-import { X, Settings, Clock, Calendar, Users, Check, AlertCircle, Search } from 'lucide-react'
+import { Settings, Users } from 'lucide-react'
 import {
   useDelayExcusesSettingsQuery,
   useUpdateDelayExcusesSettingsMutation,
   useTeacherExcuseSettingsQuery,
   useUpdateTeacherExcuseSettingMutation,
 } from '../hooks'
+import {
+  WsAlert,
+  WsBtn,
+  WsChip,
+  WsField,
+  WsInput,
+  WsModal,
+  WsSpinner,
+  WsSwitch,
+} from '@/shared/workspace'
 
 interface DelayExcusesSettingsDialogProps {
   open: boolean
@@ -95,277 +105,194 @@ export function DelayExcusesSettingsDialog({
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="flex h-[90vh] w-full max-w-2xl flex-col rounded-2xl bg-white shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100">
-              <Settings className="h-5 w-5 text-indigo-600" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">إعدادات أعذار التأخير</h2>
-              <p className="text-sm text-slate-500">تكوين إعدادات تقديم الأعذار</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex border-b border-slate-200 px-6">
-          <button
-            type="button"
-            onClick={() => setActiveTab('general')}
-            className={`relative px-4 py-3 text-sm font-semibold transition ${
-              activeTab === 'general'
-                ? 'text-indigo-600'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            الإعدادات العامة
-            {activeTab === 'general' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('teachers')}
-            className={`relative px-4 py-3 text-sm font-semibold transition ${
-              activeTab === 'teachers'
-                ? 'text-indigo-600'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            إعدادات المعلمين
-            {activeTab === 'teachers' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />
-            )}
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {settingsQuery.isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-            </div>
-          ) : activeTab === 'general' ? (
-            <div className="space-y-6">
-              {/* تفعيل الميزة */}
-              <div className="flex items-center justify-between rounded-xl border border-slate-200 p-4">
-                <div className="flex items-center gap-3">
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-                    enabled ? 'bg-emerald-100' : 'bg-slate-100'
-                  }`}>
-                    <Check className={`h-5 w-5 ${enabled ? 'text-emerald-600' : 'text-slate-400'}`} />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-slate-900">تفعيل أعذار التأخير</div>
-                    <div className="text-sm text-slate-500">السماح للمعلمين بتقديم أعذار</div>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setEnabled(!enabled)}
-                  className={`relative h-6 w-11 rounded-full transition ${
-                    enabled ? 'bg-emerald-500' : 'bg-slate-300'
-                  }`}
-                >
-                  <span
-                    className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition ${
-                      enabled ? 'left-6' : 'left-1'
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {/* عدد أيام التقديم */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                  <Calendar className="h-4 w-4" />
-                  عدد أيام التقديم المسموحة
-                </div>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="number"
-                    min={1}
-                    max={30}
-                    value={submissionDays}
-                    onChange={(e) => setSubmissionDays(Number(e.target.value))}
-                    className="w-24 rounded-xl border border-slate-200 px-3 py-2 text-center text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  />
-                  <span className="text-sm text-slate-500">يوم من تاريخ التأخير</span>
-                </div>
-              </div>
-
-              {/* أيام الأسبوع المسموحة */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                  <Calendar className="h-4 w-4" />
-                  أيام الأسبوع المسموحة للتقديم
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {DAYS_OF_WEEK.map((day) => (
-                    <button
-                      key={day.value}
-                      type="button"
-                      onClick={() => handleToggleDay(day.value)}
-                      className={`rounded-xl border px-4 py-2 text-sm font-medium transition ${
-                        allowedDays.includes(day.value)
-                          ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
-                          : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                      }`}
-                    >
-                      {day.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* ساعات التقديم */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                  <Clock className="h-4 w-4" />
-                  ساعات التقديم المسموحة
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="space-y-1">
-                    <label className="text-xs text-slate-500">من</label>
-                    <input
-                      type="time"
-                      value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
-                      className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-slate-500">إلى</label>
-                    <input
-                      type="time"
-                      value={endTime}
-                      onChange={(e) => setEndTime(e.target.value)}
-                      className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* ملاحظة */}
-              <div className="flex items-start gap-3 rounded-xl bg-amber-50 p-4">
-                <AlertCircle className="mt-0.5 h-5 w-5 text-amber-600" />
-                <div className="text-sm text-amber-700">
-                  سيتمكن المعلمون من تقديم أعذار التأخير فقط خلال الأيام والساعات المحددة أعلاه.
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* البحث */}
-              <div className="relative">
-                <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="search"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="ابحث عن معلم..."
-                  className="w-full rounded-xl border border-slate-200 bg-white py-2 pr-10 pl-4 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                />
-              </div>
-
-              {/* قائمة المعلمين */}
-              <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                <Users className="h-4 w-4" />
-                المعلمون الذين لديهم إعدادات خاصة
-              </div>
-
-              {teacherSettingsQuery.isLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
-                </div>
-              ) : filteredTeachers.length === 0 ? (
-                <div className="rounded-xl border border-slate-200 py-8 text-center text-slate-500">
-                  {searchTerm ? 'لا توجد نتائج للبحث' : 'لا توجد إعدادات خاصة بالمعلمين'}
-                </div>
-              ) : (
-                <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
-                  {filteredTeachers.map((teacher) => (
-                    <div
-                      key={teacher.user_id}
-                      className="flex items-center justify-between p-4 transition hover:bg-slate-50"
-                    >
-                      <div>
-                        <div className="font-medium text-slate-900">{teacher.teacher_name}</div>
-                        {teacher.national_id && (
-                          <div className="text-xs text-slate-500">{teacher.national_id}</div>
-                        )}
-                        {teacher.notes && (
-                          <div className="mt-1 text-xs text-slate-400">{teacher.notes}</div>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleToggleTeacher(teacher.user_id, teacher.excuses_enabled)}
-                        disabled={updateTeacherMutation.isPending}
-                        className={`relative h-6 w-11 rounded-full transition ${
-                          teacher.excuses_enabled ? 'bg-emerald-500' : 'bg-slate-300'
-                        }`}
-                      >
-                        <span
-                          className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition ${
-                            teacher.excuses_enabled ? 'left-6' : 'left-1'
-                          }`}
-                        />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* ملاحظة */}
-              <div className="flex items-start gap-3 rounded-xl bg-slate-50 p-4">
-                <AlertCircle className="mt-0.5 h-5 w-5 text-slate-500" />
-                <div className="text-sm text-slate-600">
-                  يمكنك تعطيل الأعذار لمعلمين محددين. المعلمون غير المدرجين هنا يستخدمون الإعدادات الافتراضية.
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        {activeTab === 'general' && (
-          <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
-            >
-              إلغاء
-            </button>
-            <button
-              type="button"
+    <WsModal
+      open={open}
+      onClose={() => onOpenChange(false)}
+      title="إعدادات أعذار التأخير"
+      sub="تكوين إعدادات تقديم الأعذار وإعدادات المعلمين الفردية."
+      maxWidth={560}
+      footer={
+        activeTab === 'general' ? (
+          <>
+            <WsBtn onClick={() => onOpenChange(false)}>إلغاء</WsBtn>
+            <WsBtn
+              variant="primary"
+              icon={Settings}
               onClick={handleSaveSettings}
               disabled={updateSettingsMutation.isPending}
-              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50"
             >
-              {updateSettingsMutation.isPending ? (
-                <>
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  جاري الحفظ...
-                </>
-              ) : (
-                'حفظ الإعدادات'
-              )}
-            </button>
-          </div>
-        )}
+              {updateSettingsMutation.isPending ? 'جاري الحفظ...' : 'حفظ الإعدادات'}
+            </WsBtn>
+          </>
+        ) : (
+          <WsBtn variant="primary" onClick={() => onOpenChange(false)}>
+            إغلاق
+          </WsBtn>
+        )
+      }
+    >
+      {/* التبويبات */}
+      <div className="ws-seg" style={{ display: 'flex' }}>
+        <button
+          type="button"
+          onClick={() => setActiveTab('general')}
+          className={`ws-seg__btn ${activeTab === 'general' ? 'is-active' : ''}`}
+          style={{ flex: 1, justifyContent: 'center' }}
+        >
+          الإعدادات العامة
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('teachers')}
+          className={`ws-seg__btn ${activeTab === 'teachers' ? 'is-active' : ''}`}
+          style={{ flex: 1, justifyContent: 'center' }}
+        >
+          إعدادات المعلمين
+        </button>
       </div>
-    </div>
+
+      {settingsQuery.isLoading ? (
+        <WsAlert tone="info" icon={null} boxed>
+          <WsSpinner style={{ width: 13, height: 13 }} />
+          جاري تحميل الإعدادات...
+        </WsAlert>
+      ) : activeTab === 'general' ? (
+        <>
+          {/* تفعيل الميزة */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 10,
+              padding: '8px 10px',
+              border: '1px solid var(--ws-hairline)',
+              borderRadius: 8,
+              background: 'var(--ws-surface-2)',
+            }}
+          >
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: 'block', fontSize: 12, fontWeight: 700 }}>تفعيل أعذار التأخير</span>
+              <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                السماح للمعلمين بتقديم أعذار.
+              </span>
+            </span>
+            <WsSwitch checked={enabled} onChange={setEnabled} />
+          </div>
+
+          {/* عدد أيام التقديم */}
+          <WsField label="عدد أيام التقديم المسموحة (من تاريخ التأخير)">
+            <WsInput
+              type="number"
+              min={1}
+              max={30}
+              value={submissionDays}
+              onChange={(e) => setSubmissionDays(Number(e.target.value))}
+              style={{ width: 100, textAlign: 'center' }}
+            />
+          </WsField>
+
+          {/* أيام الأسبوع المسموحة */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <span className="ws-label">أيام الأسبوع المسموحة للتقديم</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+              {DAYS_OF_WEEK.map((day) => (
+                <WsChip
+                  key={day.value}
+                  tone={allowedDays.includes(day.value) ? 'green' : undefined}
+                  onClick={() => handleToggleDay(day.value)}
+                >
+                  {day.label}
+                </WsChip>
+              ))}
+            </div>
+          </div>
+
+          {/* ساعات التقديم */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <WsField label="من الساعة">
+              <WsInput type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+            </WsField>
+            <WsField label="إلى الساعة">
+              <WsInput type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+            </WsField>
+          </div>
+
+          <WsAlert tone="warn" boxed>
+            سيتمكن المعلمون من تقديم أعذار التأخير فقط خلال الأيام والساعات المحددة أعلاه.
+          </WsAlert>
+        </>
+      ) : (
+        <>
+          {/* البحث */}
+          <WsInput
+            type="search"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="ابحث عن معلم..."
+          />
+
+          <span className="ws-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <Users style={{ width: 12, height: 12 }} />
+            المعلمون الذين لديهم إعدادات خاصة
+          </span>
+
+          {teacherSettingsQuery.isLoading ? (
+            <WsAlert tone="info" icon={null} boxed>
+              <WsSpinner style={{ width: 13, height: 13 }} />
+              جاري التحميل...
+            </WsAlert>
+          ) : filteredTeachers.length === 0 ? (
+            <WsAlert tone="info" boxed>
+              {searchTerm ? 'لا توجد نتائج للبحث.' : 'لا توجد إعدادات خاصة بالمعلمين.'}
+            </WsAlert>
+          ) : (
+            <div
+              style={{
+                border: '1px solid var(--ws-hairline)',
+                borderRadius: 8,
+                maxHeight: '38vh',
+                overflowY: 'auto',
+              }}
+            >
+              {filteredTeachers.map((teacher) => (
+                <div
+                  key={teacher.user_id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 10,
+                    padding: '7px 10px',
+                    borderBottom: '1px solid var(--ws-hairline)',
+                  }}
+                >
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ display: 'block', fontSize: 12, fontWeight: 600 }}>{teacher.teacher_name}</span>
+                    {teacher.national_id && (
+                      <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                        {teacher.national_id}
+                      </span>
+                    )}
+                    {teacher.notes && (
+                      <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ws-text-2)' }}>{teacher.notes}</span>
+                    )}
+                  </span>
+                  <WsSwitch
+                    checked={teacher.excuses_enabled}
+                    onChange={() => handleToggleTeacher(teacher.user_id, teacher.excuses_enabled)}
+                    disabled={updateTeacherMutation.isPending}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          <WsAlert tone="info" boxed>
+            يمكنك تعطيل الأعذار لمعلمين محددين — المعلمون غير المدرجين هنا يستخدمون الإعدادات الافتراضية.
+          </WsAlert>
+        </>
+      )}
+    </WsModal>
   )
 }

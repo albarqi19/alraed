@@ -1,11 +1,44 @@
 import { useMemo, useState } from 'react'
 import {
+  AlertCircle,
+  CalendarDays,
+  CheckCircle2,
+  Clock3,
+  CloudOff,
+  CloudUpload,
+  Eye,
+  Info,
+  Laptop,
+  ListChecks,
+  Star,
+  Upload,
+  UserRound,
+  Users,
+  Video,
+  XCircle,
+} from 'lucide-react'
+import {
   useRemoteDaysOverview,
   useRemoteDayDetails,
   useRemoteUploadDetails,
 } from '../remote-attendance/hooks'
 import { RemoteDayActivationModal } from '../components/remote-day-activation-modal'
 import type { RemoteDaySession } from '../remote-attendance/types'
+import {
+  WsBlock,
+  WsBtn,
+  WsChip,
+  WsEmpty,
+  WsFact,
+  WsHeader,
+  WsLayout,
+  WsMain,
+  WsModal,
+  WsPage,
+  WsProgress,
+  WsSideCol,
+  WsTable,
+} from '@/shared/workspace'
 
 function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600)
@@ -87,152 +120,272 @@ export default function AdminRemoteAttendancePage() {
   )
 
   return (
-    <div className="space-y-6">
-      {/* رأس الصفحة */}
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            <i className="bi bi-laptop ml-2 text-purple-500" />
-            متابعة الدوام عن بعد
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            متابعة رفع ملفات حضور التيمز من المعلمين
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setIsActivateModalOpen(true)}
-          className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-purple-700"
+    <WsPage>
+      <WsHeader
+        title="متابعة الدوام عن بعد"
+        badge="ملفات تيمز"
+        actions={
+          <WsBtn variant="primary" icon={Laptop} onClick={() => setIsActivateModalOpen(true)}>
+            تحويل يوم إلى عن بعد
+          </WsBtn>
+        }
+        facts={
+          dayDetails ? (
+            <>
+              <WsFact icon={Users} label="المعلمون الكلي:">
+                {dayDetails.stats.total_teachers.toLocaleString('ar-SA')}
+              </WsFact>
+              <WsFact icon={CloudUpload} label="رفعوا الملفات:">
+                {dayDetails.stats.teachers_uploaded.toLocaleString('ar-SA')}
+              </WsFact>
+              <WsFact icon={CloudOff} label="لم يرفعوا:">
+                {dayDetails.stats.teachers_not_uploaded.toLocaleString('ar-SA')}
+              </WsFact>
+              <WsFact icon={UserRound} label="إجمالي المشاركين:">
+                {dayDetails.stats.total_participants.toLocaleString('ar-SA')}
+              </WsFact>
+            </>
+          ) : undefined
+        }
+      />
+
+      <WsLayout>
+        {/* العمود الأيمن: أيام الدوام عن بعد */}
+        <WsSideCol
+          title="أيام الدوام عن بعد"
+          icon={CalendarDays}
+          side="start"
+          width={270}
+          storageKey="ws:remote-attendance:days"
         >
-          <i className="bi bi-laptop" />
-          تحويل يوم إلى عن بعد
-        </button>
-      </header>
-
-      {overviewQuery.isLoading ? (
-        <div className="flex items-center justify-center py-12 text-slate-400">
-          <i className="bi bi-hourglass-split animate-spin text-2xl" />
-        </div>
-      ) : !overview?.length ? (
-        <div className="rounded-2xl border-2 border-dashed border-slate-200 py-16 text-center">
-          <i className="bi bi-laptop text-5xl text-slate-300" />
-          <p className="mt-3 text-sm text-slate-500">
-            لا توجد أيام دوام عن بعد حتى الآن
-          </p>
-          <p className="mt-1 text-xs text-slate-400">
-            يمكنك تحويل الدوام من صفحة حضور المعلمين
-          </p>
-        </div>
-      ) : (
-        <div className="flex gap-6">
-          {/* الشريط الجانبي */}
-          <div className="w-56 flex-shrink-0 space-y-2">
-            <h3 className="text-xs font-semibold text-slate-400">
-              أيام الدوام عن بعد
-            </h3>
-            {overview.map((day) => (
-              <button
-                key={day.id}
-                type="button"
-                onClick={() => handleSelectDay(day.date)}
-                className={`w-full rounded-xl p-3 text-right transition-colors ${
-                  selectedDate === day.date
-                    ? 'bg-purple-50 border border-purple-200 text-purple-800'
-                    : 'bg-white border border-slate-100 text-slate-700 hover:bg-slate-50'
-                }`}
-              >
-                <p className="text-sm font-semibold">{day.date_formatted}</p>
-                <div className="mt-1 flex items-center gap-2 text-xs">
-                  <span className="text-purple-500">
-                    <i className="bi bi-upload ml-0.5" />
-                    {day.uploads_count} رفع
-                  </span>
-                  <span className="text-slate-400">
-                    <i className="bi bi-people ml-0.5" />
-                    {day.total_participants} مشارك
-                  </span>
-                </div>
-                {day.note && (
-                  <p className="mt-1 text-xs text-slate-400 truncate">
-                    {day.note}
-                  </p>
-                )}
-              </button>
-            ))}
-          </div>
-
-          {/* المحتوى الرئيسي */}
-          <div className="min-w-0 flex-1 space-y-4">
-            {dayDetailsQuery.isLoading ? (
-              <div className="flex items-center justify-center py-12 text-slate-400">
-                <i className="bi bi-hourglass-split animate-spin text-2xl" />
+          <WsBlock fill scroll>
+            {overviewQuery.isLoading ? (
+              <WsEmpty loading>جاري تحميل الأيام...</WsEmpty>
+            ) : !overview?.length ? (
+              <WsEmpty icon={Laptop}>
+                لا توجد أيام دوام عن بعد حتى الآن.
+                <span style={{ fontSize: 11 }}>حوّل يوماً من الزر بالأعلى.</span>
+              </WsEmpty>
+            ) : (
+              <div>
+                {overview.map((day) => {
+                  const isSelected = selectedDate === day.date
+                  return (
+                    <button
+                      key={day.id}
+                      type="button"
+                      onClick={() => handleSelectDay(day.date)}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        textAlign: 'right',
+                        padding: '8px 12px',
+                        border: 'none',
+                        borderBottom: '1px solid var(--ws-hairline)',
+                        background: isSelected ? 'var(--ws-accent-soft)' : 'transparent',
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: 'var(--ws-text)' }}>
+                        {day.date_formatted}
+                      </span>
+                      <span
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          marginTop: 3,
+                          fontSize: 11,
+                          color: 'var(--ws-text-2)',
+                        }}
+                      >
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: 'var(--ws-accent)' }}>
+                          <Upload style={{ width: 11, height: 11 }} />
+                          {day.uploads_count} رفع
+                        </span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                          <Users style={{ width: 11, height: 11 }} />
+                          {day.total_participants} مشارك
+                        </span>
+                      </span>
+                      {day.note && (
+                        <span
+                          style={{
+                            display: 'block',
+                            marginTop: 2,
+                            fontSize: 10.5,
+                            color: 'var(--ws-text-2)',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {day.note}
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
               </div>
-            ) : dayDetails ? (
-              <>
-                {/* بطاقات إحصائية */}
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  <StatCard
-                    icon="bi-people"
-                    color="purple"
-                    label="المعلمون الكلي"
-                    value={dayDetails.stats.total_teachers}
-                  />
-                  <StatCard
-                    icon="bi-cloud-check"
-                    color="emerald"
-                    label="رفعوا الملفات"
-                    value={dayDetails.stats.teachers_uploaded}
-                  />
-                  <StatCard
-                    icon="bi-cloud-slash"
-                    color="rose"
-                    label="لم يرفعوا"
-                    value={dayDetails.stats.teachers_not_uploaded}
-                  />
-                  <StatCard
-                    icon="bi-person-check"
-                    color="blue"
-                    label="إجمالي المشاركين"
-                    value={dayDetails.stats.total_participants}
-                  />
-                </div>
+            )}
+          </WsBlock>
+        </WsSideCol>
 
-                {/* قائمة المعلمين */}
-                <div className="rounded-2xl border border-slate-100 bg-white">
-                  <div className="border-b border-slate-100 px-5 py-4">
-                    <h3 className="text-sm font-semibold text-slate-700">
-                      <i className="bi bi-people ml-1 text-purple-500" />
-                      المعلمون ({teacherSummaries.length})
-                    </h3>
-                  </div>
-                  <div className="grid gap-2 p-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {teacherSummaries.map((teacher) => (
-                      <TeacherCard
-                        key={teacher.teacher_id}
-                        teacher={teacher}
-                        onClick={() =>
-                          setSelectedTeacherId(teacher.teacher_id)
-                        }
-                      />
+        {/* الوسط: المعلمون وحالة رفعهم */}
+        <WsMain>
+          <WsBlock
+            title="المعلمون"
+            icon={Users}
+            count={teacherSummaries.length.toLocaleString('ar-SA')}
+            fill
+            scroll
+          >
+            {dayDetailsQuery.isLoading ? (
+              <WsEmpty loading>جاري تحميل تفاصيل اليوم...</WsEmpty>
+            ) : !dayDetails ? (
+              <WsEmpty icon={Laptop}>اختر يوماً من القائمة اليمنى.</WsEmpty>
+            ) : teacherSummaries.length === 0 ? (
+              <WsEmpty icon={Users}>لا توجد حصص مسجلة لهذا اليوم.</WsEmpty>
+            ) : (
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))',
+                  gap: 8,
+                  padding: 12,
+                }}
+              >
+                {teacherSummaries.map((teacher) => {
+                  const ratio = teacher.total_sessions > 0 ? teacher.uploaded_sessions / teacher.total_sessions : 0
+                  const isSelected = teacher.teacher_id === selectedTeacherId
+                  const StatusIcon = ratio === 1 ? CheckCircle2 : ratio > 0 ? AlertCircle : XCircle
+                  const statusColor = ratio === 1 ? 'var(--ws-green)' : ratio > 0 ? 'var(--ws-amber)' : 'var(--ws-red)'
+                  return (
+                    <button
+                      key={teacher.teacher_id}
+                      type="button"
+                      onClick={() => setSelectedTeacherId(teacher.teacher_id)}
+                      className={`ws-pick ${isSelected ? 'is-checked' : ''}`}
+                      style={{ alignItems: 'flex-start', padding: '8px 10px' }}
+                    >
+                      <span style={{ minWidth: 0, flex: 1 }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, maxWidth: '100%' }}>
+                          <StatusIcon style={{ width: 13, height: 13, color: statusColor, flexShrink: 0 }} />
+                          <span className="ws-pick__name">{teacher.teacher_name}</span>
+                        </span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5 }}>
+                          <WsProgress value={ratio * 100} style={{ flex: 1 }} />
+                          <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)', flexShrink: 0 }}>
+                            {teacher.uploaded_sessions}/{teacher.total_sessions}
+                          </span>
+                        </span>
+                        {teacher.total_participants > 0 && (
+                          <span className="ws-pick__sub">
+                            {teacher.total_participants.toLocaleString('ar-SA')} مشارك
+                          </span>
+                        )}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </WsBlock>
+        </WsMain>
+
+        {/* اليسار: حصص المعلم المحدد — بدل المودال */}
+        <WsSideCol title="حصص المعلم" icon={ListChecks} storageKey="ws:remote-attendance:teacher" width={340}>
+          {!selectedTeacher ? (
+            <WsEmpty icon={Info}>اختر معلماً من الوسط لعرض حصصه وملفات الرفع.</WsEmpty>
+          ) : (
+            <>
+              <WsBlock padded>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 700 }}>{selectedTeacher.teacher_name}</span>
+                  <WsChip
+                    tone={
+                      selectedTeacher.uploaded_sessions === selectedTeacher.total_sessions
+                        ? 'green'
+                        : selectedTeacher.uploaded_sessions > 0
+                          ? 'amber'
+                          : 'red'
+                    }
+                  >
+                    {selectedTeacher.uploaded_sessions} / {selectedTeacher.total_sessions} رُفعت
+                  </WsChip>
+                </div>
+              </WsBlock>
+
+              <WsBlock title="الحصص" count={selectedTeacher.sessions.length} fill scroll>
+                <div>
+                  {selectedTeacher.sessions
+                    .slice()
+                    .sort((a, b) => (a.period_number ?? 0) - (b.period_number ?? 0))
+                    .map((session) => (
+                      <div
+                        key={session.session_id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          padding: '7px 12px',
+                          borderBottom: '1px solid var(--ws-hairline)',
+                        }}
+                      >
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: 24,
+                            height: 24,
+                            borderRadius: 6,
+                            flexShrink: 0,
+                            fontSize: 11.5,
+                            fontWeight: 700,
+                            background: session.is_uploaded ? 'var(--ws-green-bg)' : 'var(--ws-surface-2)',
+                            color: session.is_uploaded ? 'var(--ws-green)' : 'var(--ws-text-2)',
+                          }}
+                        >
+                          {session.period_number ?? '-'}
+                        </span>
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ display: 'block', fontSize: 12, fontWeight: 600 }}>{session.subject_name}</span>
+                          <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                            {session.grade} - {session.class_name}
+                          </span>
+                        </span>
+                        {session.is_uploaded ? (
+                          <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                            <span style={{ fontSize: 10.5, color: 'var(--ws-green)', fontWeight: 700 }}>
+                              {session.total_participants} مشارك
+                              {session.avg_duration_seconds > 0 && (
+                                <span style={{ color: 'var(--ws-text-2)', fontWeight: 400 }}>
+                                  {' '}
+                                  • {formatDuration(session.avg_duration_seconds)}
+                                </span>
+                              )}
+                            </span>
+                            {session.upload_id && (
+                              <WsBtn size="sm" icon={Eye} onClick={() => setSelectedUploadId(session.upload_id!)}>
+                                عرض
+                              </WsBtn>
+                            )}
+                          </span>
+                        ) : (
+                          <WsChip icon={Clock3}>لم يُرفع</WsChip>
+                        )}
+                      </div>
                     ))}
-                  </div>
                 </div>
-              </>
-            ) : null}
-          </div>
-        </div>
-      )}
+              </WsBlock>
+            </>
+          )}
+        </WsSideCol>
+      </WsLayout>
 
-      {/* نافذة حصص المعلم */}
-      {selectedTeacher && (
-        <TeacherSessionsModal
-          teacher={selectedTeacher}
-          onClose={() => setSelectedTeacherId(undefined)}
-          onViewUpload={(uploadId) => setSelectedUploadId(uploadId)}
-        />
-      )}
-
-      {/* نافذة تفاصيل الرفع */}
+      {/* نافذة تفاصيل الرفع (المشاركون) */}
       {selectedUploadId && uploadDetailsQuery.data && (
         <UploadDetailsModal
           details={uploadDetailsQuery.data}
@@ -240,9 +393,9 @@ export default function AdminRemoteAttendancePage() {
         />
       )}
       {selectedUploadId && uploadDetailsQuery.isLoading && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
-          <div className="rounded-2xl bg-white p-8">
-            <i className="bi bi-hourglass-split animate-spin text-3xl text-purple-500" />
+        <div className="ws-modal">
+          <div className="ws-modal__panel" style={{ maxWidth: 120, padding: 24, textAlign: 'center' }}>
+            <span className="ws-spinner" style={{ margin: '0 auto' }} />
           </div>
         </div>
       )}
@@ -255,252 +408,7 @@ export default function AdminRemoteAttendancePage() {
         allowDateChange
         onSuccess={() => overviewQuery.refetch()}
       />
-    </div>
-  )
-}
-
-/* ========== بطاقة إحصائية ========== */
-function StatCard({
-  icon,
-  color,
-  label,
-  value,
-}: {
-  icon: string
-  color: 'purple' | 'emerald' | 'rose' | 'blue'
-  label: string
-  value: number
-}) {
-  const colors = {
-    purple: 'border-purple-100 bg-purple-50/50 text-purple-600',
-    emerald: 'border-emerald-100 bg-emerald-50/50 text-emerald-600',
-    rose: 'border-rose-100 bg-rose-50/50 text-rose-600',
-    blue: 'border-blue-100 bg-blue-50/50 text-blue-600',
-  }
-  const iconColors = {
-    purple: 'bg-purple-100/80 text-purple-600',
-    emerald: 'bg-emerald-100/80 text-emerald-600',
-    rose: 'bg-rose-100/80 text-rose-600',
-    blue: 'bg-blue-100/80 text-blue-600',
-  }
-  const valueColors = {
-    purple: 'text-purple-700',
-    emerald: 'text-emerald-700',
-    rose: 'text-rose-700',
-    blue: 'text-blue-700',
-  }
-
-  return (
-    <div
-      className={`flex items-center gap-3 rounded-2xl border p-3 ${colors[color]}`}
-    >
-      <div
-        className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${iconColors[color]}`}
-      >
-        <i className={`bi ${icon} text-lg`} />
-      </div>
-      <div>
-        <p className="text-[11px] font-semibold opacity-80">{label}</p>
-        <p className={`text-lg font-bold ${valueColors[color]}`}>
-          {value.toLocaleString('ar-SA')}
-        </p>
-      </div>
-    </div>
-  )
-}
-
-/* ========== بطاقة معلم ========== */
-function TeacherCard({
-  teacher,
-  onClick,
-}: {
-  teacher: TeacherSummary
-  onClick: () => void
-}) {
-  const ratio =
-    teacher.total_sessions > 0
-      ? teacher.uploaded_sessions / teacher.total_sessions
-      : 0
-  const pct = Math.round(ratio * 100)
-
-  let statusColor: string
-  let statusBg: string
-  let statusIcon: string
-  if (ratio === 1) {
-    statusColor = 'text-emerald-700'
-    statusBg = 'bg-emerald-50 border-emerald-200'
-    statusIcon = 'bi-check-circle-fill text-emerald-500'
-  } else if (ratio > 0) {
-    statusColor = 'text-amber-700'
-    statusBg = 'bg-amber-50 border-amber-200'
-    statusIcon = 'bi-exclamation-circle-fill text-amber-500'
-  } else {
-    statusColor = 'text-rose-700'
-    statusBg = 'bg-rose-50 border-rose-200'
-    statusIcon = 'bi-x-circle-fill text-rose-500'
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex items-center gap-3 rounded-xl border p-3 text-right transition-all hover:shadow-sm ${statusBg}`}
-    >
-      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-white/80">
-        <i className={`bi ${statusIcon} text-lg`} />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className={`text-sm font-semibold truncate ${statusColor}`}>
-          {teacher.teacher_name}
-        </p>
-        <div className="mt-1 flex items-center gap-2">
-          {/* شريط التقدم */}
-          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/60">
-            <div
-              className={`h-full rounded-full transition-all ${
-                ratio === 1
-                  ? 'bg-emerald-400'
-                  : ratio > 0
-                    ? 'bg-amber-400'
-                    : 'bg-rose-300'
-              }`}
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-          <span className="flex-shrink-0 text-[11px] font-medium opacity-70">
-            {teacher.uploaded_sessions}/{teacher.total_sessions}
-          </span>
-        </div>
-        {teacher.total_participants > 0 && (
-          <p className="mt-0.5 text-[11px] opacity-60">
-            <i className="bi bi-people ml-0.5" />
-            {teacher.total_participants} مشارك
-          </p>
-        )}
-      </div>
-    </button>
-  )
-}
-
-/* ========== نافذة حصص المعلم ========== */
-function TeacherSessionsModal({
-  teacher,
-  onClose,
-  onViewUpload,
-}: {
-  teacher: TeacherSummary
-  onClose: () => void
-  onViewUpload: (uploadId: number) => void
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div className="w-full max-w-2xl rounded-2xl bg-white shadow-xl">
-        {/* رأس النافذة */}
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-purple-600">
-              <i className="bi bi-person text-xl" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-slate-900">
-                {teacher.teacher_name}
-              </h2>
-              <p className="text-xs text-slate-500">
-                {teacher.uploaded_sessions} من {teacher.total_sessions} حصص تم
-                رفعها
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-          >
-            <i className="bi bi-x-lg" />
-          </button>
-        </div>
-
-        {/* قائمة الحصص */}
-        <div className="max-h-[60vh] overflow-y-auto p-4">
-          <div className="space-y-2">
-            {teacher.sessions
-              .sort(
-                (a, b) => (a.period_number ?? 0) - (b.period_number ?? 0),
-              )
-              .map((session) => (
-                <div
-                  key={session.session_id}
-                  className={`flex items-center gap-3 rounded-xl border p-3 transition-colors ${
-                    session.is_uploaded
-                      ? 'border-emerald-100 bg-emerald-50/30'
-                      : 'border-slate-100 bg-slate-50/30'
-                  }`}
-                >
-                  {/* رقم الحصة */}
-                  <div
-                    className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-sm font-bold ${
-                      session.is_uploaded
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : 'bg-slate-200 text-slate-500'
-                    }`}
-                  >
-                    {session.period_number ?? '-'}
-                  </div>
-
-                  {/* المعلومات */}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-slate-800">
-                      {session.subject_name}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {session.grade} - {session.class_name}
-                    </p>
-                  </div>
-
-                  {/* الحالة والتفاصيل */}
-                  <div className="flex items-center gap-2">
-                    {session.is_uploaded ? (
-                      <>
-                        <div className="text-left">
-                          <p className="text-xs font-medium text-emerald-700">
-                            <i className="bi bi-people ml-0.5" />
-                            {session.total_participants} مشارك
-                          </p>
-                          {session.avg_duration_seconds > 0 && (
-                            <p className="text-[11px] text-slate-400">
-                              {formatDuration(session.avg_duration_seconds)}
-                            </p>
-                          )}
-                        </div>
-                        {session.upload_id && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              onViewUpload(session.upload_id!)
-                            }
-                            className="rounded-lg bg-purple-100 px-3 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-200"
-                          >
-                            <i className="bi bi-eye ml-0.5" />
-                            عرض
-                          </button>
-                        )}
-                      </>
-                    ) : (
-                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-500">
-                        <i className="bi bi-clock ml-0.5" />
-                        لم يُرفع
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-          </div>
-        </div>
-      </div>
-    </div>
+    </WsPage>
   )
 }
 
@@ -524,128 +432,77 @@ function UploadDetailsModal({
   const organizer = details.participants.find((p) => p.role === 'organizer')
 
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+    <WsModal
+      open
+      onClose={onClose}
+      title={
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <Video style={{ width: 15, height: 15, color: 'var(--ws-accent-2)' }} />
+          {details.upload.meeting_title ?? 'تفاصيل الاجتماع'}
+        </span>
+      }
+      sub={`${details.upload.teacher_name} — ${details.session.subject_name} (${details.session.grade} - ${details.session.class_name})`}
+      maxWidth={680}
+      footer={
+        <WsBtn variant="primary" onClick={onClose}>
+          إغلاق
+        </WsBtn>
+      }
     >
-      <div className="w-full max-w-3xl rounded-2xl bg-white shadow-xl">
-        {/* رأس النافذة */}
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-purple-600">
-              <i className="bi bi-camera-video text-xl" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-slate-900">
-                {details.upload.meeting_title ?? 'تفاصيل الاجتماع'}
-              </h2>
-              <p className="text-xs text-slate-500">
-                {details.upload.teacher_name} - {details.session.subject_name} (
-                {details.session.grade} - {details.session.class_name})
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-          >
-            <i className="bi bi-x-lg" />
-          </button>
-        </div>
-
-        {/* إحصائيات */}
-        <div className="grid grid-cols-3 gap-3 border-b border-slate-50 p-4">
-          <div className="rounded-xl bg-purple-50 p-3 text-center">
-            <p className="text-lg font-bold text-purple-700">
-              {details.stats.total_attendees}
-            </p>
-            <p className="text-xs text-purple-500">مشارك</p>
-          </div>
-          <div className="rounded-xl bg-blue-50 p-3 text-center">
-            <p className="text-lg font-bold text-blue-700">
-              {formatDuration(details.stats.avg_duration_seconds)}
-            </p>
-            <p className="text-xs text-blue-500">متوسط المدة</p>
-          </div>
-          <div className="rounded-xl bg-emerald-50 p-3 text-center">
-            <p className="text-lg font-bold text-emerald-700">
-              {details.upload.meeting_duration ?? '-'}
-            </p>
-            <p className="text-xs text-emerald-500">مدة الاجتماع</p>
-          </div>
-        </div>
-
-        {/* المنظم */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+        <WsChip tone="green" icon={Users}>
+          {details.stats.total_attendees} مشارك
+        </WsChip>
+        <WsChip tone="sky" icon={Clock3}>
+          متوسط المدة {formatDuration(details.stats.avg_duration_seconds)}
+        </WsChip>
+        <WsChip icon={Video}>مدة الاجتماع {details.upload.meeting_duration ?? '—'}</WsChip>
         {organizer && (
-          <div className="mx-4 mt-3 flex items-center gap-2 rounded-lg bg-purple-50 px-3 py-2 text-xs text-purple-700">
-            <i className="bi bi-star-fill" />
-            <span className="font-medium">المنظم:</span> {organizer.name}
-          </div>
+          <WsChip tone="amber" icon={Star}>
+            المنظم: {organizer.name}
+          </WsChip>
         )}
-
-        {/* جدول المشاركين */}
-        <div className="p-4">
-          <h4 className="mb-2 text-xs font-semibold text-slate-500">
-            المشاركون ({attendees.length})
-          </h4>
-          <div className="max-h-80 overflow-y-auto rounded-xl border border-slate-100">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-slate-50 text-xs text-slate-500">
-                <tr>
-                  <th className="px-3 py-2 text-right font-medium">#</th>
-                  <th className="px-3 py-2 text-right font-medium">الاسم</th>
-                  <th className="px-3 py-2 text-right font-medium">المدة</th>
-                  <th className="hidden px-3 py-2 text-right font-medium sm:table-cell">
-                    أول دخول
-                  </th>
-                  <th className="hidden px-3 py-2 text-right font-medium sm:table-cell">
-                    آخر خروج
-                  </th>
-                  <th className="px-3 py-2 text-center font-medium">
-                    مرات الدخول
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {attendees.map((p, i) => (
-                  <tr key={p.id} className="hover:bg-slate-50/50">
-                    <td className="px-3 py-2 text-xs text-slate-400">
-                      {i + 1}
-                    </td>
-                    <td className="px-3 py-2">
-                      <p className="font-medium text-slate-700">{p.name}</p>
-                      {p.email && (
-                        <p className="text-[11px] text-slate-400 ltr">
-                          {p.email}
-                        </p>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 text-slate-600">
-                      {p.duration_text ?? formatDuration(p.total_duration_seconds)}
-                    </td>
-                    <td className="hidden px-3 py-2 text-slate-500 sm:table-cell">
-                      {formatTime(p.first_join_time)}
-                    </td>
-                    <td className="hidden px-3 py-2 text-slate-500 sm:table-cell">
-                      {formatTime(p.last_leave_time)}
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      {p.join_leave_count > 1 ? (
-                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-600">
-                          {p.join_leave_count}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-slate-400">1</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
       </div>
-    </div>
+
+      <div style={{ maxHeight: '48vh', overflowY: 'auto', border: '1px solid var(--ws-hairline)', borderRadius: 8 }}>
+        <WsTable>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>الاسم</th>
+              <th>المدة</th>
+              <th>أول دخول</th>
+              <th>آخر خروج</th>
+              <th>مرات الدخول</th>
+            </tr>
+          </thead>
+          <tbody>
+            {attendees.map((p, i) => (
+              <tr key={p.id}>
+                <td style={{ color: 'var(--ws-text-2)' }}>{i + 1}</td>
+                <td>
+                  <span style={{ fontWeight: 600 }}>{p.name}</span>
+                  {p.email && (
+                    <span className="ws-cell-sub" style={{ direction: 'ltr', textAlign: 'right' }}>
+                      {p.email}
+                    </span>
+                  )}
+                </td>
+                <td>{p.duration_text ?? formatDuration(p.total_duration_seconds)}</td>
+                <td style={{ color: 'var(--ws-text-2)' }}>{formatTime(p.first_join_time)}</td>
+                <td style={{ color: 'var(--ws-text-2)' }}>{formatTime(p.last_leave_time)}</td>
+                <td>
+                  {p.join_leave_count > 1 ? (
+                    <WsChip tone="amber">{p.join_leave_count}</WsChip>
+                  ) : (
+                    <span style={{ fontSize: 11, color: 'var(--ws-text-2)' }}>1</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </WsTable>
+      </div>
+    </WsModal>
   )
 }

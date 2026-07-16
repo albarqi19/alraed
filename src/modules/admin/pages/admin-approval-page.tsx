@@ -11,9 +11,53 @@ import {
   useGradesWithClassesQuery,
 } from '../hooks'
 import type { PendingApprovalRecord, AttendanceSessionDetails } from '../types'
-import { MissingSessionsModal } from '../components/missing-sessions-modal'
+import { MissingSessionsPanel } from '../components/missing-sessions-panel'
 import { ManualAbsenceModal } from '../components/manual-absence-modal'
-import { Clock, Loader2, AlertCircle, Plus, MessageSquare, MessageSquareOff } from 'lucide-react'
+import {
+  AlertTriangle,
+  CalendarX,
+  CheckCheck,
+  CheckCircle2,
+  ClipboardList,
+  Clock3,
+  DoorOpen,
+  Inbox,
+  Info,
+  ListChecks,
+  MessageSquare,
+  MessageSquareOff,
+  Pencil,
+  Plus,
+  Users,
+  XCircle,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import {
+  WsAlert,
+  WsBlock,
+  WsBtn,
+  WsChip,
+  WsEmpty,
+  WsFact,
+  WsFactRow,
+  WsFactsList,
+  WsField,
+  WsHeader,
+  WsInput,
+  WsLayout,
+  WsMain,
+  WsModal,
+  WsPage,
+  WsProgress,
+  WsSelect,
+  WsSideCol,
+  WsSpinner,
+  WsSwitch,
+  WsTable,
+  WsTextarea,
+  WsToolbar,
+  type WsChipTone,
+} from '@/shared/workspace'
 
 interface ApprovalProgress {
   totalRecords: number
@@ -42,11 +86,18 @@ const attendanceStatusLabels: Record<AttendanceStatus, string> = {
   excused: 'مستأذن',
 }
 
-const attendanceStatusTone: Record<AttendanceStatus, string> = {
-  present: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-  absent: 'bg-rose-50 text-rose-700 border border-rose-200',
-  late: 'bg-amber-50 text-amber-700 border border-amber-200',
-  excused: 'bg-sky-50 text-sky-700 border border-sky-200',
+const attendanceStatusTone: Record<AttendanceStatus, WsChipTone> = {
+  present: 'green',
+  absent: 'red',
+  late: 'amber',
+  excused: 'sky',
+}
+
+const attendanceStatusIcon: Record<AttendanceStatus, LucideIcon> = {
+  present: CheckCircle2,
+  absent: XCircle,
+  late: Clock3,
+  excused: DoorOpen,
 }
 
 const attendanceStatusOptions: Array<{ value: AttendanceStatus; label: string }> = (
@@ -56,15 +107,6 @@ const attendanceStatusOptions: Array<{ value: AttendanceStatus; label: string }>
 function normalizeAttendanceDate(value: string): string {
   const match = value.match(/^\d{4}-\d{2}-\d{2}/)
   return match ? match[0] : value
-}
-
-function SummaryBadge({ label, value, tone }: { label: string; value: number; tone: string }) {
-  return (
-    <div className={`rounded-3xl px-4 py-3 text-right shadow-sm ${tone}`}>
-      <p className="text-xs font-semibold text-slate-500">{label}</p>
-      <p className="text-xl font-semibold text-slate-900">{value.toLocaleString('ar-SA')}</p>
-    </div>
-  )
 }
 
 function formatDate(value?: string | null, options: Intl.DateTimeFormatOptions = { dateStyle: 'medium' }) {
@@ -102,41 +144,36 @@ function RejectDialog({ open, isSubmitting, onClose, onConfirm }: RejectDialogPr
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal>
-      <div className="w-full max-w-md space-y-4 rounded-3xl bg-white p-6 text-right shadow-xl">
-        <header className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-widest text-rose-600">رفض التحضير</p>
-          <h2 className="text-lg font-semibold text-slate-900">هل ترغب في رفض التحضير؟</h2>
-          <p className="text-sm text-muted">
-            يمكنك إضافة سبب الرفض لمساعدة المعلم على فهم القرار. هذا الحقل اختياري.
-          </p>
-        </header>
-
-        <div className="space-y-2">
-          <label className="text-xs font-semibold text-slate-600" htmlFor="reject-reason">
-            سبب الرفض (اختياري)
-          </label>
-          <textarea
-            id="reject-reason"
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            rows={4}
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
-            placeholder="اكتب ملاحظاتك هنا..."
-            disabled={isSubmitting}
-          />
-        </div>
-
-        <footer className="flex flex-wrap items-center justify-end gap-2">
-          <button type="button" className="button-secondary" onClick={onClose} disabled={isSubmitting}>
+    <WsModal
+      open={open}
+      onClose={onClose}
+      title="رفض التحضير"
+      sub="يمكنك إضافة سبب الرفض لمساعدة المعلم على فهم القرار — الحقل اختياري."
+      footer={
+        <>
+          <WsBtn onClick={onClose} disabled={isSubmitting}>
             تراجع
-          </button>
-          <button type="button" className="button-primary" onClick={handleSubmit} disabled={isSubmitting}>
+          </WsBtn>
+          <WsBtn variant="primary" onClick={handleSubmit} disabled={isSubmitting}>
             {isSubmitting ? 'جارٍ الرفض...' : 'تأكيد الرفض'}
-          </button>
-        </footer>
+          </WsBtn>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-1.5">
+        <label className="ws-label" htmlFor="reject-reason">
+          سبب الرفض (اختياري)
+        </label>
+        <WsTextarea
+          id="reject-reason"
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          rows={4}
+          placeholder="اكتب ملاحظاتك هنا..."
+          disabled={isSubmitting}
+        />
       </div>
-    </div>
+    </WsModal>
   )
 }
 
@@ -145,7 +182,6 @@ export function AdminApprovalPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [rejectTarget, setRejectTarget] = useState<PendingApprovalRecord | null>(null)
   const [showApproveAllDialog, setShowApproveAllDialog] = useState(false)
-  const [showMissingSessionsModal, setShowMissingSessionsModal] = useState(false)
   const [showManualAbsenceModal, setShowManualAbsenceModal] = useState(false)
   const [updatingAttendanceId, setUpdatingAttendanceId] = useState<number | null>(null)
   const [showStudentsModal, setShowStudentsModal] = useState(false)
@@ -236,7 +272,7 @@ export function AdminApprovalPage() {
 
   const handleApprove = async (approval: PendingApprovalRecord) => {
     const attendanceDate = normalizeAttendanceDate(approval.attendance_date)
-    
+
     setProgress({
       totalRecords: 0,
       approvedRecords: 0,
@@ -247,7 +283,7 @@ export function AdminApprovalPage() {
       currentOffset: 0,
       isCompleted: false,
     })
-    
+
     setIsApproving(true)
     await approveInBatches(approval.class_session_id, attendanceDate, 0, 0, approval.grade, approval.class_name)
   }
@@ -276,7 +312,7 @@ export function AdminApprovalPage() {
       if (result.has_more) {
         if (result.needs_break) {
           const breakDuration = Math.floor(Math.random() * 61) + 120
-          
+
           setProgress((prev) => ({
             ...prev,
             isOnBreak: true,
@@ -311,7 +347,7 @@ export function AdminApprovalPage() {
           clearInterval(breakTimerRef.current)
           breakTimerRef.current = null
         }
-        
+
         setIsApproving(false)
         setSelectedId(null)
       }
@@ -320,7 +356,7 @@ export function AdminApprovalPage() {
         clearInterval(breakTimerRef.current)
         breakTimerRef.current = null
       }
-      
+
       setIsApproving(false)
       setProgress((prev) => ({ ...prev, isOnBreak: false, breakTimeRemaining: 0 }))
     }
@@ -329,9 +365,9 @@ export function AdminApprovalPage() {
   const handleReject = (approval: PendingApprovalRecord, reason?: string) => {
     const attendanceDate = normalizeAttendanceDate(approval.attendance_date)
     rejectMutation.mutate(
-      { 
-        session_id: approval.class_session_id, 
-        date: attendanceDate, 
+      {
+        session_id: approval.class_session_id,
+        date: attendanceDate,
         reason: reason ?? null,
         grade: approval.grade,
         class_name: approval.class_name,
@@ -378,387 +414,320 @@ export function AdminApprovalPage() {
     approveMutation.isPending || rejectMutation.isPending || approveAllMutation.isPending || updateStatusMutation.isPending
 
   return (
-    <section className="space-y-6">
-      {/* شريط التقدم */}
-      {isApproving && (
-        <div className="fixed left-0 right-0 top-0 z-50 shadow-lg">
-          <div className="bg-gradient-to-r from-indigo-500 to-purple-500 p-4">
-            <div className="container mx-auto">
-              <div className="flex items-start gap-4">
-                <AlertCircle className="mt-1 h-6 w-6 flex-shrink-0 text-white" />
-                <div className="flex-1 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-lg font-bold text-white">⚠️ جاري الاعتماد الآمن - لا تغلق النافذة</p>
-                    <div className="text-left">
-                      <p className="text-2xl font-bold text-white">
-                        {progress.approvedRecords}
-                      </p>
-                      <p className="text-xs text-indigo-50">سجل معتمد</p>
-                    </div>
-                  </div>
-
-                  {progress.isOnBreak && (
-                    <div className="rounded-xl border-2 border-white/40 bg-white/20 p-3 backdrop-blur-sm">
-                      <div className="flex items-center gap-3">
-                        <Clock className="h-5 w-5 animate-pulse text-white" />
-                        <div className="flex-1">
-                          <p className="font-semibold text-white">استراحة أمان - سيتم الاستئناف تلقائياً</p>
-                          <p className="mt-1 text-sm text-indigo-50">
-                            متبقي: {Math.floor(progress.breakTimeRemaining / 60)} دقيقة و {progress.breakTimeRemaining % 60} ثانية
-                          </p>
-                        </div>
-                        <Loader2 className="h-5 w-5 animate-spin text-white" />
-                      </div>
-                      <p className="mt-2 text-xs text-indigo-50">
-                        💡 تأخير 10-15 ثانية بين كل رسالة • استراحة 2-3 دقائق كل 20 رسالة
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <header className="glass-card space-y-4" style={{ marginTop: isApproving ? '120px' : '0' }}>
-        <div className="flex flex-wrap items-center justify-between gap-3 text-right">
-          <div className="space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">مراجعة التحضير</p>
-            <h1 className="text-2xl font-semibold text-slate-900">إدارة التحضير المعلّق</h1>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              className="button-secondary flex items-center gap-2"
-              onClick={() => setShowManualAbsenceModal(true)}
-              disabled={approvalsQuery.isLoading}
+    <WsPage>
+      <WsHeader
+        title="اعتماد التحضير"
+        badge="مراجعة يومية"
+        actions={
+          <>
+            {/* مفتاح إرسال رسائل الغياب — لمسة خاصة بالصفحة */}
+            <span
+              className="ws-fact"
+              title={
+                sendAbsenceSms
+                  ? 'سيتم إرسال رسائل واتساب تلقائياً عند اعتماد التحضير'
+                  : 'لن يتم إرسال أي رسائل عند اعتماد التحضير'
+              }
             >
-              <Plus className="h-4 w-4" /> إضافة غياب يدوي
-            </button>
-            <button
-              type="button"
-              className="button-secondary"
-              onClick={() => setShowMissingSessionsModal(true)}
-              disabled={approvalsQuery.isLoading}
-            >
-              <i className="bi bi-calendar-x" /> الحصص المفقودة
-            </button>
-            <button
-              type="button"
-              className="button-primary"
+              {sendAbsenceSms ? <MessageSquare /> : <MessageSquareOff />}
+              <span>رسائل الغياب</span>
+              <WsSwitch
+                checked={sendAbsenceSms}
+                onChange={() => updateSmsMutation.mutate({ send_absence_sms: !sendAbsenceSms })}
+                disabled={updateSmsMutation.isPending || smsSettingsQuery.isLoading}
+              />
+            </span>
+            <WsBtn icon={Plus} onClick={() => setShowManualAbsenceModal(true)} disabled={approvalsQuery.isLoading}>
+              غياب يدوي
+            </WsBtn>
+            <WsBtn
+              variant="primary"
+              icon={CheckCheck}
               onClick={() => setShowApproveAllDialog(true)}
               disabled={filteredApprovals.length === 0 || approveAllMutation.isPending}
             >
               {approveAllMutation.isPending ? 'جارٍ الاعتماد...' : 'اعتماد الجميع'}
-            </button>
-          </div>
-        </div>
-        <p className="text-sm text-muted">
-          راجع سجل الحضور، حرر حالات الطلاب مباشرة، ثم اعتمد أو ارفض التحضير بحسب البيانات المتوفرة.
-        </p>
+            </WsBtn>
+          </>
+        }
+        facts={
+          <>
+            <WsFact icon={ClipboardList} label="جلسات معلّقة:">
+              {totals.totalSessions.toLocaleString('ar-SA')}
+            </WsFact>
+            <WsFact icon={Users} label="الطلاب:">
+              {totals.totalStudents.toLocaleString('ar-SA')}
+            </WsFact>
+            <WsFact icon={CheckCircle2} label="حاضر:">
+              {totals.totalPresent.toLocaleString('ar-SA')}
+            </WsFact>
+            <WsFact icon={XCircle} label="غائب:">
+              {totals.totalAbsent.toLocaleString('ar-SA')}
+            </WsFact>
+            <WsFact icon={Clock3} label="متأخر:">
+              {totals.totalLate.toLocaleString('ar-SA')}
+            </WsFact>
+          </>
+        }
+      />
 
-        {/* إعداد إرسال رسائل الغياب */}
-        <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3">
-          <div className="flex items-center gap-3">
-            {sendAbsenceSms ? (
-              <MessageSquare className="h-5 w-5 text-emerald-600" />
-            ) : (
-              <MessageSquareOff className="h-5 w-5 text-slate-400" />
-            )}
-            <div className="text-right">
-              <p className="text-sm font-semibold text-slate-700">
-                إرسال رسائل الغياب لأولياء الأمور
-              </p>
-              <p className="text-xs text-muted">
-                {sendAbsenceSms
-                  ? 'سيتم إرسال رسائل واتساب تلقائياً عند اعتماد التحضير'
-                  : 'لن يتم إرسال أي رسائل عند اعتماد التحضير'}
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => updateSmsMutation.mutate({ send_absence_sms: !sendAbsenceSms })}
-            disabled={updateSmsMutation.isPending || smsSettingsQuery.isLoading}
-            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
-              sendAbsenceSms ? 'bg-emerald-500' : 'bg-slate-300'
-            }`}
-            role="switch"
-            aria-checked={sendAbsenceSms}
+      <WsToolbar>
+        <WsField label="الصف الدراسي" htmlFor="ws-apr-grade">
+          <WsSelect
+            id="ws-apr-grade"
+            value={filters.grade}
+            onChange={(event) => handleFilterChange('grade', event.target.value)}
           >
-            <span
-              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                sendAbsenceSms ? '-translate-x-5' : 'translate-x-0'
-              }`}
-            />
-          </button>
-        </div>
-      </header>
+            <option value="">جميع الصفوف</option>
+            {gradeOptions.map((g) => (
+              <option key={g.grade} value={g.grade}>
+                {g.grade}
+              </option>
+            ))}
+          </WsSelect>
+        </WsField>
 
-      <section className="glass-card space-y-6">
-        <div className="grid grid-cols-2 gap-3">
-          <SummaryBadge label="جلسات معلّقة" value={totals.totalSessions} tone="bg-amber-50 text-amber-700 border border-amber-200" />
-          <SummaryBadge label="إجمالي الطلاب" value={totals.totalStudents} tone="bg-slate-100 text-slate-700 border border-slate-200" />
-          <SummaryBadge label="محضرين" value={totals.totalPresent} tone="bg-emerald-50 text-emerald-700 border border-emerald-200" />
-          <SummaryBadge label="غياب" value={totals.totalAbsent} tone="bg-rose-50 text-rose-700 border border-rose-200" />
-        </div>
+        <WsField label="الفصل" htmlFor="ws-apr-class">
+          <WsSelect
+            id="ws-apr-class"
+            value={filters.className}
+            onChange={(event) => handleFilterChange('className', event.target.value)}
+            disabled={!filters.grade}
+          >
+            <option value="">جميع الفصول</option>
+            {classOptions.map((className) => (
+              <option key={className} value={className}>
+                {className}
+              </option>
+            ))}
+          </WsSelect>
+        </WsField>
 
-        <div className="hidden grid-cols-4 gap-4 lg:grid">
-          <div className="space-y-2 text-right">
-            <label className="text-xs font-semibold text-slate-600">الصف الدراسي</label>
-            <select
-              value={filters.grade}
-              onChange={(event) => handleFilterChange('grade', event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            >
-              <option value="">جميع الصفوف</option>
-              {gradeOptions.map((g) => (
-                <option key={g.grade} value={g.grade}>
-                  {g.grade}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-2 text-right">
-            <label className="text-xs font-semibold text-slate-600">الفصل</label>
-            <select
-              value={filters.className}
-              onChange={(event) => handleFilterChange('className', event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              disabled={!filters.grade}
-            >
-              <option value="">جميع الفصول</option>
-              {classOptions.map((className) => (
-                <option key={className} value={className}>
-                  {className}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-2 text-right">
-            <label className="text-xs font-semibold text-slate-600">اسم المعلم</label>
-            <input
-              type="search"
-              value={filters.teacher}
-              onChange={(event) => handleFilterChange('teacher', event.target.value)}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              placeholder="بحث بالاسم"
-            />
-          </div>
-          <div className="space-y-2 text-right">
-            <label className="text-xs font-semibold text-slate-600">المادة</label>
-            <input
-              type="search"
-              value={filters.subject}
-              onChange={(event) => handleFilterChange('subject', event.target.value)}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              placeholder="مثال: رياضيات"
-            />
-          </div>
-        </div>
+        <WsField label="اسم المعلم" htmlFor="ws-apr-teacher" grow>
+          <WsInput
+            id="ws-apr-teacher"
+            type="search"
+            value={filters.teacher}
+            onChange={(event) => handleFilterChange('teacher', event.target.value)}
+            placeholder="بحث بالاسم"
+          />
+        </WsField>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(880px,1fr),420px]">
-          <div className="min-w-0 overflow-hidden rounded-3xl border border-slate-100 bg-white/80 shadow-sm">
+        <WsField label="المادة" htmlFor="ws-apr-subject" grow>
+          <WsInput
+            id="ws-apr-subject"
+            type="search"
+            value={filters.subject}
+            onChange={(event) => handleFilterChange('subject', event.target.value)}
+            placeholder="مثال: رياضيات"
+          />
+        </WsField>
+      </WsToolbar>
+
+      {/* شريط الاعتماد الآمن — لمسة خاصة: شريط حي ملتصق بدل شريط عائم فوق الموقع */}
+      {isApproving && (
+        <WsAlert tone="info" icon={null}>
+          <WsSpinner style={{ width: 14, height: 14 }} />
+          <b>جاري الاعتماد الآمن — لا تغلق الصفحة</b>
+          <span>
+            معتمد: <b>{progress.approvedRecords.toLocaleString('ar-SA')}</b>
+          </span>
+          <span>
+            رسائل مرسلة: <b>{progress.sentMessages.toLocaleString('ar-SA')}</b>
+          </span>
+          {progress.isOnBreak && (
+            <span className="ws-chip ws-chip--amber">
+              <Clock3 />
+              استراحة أمان — متبقي {Math.floor(progress.breakTimeRemaining / 60)}:
+              {String(progress.breakTimeRemaining % 60).padStart(2, '0')}
+            </span>
+          )}
+        </WsAlert>
+      )}
+
+      <WsLayout>
+        {/* العمود الأيمن: الحصص المفقودة — بانل حي بدل المودال */}
+        <WsSideCol
+          title="الحصص المفقودة"
+          icon={CalendarX}
+          side="start"
+          width={300}
+          storageKey="ws:approval:missing"
+        >
+          <MissingSessionsPanel />
+        </WsSideCol>
+
+        <WsMain>
+          <WsBlock
+            title="التحضير المعلّق"
+            icon={ClipboardList}
+            count={filteredApprovals.length.toLocaleString('ar-SA')}
+            fill
+          >
             {approvalsQuery.isLoading ? (
-              <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-sm text-muted">
-                <span className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
-                جاري تحميل التحضير المعلق...
-              </div>
+              <WsEmpty loading>جاري تحميل التحضير المعلق...</WsEmpty>
             ) : filteredApprovals.length === 0 ? (
-              <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-sm text-muted">
-                <i className="bi bi-inboxes text-3xl text-slate-300" />
-                لا توجد حصص معلقة بالمعايير الحالية.
-              </div>
+              <WsEmpty icon={Inbox}>لا توجد حصص معلقة بالمعايير الحالية.</WsEmpty>
             ) : (
-              <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-inner">
-                <table className="w-full min-w-[880px] text-right text-sm">
-                  <thead className="bg-slate-50/80 text-xs uppercase text-slate-500">
-                    <tr>
-                      <th className="px-3 py-3 font-semibold sm:px-4">المعلم</th>
-                      <th className="px-3 py-3 font-semibold sm:px-4">المادة</th>
-                      <th className="px-3 py-3 font-semibold sm:px-4">الصف / الفصل</th>
-                      <th className="px-3 py-3 font-semibold sm:px-4">التاريخ</th>
-                      <th className="px-3 py-3 font-semibold sm:px-4">ملخص الحالة</th>
-                      <th className="px-3 py-3 font-semibold sm:px-4">الإجراء</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredApprovals.map((item) => {
-                      const isSelected = item.id === selectedId
-                      return (
-                        <tr
-                          key={item.id}
-                          className={`border-t border-slate-100 transition ${
-                            isSelected ? 'bg-indigo-50/70' : 'hover:bg-slate-50'
-                          }`}
-                        >
-                          <td className="px-3 py-3 sm:px-4">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedId(item.id)}
-                              className="text-xs font-semibold text-slate-900 transition hover:text-indigo-600 sm:text-sm"
+              <WsTable>
+                <thead>
+                  <tr>
+                    <th>المعلم</th>
+                    <th>المادة</th>
+                    <th>الصف / الفصل</th>
+                    <th>التاريخ</th>
+                    <th>ملخص الحالة</th>
+                    <th>الإجراء</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredApprovals.map((item) => {
+                    const isSelected = item.id === selectedId
+                    return (
+                      <tr
+                        key={item.id}
+                        onClick={() => setSelectedId(item.id)}
+                        className={`is-clickable ${isSelected ? 'is-selected' : ''}`}
+                      >
+                        <td>
+                          <span style={{ fontWeight: 600 }}>{item.teacher_name}</span>
+                          <span className="ws-cell-sub">مسجل {formatDate(item.recorded_at)}</span>
+                        </td>
+                        <td>{item.subject_name}</td>
+                        <td>
+                          {item.grade} — {item.class_name}
+                        </td>
+                        <td style={{ whiteSpace: 'nowrap' }}>{formatDate(item.attendance_date)}</td>
+                        <td>
+                          <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4 }}>
+                            <WsChip tone="green">حاضر {item.present_count}</WsChip>
+                            <WsChip tone="red">غائب {item.absent_count}</WsChip>
+                            <WsChip tone="amber">متأخر {item.late_count ?? 0}</WsChip>
+                          </span>
+                        </td>
+                        <td onClick={(event) => event.stopPropagation()}>
+                          <span style={{ display: 'inline-flex', gap: 6 }}>
+                            <WsBtn
+                              size="sm"
+                              icon={CheckCircle2}
+                              onClick={() => handleApprove(item)}
+                              disabled={isApproving || approveMutation.isPending}
                             >
-                              {item.teacher_name}
-                            </button>
-                            <p className="text-[10px] text-muted sm:text-xs">مسجل {formatDate(item.recorded_at)}</p>
-                          </td>
-                          <td className="px-3 py-3 text-xs text-slate-600 sm:px-4 sm:text-sm">{item.subject_name}</td>
-                          <td className="px-3 py-3 text-xs text-slate-600 sm:px-4 sm:text-sm">
-                            {item.grade} — {item.class_name}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3 text-xs text-slate-600 sm:px-4 sm:text-sm">{formatDate(item.attendance_date)}</td>
-                          <td className="px-3 py-3 sm:px-4">
-                            <div className="flex flex-wrap items-center gap-1.5 text-[10px] sm:gap-2 sm:text-xs">
-                              <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-700 sm:px-3 sm:py-1">
-                                حاضر: {item.present_count}
-                              </span>
-                              <span className="rounded-full bg-rose-50 px-2 py-0.5 font-semibold text-rose-700 sm:px-3 sm:py-1">
-                                غائب: {item.absent_count}
-                              </span>
-                              <span className="rounded-full bg-amber-50 px-2 py-0.5 font-semibold text-amber-700 sm:px-3 sm:py-1">
-                                متأخر: {item.late_count ?? 0}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-3 py-3 sm:px-4">
-                            <div className="flex flex-col items-stretch gap-1.5 sm:flex-row sm:items-center sm:gap-2">
-                              <button
-                                type="button"
-                                className="button-secondary text-xs sm:text-sm"
-                                onClick={() => handleApprove(item)}
-                                disabled={approveMutation.isPending}
-                              >
-                                {approveMutation.isPending && selectedId === item.id ? 'جارِ ...' : 'اعتماد'}
-                              </button>
-                              <button
-                                type="button"
-                                className="button-secondary text-xs sm:text-sm"
-                                onClick={() => setRejectTarget(item)}
-                                disabled={rejectMutation.isPending}
-                              >
-                                رفض
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                              اعتماد
+                            </WsBtn>
+                            <WsBtn
+                              size="sm"
+                              icon={XCircle}
+                              onClick={() => setRejectTarget(item)}
+                              disabled={rejectMutation.isPending}
+                            >
+                              رفض
+                            </WsBtn>
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </WsTable>
             )}
-          </div>
+          </WsBlock>
+        </WsMain>
 
-          <aside className="space-y-4 rounded-3xl border border-slate-100 bg-white/70 p-5 shadow-sm">
-            {selectedApproval ? (
-              <div className="space-y-4">
-                <header className="space-y-1 text-right">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">تفاصيل الحصة</p>
-                  <h3 className="text-xl font-semibold text-slate-900">{selectedApproval.subject_name}</h3>
-                  <p className="text-xs text-muted">
-                    {selectedApproval.teacher_name} • {selectedApproval.grade} — {selectedApproval.class_name}
-                  </p>
-                  <p className="text-xs text-muted">تاريخ الحصة: {formatDate(selectedApproval.attendance_date)}</p>
-                </header>
-
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <button
-                    type="button"
-                    className="button-secondary"
+        <WsSideCol title="تفاصيل الحصة" icon={ListChecks} storageKey="ws:approval:sidecol">
+          {selectedApproval ? (
+            <>
+              <WsBlock padded>
+                <WsFactsList>
+                  <WsFactRow label="المادة">{selectedApproval.subject_name}</WsFactRow>
+                  <WsFactRow label="المعلم">{selectedApproval.teacher_name}</WsFactRow>
+                  <WsFactRow label="الصف والفصل">
+                    {selectedApproval.grade} — {selectedApproval.class_name}
+                  </WsFactRow>
+                  <WsFactRow label="تاريخ الحصة">{formatDate(selectedApproval.attendance_date)}</WsFactRow>
+                </WsFactsList>
+                <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+                  <WsBtn
+                    variant="primary"
+                    icon={CheckCircle2}
                     onClick={() => handleApprove(selectedApproval)}
-                    disabled={isBusy}
+                    disabled={isBusy || isApproving}
+                    style={{ flex: 1 }}
                   >
-                    <i className="bi bi-check2-circle" /> اعتماد التحضير
-                  </button>
-                  <button
-                    type="button"
-                    className="button-secondary"
-                    onClick={() => setRejectTarget(selectedApproval)}
-                    disabled={isBusy}
+                    اعتماد التحضير
+                  </WsBtn>
+                  <WsBtn icon={XCircle} onClick={() => setRejectTarget(selectedApproval)} disabled={isBusy} style={{ flex: 1 }}>
+                    رفض التحضير
+                  </WsBtn>
+                </div>
+              </WsBlock>
+
+              {detailsQuery.isLoading ? (
+                <WsEmpty loading>جارٍ تحميل تفاصيل الجلسة...</WsEmpty>
+              ) : detailsQuery.isError ? (
+                <WsEmpty icon={AlertTriangle}>تعذر تحميل التفاصيل. حاول مرة أخرى.</WsEmpty>
+              ) : detailsQuery.data ? (
+                <>
+                  <WsBlock title="إحصائيات الحصة" padded>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                        <WsChip tone="green" icon={CheckCircle2}>
+                          حاضر {detailsQuery.data.statistics.present_count.toLocaleString('ar-SA')}
+                        </WsChip>
+                        <WsChip tone="red" icon={XCircle}>
+                          غائب {detailsQuery.data.statistics.absent_count.toLocaleString('ar-SA')}
+                        </WsChip>
+                        <WsChip tone="amber" icon={Clock3}>
+                          متأخر {detailsQuery.data.statistics.late_count.toLocaleString('ar-SA')}
+                        </WsChip>
+                        <WsChip tone="sky" icon={DoorOpen}>
+                          مستأذن {detailsQuery.data.statistics.excused_count.toLocaleString('ar-SA')}
+                        </WsChip>
+                      </div>
+                      <WsProgress
+                        value={detailsQuery.data.statistics.attendance_rate}
+                        label={
+                          <>
+                            نسبة الحضور: <b>{Math.round(detailsQuery.data.statistics.attendance_rate)}%</b>
+                          </>
+                        }
+                      />
+                    </div>
+                  </WsBlock>
+
+                  <WsBlock
+                    title="قائمة الطلاب"
+                    count={detailsQuery.data.students.length.toLocaleString('ar-SA')}
+                    tools={
+                      <WsBtn size="sm" icon={Pencil} onClick={() => setShowStudentsModal(true)}>
+                        تعديل الحالات
+                      </WsBtn>
+                    }
+                    fill
+                    scroll
                   >
-                    <i className="bi bi-x-circle" /> رفض التحضير
-                  </button>
-                </div>
-
-                <div className="rounded-3xl border border-slate-100 bg-slate-50/70 p-4">
-                  {detailsQuery.isLoading ? (
-                    <div className="space-y-2 text-xs text-muted">
-                      <p className="font-semibold text-slate-500">جارٍ تحميل تفاصيل الجلسة...</p>
-                      <div className="h-24 animate-pulse rounded-2xl bg-slate-200" />
-                    </div>
-                  ) : detailsQuery.isError ? (
-                    <p className="text-xs text-rose-600">تعذر تحميل التفاصيل. حاول مرة أخرى.</p>
-                  ) : detailsQuery.data ? (
-                    <div className="space-y-3 text-xs">
-                      <div className="grid gap-2 rounded-2xl border border-slate-200 bg-white/80 p-3">
-                        <p className="text-[11px] font-semibold text-slate-500">إحصائيات الحصة</p>
-                        <div className="grid grid-cols-2 gap-2">
-                          <span className="rounded-2xl bg-emerald-50 px-3 py-2 text-center font-semibold text-emerald-700">
-                            حاضر: {detailsQuery.data.statistics.present_count.toLocaleString('ar-SA')}
-                          </span>
-                          <span className="rounded-2xl bg-rose-50 px-3 py-2 text-center font-semibold text-rose-700">
-                            غائب: {detailsQuery.data.statistics.absent_count.toLocaleString('ar-SA')}
-                          </span>
-                          <span className="rounded-2xl bg-amber-50 px-3 py-2 text-center font-semibold text-amber-700">
-                            متأخر: {detailsQuery.data.statistics.late_count.toLocaleString('ar-SA')}
-                          </span>
-                          <span className="rounded-2xl bg-sky-50 px-3 py-2 text-center font-semibold text-sky-700">
-                            مستأذن: {detailsQuery.data.statistics.excused_count.toLocaleString('ar-SA')}
-                          </span>
-                        </div>
-                        <p className="text-center text-[11px] text-muted">
-                          نسبة الحضور: {Math.round(detailsQuery.data.statistics.attendance_rate)}%
-                        </p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <p className="text-[11px] font-semibold text-slate-500">
-                            قائمة الطلاب ({detailsQuery.data.students.length.toLocaleString('ar-SA')})
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => setShowStudentsModal(true)}
-                            className="rounded-xl bg-indigo-600 px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-indigo-700"
-                          >
-                            <i className="bi bi-pencil-square" /> تعديل الحالات
-                          </button>
-                        </div>
-                        <ul className="space-y-2">
-                          {detailsQuery.data.students.slice(0, 6).map((student) => (
-                            <li
-                              key={student.attendance_id}
-                              className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/70 px-3 py-2"
-                            >
-                              <span className="text-[11px] font-semibold text-slate-700">{student.name}</span>
-                              <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">
-                                {attendanceStatusLabels[student.status as AttendanceStatus]}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                        {detailsQuery.data.students.length > 6 ? (
-                          <p className="text-center text-[11px] text-muted">
-                            انقر على "تعديل الحالات" لعرض جميع الطلاب ({detailsQuery.data.students.length})
-                          </p>
-                        ) : null}
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted">اختر حصة لمراجعة التفاصيل.</p>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-sm text-muted">
-                <i className="bi bi-info-circle text-3xl text-slate-300" />
-                اختر حصة من الجدول لمراجعة تفاصيلها والموافقة عليها.
-              </div>
-            )}
-          </aside>
-        </div>
-      </section>
+                    <ul className="ws-rows" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                      {detailsQuery.data.students.map((student) => {
+                        const status = student.status as AttendanceStatus
+                        return (
+                          <li key={student.attendance_id} className="ws-row">
+                            <span className="ws-row__name">{student.name}</span>
+                            <WsChip tone={attendanceStatusTone[status]} icon={attendanceStatusIcon[status]}>
+                              {attendanceStatusLabels[status]}
+                            </WsChip>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </WsBlock>
+                </>
+              ) : null}
+            </>
+          ) : (
+            <WsEmpty icon={Info}>اختر حصة من الجدول لمراجعة تفاصيلها والموافقة عليها.</WsEmpty>
+          )}
+        </WsSideCol>
+      </WsLayout>
 
       <RejectDialog
         open={rejectTarget !== null}
@@ -770,201 +739,131 @@ export function AdminApprovalPage() {
         }}
       />
 
-      {showApproveAllDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal>
-          <div className="w-full max-w-lg rounded-3xl bg-white p-6 text-right shadow-xl">
-            <header className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">تأكيد الإجراء</p>
-              <h2 className="text-xl font-semibold text-slate-900">اعتماد جميع الجلسات المعلقة</h2>
-              <p className="text-sm text-muted">
-                سيتم اعتماد {filteredApprovals.length > 0 ? filteredApprovals.length : 15} جلسة معلقة. قد تستغرق هذه العملية بعض الوقت.
-              </p>
-            </header>
+      <WsModal
+        open={showApproveAllDialog}
+        onClose={() => !approveAllMutation.isPending && setShowApproveAllDialog(false)}
+        title="اعتماد جميع الجلسات المعلقة"
+        sub={`سيتم اعتماد ${filteredApprovals.length > 0 ? filteredApprovals.length : 15} جلسة معلقة. قد تستغرق هذه العملية بعض الوقت.`}
+        footer={
+          <>
+            <WsBtn onClick={() => setShowApproveAllDialog(false)} disabled={approveAllMutation.isPending}>
+              إلغاء
+            </WsBtn>
+            <WsBtn variant="primary" icon={CheckCheck} onClick={handleApproveAll} disabled={approveAllMutation.isPending}>
+              {approveAllMutation.isPending ? 'جارٍ الاعتماد...' : 'تأكيد اعتماد الجميع'}
+            </WsBtn>
+          </>
+        }
+      >
+        <WsAlert tone="warn" boxed>
+          <span>
+            <b>تنبيه مهم:</b> لا يمكن التراجع عن هذا الإجراء. سيتم اعتماد جميع الجلسات المعروضة حاليًا (حسب الفلاتر
+            المطبقة). <b>يرجى عدم إغلاق المتصفح أو الصفحة حتى اكتمال العملية.</b>
+          </span>
+        </WsAlert>
+        {approveAllMutation.isPending && (
+          <WsAlert tone="info" icon={null} boxed>
+            <WsSpinner style={{ width: 14, height: 14 }} />
+            جاري اعتماد الجلسات... يرجى الانتظار حتى اكتمال العملية.
+          </WsAlert>
+        )}
+      </WsModal>
 
-            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
-              <div className="flex items-start gap-3">
-                <i className="bi bi-exclamation-triangle-fill mt-0.5 text-amber-600" />
-                <div className="text-sm text-amber-800">
-                  <p className="font-semibold">تنبيه مهم</p>
-                  <p className="mt-1">
-                    لا يمكن التراجع عن هذا الإجراء. سيتم اعتماد جميع الجلسات المعروضة حاليًا (حسب الفلاتر المطبقة).
-                  </p>
-                  <p className="mt-2 font-semibold text-amber-900">
-                    ⚠️ يرجى عدم إغلاق المتصفح أو الصفحة حتى اكتمال العملية
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {approveAllMutation.isPending && (
-              <div className="mt-4 rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
-                <div className="flex items-center gap-3">
-                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
-                  <p className="text-sm font-semibold text-indigo-900">جاري اعتماد الجلسات...</p>
-                </div>
-                <p className="mt-2 text-xs text-indigo-700">
-                  يرجى الانتظار حتى اكتمال العملية. <strong>لا تغلق هذه النافذة.</strong>
-                </p>
-              </div>
-            )}
-
-            <footer className="mt-6 flex flex-wrap items-center justify-end gap-2">
-              <button
-                type="button"
-                className="button-secondary"
-                onClick={() => setShowApproveAllDialog(false)}
-                disabled={approveAllMutation.isPending}
-              >
-                إلغاء
-              </button>
-              <button
-                type="button"
-                className="button-primary"
-                onClick={handleApproveAll}
-                disabled={approveAllMutation.isPending}
-              >
-                {approveAllMutation.isPending ? 'جارٍ الاعتماد...' : 'تأكيد اعتماد الجميع'}
-              </button>
-            </footer>
-          </div>
-        </div>
-      )}
-
-      <MissingSessionsModal 
-        open={showMissingSessionsModal} 
-        onClose={() => setShowMissingSessionsModal(false)} 
-      />
-
-      {showStudentsModal && detailsQuery.data && selectedApproval && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal>
-          <div className="w-full max-w-4xl rounded-3xl bg-white p-6 text-right shadow-xl">
-            <header className="mb-4 flex items-center justify-between border-b border-slate-200 pb-4">
-              <button
-                type="button"
-                onClick={() => setShowStudentsModal(false)}
-                className="rounded-xl bg-slate-100 p-2 transition hover:bg-slate-200"
-                disabled={updateStatusMutation.isPending}
-              >
-                <i className="bi bi-x-lg text-slate-600" />
-              </button>
-              <div className="text-right">
-                <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">تعديل حالات الطلاب</p>
-                <h2 className="text-xl font-semibold text-slate-900">{selectedApproval.subject_name}</h2>
-                <p className="text-xs text-muted">
-                  {selectedApproval.teacher_name} • {selectedApproval.grade} — {selectedApproval.class_name}
-                </p>
-              </div>
-            </header>
-
-            <div className="mb-4 grid grid-cols-4 gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-center text-xs">
-              <div>
-                <p className="font-semibold text-emerald-700">حاضر</p>
-                <p className="text-lg font-bold text-emerald-900">{detailsQuery.data.statistics.present_count}</p>
-              </div>
-              <div>
-                <p className="font-semibold text-rose-700">غائب</p>
-                <p className="text-lg font-bold text-rose-900">{detailsQuery.data.statistics.absent_count}</p>
-              </div>
-              <div>
-                <p className="font-semibold text-amber-700">متأخر</p>
-                <p className="text-lg font-bold text-amber-900">{detailsQuery.data.statistics.late_count}</p>
-              </div>
-              <div>
-                <p className="font-semibold text-sky-700">مستأذن</p>
-                <p className="text-lg font-bold text-sky-900">{detailsQuery.data.statistics.excused_count}</p>
-              </div>
-            </div>
-
-            {updateStatusMutation.isPending && (
-              <div className="mb-3 rounded-2xl border border-indigo-200 bg-indigo-50 p-3">
-                <div className="flex items-center gap-2 text-sm text-indigo-900">
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
-                  جاري تحديث الحالة...
-                </div>
-              </div>
-            )}
-
-            <div className="max-h-[480px] overflow-y-auto rounded-2xl border border-slate-200">
-              <table className="w-full text-right text-sm">
-                <thead className="sticky top-0 bg-slate-100 text-xs uppercase text-slate-600">
-                  <tr>
-                    <th className="px-4 py-3 font-semibold">اسم الطالب</th>
-                    <th className="px-4 py-3 font-semibold">الحالة الحالية</th>
-                    <th className="px-4 py-3 font-semibold">ملاحظات</th>
-                    <th className="px-4 py-3 font-semibold">تغيير الحالة</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detailsQuery.data.students.map((student) => {
-                    const isUpdating = updatingAttendanceId === student.attendance_id
-                    const status = student.status as AttendanceStatus
-
-                    return (
-                      <tr
-                        key={student.attendance_id}
-                        className={`border-t border-slate-100 transition ${
-                          isUpdating ? 'bg-indigo-50' : 'hover:bg-slate-50'
-                        }`}
-                      >
-                        <td className="px-4 py-3 font-semibold text-slate-900">{student.name}</td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${attendanceStatusTone[status]}`}
-                          >
-                            <span className="h-2 w-2 rounded-full bg-current" />
-                            {attendanceStatusLabels[status]}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-xs text-slate-500">{student.notes ?? '—'}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center justify-end gap-2">
-                            <select
-                              value={student.status}
-                              onChange={(event) =>
-                                handleStudentStatusChange(student, event.target.value as AttendanceStatus)
-                              }
-                              disabled={isBusy || isUpdating}
-                              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                            >
-                              {attendanceStatusOptions.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                  {option.label}
-                                </option>
-                              ))}
-                            </select>
-                            {isUpdating && (
-                              <span className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            <footer className="mt-4 flex items-center justify-between border-t border-slate-200 pt-4">
-              <p className="text-xs text-muted">
-                إجمالي الطلاب: {detailsQuery.data.students.length.toLocaleString('ar-SA')}
-              </p>
-              <button
-                type="button"
-                onClick={() => setShowStudentsModal(false)}
-                className="button-primary"
-                disabled={updateStatusMutation.isPending}
-              >
+      {detailsQuery.data && selectedApproval && (
+        <WsModal
+          open={showStudentsModal}
+          onClose={() => !updateStatusMutation.isPending && setShowStudentsModal(false)}
+          title={`تعديل حالات الطلاب — ${selectedApproval.subject_name}`}
+          sub={`${selectedApproval.teacher_name} • ${selectedApproval.grade} — ${selectedApproval.class_name}`}
+          maxWidth={760}
+          footer={
+            <>
+              <span className="ws-fact" style={{ marginInlineEnd: 'auto' }}>
+                إجمالي الطلاب: <b>{detailsQuery.data.students.length.toLocaleString('ar-SA')}</b>
+              </span>
+              <WsBtn variant="primary" onClick={() => setShowStudentsModal(false)} disabled={updateStatusMutation.isPending}>
                 إغلاق
-              </button>
-            </footer>
+              </WsBtn>
+            </>
+          }
+        >
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+            <WsChip tone="green" icon={CheckCircle2}>
+              حاضر {detailsQuery.data.statistics.present_count}
+            </WsChip>
+            <WsChip tone="red" icon={XCircle}>
+              غائب {detailsQuery.data.statistics.absent_count}
+            </WsChip>
+            <WsChip tone="amber" icon={Clock3}>
+              متأخر {detailsQuery.data.statistics.late_count}
+            </WsChip>
+            <WsChip tone="sky" icon={DoorOpen}>
+              مستأذن {detailsQuery.data.statistics.excused_count}
+            </WsChip>
           </div>
-        </div>
+
+          {updateStatusMutation.isPending && (
+            <WsAlert tone="info" icon={null} boxed>
+              <WsSpinner style={{ width: 13, height: 13 }} />
+              جاري تحديث الحالة...
+            </WsAlert>
+          )}
+
+          <div style={{ maxHeight: '48vh', overflowY: 'auto', border: '1px solid var(--ws-hairline)', borderRadius: 8 }}>
+            <WsTable>
+              <thead>
+                <tr>
+                  <th>اسم الطالب</th>
+                  <th>الحالة الحالية</th>
+                  <th>ملاحظات</th>
+                  <th>تغيير الحالة</th>
+                </tr>
+              </thead>
+              <tbody>
+                {detailsQuery.data.students.map((student) => {
+                  const isUpdating = updatingAttendanceId === student.attendance_id
+                  const status = student.status as AttendanceStatus
+
+                  return (
+                    <tr key={student.attendance_id} className={isUpdating ? 'is-selected' : undefined}>
+                      <td style={{ fontWeight: 600 }}>{student.name}</td>
+                      <td>
+                        <WsChip tone={attendanceStatusTone[status]} icon={attendanceStatusIcon[status]}>
+                          {attendanceStatusLabels[status]}
+                        </WsChip>
+                      </td>
+                      <td style={{ color: 'var(--ws-text-2)' }}>{student.notes ?? '—'}</td>
+                      <td>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <WsSelect
+                            value={student.status}
+                            onChange={(event) =>
+                              handleStudentStatusChange(student, event.target.value as AttendanceStatus)
+                            }
+                            disabled={isBusy || isUpdating}
+                          >
+                            {attendanceStatusOptions.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </WsSelect>
+                          {isUpdating && <WsSpinner style={{ width: 14, height: 14 }} />}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </WsTable>
+          </div>
+        </WsModal>
       )}
 
       <ManualAbsenceModal
         open={showManualAbsenceModal}
         onClose={() => setShowManualAbsenceModal(false)}
       />
-    </section>
+    </WsPage>
   )
 }

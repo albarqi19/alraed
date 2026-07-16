@@ -3,6 +3,26 @@ import type { FormEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { apiClient } from '@/services/api/client'
 import {
+  Calculator,
+  CalendarX,
+  CheckCircle2,
+  Clock3,
+  Download,
+  FileQuestion,
+  Fingerprint,
+  Inbox,
+  Link2,
+  ListChecks,
+  Printer,
+  RefreshCw,
+  Send,
+  Settings,
+  Timer,
+  UserCheck,
+  Users,
+  XCircle,
+} from 'lucide-react'
+import {
   useTeacherHudoriAttendanceQuery,
   useTeacherAttendanceSettingsQuery,
   useUpdateTeacherAttendanceSettingsMutation,
@@ -37,6 +57,32 @@ import {
   type InquiryTemplateData,
   type TeacherInquiryTemplateKind,
 } from './teacher-attendance-inquiry-templates'
+import {
+  WsAlert,
+  WsBlock,
+  WsBtn,
+  WsChip,
+  WsEmpty,
+  WsFact,
+  WsFactRow,
+  WsFactsList,
+  WsField,
+  WsHeader,
+  WsIconBtn,
+  WsInput,
+  WsLayout,
+  WsMain,
+  WsModal,
+  WsPage,
+  WsSelect,
+  WsSideCol,
+  WsSpinner,
+  WsSwitch,
+  WsTable,
+  WsTextarea,
+  WsToolbar,
+  type WsChipTone,
+} from '@/shared/workspace'
 
 const statusOptions: Array<{ value: TeacherHudoriAttendanceStatus | 'all'; label: string }> = [
   { value: 'all', label: 'جميع الحالات' },
@@ -363,93 +409,68 @@ function formatTime(value?: string | null) {
   }
 }
 
-function getStatusTone(status: TeacherHudoriAttendanceStatus) {
-  switch (status) {
-    case 'present':
-      return 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-    case 'departed':
-      return 'bg-sky-50 text-sky-700 border border-sky-200'
-    case 'failed':
-      return 'bg-rose-50 text-rose-700 border border-rose-200'
-    default:
-      return 'bg-slate-100 text-slate-600 border border-slate-200'
-  }
+const hudoriStatusTones: Record<TeacherHudoriAttendanceStatus, WsChipTone | undefined> = {
+  present: 'green',
+  departed: 'sky',
+  failed: 'red',
+  absent: 'red',
+  unknown: undefined,
 }
 
-function getLoginTone(method: TeacherHudoriAttendanceLoginMethod) {
-  switch (method) {
-    case 'face':
-      return 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-    case 'fingerprint':
-      return 'bg-violet-50 text-violet-700 border border-violet-200'
-    case 'card':
-      return 'bg-amber-50 text-amber-700 border border-amber-200'
-    case 'voice':
-      return 'bg-cyan-50 text-cyan-700 border border-cyan-200'
-    case 'manual':
-      return 'bg-slate-100 text-slate-600 border border-slate-200'
-    default:
-      return 'bg-slate-100 text-slate-500 border border-slate-200'
-  }
+const loginMethodTones: Record<TeacherHudoriAttendanceLoginMethod, WsChipTone | undefined> = {
+  face: 'sky',
+  fingerprint: 'sky',
+  card: 'amber',
+  voice: 'sky',
+  manual: undefined,
+  unknown: undefined,
 }
 
-function getDelayTone(status: TeacherDelayStatus) {
-  switch (status) {
-    case 'delayed':
-      return 'bg-rose-50 text-rose-700 border border-rose-200'
-    case 'excused':
-      return 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-    case 'on_time':
-      return 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-    case 'absent':
-      return 'bg-slate-100 text-slate-800 border border-slate-300'
-    default:
-      return 'bg-slate-100 text-slate-600 border border-slate-200'
-  }
+const delayStatusTones: Record<TeacherDelayStatus, WsChipTone | undefined> = {
+  delayed: 'red',
+  excused: 'green',
+  on_time: 'green',
+  absent: undefined,
+  unknown: undefined,
 }
 
-function StatusBadge({ record }: { record: TeacherHudoriAttendanceRecord }) {
+function StatusChip({ record }: { record: TeacherHudoriAttendanceRecord }) {
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold ${getStatusTone(record.status)}`}>
-      <i className="bi bi-person-check" />
+    <WsChip tone={hudoriStatusTones[record.status]} icon={UserCheck}>
       {record.status_label}
-    </span>
+    </WsChip>
   )
 }
 
-function LoginMethodBadge({ record }: { record: TeacherHudoriAttendanceRecord }) {
+function LoginMethodChip({ record }: { record: TeacherHudoriAttendanceRecord }) {
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold ${getLoginTone(record.login_method)}`}>
-      <i className="bi bi-fingerprint" />
+    <WsChip tone={loginMethodTones[record.login_method]} icon={Fingerprint}>
       {record.login_method_label}
-    </span>
+    </WsChip>
   )
 }
 
-function MatchBadge({ record }: { record: TeacherHudoriAttendanceRecord }) {
+function MatchChip({ record }: { record: TeacherHudoriAttendanceRecord }) {
   if (record.is_matched && record.user) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700">
-        <i className="bi bi-person-badge" />
+      <WsChip tone="green" icon={Link2}>
         {record.user.name}
-      </span>
+      </WsChip>
     )
   }
 
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-3 py-1 text-[11px] font-semibold text-rose-700">
-      <i className="bi bi-exclamation-octagon" /> لم تُطابق بعد
-    </span>
+    <WsChip tone="red" icon={XCircle}>
+      لم تُطابق بعد
+    </WsChip>
   )
 }
 
-function DelayStatusBadge({ status, label }: { status: TeacherDelayStatus; label?: string | null }) {
-  const icon = status === 'excused' ? 'bi bi-check-circle-fill' : 'bi bi-clock-history'
+function DelayStatusChip({ status, label }: { status: TeacherDelayStatus; label?: string | null }) {
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold ${getDelayTone(status)}`}>
-      <i className={icon} />
+    <WsChip tone={delayStatusTones[status]} icon={status === 'excused' || status === 'on_time' ? CheckCircle2 : Clock3}>
       {label && label.trim() ? label : delayStatusLabels[status]}
-    </span>
+    </WsChip>
   )
 }
 
@@ -464,8 +485,42 @@ function extractTimeInputValue(raw?: string | null) {
   return ''
 }
 
+// صف مفتاح تبديل في إعدادات الحضور
+function SettingsSwitchRow({
+  label,
+  checked,
+  onChange,
+  disabled,
+}: {
+  label: string
+  checked: boolean
+  onChange: (checked: boolean) => void
+  disabled?: boolean
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 10,
+        padding: '7px 10px',
+        border: '1px solid var(--ws-hairline)',
+        borderRadius: 8,
+        background: 'var(--ws-surface-2)',
+      }}
+    >
+      <span style={{ fontSize: 12, fontWeight: 600 }}>{label}</span>
+      <WsSwitch checked={checked} onChange={onChange} disabled={disabled} />
+    </div>
+  )
+}
+
+type ActiveSection = 'delays' | 'records'
+
 export function AdminTeacherAttendancePage() {
   const today = useMemo(() => new Date().toISOString().slice(0, 10), [])
+  const [activeSection, setActiveSection] = useState<ActiveSection>('delays')
   const [filters, setFilters] = useState<FilterState>({
     date: today,
     status: 'all',
@@ -510,7 +565,6 @@ export function AdminTeacherAttendancePage() {
     | null
   >(null)
   const [absenceDialog, setAbsenceDialog] = useState<AbsenceDialogState | null>(null)
-  const [isAttendanceExpanded, setIsAttendanceExpanded] = useState(false)
   const [recalculateDialog, setRecalculateDialog] = useState<
     | {
       record: TeacherAttendanceDelayRecord
@@ -659,6 +713,7 @@ export function AdminTeacherAttendancePage() {
       averageDelay,
     }
   }, [delays])
+
   const inquiryDocumentHtml = useMemo(() => {
     if (!inquiryDialog) return null
     return renderInquiryDocument(inquiryDialog.template, inquiryDialog.data)
@@ -1051,279 +1106,329 @@ export function AdminTeacherAttendancePage() {
   }
 
   return (
-    <section className="space-y-6">
-      <header className="space-y-2">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="space-y-1 text-right">
-            <h1 className="text-3xl font-bold text-slate-900">حضور المعلمين (حضوري)</h1>
-            <p className="text-sm text-muted">
-              متابعة مباشرة للقراءات المؤكدة من جهاز البصمة وموقع حضوري
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => document
-                .getElementById('attendance-records-section')
-                ?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-              className="button-secondary"
-            >
-              <i className="bi bi-list-ul ml-1" /> السجلات
-            </button>
-            <button
-              type="button"
-              className="button-primary"
-              disabled
-            >
-              <i className="bi bi-plus-circle" /> إضافة جهاز
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsSettingsModalOpen(true)}
-              className="button-secondary"
-            >
-              <i className="bi bi-gear" /> الإعدادات
-            </button>
-            <button
-              type="button"
-              onClick={() => attendanceQuery.refetch()}
-              className="button-secondary"
-              disabled={attendanceQuery.isFetching}
-            >
-              <i className="bi bi-arrow-repeat" />{' '}
-              {attendanceQuery.isFetching ? 'جارٍ التحديث...' : 'تحديث الآن'}
-            </button>
-            <div className="rounded-full bg-indigo-50 px-4 py-2 text-xs font-semibold text-indigo-700">
-              يتم التحديث تلقائياً كل 60 ثانية
-            </div>
-          </div>
+    <WsPage>
+      <WsHeader
+        title="حضور المعلمين"
+        badge={
+          <>
+            <span className="ws-pulse" />
+            حضوري — مباشر
+          </>
+        }
+        actions={
+          <>
+            <WsBtn variant="primary" icon={Users} onClick={() => setIsStandbyModalOpen(true)}>
+              توزيع الانتظار
+            </WsBtn>
+            <WsBtn icon={Settings} onClick={() => setIsSettingsModalOpen(true)}>
+              الإعدادات
+            </WsBtn>
+            <WsBtn icon={RefreshCw} onClick={() => attendanceQuery.refetch()} disabled={attendanceQuery.isFetching}>
+              {attendanceQuery.isFetching ? 'جارٍ التحديث...' : 'تحديث'}
+            </WsBtn>
+          </>
+        }
+        facts={
+          <>
+            <WsFact icon={ListChecks} label="إجمالي السجلات:">
+              {stats ? stats.total.toLocaleString('ar-SA') : '—'}
+            </WsFact>
+            <WsFact icon={Link2} label="مرتبطة:">
+              {stats ? stats.matched.toLocaleString('ar-SA') : '—'}
+            </WsFact>
+            <WsFact icon={XCircle} label="بحاجة للربط:">
+              {stats ? stats.unmatched.toLocaleString('ar-SA') : '—'}
+            </WsFact>
+            <WsFact icon={UserCheck} label="حالات الحضور:">
+              {stats ? stats.present.toLocaleString('ar-SA') : '—'}
+            </WsFact>
+            <WsFact icon={Clock3} label="آخر تحديث:">
+              {refreshedAtLabel ?? '—'}
+            </WsFact>
+          </>
+        }
+      >
+        <WsChip icon={RefreshCw}>تحديث تلقائي كل 60 ثانية</WsChip>
+      </WsHeader>
+
+      {attendanceQuery.isError && (
+        <WsAlert>
+          تعذر تحميل سجلات الحضور.
+          <WsBtn size="sm" icon={RefreshCw} onClick={() => attendanceQuery.refetch()}>
+            إعادة المحاولة
+          </WsBtn>
+        </WsAlert>
+      )}
+
+      <WsToolbar>
+        {/* التبديل بين قسمي الصفحة */}
+        <div className="ws-seg" style={{ alignSelf: 'flex-end' }}>
+          <button
+            type="button"
+            onClick={() => setActiveSection('delays')}
+            className={`ws-seg__btn ${activeSection === 'delays' ? 'is-active' : ''}`}
+          >
+            حالات التأخر والغياب
+            {delayMeta?.total ? <span className="ws-count">{delayMeta.total.toLocaleString('ar-SA')}</span> : null}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveSection('records')}
+            className={`ws-seg__btn ${activeSection === 'records' ? 'is-active' : ''}`}
+          >
+            سجلات حضوري التفصيلية
+            <span className="ws-count">{records.length.toLocaleString('ar-SA')}</span>
+          </button>
         </div>
-        {attendanceQuery.isError ? (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4 text-sm text-rose-700">
-            تعذر تحميل سجلات الحضور.
-            <button
-              type="button"
-              onClick={() => attendanceQuery.refetch()}
-              className="mr-3 inline-flex items-center gap-2 rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-700"
-            >
-              <i className="bi bi-arrow-repeat" /> إعادة المحاولة
-            </button>
-          </div>
-        ) : null}
-      </header>
 
-      <section className="glass-card">
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-          <article className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-4 text-right shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">إجمالي السجلات</p>
-            <p className="mt-2 text-2xl font-bold text-slate-900">{stats ? stats.total.toLocaleString('ar-SA') : '—'}</p>
-          </article>
-          <article className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-right shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-widest text-emerald-600">سجلات مرتبطة</p>
-            <p className="mt-2 text-2xl font-bold text-emerald-700">{stats ? stats.matched.toLocaleString('ar-SA') : '—'}</p>
-          </article>
-          <article className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-4 text-right shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-widest text-rose-600">بحاجة للربط</p>
-            <p className="mt-2 text-2xl font-bold text-rose-700">{stats ? stats.unmatched.toLocaleString('ar-SA') : '—'}</p>
-          </article>
-          <article className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-4 text-right shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-widest text-sky-600">حالات الحضور</p>
-            <p className="mt-2 text-2xl font-bold text-sky-700">{stats ? stats.present.toLocaleString('ar-SA') : '—'}</p>
-          </article>
-          <article className="col-span-2 rounded-2xl border border-slate-200 bg-white/80 px-4 py-4 text-right shadow-sm lg:col-span-1">
-            <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">آخر تحديث</p>
-            <p className="mt-2 text-sm font-semibold text-slate-700">{refreshedAtLabel ?? '—'}</p>
-          </article>
-        </div>
-      </section>
-
-      <section className="glass-card space-y-6">
-        <header id="teacher-delay-header" className="space-y-3 scroll-mt-16">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-1 text-right">
-              <div className="flex items-center gap-3">
-                <h2 className="text-2xl font-bold tracking-tight text-slate-900">إدارة حالات التأخر والغياب</h2>
-                <span className="inline-flex items-center justify-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                  إجمالي {delayMeta?.total?.toLocaleString('ar-SA') ?? '0'} حالة
-                </span>
-              </div>
-              <p className="text-sm text-slate-500">
-                متابعة المعلمين المتأخرين والغائبين وإدارة حالاتهم
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setIsStandbyModalOpen(true)}
-                className="button-primary text-sm shadow-sm"
-              >
-                <i className="bi bi-people-fill ml-1" /> توزيع الانتظار
-              </button>
-              <button
-                type="button"
-                onClick={handleBulkInquiryOpen}
-                className="button-secondary text-sm shadow-sm"
-                disabled={delayAnalytics.delayedCount === 0}
-              >
-                <i className="bi bi-printer ml-1" /> طباعة المسائلة
-              </button>
-              <button
-                type="button"
-                onClick={() => delayQuery.refetch()}
-                className="flex items-center justify-center rounded-xl border border-slate-200 bg-white p-2.5 text-slate-600 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                disabled={delayQuery.isFetching}
-                title="تحديث البيانات"
-              >
-                <i className={`bi bi-arrow-repeat text-lg leading-none ${delayQuery.isFetching ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
-          </div>
-
-          {/* Instant Statistics Moved Up */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="flex items-center gap-3 rounded-2xl border border-rose-100 bg-rose-50/50 p-3">
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-rose-100/80 text-rose-600">
-                <i className="bi bi-clock-history text-lg" />
-              </div>
-              <div>
-                <p className="text-[11px] font-semibold text-rose-600/80">مجموع المتأخرين</p>
-                <p className="text-lg font-bold text-rose-700">{delayAnalytics.delayedCount.toLocaleString('ar-SA')}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/50 p-3">
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-100/80 text-emerald-600">
-                <i className="bi bi-check-circle text-lg" />
-              </div>
-              <div>
-                <p className="text-[11px] font-semibold text-emerald-600/80">حالات بعذر</p>
-                <p className="text-lg font-bold text-emerald-700">{delayAnalytics.excusedCount.toLocaleString('ar-SA')}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-3">
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-slate-200/60 text-slate-600">
-                <i className="bi bi-calendar-x text-lg" />
-              </div>
-              <div>
-                <p className="text-[11px] font-semibold text-slate-500">سجلات الغياب</p>
-                <p className="text-lg font-bold text-slate-800">{delayAnalytics.absenceCount.toLocaleString('ar-SA')}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-3">
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-indigo-100/80 text-indigo-600">
-                <i className="bi bi-stopwatch text-lg" />
-              </div>
-              <div>
-                <p className="text-[11px] font-semibold text-indigo-600/80">متوسط التأخر</p>
-                <p className="text-lg font-bold text-indigo-700">
-                  {delayAnalytics.averageDelay !== null ? `${delayAnalytics.averageDelay.toLocaleString('ar-SA')} دقيقة` : '—'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 p-3 lg:grid-cols-6">
-            <label className="space-y-1">
-              <span className="text-xs font-semibold text-slate-600">حالة التأخر / الغياب</span>
-              <select
+        {activeSection === 'delays' ? (
+          <>
+            <WsField label="الحالة" htmlFor="ws-ta-delay-status">
+              <WsSelect
+                id="ws-ta-delay-status"
                 value={delayFilters.status}
                 onChange={(event) => updateDelayFilters('status', event.target.value as DelayFilterState['status'])}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               >
                 {delayStatusOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
                 ))}
-              </select>
-            </label>
-            <label className="space-y-1">
-              <span className="text-xs font-semibold text-slate-600">سبب الغياب</span>
-              <select
+              </WsSelect>
+            </WsField>
+            <WsField label="سبب الغياب" htmlFor="ws-ta-absence-reason">
+              <WsSelect
+                id="ws-ta-absence-reason"
                 value={delayFilters.absence_reason}
-                onChange={(event) => updateDelayFilters('absence_reason', event.target.value as DelayFilterState['absence_reason'])}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                onChange={(event) =>
+                  updateDelayFilters('absence_reason', event.target.value as DelayFilterState['absence_reason'])
+                }
               >
                 {absenceReasonOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
                 ))}
-              </select>
-            </label>
-            <label className="space-y-1">
-              <span className="text-xs font-semibold text-slate-600">من تاريخ</span>
-              <input
+              </WsSelect>
+            </WsField>
+            <WsField label="من تاريخ" htmlFor="ws-ta-start">
+              <WsInput
+                id="ws-ta-start"
                 type="date"
                 value={delayFilters.start_date}
                 onChange={(event) => updateDelayFilters('start_date', event.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               />
-            </label>
-            <label className="space-y-1">
-              <span className="text-xs font-semibold text-slate-600">إلى تاريخ</span>
-              <input
+            </WsField>
+            <WsField label="إلى تاريخ" htmlFor="ws-ta-end">
+              <WsInput
+                id="ws-ta-end"
                 type="date"
                 value={delayFilters.end_date}
                 onChange={(event) => updateDelayFilters('end_date', event.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               />
-            </label>
-            <label className="space-y-1">
-              <span className="text-xs font-semibold text-slate-600">بحث بالاسم أو الهوية</span>
-              <input
+            </WsField>
+            <WsField label="بحث بالاسم أو الهوية" htmlFor="ws-ta-delay-search" grow>
+              <WsInput
+                id="ws-ta-delay-search"
                 type="search"
                 value={delayFilters.search}
                 onChange={(event) => updateDelayFilters('search', event.target.value)}
                 placeholder="مثال: أحمد / 1010"
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               />
-            </label>
-            <label className="space-y-1">
-              <span className="text-xs font-semibold text-slate-600">ترتيب النتائج</span>
-              <select
+            </WsField>
+            <WsField label="الترتيب" htmlFor="ws-ta-order">
+              <WsSelect
+                id="ws-ta-order"
                 value={delayFilters.order}
                 onChange={(event) => updateDelayFilters('order', event.target.value as DelayFilterState['order'])}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               >
                 <option value="desc">الأحدث أولًا</option>
                 <option value="asc">الأقدم أولًا</option>
-              </select>
-            </label>
-          </div>
-        </header>
+              </WsSelect>
+            </WsField>
+          </>
+        ) : (
+          <>
+            <WsField label="تاريخ المتابعة" htmlFor="ws-ta-date">
+              <WsInput
+                id="ws-ta-date"
+                type="date"
+                value={filters.date}
+                onChange={(event) => updateFilters('date', event.target.value)}
+              />
+            </WsField>
+            <WsField label="حالة السجل" htmlFor="ws-ta-status">
+              <WsSelect
+                id="ws-ta-status"
+                value={filters.status}
+                onChange={(event) => updateFilters('status', event.target.value as FilterState['status'])}
+              >
+                {statusOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </WsSelect>
+            </WsField>
+            <WsField label="المطابقة" htmlFor="ws-ta-match">
+              <WsSelect
+                id="ws-ta-match"
+                value={filters.matched}
+                onChange={(event) => updateFilters('matched', event.target.value as FilterState['matched'])}
+              >
+                {matchedOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </WsSelect>
+            </WsField>
+            <WsField label="طريقة التسجيل" htmlFor="ws-ta-login">
+              <WsSelect
+                id="ws-ta-login"
+                value={filters.login_method}
+                onChange={(event) => updateFilters('login_method', event.target.value as FilterState['login_method'])}
+              >
+                {loginMethodOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </WsSelect>
+            </WsField>
+            <WsField label="بحث بالاسم أو الهوية" htmlFor="ws-ta-search" grow>
+              <WsInput
+                id="ws-ta-search"
+                type="search"
+                value={filters.search}
+                onChange={(event) => updateFilters('search', event.target.value)}
+                placeholder="مثال: أحمد / 1010"
+              />
+            </WsField>
+          </>
+        )}
+      </WsToolbar>
 
-        {delayQuery.isError ? (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4 text-sm text-rose-700">
-            تعذر تحميل حالات التأخر. حاول مرة أخرى.
-          </div>
-        ) : null}
-
-        <div
-          id="teacher-delay-table-section"
-          className="rounded-3xl border border-slate-100 bg-white/85 shadow-sm"
+      <WsLayout>
+        {/* العمود الأيمن: السجلات غير المرتبطة */}
+        <WsSideCol
+          title="بحاجة للربط"
+          icon={Link2}
+          side="start"
+          width={280}
+          storageKey="ws:teacher-attendance:unmatched"
         >
-          {delayQuery.isLoading ? (
-            <div className="flex min-h-[240px] flex-col items-center justify-center gap-3 text-sm text-muted">
-              <span className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
-              جاري تحميل حالات التأخر...
-            </div>
-          ) : delays.length === 0 ? (
-            <div className="flex min-h-[240px] flex-col items-center justify-center gap-3 text-sm text-muted">
-              <i className="bi bi-inboxes text-3xl text-slate-300" />
-              لا توجد حالات تأخر مطابقة للمعايير الحالية.
-            </div>
-          ) : (
-            <div className="grid gap-4 grid-cols-1">
-              <div className="overflow-x-auto rounded-2xl">
-                <table className="w-full border-collapse border border-slate-200/60 text-right text-sm">
-                  <thead className="bg-slate-50/80 text-[11px] uppercase tracking-wide text-slate-500">
+          <WsBlock padded style={{ background: 'var(--ws-red-bg)' }}>
+            <p style={{ margin: 0, fontSize: 11.5, color: 'var(--ws-red)', fontWeight: 600 }}>
+              سجلات من جهاز البصمة لم تُربط بمعلم في النظام — اربطها بالهوية أو الرقم الوظيفي لضمان ظهورها في لوحة
+              الأداء.
+            </p>
+          </WsBlock>
+          <WsBlock
+            title="سجلات غير مرتبطة"
+            count={unmatchedRecords.length.toLocaleString('ar-SA')}
+            fill
+            scroll
+          >
+            {unmatchedRecords.length === 0 ? (
+              <WsEmpty icon={CheckCircle2}>جميع السجلات مرتبطة بمعلمين.</WsEmpty>
+            ) : (
+              <div>
+                {unmatchedRecords.map((record) => (
+                  <div
+                    key={`unmatched-${record.id}`}
+                    style={{
+                      padding: '7px 12px',
+                      borderBottom: '1px solid var(--ws-hairline)',
+                    }}
+                  >
+                    <span style={{ display: 'block', fontSize: 12, fontWeight: 700 }}>{record.employee_name}</span>
+                    <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                      الهوية: {record.national_id}
+                      {record.job_number ? ` • وظيفي: ${record.job_number}` : ''}
+                    </span>
+                    <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                      آخر ظهور: {formatTime(record.transaction_time)} — {formatDate(record.attendance_date)}
+                    </span>
+                    <span style={{ display: 'block', fontSize: 10, fontWeight: 700, color: 'var(--ws-red)', marginTop: 2 }}>
+                      {record.login_method_label} • {record.status_label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </WsBlock>
+        </WsSideCol>
+
+        <WsMain>
+          {activeSection === 'delays' ? (
+            <WsBlock
+              title="حالات التأخر والغياب"
+              icon={Clock3}
+              count={delayMeta?.total?.toLocaleString('ar-SA') ?? '0'}
+              tools={
+                <>
+                  <WsBtn
+                    size="sm"
+                    icon={Printer}
+                    onClick={handleBulkInquiryOpen}
+                    disabled={delayAnalytics.delayedCount === 0}
+                  >
+                    طباعة المسائلة
+                  </WsBtn>
+                  <WsIconBtn
+                    icon={RefreshCw}
+                    label="تحديث البيانات"
+                    onClick={() => delayQuery.refetch()}
+                    disabled={delayQuery.isFetching}
+                  />
+                </>
+              }
+              fill
+            >
+              {/* شريط التحليلات الفورية */}
+              <div
+                style={{
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: 5,
+                  padding: '6px 14px',
+                  borderBottom: '1px solid var(--ws-hairline)',
+                }}
+              >
+                <WsChip tone="red" icon={Clock3}>
+                  متأخرون {delayAnalytics.delayedCount.toLocaleString('ar-SA')}
+                </WsChip>
+                <WsChip tone="green" icon={CheckCircle2}>
+                  بعذر {delayAnalytics.excusedCount.toLocaleString('ar-SA')}
+                </WsChip>
+                <WsChip icon={CalendarX}>غياب {delayAnalytics.absenceCount.toLocaleString('ar-SA')}</WsChip>
+                <WsChip tone="sky" icon={Timer}>
+                  متوسط التأخر{' '}
+                  {delayAnalytics.averageDelay !== null
+                    ? `${delayAnalytics.averageDelay.toLocaleString('ar-SA')} دقيقة`
+                    : '—'}
+                </WsChip>
+              </div>
+
+              {delayQuery.isError && <WsAlert>تعذر تحميل حالات التأخر. حاول مرة أخرى.</WsAlert>}
+
+              {delayQuery.isLoading ? (
+                <WsEmpty loading>جاري تحميل حالات التأخر...</WsEmpty>
+              ) : delays.length === 0 ? (
+                <WsEmpty icon={Inbox}>لا توجد حالات تأخر مطابقة للمعايير الحالية.</WsEmpty>
+              ) : (
+                <WsTable>
+                  <thead>
                     <tr>
-                      <th className="border border-slate-200/60 px-4 py-2.5 font-semibold">المعلم</th>
-                      <th className="border border-slate-200/60 px-4 py-2.5 font-semibold">التاريخ والوقت</th>
-                      <th className="border border-slate-200/60 px-4 py-2.5 font-semibold">بيانات التأخر</th>
-                      <th className="border border-slate-200/60 px-4 py-2.5 font-semibold">حالة الحضور</th>
-                      <th className="border border-slate-200/60 px-4 py-2.5 font-semibold">الإشعارات</th>
-                      <th className="border border-slate-200/60 px-4 py-2.5 font-semibold">إجراءات</th>
+                      <th>المعلم</th>
+                      <th>وقت الحضور</th>
+                      <th>بيانات التأخر</th>
+                      <th>حالة الحضور</th>
+                      <th>الإشعارات</th>
+                      <th>إجراءات</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1340,1031 +1445,672 @@ export function AdminTeacherAttendancePage() {
                       const absenceActionLabel = absenceReasonLabel ?? absenceReasonLabels.unjustified
                       const hasCustomAbsenceReason = Boolean(absenceReasonLabel)
 
-                      let rowBgClass = 'hover:bg-slate-50/70'
-                      if (isAbsent) {
-                        rowBgClass = 'bg-rose-50/30 hover:bg-rose-50/60'
-                      } else if (delay.delay_status === 'delayed') {
-                        rowBgClass = 'bg-orange-50/30 hover:bg-orange-50/60'
-                      }
-
                       return (
-                        <tr key={delay.id} className={`border-t border-slate-100 text-[13px] transition ${rowBgClass}`}>
-                          <td className="border border-slate-200/60 px-4 py-2 align-top">
-                            <div className="space-y-1">
-                              <p className="font-semibold text-slate-900" title={`الهوية: ${delay.national_id ?? '—'}`}>
-                                {delay.teacher_name ?? '—'}
-                              </p>
-                            </div>
+                        <tr
+                          key={delay.id}
+                          style={
+                            isAbsent
+                              ? { background: 'var(--ws-red-bg)' }
+                              : delay.delay_status === 'delayed'
+                                ? { background: 'var(--ws-amber-bg)' }
+                                : undefined
+                          }
+                        >
+                          <td>
+                            <span style={{ fontWeight: 600 }} title={`الهوية: ${delay.national_id ?? '—'}`}>
+                              {delay.teacher_name ?? '—'}
+                            </span>
                           </td>
-                          <td className="border border-slate-200/60 px-4 py-2 align-top">
-                            <div className="space-y-1 text-[12px] text-slate-600">
-                              <p title="وقت الحضور">
-                                {formatTime(delay.check_in_time)}
-                              </p>
-                            </div>
-                          </td>
-                          <td className="border border-slate-200/60 px-4 py-2 align-top">
-                            <div className="space-y-2">
+                          <td style={{ whiteSpace: 'nowrap' }}>{formatTime(delay.check_in_time)}</td>
+                          <td>
+                            <span style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start' }}>
                               {delay.delay_status !== 'delayed' && !isAbsent ? (
-                                <DelayStatusBadge status={delay.delay_status} label={delay.delay_status_label} />
+                                <DelayStatusChip status={delay.delay_status} label={delay.delay_status_label} />
                               ) : null}
                               {isAbsent ? (
                                 <>
                                   {delay.faris_sync_status === 'matched' ? (
-                                    <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
-                                      <i className="bi bi-check-circle-fill text-[10px]" />
+                                    <WsChip tone="green" icon={CheckCircle2}>
                                       {delay.faris_leave_type || 'مطابق فارس'}
-                                    </span>
+                                    </WsChip>
                                   ) : delay.faris_sync_status === 'pending_leave' ? (
-                                    <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700 border border-amber-200">
-                                      <i className="bi bi-hourglass-split text-[10px]" />
+                                    <WsChip tone="amber" icon={Clock3}>
                                       طلب معلق في فارس
-                                    </span>
+                                    </WsChip>
                                   ) : delay.faris_sync_status === 'no_leave' ? (
-                                    <span className="inline-flex items-center gap-1 rounded-md bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-600 border border-red-200">
-                                      <i className="bi bi-x-circle text-[10px]" />
+                                    <WsChip tone="red" icon={XCircle}>
                                       لا يوجد إجازة في فارس
-                                    </span>
+                                    </WsChip>
                                   ) : (
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="text-[10px] text-muted">سبب الغياب:</span>
-                                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${hasCustomAbsenceReason
-                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                        : 'bg-red-50 text-red-600 border border-red-200'
-                                        }`}>
-                                        {hasCustomAbsenceReason && <i className="bi bi-check-circle-fill text-[9px]" />}
-                                        {absenceActionLabel}
-                                      </span>
-                                    </div>
+                                    <WsChip tone={hasCustomAbsenceReason ? 'green' : 'red'}>
+                                      سبب الغياب: {absenceActionLabel}
+                                    </WsChip>
                                   )}
                                   {delay.absence_notes ? (
-                                    <p className={`text-[11px] ${hasCustomAbsenceReason ? 'text-emerald-500' : 'text-muted'}`}>ملاحظات: {delay.absence_notes}</p>
+                                    <span className="ws-cell-sub">ملاحظات: {delay.absence_notes}</span>
                                   ) : null}
                                 </>
                               ) : (
                                 <>
                                   {typeof delay.delay_minutes === 'number' ? (
-                                    <p className="inline-flex items-center gap-1 rounded-md bg-rose-100/80 px-2 py-0.5 text-[11px] font-semibold text-rose-700">
+                                    <WsChip tone="red" icon={Timer}>
                                       {delay.delay_minutes.toLocaleString('ar-SA')} دقيقة تأخير
-                                    </p>
+                                    </WsChip>
                                   ) : null}
                                   {delay.delay_notes ? (
-                                    <p className="text-[11px] text-muted">ملاحظة: {delay.delay_notes}</p>
+                                    <span className="ws-cell-sub">ملاحظة: {delay.delay_notes}</span>
                                   ) : null}
                                 </>
                               )}
-                            </div>
+                            </span>
                           </td>
-                          <td className="border border-slate-200/60 px-4 py-2 align-top">
-                            <div className="space-y-1 text-[12px] text-slate-600">
-                              <p title={`نوع العملية: ${delay.transaction_type === 'check_out' ? 'انصراف' : 'تسجيل حضور'}`}>
-                                {delay.status_label ?? (delay.status ? fallbackAttendanceStatusLabels[delay.status] : 'غير محدد')}
-                              </p>
-                            </div>
+                          <td>
+                            <span
+                              title={`نوع العملية: ${delay.transaction_type === 'check_out' ? 'انصراف' : 'تسجيل حضور'}`}
+                            >
+                              {delay.status_label ?? (delay.status ? fallbackAttendanceStatusLabels[delay.status] : 'غير محدد')}
+                            </span>
                           </td>
-                          <td className="border border-slate-200/60 px-4 py-2 align-top">
-                            <div className="space-y-1 text-[12px] text-slate-600">
-                              <p title={`القناة: ${delay.delay_notice_channel ?? '—'}`}>
-                                <span className="font-semibold text-slate-700">آخر إشعار:</span>{' '}
-                                {delay.delay_notified_at ? formatDate(delay.delay_notified_at) : 'لم يتم الإشعار بعد'}
-                              </p>
-                              {delay.delay_inquiry ? (
-                                <p className="text-[11px] text-muted">
-                                  مسائلة: {delay.delay_inquiry.status}
-                                  {delay.delay_inquiry.responded_at
-                                    ? ` • تم الرد ${formatDate(delay.delay_inquiry.responded_at)}`
-                                    : ''}
-                                </p>
-                              ) : null}
-                            </div>
+                          <td>
+                            <span style={{ display: 'block', fontSize: 11.5 }}>
+                              {delay.delay_notified_at ? formatDate(delay.delay_notified_at) : 'لم يتم الإشعار بعد'}
+                            </span>
+                            {delay.delay_inquiry ? (
+                              <span className="ws-cell-sub">
+                                مسائلة: {delay.delay_inquiry.status}
+                                {delay.delay_inquiry.responded_at
+                                  ? ` • تم الرد ${formatDate(delay.delay_inquiry.responded_at)}`
+                                  : ''}
+                              </span>
+                            ) : null}
                           </td>
-                          <td className="border border-slate-200/60 px-4 py-2 align-top">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              {/* حالة الحضور/الغياب */}
+                          <td onClick={(event) => event.stopPropagation()}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              {/* حالة الحضور/الغياب كشرائح مدمجة */}
                               {isAbsent ? (
-                                <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm">
-                                  <button
-                                    type="button"
-                                    className="rounded-md bg-slate-700 px-2 py-1 text-[11px] font-semibold text-white shadow"
-                                    disabled
-                                  >
+                                <span className="ws-seg">
+                                  <button type="button" className="ws-seg__btn is-active" disabled>
                                     غائب
                                   </button>
                                   <button
                                     type="button"
+                                    className="ws-seg__btn"
                                     onClick={() => openAbsenceDialog(delay)}
-                                    className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${hasCustomAbsenceReason
-                                      ? 'bg-indigo-600 text-white shadow'
-                                      : 'text-slate-600 hover:bg-slate-50'
-                                      }`}
                                     disabled={isUpdatingStatus}
                                     title={absenceActionLabel}
                                   >
-                                    {hasCustomAbsenceReason ? <><i className="bi bi-pencil-square" /> {absenceActionLabel}</> : <><i className="bi bi-plus" /> السبب</>}
+                                    {hasCustomAbsenceReason ? absenceActionLabel : '+ السبب'}
                                   </button>
-                                </div>
+                                </span>
                               ) : (
-                                <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm">
+                                <span className="ws-seg">
                                   <button
                                     type="button"
+                                    className={`ws-seg__btn ${actionStatus === 'delayed' ? 'is-active' : ''}`}
                                     onClick={() => handleDelayStatusChange(delay, 'delayed')}
-                                    className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${actionStatus === 'delayed'
-                                      ? 'bg-orange-500 text-white shadow'
-                                      : 'text-slate-600 hover:bg-slate-50'
-                                      }`}
                                     disabled={isUpdatingStatus}
                                   >
                                     متأخر
                                   </button>
                                   <button
                                     type="button"
+                                    className={`ws-seg__btn ${actionStatus === 'excused' ? 'is-active' : ''}`}
                                     onClick={() => handleDelayStatusChange(delay, 'excused')}
-                                    className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${actionStatus === 'excused'
-                                      ? 'bg-amber-500 text-white shadow'
-                                      : 'text-slate-600 hover:bg-slate-50'
-                                      }`}
                                     disabled={isUpdatingStatus}
                                   >
                                     بعذر
                                   </button>
-                                </div>
+                                </span>
                               )}
 
-                              {/* الإجراءات الأخرى */}
-                              <div className="flex items-center gap-1.5">
-                                {!isAbsent ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDelayRecalculate(delay)}
-                                    className="flex h-[28px] items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
-                                    disabled={isRecalculating}
-                                    title="إعادة الاحتساب"
-                                  >
-                                    <i className={`bi bi-calculator ${isRecalculating ? 'animate-spin opacity-50' : ''}`} />
-                                    <span className="hidden xl:inline">احتساب</span>
-                                  </button>
-                                ) : null}
-                                <button
-                                  type="button"
+                              {!isAbsent && (
+                                <WsIconBtn
+                                  icon={Calculator}
+                                  label="إعادة الاحتساب"
+                                  onClick={() => handleDelayRecalculate(delay)}
+                                  disabled={isRecalculating}
+                                />
+                              )}
+                              {isNotifying ? (
+                                <WsSpinner style={{ width: 14, height: 14 }} />
+                              ) : (
+                                <WsIconBtn
+                                  icon={Send}
+                                  label="إرسال إشعار"
                                   onClick={() => handleDelayNotify(delay)}
-                                  className="flex h-[28px] w-[32px] items-center justify-center rounded-lg border border-slate-200 bg-white text-[12px] font-medium text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
                                   disabled={isNotifying}
-                                  title="إرسال إشعار"
-                                >
-                                  {isNotifying ? (
-                                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
-                                  ) : (
-                                    <i className="bi bi-send" />
-                                  )}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="flex h-[28px] w-[32px] items-center justify-center rounded-lg border border-slate-200 bg-white text-[13px] font-medium text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
-                                  onClick={() => handleInquiryOpen(delay)}
-                                  title="طلب مسائلة"
-                                >
-                                  <i className="bi bi-chat-dots" />
-                                </button>
-                              </div>
-                            </div>
+                                />
+                              )}
+                              <WsIconBtn icon={FileQuestion} label="طلب مسائلة" onClick={() => handleInquiryOpen(delay)} />
+                            </span>
                           </td>
                         </tr>
                       )
                     })}
                   </tbody>
-                </table>
+                </WsTable>
+              )}
+
+              {/* ترقيم الصفحات */}
+              <div
+                style={{
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  padding: '7px 14px',
+                  borderTop: '1px solid var(--ws-hairline)',
+                }}
+              >
+                <WsBtn size="sm" onClick={() => handleDelayPageChange(delayFilters.page - 1)} disabled={delayFilters.page <= 1}>
+                  السابق
+                </WsBtn>
+                <span style={{ fontSize: 11.5, color: 'var(--ws-text-2)' }}>
+                  صفحة {delayFilters.page.toLocaleString('ar-SA')} من {totalDelayPages.toLocaleString('ar-SA')}
+                </span>
+                <WsBtn
+                  size="sm"
+                  onClick={() => handleDelayPageChange(delayFilters.page + 1)}
+                  disabled={delayFilters.page >= totalDelayPages}
+                >
+                  التالي
+                </WsBtn>
               </div>
-              {/* <aside /> Removed and moved above table */}
-            </div>
-          )}
-        </div>
-
-        <footer className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted">
-          <span>
-            صفحة {delayFilters.page.toLocaleString('ar-SA')} من {totalDelayPages.toLocaleString('ar-SA')}
-          </span>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className="button-secondary text-xs"
-              onClick={() => handleDelayPageChange(delayFilters.page - 1)}
-              disabled={delayFilters.page <= 1}
+            </WsBlock>
+          ) : (
+            <WsBlock
+              title="سجلات حضوري التفصيلية"
+              icon={Fingerprint}
+              count={records.length.toLocaleString('ar-SA')}
+              fill
             >
-              <i className="bi bi-chevron-right" /> السابق
-            </button>
-            <button
-              type="button"
-              className="button-secondary text-xs"
-              onClick={() => handleDelayPageChange(delayFilters.page + 1)}
-              disabled={delayFilters.page >= totalDelayPages}
-            >
-              التالي <i className="bi bi-chevron-left" />
-            </button>
-          </div>
-        </footer>
-      </section>
-
-      <section id="attendance-records-section" className="glass-card space-y-6 scroll-mt-16">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div className="space-y-1 text-right">
-            <h2 className="text-2xl font-bold text-slate-900">سجلات الحضور التفصيلية</h2>
-            <p className="text-sm text-muted">جميع سجلات الحضور من جهاز البصمة وموقع حضوري</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setIsAttendanceExpanded((prev) => !prev)}
-            className="button-secondary"
-          >
-            {isAttendanceExpanded ? (
-              <><i className="bi bi-chevron-up ml-1" /> عرض أقل</>
-            ) : (
-              <><i className="bi bi-chevron-down ml-1" /> عرض الكل ({records.length.toLocaleString('ar-SA')} سجل)</>
-            )}
-          </button>
-        </header>
-
-        <div className="grid gap-4 lg:grid-cols-5">
-          <div className="space-y-2 text-right">
-            <label className="text-xs font-semibold text-slate-600" htmlFor="teacher-attendance-date">
-              تاريخ المتابعة
-            </label>
-            <input
-              id="teacher-attendance-date"
-              type="date"
-              value={filters.date}
-              onChange={(event) => updateFilters('date', event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            />
-          </div>
-          <div className="space-y-2 text-right">
-            <label className="text-xs font-semibold text-slate-600" htmlFor="teacher-attendance-status">
-              حالة السجل
-            </label>
-            <select
-              id="teacher-attendance-status"
-              value={filters.status}
-              onChange={(event) => updateFilters('status', event.target.value as FilterState['status'])}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            >
-              {statusOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-2 text-right">
-            <label className="text-xs font-semibold text-slate-600" htmlFor="teacher-attendance-match">
-              حالة المطابقة
-            </label>
-            <select
-              id="teacher-attendance-match"
-              value={filters.matched}
-              onChange={(event) => updateFilters('matched', event.target.value as FilterState['matched'])}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            >
-              {matchedOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-2 text-right">
-            <label className="text-xs font-semibold text-slate-600" htmlFor="teacher-attendance-login-method">
-              طريقة تسجيل الدخول
-            </label>
-            <select
-              id="teacher-attendance-login-method"
-              value={filters.login_method}
-              onChange={(event) => updateFilters('login_method', event.target.value as FilterState['login_method'])}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            >
-              {loginMethodOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-2 text-right">
-            <label className="text-xs font-semibold text-slate-600" htmlFor="teacher-attendance-search">
-              بحث بالاسم أو الهوية
-            </label>
-            <input
-              id="teacher-attendance-search"
-              type="search"
-              value={filters.search}
-              onChange={(event) => updateFilters('search', event.target.value)}
-              placeholder="مثال: أحمد / 1010"
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            />
-          </div>
-        </div>
-
-        <div className="grid gap-6 grid-cols-1">
-          <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white/85 shadow-sm">
-            {attendanceQuery.isLoading ? (
-              <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-sm text-muted">
-                <span className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
-                جاري تحميل بيانات الحضور...
-              </div>
-            ) : records.length === 0 ? (
-              <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-sm text-muted">
-                <i className="bi bi-inboxes text-3xl text-slate-300" />
-                لا توجد سجلات للمعايير الحالية.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full table-auto border-collapse border border-slate-200/60 text-right text-sm">
-                  <thead className="bg-slate-50/80 text-[11px] uppercase tracking-wide text-slate-500">
+              {attendanceQuery.isLoading ? (
+                <WsEmpty loading>جاري تحميل بيانات الحضور...</WsEmpty>
+              ) : records.length === 0 ? (
+                <WsEmpty icon={Inbox}>لا توجد سجلات للمعايير الحالية.</WsEmpty>
+              ) : (
+                <WsTable>
+                  <thead>
                     <tr>
-                      <th className="border border-slate-200/60 px-3 py-2.5 font-semibold lg:px-4">المعلم</th>
-                      <th className="border border-slate-200/60 px-3 py-2.5 font-semibold lg:px-4">حالة السجل</th>
-                      <th className="border border-slate-200/60 px-3 py-2.5 font-semibold lg:px-4">وقت العملية</th>
-                      <th className="border border-slate-200/60 px-3 py-2.5 font-semibold lg:px-4">الدخول / الانصراف</th>
-                      <th className="border border-slate-200/60 px-3 py-2.5 font-semibold lg:px-4">التأخير</th>
-                      <th className="border border-slate-200/60 px-3 py-2.5 font-semibold lg:px-4">البوابة والمصدر</th>
-                      <th className="border border-slate-200/60 px-3 py-2.5 font-semibold lg:px-4">المطابقة</th>
+                      <th>المعلم</th>
+                      <th>حالة السجل</th>
+                      <th>وقت العملية</th>
+                      <th>الدخول / الانصراف</th>
+                      <th>التأخير</th>
+                      <th>البوابة والمصدر</th>
+                      <th>المطابقة</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {(isAttendanceExpanded ? records : records.slice(0, 5)).map((record) => (
-                      <tr key={record.id} className="border-t border-slate-100 text-[13px] transition hover:bg-slate-50/70">
-                        <td className="border border-slate-200/60 px-3 py-3 align-top lg:px-4">
-                          <div className="space-y-1">
-                            <p className="font-semibold text-slate-900">{record.employee_name}</p>
-                            <p className="text-[11px] text-muted">الهوية: {record.national_id}</p>
-                            {record.job_number ? (
-                              <p className="text-[11px] text-muted">الرقم الوظيفي: {record.job_number}</p>
-                            ) : null}
-                          </div>
+                    {records.map((record) => (
+                      <tr key={record.id}>
+                        <td>
+                          <span style={{ fontWeight: 600 }}>{record.employee_name}</span>
+                          <span className="ws-cell-sub">
+                            الهوية: {record.national_id}
+                            {record.job_number ? ` • وظيفي: ${record.job_number}` : ''}
+                          </span>
                         </td>
-                        <td className="border border-slate-200/60 px-3 py-3 align-top lg:px-4">
-                          <div className="space-y-2">
-                            <StatusBadge record={record} />
-                            <LoginMethodBadge record={record} />
-                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-600">
-                              <i className="bi bi-arrow-left-right" />
-                              {record.transaction_type === 'check_in' ? 'تسجيل حضور' : 'تسجيل انصراف'}
-                            </span>
-                            {record.result ? (
-                              <p className="text-[11px] text-muted">النتيجة: {record.result}</p>
-                            ) : null}
-                          </div>
+                        <td>
+                          <span style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start' }}>
+                            <StatusChip record={record} />
+                            <LoginMethodChip record={record} />
+                            <WsChip>{record.transaction_type === 'check_in' ? 'تسجيل حضور' : 'تسجيل انصراف'}</WsChip>
+                            {record.result ? <span className="ws-cell-sub">النتيجة: {record.result}</span> : null}
+                          </span>
                         </td>
-                        <td className="border border-slate-200/60 px-3 py-3 align-top lg:px-4">
-                          <div className="space-y-1 text-[12px] text-slate-600">
-                            <p>
-                              <span className="font-semibold text-slate-700">وقت العملية:</span> {formatTime(record.transaction_time)}
-                            </p>
-                            <p className="text-[11px] text-muted">{formatDate(record.attendance_date)}</p>
-                            {record.page_number ? (
-                              <p className="text-[11px] text-muted">رقم الصفحة: {record.page_number}</p>
-                            ) : null}
-                          </div>
+                        <td style={{ whiteSpace: 'nowrap' }}>
+                          <span style={{ display: 'block' }}>{formatTime(record.transaction_time)}</span>
+                          <span className="ws-cell-sub">{formatDate(record.attendance_date)}</span>
                         </td>
-                        <td className="border border-slate-200/60 px-3 py-3 align-top lg:px-4">
-                          <div className="space-y-1 text-[12px] text-slate-600">
-                            <p>
-                              <span className="font-semibold text-slate-700">حضور:</span> {formatTime(record.check_in_time)}
-                            </p>
-                            <p>
-                              <span className="font-semibold text-slate-700">انصراف:</span> {formatTime(record.check_out_time)}
-                            </p>
-                          </div>
+                        <td style={{ whiteSpace: 'nowrap' }}>
+                          <span style={{ display: 'block', fontSize: 11.5 }}>
+                            حضور: <b>{formatTime(record.check_in_time)}</b>
+                          </span>
+                          <span style={{ display: 'block', fontSize: 11.5 }}>
+                            انصراف: <b>{formatTime(record.check_out_time)}</b>
+                          </span>
                         </td>
-                        <td className="border border-slate-200/60 px-3 py-3 align-top lg:px-4">
+                        <td>
                           {record.delay_status ? (
-                            <div className="space-y-2">
-                              <DelayStatusBadge status={record.delay_status} label={record.delay_status_label} />
+                            <span style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start' }}>
+                              <DelayStatusChip status={record.delay_status} label={record.delay_status_label} />
                               {typeof record.delay_minutes === 'number' ? (
-                                <p className="text-[11px] text-muted">
-                                  دقائق التأخير: {record.delay_minutes.toLocaleString('ar-SA')}
-                                </p>
+                                <span className="ws-cell-sub">دقائق التأخير: {record.delay_minutes.toLocaleString('ar-SA')}</span>
                               ) : null}
                               {record.delay_notified_at ? (
-                                <p className="text-[11px] text-muted">
+                                <span className="ws-cell-sub">
                                   آخر إشعار: {formatTime(record.delay_notified_at)} — {formatDate(record.delay_notified_at)}
-                                </p>
+                                </span>
                               ) : null}
-                              {record.delay_notes ? (
-                                <p className="text-[11px] text-muted">ملاحظة: {record.delay_notes}</p>
-                              ) : null}
-                            </div>
+                              {record.delay_notes ? <span className="ws-cell-sub">ملاحظة: {record.delay_notes}</span> : null}
+                            </span>
                           ) : (
-                            <span className="text-[11px] text-muted">لا توجد بيانات تأخير</span>
+                            <span style={{ fontSize: 11, color: 'var(--ws-text-2)' }}>لا توجد بيانات تأخير</span>
                           )}
                         </td>
-                        <td className="border border-slate-200/60 px-3 py-3 align-top lg:px-4">
-                          <div className="space-y-1 text-[12px] text-slate-600">
-                            <p>
-                              <span className="font-semibold text-slate-700">البوابة:</span> {record.gate_name ?? '—'}
-                            </p>
-                            <p>
-                              <span className="font-semibold text-slate-700">الموقع:</span> {record.location ?? '—'}
-                            </p>
-                            <p>
-                              <span className="font-semibold text-slate-700">المصدر:</span> {record.source ?? '—'}
-                            </p>
-                          </div>
+                        <td>
+                          <span style={{ display: 'block', fontSize: 11.5 }}>البوابة: {record.gate_name ?? '—'}</span>
+                          <span style={{ display: 'block', fontSize: 11.5 }}>الموقع: {record.location ?? '—'}</span>
+                          <span style={{ display: 'block', fontSize: 11.5 }}>المصدر: {record.source ?? '—'}</span>
                         </td>
-                        <td className="px-3 py-3 align-top lg:px-4">
-                          <div className="space-y-2">
-                            <MatchBadge record={record} />
-                          </div>
+                        <td>
+                          <MatchChip record={record} />
                         </td>
                       </tr>
                     ))}
                   </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+                </WsTable>
+              )}
+            </WsBlock>
+          )}
+        </WsMain>
+      </WsLayout>
 
-          <aside className="space-y-4 rounded-3xl border border-rose-100 bg-rose-50/70 p-5 shadow-sm">
-            <header className="space-y-1 text-right">
-              <p className="text-xs font-semibold uppercase tracking-widest text-rose-500">حالات غير مرتبطة</p>
-              <h3 className="text-lg font-semibold text-rose-700">{unmatchedRecords.length.toLocaleString('ar-SA')} معلم بحاجة للربط</h3>
-              <p className="text-xs text-rose-600">
-                استخدم الرقم الوظيفي أو الهوية للبحث عن المعلم وربطه في النظام لضمان ظهور حضوره في لوحة الأداء.
-              </p>
-            </header>
+      {/* مودال اعتماد سبب الغياب */}
+      {absenceDialog && (
+        <WsModal
+          open
+          onClose={closeAbsenceDialog}
+          title="اعتماد سبب الغياب"
+          sub="اختر سبب الغياب وأضف ملاحظات إن لزم، سيُحفظ السبب مع السجل ويُعامل الغياب بعذر عند اعتماده."
+          footer={
+            <>
+              <WsBtn onClick={closeAbsenceDialog} disabled={isSubmittingAbsence}>
+                إلغاء
+              </WsBtn>
+              <WsBtn variant="primary" icon={CalendarX} onClick={handleAbsenceSubmit} disabled={isSubmittingAbsence}>
+                {isSubmittingAbsence ? 'جارٍ الحفظ...' : 'تسجيل الغياب'}
+              </WsBtn>
+            </>
+          }
+        >
+          <WsFactsList
+            style={{
+              border: '1px solid var(--ws-hairline)',
+              borderRadius: 8,
+              padding: '8px 10px',
+              background: 'var(--ws-surface-2)',
+            }}
+          >
+            <WsFactRow label="المعلم">{absenceDialog.record.teacher_name ?? '—'}</WsFactRow>
+            <WsFactRow label="التاريخ">{formatDate(absenceDialog.record.attendance_date)}</WsFactRow>
+            <WsFactRow label="أقرب حالة مسجلة">
+              {delayStatusLabels[absenceDialog.record.delay_status as TeacherDelayStatus] ?? 'غير محدد'}
+            </WsFactRow>
+          </WsFactsList>
 
-            {unmatchedRecords.length === 0 ? (
-              <div className="flex min-h-[120px] flex-col items-center justify-center gap-3 text-sm text-rose-600">
-                <i className="bi bi-check-circle text-2xl" />
-                جميع السجلات مرتبطة بمعلمين.
-              </div>
-            ) : (
-              <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
-                {unmatchedRecords.map((record) => (
-                  <article
-                    key={`unmatched-${record.id}`}
-                    className="space-y-1 rounded-2xl border border-rose-200 bg-white/70 p-3 text-right shadow-sm"
-                  >
-                    <p className="text-sm font-semibold text-rose-700">{record.employee_name}</p>
-                    <p className="text-[11px] text-muted">الهوية: {record.national_id}</p>
-                    {record.job_number ? (
-                      <p className="text-[11px] text-muted">الرقم الوظيفي: {record.job_number}</p>
-                    ) : null}
-                    <p className="text-[11px] text-muted">
-                      آخر ظهور: {formatTime(record.transaction_time)} — {formatDate(record.attendance_date)}
-                    </p>
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-rose-500">
-                      {record.login_method_label} • {record.status_label}
-                    </p>
-                  </article>
-                ))}
-              </div>
-            )}
-          </aside>
-        </div>
-
-        {!isAttendanceExpanded && records.length > 5 && (
-          <div className="rounded-2xl border border-slate-100 bg-slate-50/50 px-4 py-3 text-center">
-            <button
-              type="button"
-              onClick={() => setIsAttendanceExpanded(true)}
-              className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition"
+          <WsField label="سبب الغياب">
+            <WsSelect
+              value={absenceDialog.reason}
+              onChange={(event) => handleAbsenceReasonChange(event.target.value as TeacherAbsenceReason)}
+              disabled={isSubmittingAbsence}
             >
-              عرض جميع السجلات ({records.length.toLocaleString('ar-SA')}) <i className="bi bi-chevron-down mr-1" />
-            </button>
+              {Object.entries(absenceReasonLabels).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </WsSelect>
+          </WsField>
+
+          <WsField label="ملاحظات إضافية (اختياري)">
+            <WsTextarea
+              rows={3}
+              value={absenceDialog.notes}
+              onChange={(event) => handleAbsenceNotesChange(event.target.value)}
+              placeholder="أدخل تفاصيل داعمة مثل رقم المعاملة أو الجهة المعنية"
+              disabled={isSubmittingAbsence}
+            />
+          </WsField>
+
+          {absenceDialog.error && <WsAlert boxed>{absenceDialog.error}</WsAlert>}
+        </WsModal>
+      )}
+
+      {/* مودال تسجيل عذر التأخر */}
+      {excuseDialog && (
+        <WsModal
+          open
+          onClose={closeExcuseDialog}
+          title="تسجيل عذر للتأخر"
+          sub="اختر سبب العذر أو اكتبه، يتم حفظه مع السجل وإعادة ضبط دقائق التأخير لهذا اليوم."
+          footer={
+            <>
+              <WsBtn onClick={closeExcuseDialog} disabled={isSubmittingExcuse}>
+                إلغاء
+              </WsBtn>
+              <WsBtn variant="primary" icon={CheckCircle2} onClick={handleExcuseSubmit} disabled={isSubmittingExcuse}>
+                {isSubmittingExcuse ? 'جارٍ الحفظ...' : 'حفظ العذر'}
+              </WsBtn>
+            </>
+          }
+        >
+          <WsFactsList
+            style={{
+              border: '1px solid var(--ws-hairline)',
+              borderRadius: 8,
+              padding: '8px 10px',
+              background: 'var(--ws-surface-2)',
+            }}
+          >
+            <WsFactRow label="المعلم">{excuseDialog.record.teacher_name ?? '—'}</WsFactRow>
+            <WsFactRow label="التاريخ">{formatDate(excuseDialog.record.attendance_date)}</WsFactRow>
+            <WsFactRow label="وقت الحضور">{formatTime(excuseDialog.record.check_in_time)}</WsFactRow>
+          </WsFactsList>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span className="ws-label">سبب العذر</span>
+            <label className={`ws-pick ${excuseDialog.reason === 'technical_issue' ? 'is-checked' : ''}`}>
+              <span className="ws-pick__name">مشاكل تقنية</span>
+              <input
+                type="radio"
+                name="delay-excuse-reason"
+                value="technical_issue"
+                checked={excuseDialog.reason === 'technical_issue'}
+                onChange={() => handleExcuseReasonChange('technical_issue')}
+              />
+            </label>
+            <label className={`ws-pick ${excuseDialog.reason === 'other' ? 'is-checked' : ''}`}>
+              <span className="ws-pick__name">أسباب أخرى</span>
+              <input
+                type="radio"
+                name="delay-excuse-reason"
+                value="other"
+                checked={excuseDialog.reason === 'other'}
+                onChange={() => handleExcuseReasonChange('other')}
+              />
+            </label>
+            <WsTextarea
+              rows={3}
+              value={excuseDialog.notes}
+              onChange={(event) => handleExcuseNotesChange(event.target.value)}
+              placeholder="اكتب سبب العذر هنا"
+              disabled={excuseDialog.reason !== 'other'}
+            />
           </div>
-        )}
-      </section>
 
-      {absenceDialog ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
-          <div className="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
-            <header className="mb-4 flex items-start justify-between gap-3 text-right">
-              <div className="space-y-1">
-                <h3 className="text-xl font-bold text-slate-900">اعتماد سبب الغياب</h3>
-                <p className="text-sm text-muted">
-                  اختر سبب الغياب وأضف ملاحظات إن لزم، سيُحفظ السبب مع السجل ويُعامل الغياب بعذر عند اعتماده.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={closeAbsenceDialog}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100"
-              >
-                <i className="bi bi-x" aria-hidden />
-                <span className="sr-only">إغلاق</span>
-              </button>
-            </header>
+          {excuseDialog.error && <WsAlert boxed>{excuseDialog.error}</WsAlert>}
+        </WsModal>
+      )}
 
-            <div className="space-y-4 text-right">
-              <article className="rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 text-sm text-slate-700">
-                <p className="font-semibold text-slate-900">{absenceDialog.record.teacher_name ?? '—'}</p>
-                <p className="text-[11px] text-muted">التاريخ: {formatDate(absenceDialog.record.attendance_date)}</p>
-                <p className="text-[11px] text-muted">
-                  أقرب حالة مسجلة:{' '}
-                  {delayStatusLabels[absenceDialog.record.delay_status as TeacherDelayStatus] ?? 'غير محدد'}
-                </p>
-              </article>
+      {/* مودال نموذج المسائلة */}
+      {inquiryDialog && (
+        <WsModal
+          open
+          onClose={handleInquiryClose}
+          title={
+            inquiryTemplateMetadata
+              ? `${inquiryTemplateMetadata.heading} — ${inquiryDialog.data.teacherName}`
+              : `نموذج مسائلة — ${inquiryDialog.data.teacherName}`
+          }
+          sub={
+            inquiryTemplateMetadata?.description ??
+            'راجع البيانات ثم استخدم خيارات الطباعة أو التنزيل لإصدار النموذج الرسمي.'
+          }
+          maxWidth={860}
+          footer={
+            <>
+              <WsBtn icon={Download} onClick={handleInquiryDownload}>
+                تنزيل النموذج
+              </WsBtn>
+              <WsBtn variant="primary" icon={Printer} onClick={handleInquiryPrint}>
+                طباعة النموذج
+              </WsBtn>
+            </>
+          }
+        >
+          <iframe
+            title={`${inquiryTemplateMetadata?.heading ?? 'نموذج مسائلة'} — ${inquiryDialog.data.teacherName}`}
+            srcDoc={inquiryDocumentHtml ?? ''}
+            style={{
+              height: '62vh',
+              width: '100%',
+              minWidth: 480,
+              borderRadius: 8,
+              border: '1px solid var(--ws-hairline)',
+              background: '#fff',
+            }}
+          />
+        </WsModal>
+      )}
 
-              <label className="space-y-2">
-                <span className="text-xs font-semibold text-slate-600">سبب الغياب</span>
-                <select
-                  value={absenceDialog.reason}
-                  onChange={(event) => handleAbsenceReasonChange(event.target.value as TeacherAbsenceReason)}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  disabled={isSubmittingAbsence}
-                >
-                  {Object.entries(absenceReasonLabels).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="space-y-2">
-                <span className="text-xs font-semibold text-slate-600">ملاحظات إضافية (اختياري)</span>
-                <textarea
-                  rows={3}
-                  value={absenceDialog.notes}
-                  onChange={(event) => handleAbsenceNotesChange(event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-inner focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:bg-slate-100"
-                  placeholder="أدخل تفاصيل داعمة مثل رقم المعاملة أو الجهة المعنية"
-                  disabled={isSubmittingAbsence}
-                />
-              </label>
-
-              {absenceDialog.error ? (
-                <div className="rounded-2xl border border-rose-200 bg-rose-50/80 px-3 py-2 text-sm text-rose-700">
-                  {absenceDialog.error}
-                </div>
-              ) : null}
-
-              <div className="flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={closeAbsenceDialog}
-                  className="button-secondary"
-                  disabled={isSubmittingAbsence}
-                >
-                  إلغاء
-                </button>
-                <button
-                  type="button"
-                  onClick={handleAbsenceSubmit}
-                  className="button-primary"
-                  disabled={isSubmittingAbsence}
-                >
-                  {isSubmittingAbsence ? 'جارٍ الحفظ...' : 'تسجيل الغياب'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {excuseDialog ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
-          <div className="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
-            <header className="mb-4 flex items-start justify-between gap-3 text-right">
-              <div className="space-y-1">
-                <h3 className="text-xl font-bold text-slate-900">تسجيل عذر للتأخر</h3>
-                <p className="text-sm text-muted">
-                  اختر سبب العذر أو اكتبه، يتم حفظه مع السجل وإعادة ضبط دقائق التأخير لهذا اليوم.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={closeExcuseDialog}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100"
-              >
-                <i className="bi bi-x" aria-hidden />
-                <span className="sr-only">إغلاق</span>
-              </button>
-            </header>
-
-            <div className="space-y-4 text-right">
-              <article className="rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 text-sm text-slate-700">
-                <p className="font-semibold text-slate-900">{excuseDialog.record.teacher_name ?? '—'}</p>
-                <p className="text-[11px] text-muted">التاريخ: {formatDate(excuseDialog.record.attendance_date)}</p>
-                <p className="text-[11px] text-muted">وقت الحضور: {formatTime(excuseDialog.record.check_in_time)}</p>
-              </article>
-
-              <fieldset className="space-y-3">
-                <legend className="text-xs font-semibold uppercase tracking-widest text-slate-500">
-                  سبب العذر
-                </legend>
-                <label className="flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-right shadow-sm transition hover:border-indigo-400">
-                  <span className="text-sm font-semibold text-slate-800">مشاكل تقنية</span>
-                  <input
-                    type="radio"
-                    className="h-4 w-4"
-                    name="delay-excuse-reason"
-                    value="technical_issue"
-                    checked={excuseDialog.reason === 'technical_issue'}
-                    onChange={() => handleExcuseReasonChange('technical_issue')}
-                  />
-                </label>
-                <div className="space-y-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-                  <label className="flex items-center justify-between gap-3">
-                    <span className="text-sm font-semibold text-slate-800">أسباب أخرى</span>
-                    <input
-                      type="radio"
-                      className="h-4 w-4"
-                      name="delay-excuse-reason"
-                      value="other"
-                      checked={excuseDialog.reason === 'other'}
-                      onChange={() => handleExcuseReasonChange('other')}
-                    />
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={excuseDialog.notes}
-                    onChange={(event) => handleExcuseNotesChange(event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-inner focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:bg-slate-100"
-                    placeholder="اكتب سبب العذر هنا"
-                    disabled={excuseDialog.reason !== 'other'}
-                  />
-                </div>
-              </fieldset>
-
-              {excuseDialog.error ? (
-                <div className="rounded-2xl border border-rose-200 bg-rose-50/80 px-3 py-2 text-sm text-rose-700">
-                  {excuseDialog.error}
-                </div>
-              ) : null}
-
-              <div className="flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={closeExcuseDialog}
-                  className="button-secondary"
-                  disabled={isSubmittingExcuse}
-                >
-                  إلغاء
-                </button>
-                <button
-                  type="button"
-                  onClick={handleExcuseSubmit}
-                  className="button-primary"
-                  disabled={isSubmittingExcuse}
-                >
-                  {isSubmittingExcuse ? 'جارٍ الحفظ...' : 'حفظ العذر'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {inquiryDialog ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
-          <div className="relative w-full max-w-4xl rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
-            <header className="mb-4 flex items-start justify-between gap-3 text-right">
-              <div className="space-y-1">
-                <h3 className="text-xl font-bold text-slate-900">
-                  {inquiryTemplateMetadata
-                    ? `${inquiryTemplateMetadata.heading} — ${inquiryDialog.data.teacherName}`
-                    : `نموذج مسائلة — ${inquiryDialog.data.teacherName}`}
-                </h3>
-                <p className="text-sm text-muted">
-                  {inquiryTemplateMetadata?.description ?? 'راجع البيانات ثم استخدم خيارات الطباعة أو التنزيل لإصدار النموذج الرسمي.'}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleInquiryClose}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100"
-              >
-                <i className="bi bi-x-lg" />
-              </button>
-            </header>
-
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <button type="button" className="button-secondary text-xs" onClick={handleInquiryDownload}>
-                  <i className="bi bi-download" /> تنزيل النموذج
-                </button>
-                <button type="button" className="button-primary text-xs" onClick={handleInquiryPrint}>
-                  <i className="bi bi-printer" /> طباعة النموذج
-                </button>
-              </div>
-
-              <div className="overflow-auto rounded-3xl border border-slate-200 bg-slate-100 p-2">
-                <iframe
-                  title={`${inquiryTemplateMetadata?.heading ?? 'نموذج مسائلة'} — ${inquiryDialog.data.teacherName}`}
-                  srcDoc={inquiryDocumentHtml ?? ''}
-                  className="h-[70vh] w-full min-w-[520px] rounded-2xl bg-white shadow-inner"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {bulkInquiryDialog ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
-          <div className="relative w-full max-w-5xl rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
-            <header className="mb-4 flex items-start justify-between gap-3 text-right">
-              <div className="space-y-1">
-                <h3 className="text-xl font-bold text-slate-900">
-                  {bulkInquiryTemplateMetadata?.bulkHeading ?? 'نماذج المسائلة الحالية'}
-                </h3>
-                <p className="text-sm text-muted">
-                  {bulkInquiryTemplateMetadata?.bulkDescription ?? 'تم تضمين جميع السجلات الحالية ضمن مستند واحد للطباعة أو التنزيل.'}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleBulkInquiryClose}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100"
-              >
-                <i className="bi bi-x-lg" />
-              </button>
-            </header>
-
-            {bulkInquiryDialog.entries.length === 0 ? (
-              <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-6 text-center text-sm text-slate-700">
-                لا توجد سجلات متأخرة حالياً لتوليد مسائلات مطبوعة.
-              </div>
+      {/* مودال نماذج المسائلة الجماعية */}
+      {bulkInquiryDialog && (
+        <WsModal
+          open
+          onClose={handleBulkInquiryClose}
+          title={bulkInquiryTemplateMetadata?.bulkHeading ?? 'نماذج المسائلة الحالية'}
+          sub={
+            bulkInquiryTemplateMetadata?.bulkDescription ??
+            'تم تضمين جميع السجلات الحالية ضمن مستند واحد للطباعة أو التنزيل.'
+          }
+          maxWidth={920}
+          footer={
+            bulkInquiryDialog.entries.length > 0 ? (
+              <>
+                <WsBtn icon={Download} onClick={handleBulkInquiryDownload}>
+                  تنزيل الكل
+                </WsBtn>
+                <WsBtn variant="primary" icon={Printer} onClick={handleBulkInquiryPrint}>
+                  طباعة الكل
+                </WsBtn>
+              </>
             ) : (
-              <div className="flex flex-col gap-4">
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <button type="button" className="button-secondary text-xs" onClick={handleBulkInquiryDownload}>
-                    <i className="bi bi-download" /> تنزيل الكل
-                  </button>
-                  <button type="button" className="button-primary text-xs" onClick={handleBulkInquiryPrint}>
-                    <i className="bi bi-printer" /> طباعة الكل
-                  </button>
-                </div>
+              <WsBtn onClick={handleBulkInquiryClose}>إغلاق</WsBtn>
+            )
+          }
+        >
+          {bulkInquiryDialog.entries.length === 0 ? (
+            <WsAlert tone="info" boxed>
+              لا توجد سجلات متأخرة حالياً لتوليد مسائلات مطبوعة.
+            </WsAlert>
+          ) : (
+            <iframe
+              title={bulkInquiryTemplateMetadata?.bulkHeading ?? 'مجموعة نماذج المسائلة'}
+              srcDoc={bulkInquiryDocumentHtml ?? ''}
+              style={{
+                height: '62vh',
+                width: '100%',
+                minWidth: 480,
+                borderRadius: 8,
+                border: '1px solid var(--ws-hairline)',
+                background: '#fff',
+              }}
+            />
+          )}
+        </WsModal>
+      )}
 
-                <div className="overflow-auto rounded-3xl border border-slate-200 bg-slate-100 p-2">
-                  <iframe
-                    title={bulkInquiryTemplateMetadata?.bulkHeading ?? 'مجموعة نماذج المسائلة'}
-                    srcDoc={bulkInquiryDocumentHtml ?? ''}
-                    className="h-[70vh] w-full min-w-[520px] rounded-2xl bg-white shadow-inner"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      ) : null}
-
-      {recalculateDialog ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
-          <div className="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
-            <header className="mb-4 flex items-start justify-between gap-3 text-right">
-              <div className="space-y-1">
-                <h3 className="text-xl font-bold text-slate-900">إدخال وقت حضور يدوي</h3>
-                <p className="text-sm text-muted">
-                  أدخل التوقيت الفعلي لوصول المعلم، وسيعاد احتساب دقائق التأخر مباشرة.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={closeRecalculateDialog}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100"
+      {/* مودال إدخال وقت حضور يدوي */}
+      {recalculateDialog && (
+        <WsModal
+          open
+          onClose={closeRecalculateDialog}
+          title="إدخال وقت حضور يدوي"
+          sub="أدخل التوقيت الفعلي لوصول المعلم، وسيعاد احتساب دقائق التأخر مباشرة."
+          footer={
+            <>
+              <WsBtn onClick={closeRecalculateDialog} disabled={isSubmittingRecalculate}>
+                إلغاء
+              </WsBtn>
+              <WsBtn
+                variant="primary"
+                icon={Calculator}
+                onClick={handleRecalculateDialogSubmit}
+                disabled={isSubmittingRecalculate}
               >
-                <i className="bi bi-x" aria-hidden />
-                <span className="sr-only">إغلاق</span>
-              </button>
-            </header>
+                {isSubmittingRecalculate ? 'جارٍ إعادة الاحتساب...' : 'حفظ وإعادة الاحتساب'}
+              </WsBtn>
+            </>
+          }
+        >
+          <WsFactsList
+            style={{
+              border: '1px solid var(--ws-hairline)',
+              borderRadius: 8,
+              padding: '8px 10px',
+              background: 'var(--ws-surface-2)',
+            }}
+          >
+            <WsFactRow label="المعلم">{recalculateDialog.record.teacher_name ?? '—'}</WsFactRow>
+            <WsFactRow label="التاريخ">{formatDate(recalculateDialog.record.attendance_date)}</WsFactRow>
+            <WsFactRow label="التوقيت المسجل">{formatTime(recalculateDialog.record.check_in_time)}</WsFactRow>
+          </WsFactsList>
 
-            <div className="space-y-4 text-right">
-              <article className="rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 text-sm text-slate-700">
-                <p className="font-semibold text-slate-900">{recalculateDialog.record.teacher_name ?? '—'}</p>
-                <p className="text-[11px] text-muted">التاريخ: {formatDate(recalculateDialog.record.attendance_date)}</p>
-                <p className="text-[11px] text-muted">التوقيت المسجل: {formatTime(recalculateDialog.record.check_in_time)}</p>
-              </article>
+          <WsField label="وقت الحضور اليدوي">
+            <WsInput
+              type="time"
+              step={60}
+              value={recalculateDialog.timeValue}
+              onChange={(event) => handleRecalculateDialogTimeChange(event.target.value)}
+              required
+            />
+          </WsField>
 
-              <label className="space-y-2">
-                <span className="text-xs font-semibold text-slate-600">وقت الحضور اليدوي</span>
-                <input
-                  type="time"
-                  step={60}
-                  value={recalculateDialog.timeValue}
-                  onChange={(event) => handleRecalculateDialogTimeChange(event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-inner focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  required
-                />
-              </label>
+          {recalculateDialog.error && <WsAlert boxed>{recalculateDialog.error}</WsAlert>}
 
-              {recalculateDialog.error ? (
-                <div className="rounded-2xl border border-rose-200 bg-rose-50/80 px-3 py-2 text-sm text-rose-700">
-                  {recalculateDialog.error}
-                </div>
-              ) : null}
+          <p style={{ margin: 0, fontSize: 11, color: 'var(--ws-text-2)' }}>
+            يتم حفظ الوقت في السجل وإعادة تقييم التأخير وإشعاراته بناءً على التوقيت المدخل.
+          </p>
+        </WsModal>
+      )}
 
-              <p className="text-[11px] text-muted">
-                يتم حفظ الوقت في السجل وإعادة تقييم التأخير وإشعاراته بناءً على التوقيت المدخل.
-              </p>
+      {/* مودال إعدادات حضور المعلمين */}
+      <WsModal
+        open={isSettingsModalOpen}
+        onClose={() => !isSavingSettings && setIsSettingsModalOpen(false)}
+        title="إعدادات حضور المعلمين"
+        sub="اضبط فترة الدوام وآلية حساب التأخير ورسائل التنبيه الخاصة بالمعلمين."
+        maxWidth={560}
+        footer={
+          <>
+            <WsBtn onClick={() => setIsSettingsModalOpen(false)} disabled={isSavingSettings}>
+              إلغاء
+            </WsBtn>
+            <WsBtn
+              variant="primary"
+              icon={Settings}
+              type="submit"
+              form="ws-teacher-attendance-settings-form"
+              disabled={isSavingSettings || isSettingsLoading}
+            >
+              {isSavingSettings ? 'جارٍ الحفظ…' : 'حفظ الإعدادات'}
+            </WsBtn>
+          </>
+        }
+      >
+        <form
+          id="ws-teacher-attendance-settings-form"
+          onSubmit={handleSaveSettings}
+          style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+        >
+          {settingsErrorMessage && <WsAlert boxed>{settingsErrorMessage}</WsAlert>}
+          {isSettingsLoading && (
+            <WsAlert tone="info" icon={null} boxed>
+              <WsSpinner style={{ width: 13, height: 13 }} />
+              جارٍ تحميل الإعدادات الحالية...
+            </WsAlert>
+          )}
 
-              <div className="flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={closeRecalculateDialog}
-                  className="button-secondary"
-                  disabled={isSubmittingRecalculate}
-                >
-                  إلغاء
-                </button>
-                <button
-                  type="button"
-                  onClick={handleRecalculateDialogSubmit}
-                  className="button-primary"
-                  disabled={isSubmittingRecalculate}
-                >
-                  {isSubmittingRecalculate ? 'جارٍ إعادة الاحتساب...' : 'حفظ وإعادة الاحتساب'}
-                </button>
-              </div>
-            </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <WsField label="وقت بداية الدوام">
+              <WsInput
+                type="time"
+                value={settingsForm.start_time}
+                onChange={(event) => updateSettingsForm('start_time', event.target.value)}
+                disabled={isSettingsLoading || isSavingSettings}
+              />
+            </WsField>
+            <WsField label="وقت نهاية الدوام">
+              <WsInput
+                type="time"
+                value={settingsForm.end_time}
+                onChange={(event) => updateSettingsForm('end_time', event.target.value)}
+                disabled={isSettingsLoading || isSavingSettings}
+              />
+            </WsField>
           </div>
-        </div>
-      ) : null}
 
-      {isSettingsModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
-          <div className="relative w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
-            <header className="mb-4 flex items-start justify-between gap-4">
-              <div className="space-y-1 text-right">
-                <h2 className="text-2xl font-bold text-slate-900">إعدادات حضور المعلمين</h2>
-                <p className="text-sm text-muted">
-                  اضبط فترة الدوام وآلية حساب التأخير ورسائل التنبيه الخاصة بالمعلمين.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsSettingsModalOpen(false)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100"
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <WsField label="دقائق السماح قبل التأخير">
+              <WsInput
+                type="number"
+                min={0}
+                max={180}
+                value={settingsForm.grace_minutes}
+                onChange={(event) => updateSettingsForm('grace_minutes', Math.max(0, Number(event.target.value) || 0))}
+                disabled={isSettingsLoading || isSavingSettings}
+              />
+              <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>الحد الموصى به بين 5 و 20 دقيقة.</span>
+            </WsField>
+            <WsField label="قالب رسالة واتساب للتأخير">
+              <WsSelect
+                value={settingsForm.delay_notification_template_id ?? ''}
+                onChange={(event) =>
+                  updateSettingsForm(
+                    'delay_notification_template_id',
+                    event.target.value ? Number(event.target.value) : null,
+                  )
+                }
+                disabled={isSettingsLoading || isSavingSettings || availableTemplates.length === 0}
               >
-                <i className="bi bi-x" aria-hidden />
-                <span className="sr-only">إغلاق</span>
-              </button>
-            </header>
-
-            <form onSubmit={handleSaveSettings} className="space-y-5 text-right">
-              {settingsErrorMessage ? (
-                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
-                  {settingsErrorMessage}
-                </div>
-              ) : null}
-
-              {isSettingsLoading ? (
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3 text-sm text-muted">
-                  جارٍ تحميل الإعدادات الحالية...
-                </div>
-              ) : null}
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="space-y-1">
-                  <span className="text-xs font-semibold text-slate-600">وقت بداية الدوام</span>
-                  <input
-                    type="time"
-                    value={settingsForm.start_time}
-                    onChange={(event) => updateSettingsForm('start_time', event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                    disabled={isSettingsLoading || isSavingSettings}
-                  />
-                </label>
-                <label className="space-y-1">
-                  <span className="text-xs font-semibold text-slate-600">وقت نهاية الدوام</span>
-                  <input
-                    type="time"
-                    value={settingsForm.end_time}
-                    onChange={(event) => updateSettingsForm('end_time', event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                    disabled={isSettingsLoading || isSavingSettings}
-                  />
-                </label>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="space-y-1">
-                  <span className="text-xs font-semibold text-slate-600">دقائق السماح قبل اعتبار المعلم متأخرًا</span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={180}
-                    value={settingsForm.grace_minutes}
-                    onChange={(event) =>
-                      updateSettingsForm('grace_minutes', Math.max(0, Number(event.target.value) || 0))
-                    }
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                    disabled={isSettingsLoading || isSavingSettings}
-                  />
-                  <p className="text-[11px] text-muted">الحد الموصى به بين 5 و 20 دقيقة.</p>
-                </label>
-                <label className="space-y-1">
-                  <span className="text-xs font-semibold text-slate-600">قالب رسالة واتساب للتأخير</span>
-                  <select
-                    value={settingsForm.delay_notification_template_id ?? ''}
-                    onChange={(event) =>
-                      updateSettingsForm(
-                        'delay_notification_template_id',
-                        event.target.value ? Number(event.target.value) : null,
-                      )
-                    }
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                    disabled={isSettingsLoading || isSavingSettings || availableTemplates.length === 0}
-                  >
-                    <option value="">بدون رسالة محددة</option>
-                    {availableTemplates.map((template) => (
-                      <option key={template.id} value={template.id}>
-                        {template.name}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-[11px] text-muted">
-                    {availableTemplates.length === 0
-                      ? 'لا توجد قوالب نشطة مرتبطة بهذه المدرسة.'
-                      : 'سيتم إرسال هذا القالب تلقائيًا عند اكتشاف حالة تأخير.'}
-                  </p>
-                </label>
-              </div>
-
-              <div className="space-y-3">
-                <label className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-sm font-semibold text-slate-700">
-                  <span>حساب التأخير تلقائيًا بناءً على وقت الحضور</span>
-                  <input
-                    type="checkbox"
-                    checked={settingsForm.auto_calculate_delay}
-                    onChange={(event) => updateSettingsForm('auto_calculate_delay', event.target.checked)}
-                    className="h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                    disabled={isSettingsLoading || isSavingSettings}
-                  />
-                </label>
-                <label className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-sm font-semibold text-slate-700">
-                  <span>إرسال رسالة واتساب تلقائيًا عند التأخر</span>
-                  <input
-                    type="checkbox"
-                    checked={settingsForm.send_whatsapp_for_delay}
-                    onChange={(event) => updateSettingsForm('send_whatsapp_for_delay', event.target.checked)}
-                    className="h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                    disabled={isSettingsLoading || isSavingSettings}
-                  />
-                </label>
-                <label className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-sm font-semibold text-slate-700">
-                  <span>إرفاق مسائلة التأخر ضمن رسالة الواتساب</span>
-                  <input
-                    type="checkbox"
-                    checked={settingsForm.include_delay_notice}
-                    onChange={(event) => updateSettingsForm('include_delay_notice', event.target.checked)}
-                    className="h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                    disabled={isSettingsLoading || isSavingSettings}
-                  />
-                </label>
-                <label className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-sm font-semibold text-slate-700">
-                  <span>السماح بالتوقيع الإلكتروني على المسائلة</span>
-                  <input
-                    type="checkbox"
-                    checked={settingsForm.allow_e_signature}
-                    onChange={(event) => updateSettingsForm('allow_e_signature', event.target.checked)}
-                    className="h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                    disabled={isSettingsLoading || isSavingSettings}
-                  />
-                </label>
-                <label className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-sm font-semibold text-slate-700">
-                  <span>إرسال تذكير للمعلم بالتسجيل عند بداية الدوام</span>
-                  <input
-                    type="checkbox"
-                    checked={settingsForm.remind_check_in}
-                    onChange={(event) => updateSettingsForm('remind_check_in', event.target.checked)}
-                    className="h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                    disabled={isSettingsLoading || isSavingSettings}
-                  />
-                </label>
-                <label className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-sm font-semibold text-slate-700">
-                  <span>إرسال تذكير بالانصراف عند نهاية الدوام</span>
-                  <input
-                    type="checkbox"
-                    checked={settingsForm.remind_check_out}
-                    onChange={(event) => updateSettingsForm('remind_check_out', event.target.checked)}
-                    className="h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                    disabled={isSettingsLoading || isSavingSettings}
-                  />
-                </label>
-              </div>
-
-              <footer className="flex flex-col gap-3 sm:flex-row sm:justify-between">
-                <button
-                  type="button"
-                  onClick={() => setIsSettingsModalOpen(false)}
-                  className="button-secondary flex-1"
-                  disabled={isSavingSettings}
-                >
-                  إلغاء
-                </button>
-                <button
-                  type="submit"
-                  className="button-primary flex-1"
-                  disabled={isSavingSettings || isSettingsLoading}
-                >
-                  {isSavingSettings ? 'جارٍ الحفظ…' : 'حفظ الإعدادات'}
-                </button>
-              </footer>
-            </form>
+                <option value="">بدون رسالة محددة</option>
+                {availableTemplates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}
+                  </option>
+                ))}
+              </WsSelect>
+              <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                {availableTemplates.length === 0
+                  ? 'لا توجد قوالب نشطة مرتبطة بهذه المدرسة.'
+                  : 'يُرسل هذا القالب تلقائيًا عند اكتشاف حالة تأخير.'}
+              </span>
+            </WsField>
           </div>
-        </div>
-      ) : null}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <SettingsSwitchRow
+              label="حساب التأخير تلقائيًا بناءً على وقت الحضور"
+              checked={settingsForm.auto_calculate_delay}
+              onChange={(checked) => updateSettingsForm('auto_calculate_delay', checked)}
+              disabled={isSettingsLoading || isSavingSettings}
+            />
+            <SettingsSwitchRow
+              label="إرسال رسالة واتساب تلقائيًا عند التأخر"
+              checked={settingsForm.send_whatsapp_for_delay}
+              onChange={(checked) => updateSettingsForm('send_whatsapp_for_delay', checked)}
+              disabled={isSettingsLoading || isSavingSettings}
+            />
+            <SettingsSwitchRow
+              label="إرفاق مسائلة التأخر ضمن رسالة الواتساب"
+              checked={settingsForm.include_delay_notice}
+              onChange={(checked) => updateSettingsForm('include_delay_notice', checked)}
+              disabled={isSettingsLoading || isSavingSettings}
+            />
+            <SettingsSwitchRow
+              label="السماح بالتوقيع الإلكتروني على المسائلة"
+              checked={settingsForm.allow_e_signature}
+              onChange={(checked) => updateSettingsForm('allow_e_signature', checked)}
+              disabled={isSettingsLoading || isSavingSettings}
+            />
+            <SettingsSwitchRow
+              label="إرسال تذكير للمعلم بالتسجيل عند بداية الدوام"
+              checked={settingsForm.remind_check_in}
+              onChange={(checked) => updateSettingsForm('remind_check_in', checked)}
+              disabled={isSettingsLoading || isSavingSettings}
+            />
+            <SettingsSwitchRow
+              label="إرسال تذكير بالانصراف عند نهاية الدوام"
+              checked={settingsForm.remind_check_out}
+              onChange={(checked) => updateSettingsForm('remind_check_out', checked)}
+              disabled={isSettingsLoading || isSavingSettings}
+            />
+          </div>
+        </form>
+      </WsModal>
 
       {/* نافذة الإحصائيات */}
       <TeacherAttendanceStatsModal
@@ -2409,7 +2155,6 @@ export function AdminTeacherAttendancePage() {
         onClose={() => setIsRemoteDayModalOpen(false)}
         date={delayFilters.start_date || today}
       />
-    </section>
+    </WsPage>
   )
 }
-

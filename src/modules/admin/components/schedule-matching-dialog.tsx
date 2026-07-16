@@ -1,18 +1,16 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { 
-  fetchPendingMatches, 
-  linkTeacher, 
+import {
+  fetchPendingMatches,
+  linkTeacher,
   linkSubject,
   createAndLinkTeacher,
   createAndLinkSubject,
   type UnmatchedTeacher,
   type UnmatchedSubject,
-  type AvailableTeacher,
-  type AvailableSubject,
 } from '../api'
 import { X, Check, Plus, AlertTriangle, User, BookOpen, RefreshCw } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { WsBtn, WsChip, WsEmpty, WsInput } from '@/shared/workspace'
 
 interface ScheduleMatchingDialogProps {
   isOpen: boolean
@@ -83,67 +81,68 @@ export function ScheduleMatchingDialog({ isOpen, onClose }: ScheduleMatchingDial
   const availableSubjects = data?.available_subjects || []
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-l from-blue-50 to-white">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <RefreshCw className="w-5 h-5 text-blue-600" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">المطابقة اليدوية</h2>
-              <p className="text-sm text-slate-500">
-                {data?.total_sessions_need_review || 0} حصة تحتاج مراجعة
-              </p>
-            </div>
+    <div className="ws-modal" role="dialog" aria-modal onClick={onClose}>
+      <div
+        className="ws-modal__panel"
+        style={{ maxWidth: 860, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="ws-modal__head" style={{ position: 'relative' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10.5, fontWeight: 700, color: 'var(--ws-accent-2)' }}>
+            <RefreshCw style={{ width: 12, height: 12 }} />
+            ربط أسماء «مدرستي» بسجلات النظام
+          </span>
+          <h3 className="ws-modal__title" style={{ fontSize: 15 }}>المطابقة اليدوية</h3>
+          <p className="ws-modal__sub">{data?.total_sessions_need_review || 0} حصة تحتاج مراجعة</p>
+          <button
+            type="button"
+            className="ws-icon-btn"
+            style={{ position: 'absolute', insetInlineEnd: 12, top: 10 }}
+            aria-label="إغلاق"
+            onClick={onClose}
+          >
+            <X />
+          </button>
+        </header>
+
+        {/* التبويبات */}
+        <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--ws-hairline)' }}>
+          <div className="ws-seg" style={{ display: 'flex' }}>
+            <button
+              type="button"
+              onClick={() => setActiveTab('teachers')}
+              className={`ws-seg__btn ${activeTab === 'teachers' ? 'is-active' : ''}`}
+              style={{ flex: 1, justifyContent: 'center' }}
+            >
+              <User style={{ width: 12, height: 12 }} />
+              المعلمون ({unmatchedTeachers.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('subjects')}
+              className={`ws-seg__btn ${activeTab === 'subjects' ? 'is-active' : ''}`}
+              style={{ flex: 1, justifyContent: 'center' }}
+            >
+              <BookOpen style={{ width: 12, height: 12 }} />
+              المواد ({unmatchedSubjects.length})
+            </button>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-            <X className="w-5 h-5" />
-          </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex border-b">
-          <button
-            onClick={() => setActiveTab('teachers')}
-            className={cn(
-              'flex-1 py-3 px-4 text-sm font-medium transition-colors flex items-center justify-center gap-2',
-              activeTab === 'teachers'
-                ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
-                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-            )}
-          >
-            <User className="w-4 h-4" />
-            المعلمين ({unmatchedTeachers.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('subjects')}
-            className={cn(
-              'flex-1 py-3 px-4 text-sm font-medium transition-colors flex items-center justify-center gap-2',
-              activeTab === 'subjects'
-                ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
-                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-            )}
-          >
-            <BookOpen className="w-4 h-4" />
-            المواد ({unmatchedSubjects.length})
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-hidden flex">
+        {/* المحتوى: لوحان متقابلان */}
+        <div style={{ height: '54vh', display: 'flex', overflow: 'hidden' }}>
           {isLoading ? (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
+            <WsEmpty loading style={{ flex: 1 }}>
+              جاري تحميل بيانات المطابقة...
+            </WsEmpty>
           ) : activeTab === 'teachers' ? (
-            <TeachersTab
-              unmatchedTeachers={unmatchedTeachers}
-              availableTeachers={availableTeachers}
-              selectedTeacher={selectedTeacher}
-              onSelectTeacher={setSelectedTeacher}
-              onLink={(chromeName, teacherId) => linkTeacherMutation.mutate({ chromeName, teacherId })}
+            <MatchingPanes
+              kind="teachers"
+              unmatched={unmatchedTeachers}
+              available={availableTeachers}
+              selected={selectedTeacher}
+              onSelect={setSelectedTeacher}
+              onLink={(chromeName, id) => linkTeacherMutation.mutate({ chromeName, teacherId: id })}
               onCreate={(chromeName, name) => createTeacherMutation.mutate({ chromeName, name })}
               isLinking={linkTeacherMutation.isPending}
               isCreating={createTeacherMutation.isPending}
@@ -153,12 +152,13 @@ export function ScheduleMatchingDialog({ isOpen, onClose }: ScheduleMatchingDial
               setNewName={setNewTeacherName}
             />
           ) : (
-            <SubjectsTab
-              unmatchedSubjects={unmatchedSubjects}
-              availableSubjects={availableSubjects}
-              selectedSubject={selectedSubject}
-              onSelectSubject={setSelectedSubject}
-              onLink={(chromeName, subjectId) => linkSubjectMutation.mutate({ chromeName, subjectId })}
+            <MatchingPanes
+              kind="subjects"
+              unmatched={unmatchedSubjects}
+              available={availableSubjects}
+              selected={selectedSubject}
+              onSelect={setSelectedSubject}
+              onLink={(chromeName, id) => linkSubjectMutation.mutate({ chromeName, subjectId: id })}
               onCreate={(chromeName, name) => createSubjectMutation.mutate({ chromeName, name })}
               isLinking={linkSubjectMutation.isPending}
               isCreating={createSubjectMutation.isPending}
@@ -170,33 +170,27 @@ export function ScheduleMatchingDialog({ isOpen, onClose }: ScheduleMatchingDial
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t bg-slate-50 flex justify-between items-center">
-          <button
-            onClick={() => refetch()}
-            className="flex items-center gap-2 px-4 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-          >
-            <RefreshCw className="w-4 h-4" />
+        <footer className="ws-modal__foot" style={{ justifyContent: 'space-between' }}>
+          <WsBtn icon={RefreshCw} onClick={() => refetch()}>
             تحديث
-          </button>
-          <button
-            onClick={onClose}
-            className="px-6 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm font-medium transition-colors"
-          >
-            إغلاق
-          </button>
-        </div>
+          </WsBtn>
+          <WsBtn onClick={onClose}>إغلاق</WsBtn>
+        </footer>
       </div>
     </div>
   )
 }
 
-interface TeachersTabProps {
-  unmatchedTeachers: UnmatchedTeacher[]
-  availableTeachers: AvailableTeacher[]
-  selectedTeacher: UnmatchedTeacher | null
-  onSelectTeacher: (t: UnmatchedTeacher | null) => void
-  onLink: (chromeName: string, teacherId: number) => void
+type MatchingItem = { chrome_name: string; sessions_count: number; current_match?: { name: string } | null }
+type AvailableItem = { id: number; name: string }
+
+interface MatchingPanesProps<TUnmatched extends MatchingItem> {
+  kind: 'teachers' | 'subjects'
+  unmatched: TUnmatched[]
+  available: AvailableItem[]
+  selected: TUnmatched | null
+  onSelect: (item: TUnmatched | null) => void
+  onLink: (chromeName: string, id: number) => void
   onCreate: (chromeName: string, name: string) => void
   isLinking: boolean
   isCreating: boolean
@@ -206,11 +200,12 @@ interface TeachersTabProps {
   setNewName: (v: string) => void
 }
 
-function TeachersTab({
-  unmatchedTeachers,
-  availableTeachers,
-  selectedTeacher,
-  onSelectTeacher,
+function MatchingPanes<TUnmatched extends MatchingItem>({
+  kind,
+  unmatched,
+  available,
+  selected,
+  onSelect,
   onLink,
   onCreate,
   isLinking,
@@ -219,277 +214,189 @@ function TeachersTab({
   setShowCreate,
   newName,
   setNewName,
-}: TeachersTabProps) {
-  if (unmatchedTeachers.length === 0) {
+}: MatchingPanesProps<TUnmatched>) {
+  const isTeachers = kind === 'teachers'
+  const EntityIcon = isTeachers ? User : BookOpen
+
+  if (unmatched.length === 0) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center text-slate-500 p-8">
-        <Check className="w-12 h-12 text-green-500 mb-3" />
-        <p className="font-medium">جميع المعلمين متطابقين!</p>
-      </div>
+      <WsEmpty icon={Check} style={{ flex: 1 }}>
+        {isTeachers ? 'جميع المعلمين متطابقون!' : 'جميع المواد متطابقة!'}
+      </WsEmpty>
     )
   }
 
+  const paneHeadStyle = {
+    position: 'sticky' as const,
+    top: 0,
+    zIndex: 1,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    padding: '8px 12px',
+    background: 'var(--ws-surface-2)',
+    borderBottom: '1px solid var(--ws-hairline)',
+    fontSize: 11,
+    fontWeight: 700,
+  }
+
   return (
-    <div className="flex-1 flex overflow-hidden">
-      {/* Left: Unmatched Teachers from مدرستي */}
-      <div className="w-1/2 border-l overflow-y-auto p-4">
-        <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-amber-500" />
-          من مدرستي (غير متطابقين)
-        </h3>
-        <div className="space-y-2">
-          {unmatchedTeachers.map((teacher) => (
-            <button
-              key={teacher.chrome_name}
-              onClick={() => onSelectTeacher(selectedTeacher?.chrome_name === teacher.chrome_name ? null : teacher)}
-              className={cn(
-                'w-full text-right p-3 rounded-lg border transition-all',
-                selectedTeacher?.chrome_name === teacher.chrome_name
-                  ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
-                  : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-              )}
-            >
-              <div className="font-medium text-slate-900">{teacher.chrome_name}</div>
-              <div className="text-xs text-slate-500 mt-1">
-                {teacher.sessions_count} حصة
-                {teacher.current_match && (
-                  <span className="text-amber-600 mr-2">
-                    • مرتبط حالياً بـ: {teacher.current_match.name}
-                  </span>
-                )}
-              </div>
-            </button>
-          ))}
+    <>
+      {/* اللوح الأيمن: غير المتطابقين من مدرستي */}
+      <div style={{ width: '50%', overflowY: 'auto', borderInlineEnd: '1px solid var(--ws-hairline)' }}>
+        <div style={paneHeadStyle}>
+          <AlertTriangle style={{ width: 13, height: 13, color: 'var(--ws-amber)' }} />
+          من مدرستي ({isTeachers ? 'غير متطابقين' : 'غير متطابقة'})
+        </div>
+        <div style={{ padding: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
+          {unmatched.map((item) => {
+            const isSelected = selected?.chrome_name === item.chrome_name
+            return (
+              <button
+                key={item.chrome_name}
+                type="button"
+                onClick={() => onSelect(isSelected ? null : item)}
+                style={{
+                  width: '100%',
+                  textAlign: 'right',
+                  padding: '8px 11px',
+                  borderRadius: 8,
+                  border: isSelected ? '1px solid var(--ws-accent-2)' : '1px solid var(--ws-hairline)',
+                  background: isSelected ? 'var(--ws-accent-soft)' : 'var(--ws-surface)',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                <span style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--ws-text)' }}>
+                  {item.chrome_name}
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4, flexWrap: 'wrap' }}>
+                  <WsChip tone="sky">{item.sessions_count} حصة</WsChip>
+                  {item.current_match && (
+                    <WsChip tone="amber">
+                      {isTeachers ? 'مرتبط حالياً بـ' : 'مرتبطة حالياً بـ'}: {item.current_match.name}
+                    </WsChip>
+                  )}
+                </span>
+              </button>
+            )
+          })}
         </div>
       </div>
 
-      {/* Right: Available Teachers in System */}
-      <div className="w-1/2 overflow-y-auto p-4">
-        <h3 className="text-sm font-semibold text-slate-700 mb-3">اختر المعلم من النظام</h3>
-        
-        {selectedTeacher ? (
-          <>
-            <div className="mb-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="text-sm text-blue-700">
-                ربط <strong>{selectedTeacher.chrome_name}</strong> مع:
-              </div>
+      {/* اللوح الأيسر: سجلات النظام المتاحة */}
+      <div style={{ width: '50%', overflowY: 'auto' }}>
+        <div style={paneHeadStyle}>
+          <EntityIcon style={{ width: 13, height: 13, color: 'var(--ws-accent-2)' }} />
+          {isTeachers ? 'اختر المعلم من النظام' : 'اختر المادة من النظام'}
+        </div>
+
+        {selected ? (
+          <div style={{ padding: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div
+              style={{
+                borderRadius: 8,
+                border: '1px solid var(--ws-sky-bd)',
+                background: 'var(--ws-sky-bg)',
+                color: 'var(--ws-sky)',
+                padding: '7px 11px',
+                fontSize: 11.5,
+              }}
+            >
+              ربط <b>{selected.chrome_name}</b> مع:
             </div>
 
-            <div className="space-y-2 max-h-64 overflow-y-auto mb-4">
-              {availableTeachers.map((teacher) => (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              {available.map((option) => (
                 <button
-                  key={teacher.id}
-                  onClick={() => onLink(selectedTeacher.chrome_name, teacher.id)}
+                  key={option.id}
+                  type="button"
+                  onClick={() => onLink(selected.chrome_name, option.id)}
                   disabled={isLinking}
-                  className="w-full text-right p-3 rounded-lg border border-slate-200 hover:border-green-500 hover:bg-green-50 transition-all flex items-center justify-between"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 8,
+                    width: '100%',
+                    textAlign: 'right',
+                    padding: '7px 11px',
+                    borderRadius: 8,
+                    border: '1px solid var(--ws-hairline)',
+                    background: 'var(--ws-surface)',
+                    cursor: isLinking ? 'wait' : 'pointer',
+                    fontFamily: 'inherit',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: 'var(--ws-text)',
+                  }}
                 >
-                  <span className="font-medium text-slate-900">{teacher.name}</span>
-                  <Check className="w-4 h-4 text-green-600" />
+                  <span style={{ minWidth: 0 }}>{option.name}</span>
+                  <Check style={{ width: 14, height: 14, color: 'var(--ws-green)', flexShrink: 0 }} />
                 </button>
               ))}
             </div>
 
-            <div className="border-t pt-4">
+            <div style={{ borderTop: '1px solid var(--ws-hairline)', paddingTop: 8 }}>
               {showCreate ? (
-                <div className="space-y-3">
-                  <input
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <WsInput
                     type="text"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    placeholder="اسم المعلم الجديد"
-                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    placeholder={isTeachers ? 'اسم المعلم الجديد' : 'اسم المادة الجديدة'}
                     autoFocus
                   />
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => onCreate(selectedTeacher.chrome_name, newName || selectedTeacher.chrome_name)}
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <WsBtn
+                      variant="primary"
+                      icon={Plus}
+                      onClick={() => onCreate(selected.chrome_name, newName || selected.chrome_name)}
                       disabled={isCreating}
-                      className="flex-1 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                      style={{ flex: 1, justifyContent: 'center' }}
                     >
-                      <Plus className="w-4 h-4" />
                       إنشاء وربط
-                    </button>
-                    <button
-                      onClick={() => setShowCreate(false)}
-                      className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm"
-                    >
-                      إلغاء
-                    </button>
+                    </WsBtn>
+                    <WsBtn onClick={() => setShowCreate(false)}>إلغاء</WsBtn>
                   </div>
                 </div>
               ) : (
                 <button
+                  type="button"
                   onClick={() => {
-                    setNewName(selectedTeacher.chrome_name)
+                    setNewName(selected.chrome_name)
                     setShowCreate(true)
                   }}
-                  className="w-full py-2 border-2 border-dashed border-slate-300 hover:border-green-500 text-slate-600 hover:text-green-600 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  إنشاء معلم جديد
-                </button>
-              )}
-            </div>
-          </>
-        ) : (
-          <div className="text-center text-slate-500 py-8">
-            <User className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">اختر معلماً من اليسار للبدء</p>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-interface SubjectsTabProps {
-  unmatchedSubjects: UnmatchedSubject[]
-  availableSubjects: AvailableSubject[]
-  selectedSubject: UnmatchedSubject | null
-  onSelectSubject: (s: UnmatchedSubject | null) => void
-  onLink: (chromeName: string, subjectId: number) => void
-  onCreate: (chromeName: string, name: string) => void
-  isLinking: boolean
-  isCreating: boolean
-  showCreate: boolean
-  setShowCreate: (v: boolean) => void
-  newName: string
-  setNewName: (v: string) => void
-}
-
-function SubjectsTab({
-  unmatchedSubjects,
-  availableSubjects,
-  selectedSubject,
-  onSelectSubject,
-  onLink,
-  onCreate,
-  isLinking,
-  isCreating,
-  showCreate,
-  setShowCreate,
-  newName,
-  setNewName,
-}: SubjectsTabProps) {
-  if (unmatchedSubjects.length === 0) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center text-slate-500 p-8">
-        <Check className="w-12 h-12 text-green-500 mb-3" />
-        <p className="font-medium">جميع المواد متطابقة!</p>
-      </div>
-    )
-  }
-
-  return (
-    <div className="flex-1 flex overflow-hidden">
-      {/* Left: Unmatched Subjects from مدرستي */}
-      <div className="w-1/2 border-l overflow-y-auto p-4">
-        <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-amber-500" />
-          من مدرستي (غير متطابقة)
-        </h3>
-        <div className="space-y-2">
-          {unmatchedSubjects.map((subject) => (
-            <button
-              key={subject.chrome_name}
-              onClick={() => onSelectSubject(selectedSubject?.chrome_name === subject.chrome_name ? null : subject)}
-              className={cn(
-                'w-full text-right p-3 rounded-lg border transition-all',
-                selectedSubject?.chrome_name === subject.chrome_name
-                  ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
-                  : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-              )}
-            >
-              <div className="font-medium text-slate-900">{subject.chrome_name}</div>
-              <div className="text-xs text-slate-500 mt-1">
-                {subject.sessions_count} حصة
-                {subject.current_match && (
-                  <span className="text-amber-600 mr-2">
-                    • مرتبطة حالياً بـ: {subject.current_match.name}
-                  </span>
-                )}
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Right: Available Subjects in System */}
-      <div className="w-1/2 overflow-y-auto p-4">
-        <h3 className="text-sm font-semibold text-slate-700 mb-3">اختر المادة من النظام</h3>
-        
-        {selectedSubject ? (
-          <>
-            <div className="mb-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="text-sm text-blue-700">
-                ربط <strong>{selectedSubject.chrome_name}</strong> مع:
-              </div>
-            </div>
-
-            <div className="space-y-2 max-h-64 overflow-y-auto mb-4">
-              {availableSubjects.map((subject) => (
-                <button
-                  key={subject.id}
-                  onClick={() => onLink(selectedSubject.chrome_name, subject.id)}
-                  disabled={isLinking}
-                  className="w-full text-right p-3 rounded-lg border border-slate-200 hover:border-green-500 hover:bg-green-50 transition-all flex items-center justify-between"
-                >
-                  <span className="font-medium text-slate-900">{subject.name}</span>
-                  <Check className="w-4 h-4 text-green-600" />
-                </button>
-              ))}
-            </div>
-
-            <div className="border-t pt-4">
-              {showCreate ? (
-                <div className="space-y-3">
-                  <input
-                    type="text"
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    placeholder="اسم المادة الجديدة"
-                    className="w-full px-3 py-2 border rounded-lg text-sm"
-                    autoFocus
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => onCreate(selectedSubject.chrome_name, newName || selectedSubject.chrome_name)}
-                      disabled={isCreating}
-                      className="flex-1 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
-                    >
-                      <Plus className="w-4 h-4" />
-                      إنشاء وربط
-                    </button>
-                    <button
-                      onClick={() => setShowCreate(false)}
-                      className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm"
-                    >
-                      إلغاء
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={() => {
-                    setNewName(selectedSubject.chrome_name)
-                    setShowCreate(true)
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    width: '100%',
+                    padding: '8px 11px',
+                    borderRadius: 8,
+                    border: '2px dashed var(--ws-border)',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                    color: 'var(--ws-text-2)',
                   }}
-                  className="w-full py-2 border-2 border-dashed border-slate-300 hover:border-green-500 text-slate-600 hover:text-green-600 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
                 >
-                  <Plus className="w-4 h-4" />
-                  إنشاء مادة جديدة
+                  <Plus style={{ width: 13, height: 13 }} />
+                  {isTeachers ? 'إنشاء معلم جديد' : 'إنشاء مادة جديدة'}
                 </button>
               )}
             </div>
-          </>
-        ) : (
-          <div className="text-center text-slate-500 py-8">
-            <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">اختر مادة من اليسار للبدء</p>
           </div>
+        ) : (
+          <WsEmpty icon={EntityIcon} style={{ padding: '32px 16px' }}>
+            {isTeachers ? 'اختر معلماً من القائمة اليمنى للبدء' : 'اختر مادة من القائمة اليمنى للبدء'}
+          </WsEmpty>
         )}
       </div>
-    </div>
+    </>
   )
 }
 

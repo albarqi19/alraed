@@ -4,7 +4,16 @@
  */
 
 import { useState, useMemo, useCallback } from 'react'
-import { RefreshCw, Search, Filter, ChevronDown, Eye, Settings } from 'lucide-react'
+import {
+  AlertTriangle,
+  ClipboardCheck,
+  Eye,
+  FileQuestion,
+  FileWarning,
+  RefreshCw,
+  Settings,
+  Users,
+} from 'lucide-react'
 import {
   useDelayActionsStatisticsQuery,
   useTeacherDelayListQuery,
@@ -14,17 +23,36 @@ import {
   useMarkActionSignedMutation,
 } from '../hooks'
 import { fetchAndOpenPrintPage } from '../api'
-import { DelayActionsStats } from '../components/delay-actions-stats'
 import { PendingActionsTable } from '../components/pending-actions-table'
 import { ActionsHistoryTable } from '../components/actions-history-table'
 import { TeacherDelayDetailsSheet } from '../components/teacher-delay-details-sheet'
 import { ActionConfirmationDialog } from '../components/action-confirmation-dialog'
 import { DelayActionsSettingsDialog } from '../components/delay-actions-settings-dialog'
-import { DelayExcusesTab } from '../components/delay-excuses-tab'
+import { DelayExcusesPanel } from '../components/delay-excuses-tab'
 import { DelayExcusesSettingsDialog } from '../components/delay-excuses-settings-dialog'
 import type { DelayActionType, DelayActionsFilters, DelayActionsHistoryFilters } from '../types'
+import {
+  WsAlert,
+  WsBlock,
+  WsBtn,
+  WsFact,
+  WsField,
+  WsHeader,
+  WsInput,
+  WsLayout,
+  WsMain,
+  WsPage,
+  WsSelect,
+  WsSideCol,
+  WsToolbar,
+} from '@/shared/workspace'
 
-type ActiveTab = 'pending' | 'history' | 'excuses'
+type ActiveTab = 'pending' | 'history'
+
+const TABS: Array<{ value: ActiveTab; label: string }> = [
+  { value: 'pending', label: 'ينتظرون إجراء' },
+  { value: 'history', label: 'سجل الإجراءات' },
+]
 
 export function AdminDelayActionsPage() {
   const currentYear = new Date().getFullYear()
@@ -156,214 +184,164 @@ export function AdminDelayActionsPage() {
   const historyMeta = useMemo(() => historyQuery.data?.meta, [historyQuery.data])
 
   const isSubmitting = recordWarningMutation.isPending || recordDeductionMutation.isPending
+  const stats = statsQuery.data
+
+  const activeTabLabel = TABS.find((tab) => tab.value === activeTab)?.label ?? ''
 
   return (
-    <section className="space-y-6">
-      {/* Header */}
-      <header className="space-y-2">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="space-y-1 text-right">
-            <h1 className="text-3xl font-bold text-slate-900">إجراءات التأخير</h1>
-            <p className="text-sm text-muted">
-              إدارة التنبيهات وقرارات الحسم للمعلمين بناءً على تراكم ساعات التأخير خلال العام المالي.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setSettingsOpen(true)}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
+    <WsPage>
+      <WsHeader
+        title="إجراءات التأخير"
+        badge={`العام المالي ${selectedYear}`}
+        actions={
+          <>
+            <WsSelect
+              value={selectedYear}
+              onChange={(e) => handleYearChange(Number(e.target.value))}
+              style={isReadOnly ? { borderColor: 'var(--ws-amber)', color: 'var(--ws-amber)', fontWeight: 700 } : undefined}
+              title="العام المالي"
             >
-              <Settings className="h-4 w-4" />
+              <option value={currentYear}>{currentYear} (الحالي)</option>
+              <option value={previousYear}>{previousYear}</option>
+            </WsSelect>
+            <WsBtn icon={Settings} onClick={() => setSettingsOpen(true)}>
               الإعدادات
-            </button>
-            <button
-              type="button"
+            </WsBtn>
+            <WsBtn
+              icon={RefreshCw}
               onClick={handleRefresh}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
               disabled={statsQuery.isFetching || teacherListQuery.isFetching}
             >
-              <RefreshCw
-                className={`h-4 w-4 ${statsQuery.isFetching || teacherListQuery.isFetching ? 'animate-spin' : ''}`}
-              />
               تحديث
-            </button>
-            {/* اختيار العام المالي */}
-            <div className="relative">
-              <select
-                value={selectedYear}
-                onChange={(e) => handleYearChange(Number(e.target.value))}
-                className={`appearance-none rounded-full py-2 pr-4 pl-8 text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${
-                  isReadOnly
-                    ? 'border-2 border-amber-300 bg-amber-50 text-amber-700'
-                    : 'border border-indigo-200 bg-indigo-50 text-indigo-700'
-                }`}
-              >
-                <option value={currentYear}>{currentYear} (الحالي)</option>
-                <option value={previousYear}>{previousYear}</option>
-              </select>
-              <ChevronDown className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
-            </div>
-          </div>
-        </div>
-      </header>
+            </WsBtn>
+          </>
+        }
+        facts={
+          stats ? (
+            <>
+              <WsFact icon={Users} label="معلمون لديهم تأخير:">
+                {stats.teachers_with_delay.toLocaleString('ar-SA')}
+              </WsFact>
+              <WsFact icon={AlertTriangle} label="ينتظرون تنبيه:">
+                {stats.pending_warnings.toLocaleString('ar-SA')}
+              </WsFact>
+              <WsFact icon={FileWarning} label="ينتظرون حسم:">
+                {stats.pending_deductions.toLocaleString('ar-SA')}
+              </WsFact>
+              <WsFact icon={ClipboardCheck} label="إجراءات هذا العام:">
+                {(stats.total_warnings_issued + stats.total_deductions_issued).toLocaleString('ar-SA')}
+              </WsFact>
+            </>
+          ) : undefined
+        }
+      />
 
       {/* بانر وضع العرض فقط */}
       {isReadOnly && (
-        <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-          <Eye className="h-5 w-5 text-amber-600" />
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-amber-800">
-              وضع العرض فقط - بيانات العام المالي {selectedYear}
-            </p>
-            <p className="text-xs text-amber-600">
-              لا يمكن تسجيل إجراءات جديدة للسنة السابقة. للتسجيل، اختر العام الحالي ({currentYear}).
-            </p>
-          </div>
-        </div>
+        <WsAlert tone="warn" icon={Eye}>
+          <b>وضع العرض فقط — بيانات العام المالي {selectedYear}.</b>
+          لا يمكن تسجيل إجراءات جديدة للسنة السابقة؛ للتسجيل اختر العام الحالي ({currentYear}).
+        </WsAlert>
       )}
 
-      {/* Statistics Cards */}
-      <DelayActionsStats data={statsQuery.data} isLoading={statsQuery.isLoading} />
-
-      {/* Main Content */}
-      <div className="glass-card space-y-6">
-        {/* Tabs */}
-        <div className="flex items-center gap-2 border-b border-slate-200">
-          <button
-            type="button"
-            onClick={() => setActiveTab('pending')}
-            className={`relative px-4 py-3 text-sm font-semibold transition ${
-              activeTab === 'pending'
-                ? 'text-indigo-600'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            ينتظرون إجراء
-            {activeTab === 'pending' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('history')}
-            className={`relative px-4 py-3 text-sm font-semibold transition ${
-              activeTab === 'history'
-                ? 'text-indigo-600'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            سجل الإجراءات
-            {activeTab === 'history' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('excuses')}
-            className={`relative px-4 py-3 text-sm font-semibold transition ${
-              activeTab === 'excuses'
-                ? 'text-indigo-600'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            أعذار التأخير
-            {activeTab === 'excuses' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />
-            )}
-          </button>
-          {activeTab === 'excuses' && (
+      <WsToolbar>
+        {/* التبويبات كشرائح مدمجة */}
+        <div className="ws-seg" style={{ alignSelf: 'flex-end' }}>
+          {TABS.map((tab) => (
             <button
+              key={tab.value}
               type="button"
-              onClick={() => setExcusesSettingsOpen(true)}
-              className="mr-auto inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50"
+              onClick={() => setActiveTab(tab.value)}
+              className={`ws-seg__btn ${activeTab === tab.value ? 'is-active' : ''}`}
             >
-              <Settings className="h-3.5 w-3.5" />
-              إعدادات الأعذار
+              {tab.label}
             </button>
-          )}
+          ))}
         </div>
 
-        {/* Filters */}
-        {activeTab === 'pending' ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="space-y-2 text-right">
-              <label className="text-xs font-semibold text-slate-600">البحث</label>
-              <div className="relative">
-                <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="search"
-                  value={filters.search ?? ''}
-                  onChange={(e) => handleFilterChange('search', e.target.value)}
-                  placeholder="ابحث باسم المعلم..."
-                  className="w-full rounded-xl border border-slate-200 bg-white py-2 pr-10 pl-4 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                />
-              </div>
-            </div>
-            <div className="space-y-2 text-right">
-              <label className="text-xs font-semibold text-slate-600">نوع الإجراء المستحق</label>
-              <div className="relative">
-                <Filter className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <select
-                  value={filters.pending_action ?? 'all'}
-                  onChange={(e) =>
-                    handleFilterChange('pending_action', e.target.value as 'warning' | 'deduction' | 'all')
-                  }
-                  className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-2 pr-10 pl-4 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                >
-                  <option value="all">الكل</option>
-                  <option value="warning">تنبيه فقط</option>
-                  <option value="deduction">حسم فقط</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        ) : activeTab === 'history' ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="space-y-2 text-right">
-              <label className="text-xs font-semibold text-slate-600">نوع الإجراء</label>
-              <div className="relative">
-                <Filter className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <select
-                  value={historyFilters.action_type ?? 'all'}
-                  onChange={(e) =>
-                    handleHistoryFilterChange('action_type', e.target.value as DelayActionType | 'all')
-                  }
-                  className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-2 pr-10 pl-4 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                >
-                  <option value="all">جميع الإجراءات</option>
-                  <option value="warning">التنبيهات</option>
-                  <option value="deduction">قرارات الحسم</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        {/* Tables */}
-        {activeTab === 'pending' ? (
-          <PendingActionsTable
-            data={teacherList}
-            isLoading={teacherListQuery.isLoading}
-            onTeacherClick={handleTeacherClick}
-            onRecordAction={handleRecordAction}
-            readOnly={isReadOnly}
-          />
-        ) : activeTab === 'history' ? (
-          <ActionsHistoryTable
-            data={historyList}
-            meta={historyMeta}
-            isLoading={historyQuery.isLoading}
-            onPageChange={(page) => handleHistoryFilterChange('page', page)}
-            onMarkSigned={handleMarkSigned}
-          />
-        ) : (
-          <DelayExcusesTab
-            fiscalYear={selectedYear}
-            readOnly={isReadOnly}
-          />
+        {activeTab === 'pending' && (
+          <>
+            <WsField label="البحث باسم المعلم" htmlFor="ws-delay-search" grow>
+              <WsInput
+                id="ws-delay-search"
+                type="search"
+                value={filters.search ?? ''}
+                onChange={(e) => handleFilterChange('search', e.target.value)}
+                placeholder="ابحث باسم المعلم..."
+              />
+            </WsField>
+            <WsField label="نوع الإجراء المستحق" htmlFor="ws-delay-pending-type">
+              <WsSelect
+                id="ws-delay-pending-type"
+                value={filters.pending_action ?? 'all'}
+                onChange={(e) =>
+                  handleFilterChange('pending_action', e.target.value as 'warning' | 'deduction' | 'all')
+                }
+              >
+                <option value="all">الكل</option>
+                <option value="warning">تنبيه فقط</option>
+                <option value="deduction">حسم فقط</option>
+              </WsSelect>
+            </WsField>
+          </>
         )}
-      </div>
+
+        {activeTab === 'history' && (
+          <WsField label="نوع الإجراء" htmlFor="ws-delay-history-type">
+            <WsSelect
+              id="ws-delay-history-type"
+              value={historyFilters.action_type ?? 'all'}
+              onChange={(e) =>
+                handleHistoryFilterChange('action_type', e.target.value as DelayActionType | 'all')
+              }
+            >
+              <option value="all">جميع الإجراءات</option>
+              <option value="warning">التنبيهات</option>
+              <option value="deduction">قرارات الحسم</option>
+            </WsSelect>
+          </WsField>
+        )}
+
+      </WsToolbar>
+
+      <WsLayout>
+        <WsMain>
+          <WsBlock title={activeTabLabel} icon={FileWarning} fill>
+            {activeTab === 'pending' ? (
+              <PendingActionsTable
+                data={teacherList}
+                isLoading={teacherListQuery.isLoading}
+                onTeacherClick={handleTeacherClick}
+                onRecordAction={handleRecordAction}
+                readOnly={isReadOnly}
+              />
+            ) : (
+              <ActionsHistoryTable
+                data={historyList}
+                meta={historyMeta}
+                isLoading={historyQuery.isLoading}
+                onPageChange={(page) => handleHistoryFilterChange('page', page)}
+                onMarkSigned={handleMarkSigned}
+              />
+            )}
+          </WsBlock>
+        </WsMain>
+
+        {/* العمود الأيسر: أعذار التأخير — مراجعة فورية من مكانها */}
+        <WsSideCol
+          title="أعذار التأخير"
+          icon={FileQuestion}
+          width={330}
+          storageKey="ws:delay-actions:excuses"
+          tools={
+            <WsBtn size="sm" icon={Settings} onClick={() => setExcusesSettingsOpen(true)}>
+              الإعدادات
+            </WsBtn>
+          }
+        >
+          <DelayExcusesPanel key={selectedYear} fiscalYear={selectedYear} readOnly={isReadOnly} />
+        </WsSideCol>
+      </WsLayout>
 
       {/* Teacher Details Sheet */}
       <TeacherDelayDetailsSheet
@@ -397,6 +375,6 @@ export function AdminDelayActionsPage() {
         open={excusesSettingsOpen}
         onOpenChange={setExcusesSettingsOpen}
       />
-    </section>
+    </WsPage>
   )
 }

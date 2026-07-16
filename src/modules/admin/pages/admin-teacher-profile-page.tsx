@@ -2,11 +2,10 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Eye, CalendarCheck, Clock, BookOpen, Shield,
-  MessageCircle, ClipboardCheck, FileText, Loader2, UserCircle,
-  AlertCircle,
+  MessageCircle, ClipboardCheck, FileText, UserCircle,
+  AlertCircle, UserRound, Users,
 } from 'lucide-react'
 
-import { TeacherSelector } from '../teacher-profile/components/teacher-selector'
 import { ProfileHeader } from '../teacher-profile/components/profile-header'
 import { SummaryCards } from '../teacher-profile/components/summary-cards'
 import { BadgesSection } from '../teacher-profile/components/badges-section'
@@ -21,8 +20,33 @@ import { PeriodActionsSection } from '../teacher-profile/components/period-actio
 import { ReferralsReportsSection } from '../teacher-profile/components/referrals-section'
 import { PdfExportButton } from '../teacher-profile/components/pdf-export-button'
 import { TeacherReportPrintDialog } from '../components/teacher-report-print-dialog'
-import { Button } from '@/components/ui/button'
 import { EmptyState } from '../teacher-profile/components/empty-state'
+import {
+  WsAlert,
+  WsBlock,
+  WsBtn,
+  WsEmpty,
+  WsFact,
+  WsHeader,
+  WsInput,
+  WsLayout,
+  WsMain,
+  WsPage,
+  WsSideCol,
+  WsToolbar,
+} from '@/shared/workspace'
+import { useTeachersQuery } from '../hooks'
+import type { TeacherRecord } from '../types'
+
+// تطبيع النص العربي للبحث (تجاهل الهمزات والتشكيل)
+function normalizeArabicText(value: string) {
+  return value
+    .replace(/[ً-ٰٟ]/g, '')
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/ة/g, 'ه')
+    .replace(/ى/g, 'ي')
+    .trim()
+}
 
 import {
   useTeacherProfileSummary,
@@ -45,6 +69,14 @@ import {
 import type { ProfileTabKey, DateRangeFilter } from '../teacher-profile/types'
 
 type PeriodKey = 'semester' | '7d' | '30d' | '90d' | 'custom'
+
+const PERIOD_LABELS: Record<PeriodKey, string> = {
+  semester: 'الفصل الحالي',
+  '7d': '7 أيام',
+  '30d': '30 يوم',
+  '90d': '90 يوم',
+  custom: 'مخصص',
+}
 
 const TABS: { key: ProfileTabKey; label: string; icon: React.ElementType }[] = [
   { key: 'overview', label: 'نظرة عامة', icon: Eye },
@@ -71,6 +103,18 @@ export function AdminTeacherProfilePage() {
   const [reportDialogOpen, setReportDialogOpen] = useState(false)
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
+  const [teacherSearch, setTeacherSearch] = useState('')
+
+  // قائمة المعلمين للعمود الجانبي
+  const teachersQuery = useTeachersQuery()
+  const teachers: TeacherRecord[] = useMemo(() => teachersQuery.data ?? [], [teachersQuery.data])
+  const filteredTeachers = useMemo(() => {
+    const q = normalizeArabicText(teacherSearch)
+    if (!q) return teachers
+    return teachers.filter(
+      (t) => normalizeArabicText(t.name).includes(q) || t.national_id?.includes(teacherSearch),
+    )
+  }, [teachers, teacherSearch])
 
   // حساب نطاق التاريخ
   const dateFilter: DateRangeFilter = useMemo(() => {
@@ -169,35 +213,264 @@ export function AdminTeacherProfilePage() {
     }
   }
 
+  const activeTabLabel = TABS.find((tab) => tab.key === activeTab)?.label ?? ''
+
   return (
-    <div className="space-y-5" ref={printRef}>
-      {/* الترويسة */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">ملف المعلم</h1>
-          <p className="text-sm text-slate-500">عرض شامل لكل بيانات المعلم</p>
-        </div>
-        <div className="flex items-center gap-3">
-          {selectedTeacherId && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setReportDialogOpen(true)}
-              className="gap-2"
+    <WsPage>
+      <WsHeader
+        title="ملف المعلم"
+        badge="عرض شامل"
+        actions={
+          <>
+            {selectedTeacherId && (
+              <WsBtn icon={FileText} onClick={() => setReportDialogOpen(true)}>
+                طباعة تقرير شامل
+              </WsBtn>
+            )}
+            {summaryQuery.data && <PdfExportButton summary={summaryQuery.data} printRef={printRef} />}
+          </>
+        }
+        facts={
+          summaryQuery.data ? (
+            <>
+              <WsFact icon={UserRound} label="المعلم:">
+                {summaryQuery.data.teacher?.name ?? '—'}
+              </WsFact>
+              <WsFact icon={CalendarCheck} label="نسبة الحضور:">
+                {summaryQuery.data.attendance?.attendance_rate != null
+                  ? `${summaryQuery.data.attendance.attendance_rate}%`
+                  : '—'}
+              </WsFact>
+              <WsFact icon={Clock} label="الفترة:">
+                {summaryQuery.data.period ? `${summaryQuery.data.period.from} → ${summaryQuery.data.period.to}` : '—'}
+              </WsFact>
+            </>
+          ) : undefined
+        }
+      />
+
+      <WsToolbar>
+        {/* فلتر الفترة */}
+        <div className="ws-seg" style={{ alignSelf: 'flex-end' }}>
+          {(Object.keys(PERIOD_LABELS) as PeriodKey[]).map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setPeriod(p)}
+              className={`ws-seg__btn ${period === p ? 'is-active' : ''}`}
             >
-              <FileText className="h-4 w-4" />
-              طباعة تقرير شامل
-            </Button>
-          )}
-          {summaryQuery.data && (
-            <PdfExportButton summary={summaryQuery.data} printRef={printRef} />
-          )}
-          <TeacherSelector
-            selectedId={selectedTeacherId}
-            onSelect={handleSelectTeacher}
-          />
+              {PERIOD_LABELS[p]}
+            </button>
+          ))}
         </div>
-      </div>
+        {period === 'custom' && (
+          <>
+            <WsInput
+              type="date"
+              value={customFrom}
+              onChange={(e) => setCustomFrom(e.target.value)}
+              style={{ alignSelf: 'flex-end' }}
+            />
+            <WsInput
+              type="date"
+              value={customTo}
+              onChange={(e) => setCustomTo(e.target.value)}
+              style={{ alignSelf: 'flex-end' }}
+            />
+          </>
+        )}
+
+        {/* التبويبات */}
+        {selectedTeacherId && (
+          <div className="ws-seg" style={{ alignSelf: 'flex-end', flexWrap: 'wrap' }}>
+            {TABS.map((tab) => {
+              const Icon = tab.icon
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActiveTab(tab.key)}
+                  onMouseEnter={() => prefetchTab(tab.key)}
+                  className={`ws-seg__btn ${activeTab === tab.key ? 'is-active' : ''}`}
+                >
+                  <Icon style={{ width: 12, height: 12 }} />
+                  {tab.label}
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </WsToolbar>
+
+      <WsLayout>
+        {/* العمود الأيمن: قائمة المعلمين */}
+        <WsSideCol title="المعلمون" icon={Users} side="start" width={260} storageKey="ws:teacher-profile:list">
+          <div style={{ flexShrink: 0, padding: '8px 10px', borderBottom: '1px solid var(--ws-hairline)' }}>
+            <WsInput
+              type="search"
+              value={teacherSearch}
+              onChange={(e) => setTeacherSearch(e.target.value)}
+              placeholder="ابحث بالاسم أو الهوية..."
+              style={{ width: '100%' }}
+            />
+          </div>
+          <WsBlock count={filteredTeachers.length.toLocaleString('ar-SA')} title="القائمة" fill scroll>
+            {teachersQuery.isLoading ? (
+              <WsEmpty loading>جاري تحميل المعلمين...</WsEmpty>
+            ) : filteredTeachers.length === 0 ? (
+              <WsEmpty icon={Users}>لا توجد نتائج.</WsEmpty>
+            ) : (
+              <div>
+                {filteredTeachers.map((teacher) => {
+                  const isSelected = teacher.id === selectedTeacherId
+                  return (
+                    <button
+                      key={teacher.id}
+                      type="button"
+                      onClick={() => handleSelectTeacher(teacher.id)}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        textAlign: 'right',
+                        padding: '7px 12px',
+                        border: 'none',
+                        borderBottom: '1px solid var(--ws-hairline)',
+                        background: isSelected ? 'var(--ws-accent-soft)' : 'transparent',
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      <span style={{ display: 'block', fontSize: 12, fontWeight: isSelected ? 700 : 600, color: 'var(--ws-text)' }}>
+                        {teacher.name}
+                      </span>
+                      <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                        {teacher.national_id}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </WsBlock>
+        </WsSideCol>
+
+        <WsMain>
+          <WsBlock title={selectedTeacherId ? activeTabLabel : 'ملف المعلم'} icon={UserCircle} fill scroll>
+            <div ref={printRef} style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {/* حالة عدم اختيار معلم */}
+              {!selectedTeacherId && (
+                <>
+                  <EmptyState
+                    icon={UserCircle}
+                    title="اختر معلماً لعرض ملفه"
+                    description="استخدم القائمة أعلاه للبحث واختيار معلم"
+                  />
+                  <WsAlert tone="warn" boxed>
+                    <span>
+                      <b>تنبيه مهم:</b> البيانات المعروضة في ملف المعلم مبنية على ما تم إدخاله في النظام فقط، وقد لا
+                      تعكس الصورة الكاملة لأداء المعلم الفعلي. كثير من الجهود والأعمال قد تكون موثقة ورقياً أو لم تُدخل
+                      بعد، لذا لا ينبغي الاعتماد على هذه البيانات وحدها في تقييم أداء المعلم. الهدف من هذه الصفحة هو
+                      إتاحة فرصة للتطوير والتحسين المستمر، وليس إصدار أحكام نهائية. كذلك فإن <b>«تحليل الأداء»</b>{' '}
+                      المولّد بالذكاء الاصطناعي يميل إلى نظرة تفاؤلية وتشجيعية، وقد لا يعبّر بدقة عن الواقع.
+                    </span>
+                  </WsAlert>
+                </>
+              )}
+
+              {/* المحتوى */}
+              {selectedTeacherId && (
+                <>
+                  {/* بيانات المعلم + بطاقات الإحصائيات */}
+                  {summaryQuery.isLoading ? (
+                    <WsEmpty loading>جاري تحميل ملف المعلم...</WsEmpty>
+                  ) : summaryQuery.data ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                      <ProfileHeader
+                        teacher={summaryQuery.data.teacher}
+                        attendanceRate={summaryQuery.data.attendance.attendance_rate}
+                        teacherId={selectedTeacherId}
+                      />
+                      <BadgesSection
+                        badges={badgesQuery.data?.badges ?? []}
+                        isLoading={badgesQuery.isLoading}
+                      />
+                      <SummaryCards
+                        data={summaryQuery.data}
+                        benchmarks={benchmarksQuery.data?.benchmarks ?? null}
+                      />
+                    </div>
+                  ) : null}
+
+                  {/* محتوى القسم */}
+                  {isLoadingSection(activeTab) ? (
+                    <WsEmpty loading>جاري تحميل {activeTabLabel}...</WsEmpty>
+                  ) : (
+                    <>
+                      {activeTab === 'overview' && summaryQuery.data && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                          <AIInsightsCard
+                            teacherId={selectedTeacherId}
+                            filters={dateFilter}
+                            enabled={activeTab === 'overview'}
+                          />
+                          <WsAlert tone="info" boxed>
+                            الفترة: من {summaryQuery.data.period.from} إلى {summaryQuery.data.period.to} — اختر أحد
+                            الأقسام أعلاه لعرض التفاصيل الكاملة.
+                          </WsAlert>
+                        </div>
+                      )}
+
+                      {activeTab === 'attendance' && attendanceQuery.data && (
+                        <AttendanceSection data={attendanceQuery.data} />
+                      )}
+
+                      {activeTab === 'delays' && delaysQuery.data && (
+                        <DelaysSection
+                          delays={delaysQuery.data}
+                          actions={delayActionsQuery.data}
+                        />
+                      )}
+
+                      {activeTab === 'period-actions' && periodActionsQuery.data && (
+                        <PeriodActionsSection data={periodActionsQuery.data} />
+                      )}
+
+                      {activeTab === 'teaching' && scheduleQuery.data && (
+                        <ScheduleSection
+                          schedule={scheduleQuery.data}
+                          studentStats={studentStatsQuery.data}
+                        />
+                      )}
+
+                      {activeTab === 'duties' && dutiesQuery.data && (
+                        <DutiesSection
+                          duties={dutiesQuery.data}
+                          coverage={coverageQuery.data}
+                        />
+                      )}
+
+                      {activeTab === 'messages' && messagesQuery.data && (
+                        <MessagesSection data={messagesQuery.data} />
+                      )}
+
+                      {activeTab === 'preparation' && preparationQuery.data && (
+                        <PreparationSection data={preparationQuery.data} />
+                      )}
+
+                      {activeTab === 'referrals-reports' && (
+                        <ReferralsReportsSection
+                          referrals={referralsQuery.data}
+                          points={pointsQuery.data}
+                        />
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          </WsBlock>
+        </WsMain>
+      </WsLayout>
 
       <TeacherReportPrintDialog
         teacherId={selectedTeacherId}
@@ -205,201 +478,6 @@ export function AdminTeacherProfilePage() {
         open={reportDialogOpen}
         onOpenChange={setReportDialogOpen}
       />
-
-      {/* حالة عدم اختيار معلم */}
-      {!selectedTeacherId && (
-        <>
-          <EmptyState
-            icon={UserCircle}
-            title="اختر معلماً لعرض ملفه"
-            description="استخدم القائمة أعلاه للبحث واختيار معلم"
-          />
-          <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4">
-            <div className="flex gap-3">
-              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
-              <div className="space-y-1.5 text-xs leading-relaxed text-amber-800">
-                <p className="font-bold text-amber-900">تنبيه مهم</p>
-                <p>
-                  البيانات المعروضة في ملف المعلم مبنية على ما تم إدخاله في النظام فقط، وقد لا تعكس الصورة الكاملة لأداء المعلم الفعلي. كثير من الجهود والأعمال قد تكون موثقة ورقياً أو لم تُدخل بعد، لذا لا ينبغي الاعتماد على هذه البيانات وحدها في تقييم أداء المعلم.
-                </p>
-                <p>
-                  الهدف من هذه الصفحة هو إتاحة فرصة للتطوير والتحسين المستمر، وليس إصدار أحكام نهائية.
-                </p>
-                <p>
-                  كذلك فإن <span className="font-bold">«تحليل الأداء»</span> المولّد بالذكاء الاصطناعي يميل إلى نظرة تفاؤلية وتشجيعية، وقد لا يعبّر بدقة عن الواقع.
-                </p>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* المحتوى */}
-      {selectedTeacherId && (
-        <>
-          {/* بيانات المعلم + بطاقات الإحصائيات */}
-          {summaryQuery.isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-            </div>
-          ) : summaryQuery.data ? (
-            <div className="space-y-4">
-              <ProfileHeader
-                teacher={summaryQuery.data.teacher}
-                attendanceRate={summaryQuery.data.attendance.attendance_rate}
-                teacherId={selectedTeacherId}
-              />
-              <BadgesSection
-                badges={badgesQuery.data?.badges ?? []}
-                isLoading={badgesQuery.isLoading}
-              />
-              <SummaryCards
-                data={summaryQuery.data}
-                benchmarks={benchmarksQuery.data?.benchmarks ?? null}
-              />
-            </div>
-          ) : null}
-
-          {/* فلتر الفترة */}
-          <div className="flex flex-wrap items-center gap-2">
-            {(['semester', '7d', '30d', '90d', 'custom'] as PeriodKey[]).map((p) => {
-              const labels: Record<PeriodKey, string> = {
-                semester: 'الفصل الحالي',
-                '7d': '7 أيام',
-                '30d': '30 يوم',
-                '90d': '90 يوم',
-                custom: 'مخصص',
-              }
-              return (
-                <button
-                  key={p}
-                  onClick={() => setPeriod(p)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                    period === p
-                      ? 'bg-blue-600 text-white shadow'
-                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  {labels[p]}
-                </button>
-              )
-            })}
-            {period === 'custom' && (
-              <div className="flex items-center gap-2">
-                <input
-                  type="date"
-                  value={customFrom}
-                  onChange={(e) => setCustomFrom(e.target.value)}
-                  className="rounded-lg border border-slate-200 px-2 py-1 text-xs"
-                />
-                <span className="text-xs text-slate-400">إلى</span>
-                <input
-                  type="date"
-                  value={customTo}
-                  onChange={(e) => setCustomTo(e.target.value)}
-                  className="rounded-lg border border-slate-200 px-2 py-1 text-xs"
-                />
-              </div>
-            )}
-          </div>
-
-          {/* التبويبات */}
-          <div className="flex flex-wrap gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
-            {TABS.map((tab) => {
-              const isActive = activeTab === tab.key
-              const Icon = tab.icon
-              return (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  onMouseEnter={() => prefetchTab(tab.key)}
-                  className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition ${
-                    isActive
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  {tab.label}
-                </button>
-              )
-            })}
-          </div>
-
-          {/* محتوى القسم */}
-          <div className="min-h-[200px]">
-            {isLoadingSection(activeTab) ? (
-              <div className="flex items-center justify-center py-16">
-                <Loader2 className="h-6 w-6 animate-spin text-blue-400" />
-              </div>
-            ) : (
-              <>
-                {activeTab === 'overview' && summaryQuery.data && (
-                  <div className="space-y-4">
-                    <AIInsightsCard
-                      teacherId={selectedTeacherId}
-                      filters={dateFilter}
-                      enabled={activeTab === 'overview'}
-                    />
-                    <div className="rounded-xl border border-slate-200 bg-white p-5">
-                      <p className="text-sm text-slate-500">
-                        الفترة: من {summaryQuery.data.period.from} إلى {summaryQuery.data.period.to}
-                      </p>
-                      <p className="mt-2 text-sm text-slate-600">
-                        اختر أحد الأقسام أعلاه لعرض التفاصيل الكاملة.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {activeTab === 'attendance' && attendanceQuery.data && (
-                  <AttendanceSection data={attendanceQuery.data} />
-                )}
-
-                {activeTab === 'delays' && delaysQuery.data && (
-                  <DelaysSection
-                    delays={delaysQuery.data}
-                    actions={delayActionsQuery.data}
-                  />
-                )}
-
-                {activeTab === 'period-actions' && periodActionsQuery.data && (
-                  <PeriodActionsSection data={periodActionsQuery.data} />
-                )}
-
-                {activeTab === 'teaching' && scheduleQuery.data && (
-                  <ScheduleSection
-                    schedule={scheduleQuery.data}
-                    studentStats={studentStatsQuery.data}
-                  />
-                )}
-
-                {activeTab === 'duties' && dutiesQuery.data && (
-                  <DutiesSection
-                    duties={dutiesQuery.data}
-                    coverage={coverageQuery.data}
-                  />
-                )}
-
-                {activeTab === 'messages' && messagesQuery.data && (
-                  <MessagesSection data={messagesQuery.data} />
-                )}
-
-                {activeTab === 'preparation' && preparationQuery.data && (
-                  <PreparationSection data={preparationQuery.data} />
-                )}
-
-                {activeTab === 'referrals-reports' && (
-                  <ReferralsReportsSection
-                    referrals={referralsQuery.data}
-                    points={pointsQuery.data}
-                  />
-                )}
-              </>
-            )}
-          </div>
-        </>
-      )}
-    </div>
+    </WsPage>
   )
 }

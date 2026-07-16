@@ -1,6 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { ArrowDown, ArrowUp, CalendarCog, CheckCircle2, Loader2, Plus, Printer, RefreshCcw, Settings, Trash2, X } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  CalendarCog,
+  CheckCircle2,
+  Plus,
+  Printer,
+  RefreshCcw,
+  Save,
+  Settings,
+  Trash2,
+  Users,
+  X,
+} from 'lucide-react'
 
 import {
   useCreateDutyRosterTemplateMutation,
@@ -17,6 +30,20 @@ import {
   type TeacherRecord,
 } from '@/modules/admin/types'
 import { useToast } from '@/shared/feedback/use-toast'
+import {
+  WsAlert,
+  WsBlock,
+  WsBtn,
+  WsChip,
+  WsEmpty,
+  WsField,
+  WsIconBtn,
+  WsInput,
+  WsMain,
+  WsSelect,
+  WsSideCol,
+  WsSwitch,
+} from '@/shared/workspace'
 
 type DayAssignment = {
   user_id: number
@@ -44,6 +71,18 @@ const WEEKDAY_LABELS: Record<DutyRosterWeekday, string> = {
   friday: 'الجمعة',
   saturday: 'السبت',
 }
+
+// ألوان تظليل المعلمين المكررين عبر الأيام (تطعيمات هادئة)
+const HIGHLIGHT_COLORS = [
+  { bg: '#E8F2FA', bd: '#BFDCF0', tx: '#21689E' },
+  { bg: '#E9F5EC', bd: '#BFE3C9', tx: '#2E7D46' },
+  { bg: '#F1EAFB', bd: '#D6C3F0', tx: '#6D3FA9' },
+  { bg: '#FCF3E1', bd: '#EFD9AC', tx: '#A8690A' },
+  { bg: '#FBEAEA', bd: '#EFC5C5', tx: '#C43D3D' },
+  { bg: '#E4F5F5', bd: '#BCE4E4', tx: '#1D7A7A' },
+  { bg: '#FBEEE4', bd: '#F0D2B8', tx: '#B05E1D' },
+  { bg: '#EAF0EE', bd: '#C8D8D2', tx: '#3F6F55' },
+]
 
 function createEmptyAssignments(): Record<DutyRosterWeekday, DayAssignment[]> {
   return DUTY_ROSTER_WEEKDAYS.reduce((accumulator, weekday) => {
@@ -129,6 +168,7 @@ export function DutyRosterTemplatesPanel() {
     if (templates.length > 0 && selectedId === null && previousSelectedRef.current === null) {
       setSelectedId(templates[0].id)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templates.length, selectedId])
 
   // تحميل بيانات القالب المختار
@@ -158,18 +198,6 @@ export function DutyRosterTemplatesPanel() {
   const totalAssignments = useMemo(() => {
     return Object.values(form.weekdayAssignments).reduce((total, list) => total + list.length, 0)
   }, [form.weekdayAssignments])
-
-  // ألوان تظليل المعلمين المكررين
-  const HIGHLIGHT_COLORS = [
-    { bg: 'bg-blue-100', border: 'border-blue-300', text: 'text-blue-800' },
-    { bg: 'bg-emerald-100', border: 'border-emerald-300', text: 'text-emerald-800' },
-    { bg: 'bg-purple-100', border: 'border-purple-300', text: 'text-purple-800' },
-    { bg: 'bg-amber-100', border: 'border-amber-300', text: 'text-amber-800' },
-    { bg: 'bg-rose-100', border: 'border-rose-300', text: 'text-rose-800' },
-    { bg: 'bg-cyan-100', border: 'border-cyan-300', text: 'text-cyan-800' },
-    { bg: 'bg-orange-100', border: 'border-orange-300', text: 'text-orange-800' },
-    { bg: 'bg-teal-100', border: 'border-teal-300', text: 'text-teal-800' },
-  ]
 
   // حساب المعلمين المكررين عبر الأيام وتعيين ألوان لهم
   const repeatedTeacherColors = useMemo(() => {
@@ -543,68 +571,50 @@ export function DutyRosterTemplatesPanel() {
   }
 
   return (
-    <section className="space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <div className="text-right">
-          <h2 className="text-2xl font-bold text-slate-900">قوالب الإشراف الأسبوعية</h2>
-          <p className="text-sm text-muted">
-            جهز جدولاً أسبوعياً ثابتاً، وحدد المعلمين لكل يوم.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => templatesQuery.refetch()}
-            className="button-secondary flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={isFetching}
-          >
-            {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
-            تحديث
-          </button>
-          <button
-            type="button"
+    <>
+      {/* العمود الأيمن: القوالب المحفوظة — ثابت بتمرير داخلي */}
+      <WsSideCol
+        title="القوالب المحفوظة"
+        icon={CalendarCog}
+        side="start"
+        width={280}
+        storageKey="ws:duty-templates:list"
+        tools={<WsIconBtn icon={RefreshCcw} label="تحديث القوالب" onClick={() => templatesQuery.refetch()} disabled={isFetching} />}
+      >
+        {/* زر الإضافة بالأعلى */}
+        <div style={{ flexShrink: 0, padding: '8px 10px', borderBottom: '1px solid var(--ws-hairline)' }}>
+          <WsBtn
+            variant="primary"
+            icon={Plus}
             onClick={() => {
               setNewTemplateForm(buildEmptyForm())
               setIsNewTemplateModalOpen(true)
             }}
-            className="button-primary flex items-center gap-2"
             disabled={isSubmitting}
+            style={{ width: '100%' }}
           >
-            <Plus className="h-5 w-5" />
-            إضافة قالب
-          </button>
+            إضافة قالب جديد
+          </WsBtn>
         </div>
-      </header>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,280px),minmax(0,1fr)]">
-        {/* قائمة القوالب */}
-        <aside className="space-y-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-          <header className="space-y-1 text-right">
-            <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">القوالب المحفوظة</p>
-            <h3 className="text-base font-bold text-slate-900">اختر قالباً لتوزيع المعلمين</h3>
-          </header>
-
+        <WsBlock title="القوالب" count={templates.length.toLocaleString('ar-SA')} fill scroll>
           {templatesQuery.isError ? (
-            <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4 text-sm text-rose-700">
+            <WsAlert boxed style={{ margin: 10 }}>
               تعذر تحميل القوالب. حاول مرة أخرى.
-            </div>
+            </WsAlert>
           ) : isLoading ? (
-            <div className="flex min-h-[160px] items-center justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
-            </div>
+            <WsEmpty loading style={{ padding: 20 }}>
+              جاري التحميل...
+            </WsEmpty>
           ) : templates.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-4 text-center text-sm text-muted">
-              <p>لم يتم إنشاء أي قوالب بعد.</p>
-              <button
-                type="button"
-                onClick={() => setIsNewTemplateModalOpen(true)}
-                className="mt-2 text-indigo-600 hover:underline"
-              >
+            <WsEmpty icon={CalendarCog} style={{ padding: 20 }}>
+              لم يتم إنشاء أي قوالب بعد.
+              <WsBtn size="sm" icon={Plus} onClick={() => setIsNewTemplateModalOpen(true)}>
                 أنشئ قالبك الأول
-              </button>
-            </div>
+              </WsBtn>
+            </WsEmpty>
           ) : (
-            <ul className="space-y-2">
+            <div>
               {templates.map((template) => {
                 const count = DUTY_ROSTER_WEEKDAYS.reduce(
                   (total, weekday) => total + (template.weekday_assignments[weekday]?.length ?? 0),
@@ -613,392 +623,377 @@ export function DutyRosterTemplatesPanel() {
                 const isSelected = selectedId === template.id
 
                 return (
-                  <li key={template.id}>
-                    <div
-                      onClick={() => handleSelectTemplate(template.id)}
-                      className={`cursor-pointer rounded-2xl border px-4 py-3 text-right transition ${isSelected
-                        ? 'border-indigo-400 bg-indigo-50 text-indigo-900 shadow-sm'
-                        : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-indigo-50'
-                        }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-semibold">{template.name}</p>
-                            <button
-                              type="button"
-                              onClick={(e) => handleOpenSettings(template.id, e)}
-                              className="rounded-full p-1 text-slate-400 transition hover:bg-slate-200 hover:text-slate-600"
-                              title="إعدادات القالب"
-                            >
-                              <Settings className="h-4 w-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handlePrintTemplate(template)
-                              }}
-                              className="rounded-full p-1 text-slate-400 transition hover:bg-emerald-100 hover:text-emerald-600"
-                              title="طباعة القالب"
-                            >
-                              <Printer className="h-4 w-4" />
-                            </button>
-                          </div>
-                          <p className="text-xs text-muted">{template.shift_type}</p>
-                          {template.window_start && template.window_end && (
-                            <p className="mt-1 text-[10px] text-slate-500">
-                              {template.window_start} - {template.window_end}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex flex-col items-end gap-1">
-                          <span
-                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${template.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-600'
-                              }`}
-                          >
-                            <CheckCircle2 className="h-3 w-3" />
-                            {template.is_active ? 'مفعل' : 'متوقف'}
-                          </span>
-                          <span className="text-[10px] text-muted">{count} معلم</span>
-                        </div>
-                      </div>
+                  <div
+                    key={template.id}
+                    onClick={() => handleSelectTemplate(template.id)}
+                    style={{
+                      padding: '8px 12px',
+                      borderBottom: '1px solid var(--ws-hairline)',
+                      background: isSelected ? 'var(--ws-accent-soft)' : 'transparent',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                      <span style={{ fontSize: 12.5, fontWeight: 700, minWidth: 0 }}>{template.name}</span>
+                      <span style={{ display: 'inline-flex', gap: 2, flexShrink: 0 }}>
+                        <WsIconBtn icon={Settings} label="إعدادات القالب" onClick={(e) => handleOpenSettings(template.id, e)} />
+                        <WsIconBtn
+                          icon={Printer}
+                          label="طباعة القالب"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handlePrintTemplate(template)
+                          }}
+                        />
+                      </span>
                     </div>
-                  </li>
+                    <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ws-text-2)', marginTop: 2 }}>
+                      {template.shift_type}
+                      {template.window_start && template.window_end && (
+                        <span style={{ direction: 'ltr', display: 'inline-block', marginInlineStart: 6 }}>
+                          {template.window_start} - {template.window_end}
+                        </span>
+                      )}
+                    </span>
+                    <span style={{ display: 'inline-flex', gap: 4, marginTop: 4 }}>
+                      <WsChip tone={template.is_active ? 'green' : undefined} icon={CheckCircle2}>
+                        {template.is_active ? 'مفعل' : 'متوقف'}
+                      </WsChip>
+                      <WsChip icon={Users}>{count} معلم</WsChip>
+                    </span>
+                  </div>
                 )
               })}
-            </ul>
+            </div>
           )}
-        </aside>
+        </WsBlock>
+      </WsSideCol>
 
-        {/* توزيع المعلمين */}
-        {selectedTemplate ? (
-          <div className="space-y-5">
-            <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <header className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <div className="text-right">
-                  <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900">
-                    <CalendarCog className="h-5 w-5 text-indigo-500" />
-                    توزيع المعلمين: {selectedTemplate.name}
-                  </h3>
-                  <p className="text-xs text-muted">
-                    {selectedTemplate.shift_type} • {selectedTemplate.window_start} - {selectedTemplate.window_end}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {isDirty && (
-                    <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                      تغييرات غير محفوظة
-                    </span>
-                  )}
-                  <span className="text-xs text-muted">إجمالي: {totalAssignments} معلم</span>
-                </div>
-              </header>
-
-              <div className="grid gap-4 lg:grid-cols-2">
-                {DUTY_ROSTER_WEEKDAYS.map((weekday) => {
-                  const assignments = form.weekdayAssignments[weekday]
-                  const assignedIds = new Set(assignments.map((a) => a.user_id))
-                  const availableTeachers = teachers.filter((t) => !assignedIds.has(t.id))
-
-                  return (
-                    <section key={weekday} className="space-y-3 rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm">
-                      <header className="flex items-center justify-between gap-2">
-                        <div className="text-right">
-                          <h4 className="text-base font-semibold text-slate-900">{WEEKDAY_LABELS[weekday]}</h4>
-                          <p className="text-xs text-muted">
-                            {assignments.length > 0 ? `${assignments.length} معلم` : 'لم يتم تعيين أي معلم'}
-                          </p>
-                        </div>
-                        <select
-                          className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs shadow-sm focus:border-indigo-500 focus:outline-none"
-                          onChange={(e) => {
-                            const value = Number.parseInt(e.target.value, 10)
-                            if (Number.isFinite(value)) handleAddTeacher(weekday, value)
-                            e.target.value = ''
-                          }}
-                          defaultValue=""
-                          disabled={isSubmitting || availableTeachers.length === 0}
-                        >
-                          <option value="">+ إضافة معلم</option>
-                          {availableTeachers.map((teacher) => (
-                            <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
-                          ))}
-                        </select>
-                      </header>
-
-                      {assignments.length === 0 ? (
-                        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 p-3 text-center text-xs text-muted">
-                          لم يتم اختيار معلمين لهذا اليوم.
-                        </div>
-                      ) : (
-                        <ul className="space-y-2 text-sm">
-                          {assignments.map((assignment, index) => {
-                            const highlightColor = repeatedTeacherColors.get(assignment.user_id)
-                            const isRepeated = !!highlightColor
-
-                            return (
-                              <li
-                                key={assignment.user_id}
-                                className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 shadow-sm ${isRepeated
-                                  ? `${highlightColor.bg} ${highlightColor.border}`
-                                  : 'border-slate-200 bg-white'
-                                  }`}
-                              >
-                                <div className="text-right">
-                                  <p className={`font-semibold ${isRepeated ? highlightColor.text : 'text-slate-800'}`}>
-                                    {assignment.name}
-                                    {isRepeated && <span className="mr-1 text-xs opacity-60">●</span>}
-                                  </p>
-                                  {assignment.phone && <p className="text-[11px] text-muted">{assignment.phone}</p>}
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <button type="button" onClick={() => handleMoveTeacher(weekday, index, -1)} className="rounded-full border border-slate-200 p-1 text-muted hover:text-indigo-600 disabled:opacity-40" disabled={index === 0 || isSubmitting}>
-                                    <ArrowUp className="h-4 w-4" />
-                                  </button>
-                                  <button type="button" onClick={() => handleMoveTeacher(weekday, index, 1)} className="rounded-full border border-slate-200 p-1 text-muted hover:text-indigo-600 disabled:opacity-40" disabled={index === assignments.length - 1 || isSubmitting}>
-                                    <ArrowDown className="h-4 w-4" />
-                                  </button>
-                                  <button type="button" onClick={() => handleRemoveTeacher(weekday, index)} className="rounded-full border border-rose-200 p-1 text-rose-600 hover:bg-rose-50 disabled:opacity-40" disabled={isSubmitting}>
-                                    <Trash2 className="h-4 w-4" />
-                                  </button>
-                                </div>
-                              </li>
-                            )
-                          })}
-                        </ul>
-                      )}
-                    </section>
-                  )
-                })}
+      {/* الوسط: توزيع المعلمين — يتمرر داخلياً */}
+      <WsMain>
+        <WsBlock
+          title={selectedTemplate ? `توزيع المعلمين: ${selectedTemplate.name}` : 'توزيع المعلمين'}
+          icon={Users}
+          count={selectedTemplate ? `${totalAssignments} معلم` : undefined}
+          tools={
+            selectedTemplate ? (
+              <>
+                {isDirty && (
+                  <WsChip tone="amber" className="ws-soft-pulse">
+                    تغييرات غير محفوظة
+                  </WsChip>
+                )}
+                {isDirty && (
+                  <WsBtn variant="primary" size="sm" icon={Save} onClick={handleSaveAssignments} disabled={isSubmitting}>
+                    {updateTemplateMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ التوزيع'}
+                  </WsBtn>
+                )}
+              </>
+            ) : undefined
+          }
+          fill
+          scroll
+        >
+          {selectedTemplate ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 12 }}>
+              {/* معلومات القالب */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  flexWrap: 'wrap',
+                  padding: '7px 12px',
+                  border: '1px solid var(--ws-hairline)',
+                  borderRadius: 10,
+                  background: 'var(--ws-accent-softer)',
+                }}
+              >
+                <WsChip tone="green">{selectedTemplate.shift_type}</WsChip>
+                <WsChip>
+                  <span style={{ direction: 'ltr' }}>
+                    {selectedTemplate.window_start} - {selectedTemplate.window_end}
+                  </span>
+                </WsChip>
+                <WsChip tone={selectedTemplate.is_active ? 'green' : undefined} icon={CheckCircle2}>
+                  {selectedTemplate.is_active ? 'مفعل' : 'متوقف'}
+                </WsChip>
               </div>
-            </article>
 
-            {isDirty && (
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={handleSaveAssignments}
-                  className="button-primary min-w-[160px] disabled:cursor-not-allowed disabled:opacity-60"
-                  disabled={isSubmitting}
-                >
-                  {updateTemplateMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ التوزيع'}
-                </button>
+              {/* شبكة الأيام */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 10 }}>
+              {DUTY_ROSTER_WEEKDAYS.map((weekday) => {
+                const assignments = form.weekdayAssignments[weekday]
+                const assignedIds = new Set(assignments.map((a) => a.user_id))
+                const availableTeachers = teachers.filter((t) => !assignedIds.has(t.id))
+
+                return (
+                  <div
+                    key={weekday}
+                    style={{
+                      border: '1px solid var(--ws-border)',
+                      borderRadius: 10,
+                      overflow: 'hidden',
+                      background: 'var(--ws-surface)',
+                    }}
+                  >
+                    <div className="ws-block__head">
+                      <span className="ws-block__title">
+                        {WEEKDAY_LABELS[weekday]}
+                        <span className="ws-count">{assignments.length}</span>
+                      </span>
+                      <WsSelect
+                        style={{ height: 26, fontSize: 11.5 }}
+                        onChange={(e) => {
+                          const value = Number.parseInt(e.target.value, 10)
+                          if (Number.isFinite(value)) handleAddTeacher(weekday, value)
+                          e.target.value = ''
+                        }}
+                        defaultValue=""
+                        disabled={isSubmitting || availableTeachers.length === 0}
+                      >
+                        <option value="">+ إضافة معلم</option>
+                        {availableTeachers.map((teacher) => (
+                          <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
+                        ))}
+                      </WsSelect>
+                    </div>
+
+                    {assignments.length === 0 ? (
+                      <p style={{ margin: 0, padding: '14px 12px', fontSize: 11, color: 'var(--ws-text-2)', textAlign: 'center' }}>
+                        لم يتم اختيار معلمين لهذا اليوم.
+                      </p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: 8 }}>
+                        {assignments.map((assignment, index) => {
+                          const highlightColor = repeatedTeacherColors.get(assignment.user_id)
+                          const isRepeated = !!highlightColor
+
+                          return (
+                            <div
+                              key={assignment.user_id}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: 8,
+                                padding: '6px 10px',
+                                borderRadius: 8,
+                                border: `1px solid ${isRepeated ? highlightColor.bd : 'var(--ws-hairline)'}`,
+                                background: isRepeated ? highlightColor.bg : 'var(--ws-surface)',
+                              }}
+                            >
+                              <span style={{ minWidth: 0 }}>
+                                <span
+                                  style={{
+                                    display: 'block',
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    color: isRepeated ? highlightColor.tx : 'var(--ws-text)',
+                                  }}
+                                >
+                                  {assignment.name}
+                                  {isRepeated && <span style={{ marginInlineStart: 4, fontSize: 9, opacity: 0.7 }}>●</span>}
+                                </span>
+                                {assignment.phone && (
+                                  <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                                    {assignment.phone}
+                                  </span>
+                                )}
+                              </span>
+                              <span style={{ display: 'inline-flex', gap: 2, flexShrink: 0 }}>
+                                <WsIconBtn
+                                  icon={ArrowUp}
+                                  label="تقديم"
+                                  onClick={() => handleMoveTeacher(weekday, index, -1)}
+                                  disabled={index === 0 || isSubmitting}
+                                />
+                                <WsIconBtn
+                                  icon={ArrowDown}
+                                  label="تأخير"
+                                  onClick={() => handleMoveTeacher(weekday, index, 1)}
+                                  disabled={index === assignments.length - 1 || isSubmitting}
+                                />
+                                <WsIconBtn
+                                  icon={Trash2}
+                                  label="إزالة"
+                                  style={{ color: 'var(--ws-red)' }}
+                                  onClick={() => handleRemoveTeacher(weekday, index)}
+                                  disabled={isSubmitting}
+                                />
+                              </span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
               </div>
-            )}
-          </div>
-        ) : (
-          <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-slate-200 bg-white/70 p-6 text-center text-sm text-muted">
-            <CalendarCog className="h-12 w-12 text-slate-300" />
-            <p className="font-semibold">اختر قالباً من القائمة لتوزيع المعلمين</p>
-            <p className="text-xs">أو أنشئ قالباً جديداً</p>
-            <button
-              type="button"
-              onClick={() => setIsNewTemplateModalOpen(true)}
-              className="mt-2 button-primary"
-            >
-              <Plus className="inline h-4 w-4 ml-1" />
-              إضافة قالب جديد
-            </button>
-          </div>
-        )}
-      </div>
+            </div>
+          ) : (
+            <WsEmpty icon={CalendarCog}>
+              اختر قالباً من القائمة لتوزيع المعلمين، أو أنشئ قالباً جديداً.
+              <WsBtn size="sm" icon={Plus} onClick={() => setIsNewTemplateModalOpen(true)}>
+                إضافة قالب جديد
+              </WsBtn>
+            </WsEmpty>
+          )}
+        </WsBlock>
+      </WsMain>
 
       {/* Modal إعدادات القالب */}
       {isSettingsModalOpen && selectedTemplate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-          <div className="absolute inset-0" onClick={() => setIsSettingsModalOpen(false)} />
-          <div className="relative w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl">
-            <header className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-              <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
-                  <Settings className="h-5 w-5" />
-                </span>
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900">إعدادات القالب</h2>
-                  <p className="text-xs text-muted">{selectedTemplate.name}</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsSettingsModalOpen(false)}
-                className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
+        <div className="ws-modal" onClick={() => setIsSettingsModalOpen(false)}>
+          <form
+            className="ws-modal__panel"
+            style={{ maxWidth: 460 }}
+            onSubmit={handleSubmitSettings}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <header className="ws-modal__head">
+              <h3 className="ws-modal__title">إعدادات القالب</h3>
+              <p className="ws-modal__sub">{selectedTemplate.name}</p>
             </header>
 
-            <form onSubmit={handleSubmitSettings} className="space-y-4 p-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2 text-right">
-                  <label className="text-xs font-semibold text-slate-600">اسم القالب</label>
-                  <input
+            <div className="ws-modal__body">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <WsField label="اسم القالب">
+                  <WsInput
                     type="text"
                     value={form.name}
                     onChange={(event) => handleFieldChange('name', event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
                     disabled={isSubmitting}
                   />
-                </div>
-                <div className="space-y-2 text-right">
-                  <label className="text-xs font-semibold text-slate-600">نوع الإشراف</label>
-                  <input
+                </WsField>
+                <WsField label="نوع الإشراف">
+                  <WsInput
                     type="text"
                     value={form.shiftType}
                     onChange={(event) => handleFieldChange('shiftType', event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
                     disabled={isSubmitting}
                   />
-                </div>
-                <div className="space-y-2 text-right">
-                  <label className="text-xs font-semibold text-slate-600">يبدأ من</label>
-                  <input
+                </WsField>
+                <WsField label="يبدأ من">
+                  <WsInput
                     type="time"
                     value={form.windowStart}
                     onChange={(event) => handleFieldChange('windowStart', event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
                     disabled={isSubmitting}
                   />
-                </div>
-                <div className="space-y-2 text-right">
-                  <label className="text-xs font-semibold text-slate-600">ينتهي عند</label>
-                  <input
+                </WsField>
+                <WsField label="ينتهي عند">
+                  <WsInput
                     type="time"
                     value={form.windowEnd}
                     onChange={(event) => handleFieldChange('windowEnd', event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
                     disabled={isSubmitting}
                   />
-                </div>
+                </WsField>
               </div>
 
-              <div className="space-y-2 text-right">
-                <label className="text-xs font-semibold text-slate-600">حالة القالب</label>
-                <button
-                  type="button"
-                  onClick={handleToggleActive}
-                  className={`w-full rounded-2xl border px-4 py-2 text-sm font-semibold transition ${form.isActive
-                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                    : 'border-slate-200 bg-slate-50 text-slate-600'
-                    }`}
-                  disabled={isSubmitting}
-                >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 10,
+                  padding: '7px 10px',
+                  border: '1px solid var(--ws-hairline)',
+                  borderRadius: 8,
+                  background: 'var(--ws-surface-2)',
+                }}
+              >
+                <span style={{ fontSize: 12, fontWeight: 600 }}>
                   {form.isActive ? 'القالب مفعل' : 'القالب متوقف'}
-                </button>
+                </span>
+                <WsSwitch checked={form.isActive} onChange={handleToggleActive} disabled={isSubmitting} />
               </div>
+            </div>
 
-              <footer className="flex justify-between gap-3 pt-4 border-t border-slate-200">
-                <button
-                  type="button"
-                  onClick={handleDeleteTemplate}
-                  className="rounded-2xl border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-600 shadow-sm hover:bg-rose-50 disabled:opacity-60"
-                  disabled={isSubmitting}
-                >
-                  {deleteTemplateMutation.isPending ? 'جارٍ الحذف...' : 'حذف القالب'}
-                </button>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsSettingsModalOpen(false)}
-                    className="button-secondary"
-                  >
-                    إلغاء
-                  </button>
-                  <button
-                    type="submit"
-                    className="button-primary min-w-[100px] disabled:opacity-60"
-                    disabled={isSubmitting}
-                  >
-                    {updateTemplateMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ'}
-                  </button>
-                </div>
-              </footer>
-            </form>
-          </div>
+            <footer className="ws-modal__foot">
+              <WsBtn
+                variant="danger"
+                icon={Trash2}
+                onClick={handleDeleteTemplate}
+                disabled={isSubmitting}
+                style={{ marginInlineEnd: 'auto' }}
+              >
+                {deleteTemplateMutation.isPending ? 'جارٍ الحذف...' : 'حذف القالب'}
+              </WsBtn>
+              <WsBtn onClick={() => setIsSettingsModalOpen(false)}>إلغاء</WsBtn>
+              <WsBtn variant="primary" icon={Save} type="submit" disabled={isSubmitting}>
+                {updateTemplateMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ'}
+              </WsBtn>
+            </footer>
+          </form>
         </div>
       )}
 
       {/* Modal لإضافة قالب جديد */}
       {isNewTemplateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-          <div className="absolute inset-0" onClick={() => setIsNewTemplateModalOpen(false)} />
-          <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
-            <header className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
-              <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
-                  <Plus className="h-5 w-5" />
-                </span>
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900">إضافة قالب جديد</h2>
-                  <p className="text-xs text-muted">أنشئ قالب إشراف أسبوعي جديد</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsNewTemplateModalOpen(false)}
-                className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
+        <div className="ws-modal" onClick={() => setIsNewTemplateModalOpen(false)}>
+          <form
+            className="ws-modal__panel"
+            style={{ maxWidth: 680 }}
+            onSubmit={handleCreateNewTemplate}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <header className="ws-modal__head">
+              <h3 className="ws-modal__title">إضافة قالب جديد</h3>
+              <p className="ws-modal__sub">أنشئ قالب إشراف أسبوعي جديد.</p>
             </header>
 
-            <form onSubmit={handleCreateNewTemplate} className="space-y-5 p-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2 text-right">
-                  <label className="text-xs font-semibold text-slate-600">اسم القالب *</label>
-                  <input
+            <div className="ws-modal__body">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <WsField label="اسم القالب *">
+                  <WsInput
                     type="text"
                     value={newTemplateForm.name}
                     onChange={(e) => handleNewTemplateFieldChange('name', e.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
                     placeholder="مثال: إشراف بداية الدوام"
                   />
-                </div>
-                <div className="space-y-2 text-right">
-                  <label className="text-xs font-semibold text-slate-600">نوع الإشراف *</label>
-                  <input
+                </WsField>
+                <WsField label="نوع الإشراف *">
+                  <WsInput
                     type="text"
                     value={newTemplateForm.shiftType}
                     onChange={(e) => handleNewTemplateFieldChange('shiftType', e.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
                     placeholder="مثال: متابعة البوابة"
                   />
-                </div>
-                <div className="space-y-2 text-right">
-                  <label className="text-xs font-semibold text-slate-600">يبدأ من *</label>
-                  <input
+                </WsField>
+                <WsField label="يبدأ من *">
+                  <WsInput
                     type="time"
                     value={newTemplateForm.windowStart}
                     onChange={(e) => handleNewTemplateFieldChange('windowStart', e.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
                   />
-                </div>
-                <div className="space-y-2 text-right">
-                  <label className="text-xs font-semibold text-slate-600">ينتهي عند *</label>
-                  <input
+                </WsField>
+                <WsField label="ينتهي عند *">
+                  <WsInput
                     type="time"
                     value={newTemplateForm.windowEnd}
                     onChange={(e) => handleNewTemplateFieldChange('windowEnd', e.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
                   />
-                </div>
+                </WsField>
               </div>
 
-              {/* توزيع المعلمين في Modal */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-semibold text-slate-800">توزيع المعلمين على أيام الأسبوع</h4>
-                <div className="grid gap-3 md:grid-cols-2">
+              {/* توزيع المعلمين */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span className="ws-label">توزيع المعلمين على أيام الأسبوع</span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 8 }}>
                   {DUTY_ROSTER_WEEKDAYS.map((weekday) => {
                     const assignments = newTemplateForm.weekdayAssignments[weekday]
                     const assignedIds = new Set(assignments.map((a) => a.user_id))
                     const availableTeachers = teachers.filter((t) => !assignedIds.has(t.id))
 
                     return (
-                      <div key={weekday} className="rounded-2xl border border-slate-200 p-3">
-                        <div className="flex items-center justify-between gap-2 mb-2">
-                          <span className="text-sm font-semibold text-slate-700">{WEEKDAY_LABELS[weekday]}</span>
-                          <select
-                            className="rounded-xl border border-slate-200 px-2 py-1 text-xs"
+                      <div key={weekday} style={{ border: '1px solid var(--ws-hairline)', borderRadius: 8, padding: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 6 }}>
+                          <span style={{ fontSize: 12, fontWeight: 700 }}>{WEEKDAY_LABELS[weekday]}</span>
+                          <WsSelect
+                            style={{ height: 26, fontSize: 11.5 }}
                             onChange={(e) => {
                               const value = Number.parseInt(e.target.value, 10)
                               if (Number.isFinite(value)) handleNewTemplateAddTeacher(weekday, value)
@@ -1010,17 +1005,22 @@ export function DutyRosterTemplatesPanel() {
                             {availableTeachers.map((t) => (
                               <option key={t.id} value={t.id}>{t.name}</option>
                             ))}
-                          </select>
+                          </WsSelect>
                         </div>
                         {assignments.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                             {assignments.map((a, i) => (
-                              <span key={a.user_id} className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-1 text-xs text-indigo-700">
+                              <WsChip key={a.user_id} tone="green">
                                 {a.name}
-                                <button type="button" onClick={() => handleNewTemplateRemoveTeacher(weekday, i)} className="text-indigo-400 hover:text-rose-600">
-                                  <X className="h-3 w-3" />
+                                <button
+                                  type="button"
+                                  onClick={() => handleNewTemplateRemoveTeacher(weekday, i)}
+                                  style={{ display: 'inline-flex', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 0 }}
+                                  title="إزالة"
+                                >
+                                  <X style={{ width: 10, height: 10 }} />
                                 </button>
-                              </span>
+                              </WsChip>
                             ))}
                           </div>
                         )}
@@ -1029,27 +1029,17 @@ export function DutyRosterTemplatesPanel() {
                   })}
                 </div>
               </div>
+            </div>
 
-              <footer className="flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsNewTemplateModalOpen(false)}
-                  className="button-secondary"
-                >
-                  إلغاء
-                </button>
-                <button
-                  type="submit"
-                  className="button-primary min-w-[120px] disabled:cursor-not-allowed disabled:opacity-60"
-                  disabled={createTemplateMutation.isPending}
-                >
-                  {createTemplateMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ القالب'}
-                </button>
-              </footer>
-            </form>
-          </div>
+            <footer className="ws-modal__foot">
+              <WsBtn onClick={() => setIsNewTemplateModalOpen(false)}>إلغاء</WsBtn>
+              <WsBtn variant="primary" icon={Save} type="submit" disabled={createTemplateMutation.isPending}>
+                {createTemplateMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ القالب'}
+              </WsBtn>
+            </footer>
+          </form>
         </div>
       )}
-    </section>
+    </>
   )
 }

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState, type MouseEvent } from 'react'
+import { ArrowLeftRight, X } from 'lucide-react'
+import { WsBtn, WsChip, WsSpinner } from '@/shared/workspace'
 import type {
   TeacherScheduleMovePreviewResult,
   TeacherScheduleMoveResolution,
@@ -13,10 +15,10 @@ const priorityLabels: Record<TeacherScheduleConflictPriority, string> = {
   P3: 'توصية',
 }
 
-const priorityColors: Record<TeacherScheduleConflictPriority, string> = {
-  P1: 'bg-rose-100 text-rose-800 border border-rose-200',
-  P2: 'bg-amber-100 text-amber-800 border border-amber-200',
-  P3: 'bg-sky-100 text-sky-800 border border-sky-200',
+const priorityTones: Record<TeacherScheduleConflictPriority, { bg: string; bd: string; tx: string }> = {
+  P1: { bg: 'var(--ws-red-bg)', bd: 'var(--ws-red-bd)', tx: 'var(--ws-red)' },
+  P2: { bg: 'var(--ws-amber-bg)', bd: 'var(--ws-amber-bd)', tx: 'var(--ws-amber)' },
+  P3: { bg: 'var(--ws-sky-bg)', bd: 'var(--ws-sky-bd)', tx: 'var(--ws-sky)' },
 }
 
 const strategyLabels: Record<string, string> = {
@@ -32,6 +34,18 @@ interface TeacherScheduleMoveDialogProps {
   isSubmitting?: boolean
   onClose: () => void
   onConfirm: (resolution?: TeacherScheduleMoveResolution) => void
+}
+
+function PriorityChip({ priority }: { priority: TeacherScheduleConflictPriority }) {
+  const tone = priorityTones[priority]
+  return (
+    <span
+      className="ws-chip"
+      style={{ background: tone.bg, borderColor: tone.bd, color: tone.tx, flexShrink: 0 }}
+    >
+      {priorityLabels[priority]}
+    </span>
+  )
 }
 
 export function TeacherScheduleMoveDialog({
@@ -88,41 +102,56 @@ export function TeacherScheduleMoveDialog({
     if (!steps || steps.length === 0) return null
 
     return (
-      <ul className="mt-3 space-y-2">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 6 }}>
         {steps.map((step, index) => (
-          <li key={`${step.session_id}-${index}`} className="flex flex-col gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-right text-xs">
-            <div className="flex flex-row-reverse items-center justify-between">
-              <span className="font-bold text-slate-900">
-                الخطوة {index + 1}
-              </span>
-              <div className="flex flex-row-reverse items-center gap-2">
-                <span className="rounded-full bg-teal-100 px-2 py-0.5 text-[10px] font-semibold text-teal-700">
-                  {step.subject_name ?? 'حصة'}
-                </span>
-                {step.teacher_name && (
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
-                    {step.teacher_name}
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="flex flex-row-reverse items-center gap-2 text-slate-600">
-              <span className="flex-1">
-                الصف {step.grade}/{step.class_name}
+          <div
+            key={`${step.session_id}-${index}`}
+            style={{
+              border: '1px solid var(--ws-hairline)',
+              borderRadius: 8,
+              padding: '6px 10px',
+              background: 'var(--ws-surface)',
+              textAlign: 'right',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 700 }}>الخطوة {index + 1}</span>
+              <span style={{ display: 'inline-flex', gap: 4 }}>
+                <WsChip tone="green">{step.subject_name ?? 'حصة'}</WsChip>
+                {step.teacher_name ? <WsChip>{step.teacher_name}</WsChip> : null}
               </span>
             </div>
-            <div className="flex flex-row-reverse items-center gap-2">
-              <span className="rounded bg-rose-50 px-2 py-1 text-[11px] font-medium text-rose-700">
+            <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ws-text-2)', marginTop: 2 }}>
+              الصف {step.grade}/{step.class_name}
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4, fontSize: 10 }}>
+              <span
+                style={{
+                  borderRadius: 5,
+                  padding: '2px 7px',
+                  fontWeight: 600,
+                  background: 'var(--ws-red-bg)',
+                  color: 'var(--ws-red)',
+                }}
+              >
                 من: {step.from_day} • الحصة {step.from_period}
               </span>
-              <span className="text-slate-400">→</span>
-              <span className="rounded bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700">
+              <span style={{ color: 'var(--ws-text-2)' }}>←</span>
+              <span
+                style={{
+                  borderRadius: 5,
+                  padding: '2px 7px',
+                  fontWeight: 600,
+                  background: 'var(--ws-green-bg)',
+                  color: 'var(--ws-green)',
+                }}
+              >
                 إلى: {step.to_day} • الحصة {step.to_period}
               </span>
             </div>
-          </li>
+          </div>
         ))}
-      </ul>
+      </div>
     )
   }
 
@@ -138,223 +167,256 @@ export function TeacherScheduleMoveDialog({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4 py-6"
-      role="dialog"
-      aria-modal
-      onClick={handleBackdrop}
-    >
+    <div className="ws-modal" role="dialog" aria-modal onClick={handleBackdrop}>
       <div
-        className="relative flex w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
+        className="ws-modal__panel"
+        style={{ maxWidth: 720, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
         onClick={handleContainerClick}
       >
-        <header className="border-b border-slate-100 px-6 py-4">
-          <div className="flex flex-col gap-1 text-right">
-            <p className="text-xs font-semibold text-slate-500">نقل ذكي للحصة</p>
-            <h2 className="text-2xl font-bold text-slate-900">
-              {preview?.source_session.subject_name ?? 'حصة'} إلى {preview?.target_slot.day} - الحصة {preview?.target_slot.period_number}
-            </h2>
-            {preview?.metrics ? (
-              <p className="text-sm text-muted">
-                سيصبح لدى {preview?.target_slot.teacher_name} {preview.metrics.teacher_day_load_after_move} حصص في هذا اليوم،
-                والصف {preview?.source_session.grade}/{preview?.source_session.class_name} سيصل إلى {preview.metrics.class_day_load_after_move} حصص.
-                {typeof preview.metrics.day_max_periods === 'number'
-                  ? ` الحد الأعلى المعتمد ليوم ${preview.target_slot.day} هو ${preview.metrics.day_max_periods} حصص.`
-                  : ''}
-              </p>
-            ) : null}
-          </div>
+        <header className="ws-modal__head" style={{ position: 'relative' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10.5, fontWeight: 700, color: 'var(--ws-accent-2)' }}>
+            <ArrowLeftRight style={{ width: 12, height: 12 }} />
+            نقل ذكي للحصة
+          </span>
+          <h3 className="ws-modal__title" style={{ fontSize: 15 }}>
+            {preview?.source_session.subject_name ?? 'حصة'} إلى {preview?.target_slot.day} - الحصة{' '}
+            {preview?.target_slot.period_number}
+          </h3>
+          {preview?.metrics ? (
+            <p className="ws-modal__sub">
+              سيصبح لدى {preview?.target_slot.teacher_name} {preview.metrics.teacher_day_load_after_move} حصص في هذا
+              اليوم، والصف {preview?.source_session.grade}/{preview?.source_session.class_name} سيصل إلى{' '}
+              {preview.metrics.class_day_load_after_move} حصص.
+              {typeof preview.metrics.day_max_periods === 'number'
+                ? ` الحد الأعلى المعتمد ليوم ${preview.target_slot.day} هو ${preview.metrics.day_max_periods} حصص.`
+                : ''}
+            </p>
+          ) : null}
           <button
             type="button"
-            className="absolute left-6 top-4 rounded-full p-2 text-slate-500 transition hover:bg-slate-100"
+            className="ws-icon-btn"
+            style={{ position: 'absolute', insetInlineEnd: 12, top: 10 }}
             aria-label="إغلاق"
             onClick={onClose}
           >
-            <span aria-hidden>×</span>
+            <X />
           </button>
         </header>
 
-        <div className="flex max-h-[70vh] flex-col divide-y divide-slate-100 overflow-y-auto">
-          <section className="space-y-4 px-6 py-5">
-            <div className="rounded-2xl bg-slate-50 p-4 text-right text-sm text-slate-600">
-              <p>
-                <span className="font-semibold text-slate-900">المعلم:</span> {preview?.target_slot.teacher_name}
-              </p>
-              <p>
-                <span className="font-semibold text-slate-900">الحصة الحالية:</span> {preview?.source_session.day} - الحصة {preview?.source_session.period_number}
-              </p>
-              {preview?.target_slot.existing_session ? (
-                <p className="text-rose-600">
-                  هذه الحصة ستستبدل الحصة الحالية للصف {preview.target_slot.existing_session.grade}/{preview.target_slot.existing_session.class_name}.
-                </p>
+        <div className="ws-modal__body" style={{ overflowY: 'auto', maxHeight: '62vh' }}>
+          {/* ملخص المصدر والهدف */}
+          <div
+            style={{
+              borderRadius: 8,
+              border: '1px solid var(--ws-hairline)',
+              background: 'var(--ws-surface-2)',
+              padding: '9px 12px',
+              fontSize: 11.5,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 3,
+            }}
+          >
+            <span>
+              <b>المعلم:</b> {preview?.target_slot.teacher_name}
+            </span>
+            <span>
+              <b>الحصة الحالية:</b> {preview?.source_session.day} - الحصة {preview?.source_session.period_number}
+            </span>
+            {preview?.target_slot.existing_session ? (
+              <span style={{ color: 'var(--ws-red)' }}>
+                هذه الحصة ستستبدل الحصة الحالية للصف {preview.target_slot.existing_session.grade}/
+                {preview.target_slot.existing_session.class_name}.
+              </span>
+            ) : (
+              <span style={{ color: 'var(--ws-green)' }}>الخانة المستهدفة فارغة لهذا المعلم.</span>
+            )}
+          </div>
+
+          {/* التعارضات */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 12.5, fontWeight: 700 }}>التعارضات والتوصيات</span>
+              {hasBlockingConflicts ? (
+                <WsChip tone="red">يوجد تعارض مانع</WsChip>
               ) : (
-                <p className="text-emerald-600">الخانة المستهدفة فارغة لهذا المعلم.</p>
+                <WsChip tone="green">لا توجد تعارضات مانعة</WsChip>
               )}
             </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-right">
-                <h3 className="text-lg font-semibold text-slate-900">التعارضات والتوصيات</h3>
-                {hasBlockingConflicts ? (
-                  <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700">يوجد تعارض مانع</span>
-                ) : (
-                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">لا توجد تعارضات مانعة</span>
-                )}
+            {isLoading ? (
+              <div
+                style={{
+                  borderRadius: 8,
+                  border: '1px solid var(--ws-accent-bd, var(--ws-hairline))',
+                  background: 'var(--ws-accent-soft)',
+                  padding: '10px 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                }}
+              >
+                <WsSpinner />
+                <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700 }}>جارٍ التحليل الذكي للجدول...</span>
+                  <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                    يقوم النظام بتحليل كامل الجدول المدرسي باستخدام خوارزميات البرمجة القيدية للعثور على أفضل حلول
+                    النقل.
+                  </span>
+                </span>
               </div>
-
-              {isLoading ? (
-                <div className="space-y-3">
-                  <div className="rounded-2xl border border-teal-200 bg-gradient-to-br from-teal-50 to-white p-4">
-                    <div className="flex flex-row-reverse items-center gap-3">
-                      <div className="flex-1 space-y-2 text-right">
-                        <p className="text-sm font-semibold text-teal-900">جارٍ التحليل الذكي للجدول...</p>
-                        <p className="text-xs text-teal-700">
-                          يقوم النظام بتحليل كامل الجدول المدرسي (1000+ حصة) باستخدام خوارزميات البرمجة القيدية للعثور على أفضل حلول النقل.
-                        </p>
-                      </div>
-                      <div className="flex h-10 w-10 items-center justify-center">
-                        <svg className="h-8 w-8 animate-spin text-teal-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                      </div>
+            ) : preview && preview.conflicts.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                {preview.conflicts.map((conflict) => {
+                  const tone = priorityTones[conflict.priority]
+                  return (
+                    <div
+                      key={`${conflict.code}-${conflict.priority}`}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 8,
+                        borderRadius: 8,
+                        border: `1px solid ${tone.bd}`,
+                        background: tone.bg,
+                        padding: '7px 10px',
+                        fontSize: 11.5,
+                      }}
+                    >
+                      <span style={{ textAlign: 'right' }}>{conflict.message}</span>
+                      <PriorityChip priority={conflict.priority} />
                     </div>
-                  </div>
-                  {Array.from({ length: 3 }).map((_, index) => (
-                    <div key={index} className="h-14 animate-pulse rounded-2xl bg-slate-100" />
-                  ))}
-                </div>
-              ) : preview && preview.conflicts.length > 0 ? (
-                <ul className="space-y-2 text-sm">
-                  {preview.conflicts.map((conflict) => (
-                    <li key={`${conflict.code}-${conflict.priority}`} className="rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
-                      <div className="flex flex-row-reverse items-center justify-between">
-                        <p className="text-right text-slate-800">{conflict.message}</p>
-                        <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${priorityColors[conflict.priority]}`}>
-                          {priorityLabels[conflict.priority]}
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="rounded-2xl border border-slate-100 bg-gradient-to-br from-emerald-50 to-white p-4 text-sm text-emerald-700">
-                  لا توجد تعارضات في الوقت الحالي.
-                </div>
-              )}
-            </div>
-          </section>
+                  )
+                })}
+              </div>
+            ) : (
+              <div
+                style={{
+                  borderRadius: 8,
+                  border: '1px solid var(--ws-green-bd)',
+                  background: 'var(--ws-green-bg)',
+                  color: 'var(--ws-green)',
+                  padding: '8px 12px',
+                  fontSize: 11.5,
+                }}
+              >
+                لا توجد تعارضات في الوقت الحالي.
+              </div>
+            )}
+          </div>
 
-          <section className="space-y-4 px-6 py-5">
-            <div className="flex items-center justify-between text-right">
-              <h3 className="text-lg font-semibold text-slate-900">خيارات التنفيذ</h3>
-              <p className="text-xs text-muted">اختر الطريقة الأنسب لمعالجة التعارضات</p>
+          {/* خيارات التنفيذ */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 12.5, fontWeight: 700 }}>خيارات التنفيذ</span>
+              <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>اختر الطريقة الأنسب لمعالجة التعارضات</span>
             </div>
-            <div className="grid gap-3">
-              {suggestions.map((suggestion) => (
-                <label
-                  key={suggestion.id}
-                  className={`flex flex-col gap-2 rounded-2xl border p-4 text-right transition ${
-                    selectedSuggestionId === suggestion.id
-                      ? 'border-teal-500 bg-teal-50 shadow-sm'
-                      : 'border-slate-200 bg-white hover:border-teal-300'
-                  } ${!suggestion.resolves_conflicts && suggestion.id === 'direct-move' ? 'opacity-60' : ''}`}
-                >
-                  <div className="flex flex-row-reverse items-start justify-between gap-3">
-                    <div className="flex flex-1 flex-col gap-1">
-                      <span className="text-base font-bold text-slate-900">{suggestion.title}</span>
-                      {suggestion.strategy ? (
-                        <div className="flex flex-row-reverse items-center gap-2 text-[11px]">
-                          <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-700">
-                            {strategyLabels[suggestion.strategy] ?? 'اقتراح ذكي'}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {suggestions.map((suggestion) => {
+                const isSelected = selectedSuggestionId === suggestion.id
+                const isDisabledDirect = suggestion.id === 'direct-move' && !preview?.can_move
+                return (
+                  <label
+                    key={suggestion.id}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 4,
+                      borderRadius: 9,
+                      border: isSelected ? '1px solid var(--ws-accent-2)' : '1px solid var(--ws-hairline)',
+                      background: isSelected ? 'var(--ws-accent-soft)' : 'var(--ws-surface)',
+                      padding: '9px 12px',
+                      cursor: isDisabledDirect ? 'not-allowed' : 'pointer',
+                      opacity: isDisabledDirect ? 0.55 : 1,
+                      textAlign: 'right',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                      <span style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+                        <span style={{ fontSize: 12.5, fontWeight: 700 }}>{suggestion.title}</span>
+                        {suggestion.strategy ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                            <WsChip>{strategyLabels[suggestion.strategy] ?? 'اقتراح ذكي'}</WsChip>
+                            {typeof suggestion.metadata?.chain_length === 'number' ? (
+                              <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                                • {suggestion.metadata.chain_length} خطوة
+                              </span>
+                            ) : null}
                           </span>
-                          {typeof suggestion.metadata?.chain_length === 'number' ? (
-                            <span className="text-slate-500">• {suggestion.metadata.chain_length} خطوة</span>
-                          ) : null}
-                        </div>
-                      ) : null}
+                        ) : null}
+                      </span>
+                      <PriorityChip priority={suggestion.priority} />
                     </div>
-                    <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${priorityColors[suggestion.priority]}`}>
-                      {priorityLabels[suggestion.priority]}
+
+                    {suggestion.steps?.length ? (
+                      renderSuggestionSteps(suggestion.steps)
+                    ) : (
+                      <span style={{ fontSize: 11, color: 'var(--ws-text-2)' }}>{suggestion.description}</span>
+                    )}
+
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, paddingTop: 2 }}>
+                      <input
+                        type="radio"
+                        style={{ width: 13, height: 13, accentColor: 'var(--ws-accent-2)' }}
+                        name="move-resolution"
+                        checked={isSelected}
+                        onChange={() => setSelectedSuggestionId(suggestion.id)}
+                        disabled={isDisabledDirect}
+                      />
+                      <span style={{ fontSize: 10.5, color: suggestion.resolves_conflicts ? 'var(--ws-green)' : 'var(--ws-text-2)' }}>
+                        {suggestion.resolves_conflicts ? '✓ يعالج التعارض الحالي' : 'خيار مرن'}
+                      </span>
                     </span>
-                  </div>
-                  
-                  {suggestion.steps?.length ? (
-                    renderSuggestionSteps(suggestion.steps)
-                  ) : (
-                    <p className="text-sm text-slate-600">{suggestion.description}</p>
-                  )}
-                  
-                  <div className="flex flex-row-reverse items-center gap-2 pt-2">
-                    <input
-                      type="radio"
-                      className="h-4 w-4"
-                      name="move-resolution"
-                      checked={selectedSuggestionId === suggestion.id}
-                      onChange={() => setSelectedSuggestionId(suggestion.id)}
-                      disabled={suggestion.id === 'direct-move' && !preview?.can_move}
-                    />
-                    <span className="text-xs text-slate-600">
-                      {suggestion.resolves_conflicts ? '✓ يعالج التعارض الحالي' : 'خيار مرن'}
-                    </span>
-                  </div>
-                </label>
-              ))}
+                  </label>
+                )
+              })}
             </div>
-          </section>
+          </div>
         </div>
 
-        <footer className="flex flex-col gap-3 border-t border-slate-100 px-6 py-4 text-right sm:flex-row sm:items-center sm:justify-between">
-          <div className="text-xs text-slate-500">
+        <footer className="ws-modal__foot" style={{ justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)', textAlign: 'right' }}>
             {hasBlockingConflicts
               ? 'لا يمكن نقل الحصة بدون معالجة التعارضات ذات الأولوية P1.'
               : 'بمجرد الموافقة سيتم تحديث جداول المعلمين والفصول فورًا.'}
-          </div>
-          <div className="flex flex-row-reverse gap-2">
-            <button type="button" className="button-secondary" onClick={handleBackdrop}>
-              إلغاء
-            </button>
-            <button
-              type="button"
-              className="button-primary disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={() => setShowBetaWarning(true)}
-            >
+          </span>
+          <span style={{ display: 'inline-flex', gap: 6, flexShrink: 0 }}>
+            <WsBtn onClick={handleBackdrop}>إلغاء</WsBtn>
+            <WsBtn variant="primary" onClick={() => setShowBetaWarning(true)}>
               اعتماد النقل
-            </button>
-          </div>
+            </WsBtn>
+          </span>
         </footer>
       </div>
 
-      {/* Beta Warning Dialog */}
+      {/* تنبيه: الميزة تحت التجربة */}
       {showBetaWarning && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/70 px-4"
-          onClick={() => setShowBetaWarning(false)}
+          className="ws-modal"
+          style={{ zIndex: 60 }}
+          onClick={(event) => {
+            event.stopPropagation()
+            setShowBetaWarning(false)
+          }}
         >
-          <div
-            className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-4 flex flex-row-reverse items-center gap-3">
-              <div className="flex-1 text-right">
-                <h3 className="text-xl font-bold text-amber-900">⚠️ تحت التجربة</h3>
-              </div>
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
-                <span className="text-2xl">🚧</span>
-              </div>
+          <div className="ws-modal__panel" style={{ maxWidth: 400 }} onClick={(e) => e.stopPropagation()}>
+            <header className="ws-modal__head" style={{ background: 'var(--ws-amber-bg)' }}>
+              <h3 className="ws-modal__title" style={{ color: 'var(--ws-amber)' }}>
+                🚧 تحت التجربة
+              </h3>
+            </header>
+            <div className="ws-modal__body">
+              <p style={{ margin: 0, fontSize: 12, lineHeight: 1.7 }}>
+                هذه الخدمة تحت التجربة حالياً. لا يمكن تطبيق النقل في الوقت الحالي، سيتم تفعيل الميزة بشكل كامل بعد
+                اكتمال الاختبارات والتأكد من دقة النتائج.
+              </p>
             </div>
-            <p className="mb-6 text-right text-sm leading-relaxed text-slate-700">
-              هذه الخدمة تحت التجربة حالياً. لا يمكن تطبيق النقل في الوقت الحالي، سيتم تفعيل الميزة بشكل كامل بعد اكتمال الاختبارات والتأكد من دقة النتائج.
-            </p>
-            <div className="flex flex-row-reverse gap-2">
-              <button
-                type="button"
-                className="button-primary"
-                onClick={() => setShowBetaWarning(false)}
-              >
+            <footer className="ws-modal__foot">
+              <WsBtn variant="primary" onClick={() => setShowBetaWarning(false)}>
                 فهمت
-              </button>
-            </div>
+              </WsBtn>
+            </footer>
           </div>
         </div>
       )}

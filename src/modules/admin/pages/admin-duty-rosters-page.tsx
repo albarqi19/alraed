@@ -1,6 +1,25 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { CalendarClock, Users, Loader2, Eye, UserX, AlertCircle, Phone, Settings, UserPlus, RefreshCcw, Clock, CheckCircle2, Send, FileText, TrendingUp, Calendar, Sunset } from 'lucide-react'
+import {
+  CalendarClock,
+  Users,
+  Eye,
+  UserX,
+  Phone,
+  Settings,
+  UserPlus,
+  RefreshCcw,
+  Clock3,
+  CheckCircle2,
+  Send,
+  FileText,
+  TrendingUp,
+  Calendar,
+  Sunset,
+  Sunrise,
+  AlertTriangle,
+  Image,
+} from 'lucide-react'
 
 import { DutyRosterSettingsModal } from '@/modules/admin/components/duty-roster-settings-panel'
 import { DutyRosterTemplatesPanel } from '@/modules/admin/components/duty-roster-templates-panel'
@@ -18,6 +37,22 @@ import {
 import { useToast } from '@/shared/feedback/use-toast'
 import { useTeachersQuery, useSendDutyScheduleRemindersMutation } from '@/modules/admin/hooks'
 import { openDailySupervisionReport } from '@/modules/admin/utils/open-daily-supervision-report'
+import {
+  WsBlock,
+  WsBtn,
+  WsChip,
+  WsEmpty,
+  WsFact,
+  WsHeader,
+  WsInput,
+  WsLayout,
+  WsMain,
+  WsModal,
+  WsPage,
+  WsProgress,
+  WsSideCol,
+  WsToolbar,
+} from '@/shared/workspace'
 
 const WEEKDAY_LABELS: Record<string, string> = {
   sunday: 'الأحد',
@@ -28,6 +63,13 @@ const WEEKDAY_LABELS: Record<string, string> = {
   friday: 'الجمعة',
   saturday: 'السبت',
 }
+
+// ألوان أنواع البطاقات في التايم لاين (تطعيمات لونية بهوية النظام)
+const TIMELINE_TONES = {
+  supervision: { color: 'var(--ws-accent)', accent: 'var(--ws-accent-2)', bg: 'var(--ws-accent-soft)', wash: 'var(--ws-accent-softer)' },
+  morning: { color: 'var(--ws-sky)', accent: 'var(--ws-sky)', bg: 'var(--ws-sky-bg)', wash: 'var(--ws-sky-bg)' },
+  afternoon: { color: 'var(--ws-amber)', accent: 'var(--ws-amber)', bg: 'var(--ws-amber-bg)', wash: 'var(--ws-amber-bg)' },
+} as const
 
 export function AdminDutyRostersPage() {
   const toast = useToast()
@@ -41,6 +83,13 @@ export function AdminDutyRostersPage() {
     supervision: TodaySupervisionItem
     teacher: TodaySupervisionTeacher
   } | null>(null)
+
+  // نبضة الوقت الحي: يتحدث كل 30 ثانية لتحريك خط «الآن» وحالات التايم لاين
+  const [nowTick, setNowTick] = useState(() => Date.now())
+  useEffect(() => {
+    const interval = setInterval(() => setNowTick(Date.now()), 30_000)
+    return () => clearInterval(interval)
+  }, [])
 
   const sendRemindersMutation = useSendDutyScheduleRemindersMutation()
   const teachersQuery = useTeachersQuery()
@@ -122,8 +171,8 @@ export function AdminDutyRostersPage() {
 
   // دمج الإشراف والمناوبات في قائمة واحدة مرتبة
   type TimelineItem =
-    | { type: 'supervision'; data: TodaySupervisionItem; sortTime: number }
-    | { type: 'duty'; data: DutyScheduleTodayItem; sortTime: number }
+    | { type: 'supervision'; data: TodaySupervisionItem; sortTime: number; endTime: number }
+    | { type: 'duty'; data: DutyScheduleTodayItem; sortTime: number; endTime: number }
 
   const sortedTimeline = useMemo<TimelineItem[]>(() => {
     const items: TimelineItem[] = []
@@ -134,6 +183,7 @@ export function AdminDutyRostersPage() {
         type: 'supervision',
         data: sup,
         sortTime: timeToMinutes(sup.window_start),
+        endTime: timeToMinutes(sup.window_end),
       })
     }
 
@@ -143,6 +193,7 @@ export function AdminDutyRostersPage() {
         type: 'duty',
         data: duty,
         sortTime: timeToMinutes(duty.start_time),
+        endTime: timeToMinutes(duty.end_time),
       })
     }
 
@@ -172,9 +223,35 @@ export function AdminDutyRostersPage() {
     return { totalSupervisions, totalTeachers, totalAbsent, totalPresent, attendanceRate, replacementsAssigned }
   }, [supervisions])
 
+  // الوقت الحالي بالدقائق + هل التاريخ المعروض هو اليوم؟
+  const isViewingToday = selectedDate === new Date(nowTick).toISOString().slice(0, 10)
+  const nowMinutes = useMemo(() => {
+    const now = new Date(nowTick)
+    return now.getHours() * 60 + now.getMinutes()
+  }, [nowTick])
+  const nowLabel = useMemo(() => {
+    const now = new Date(nowTick)
+    return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
+  }, [nowTick])
+
+  // موضع خط «الآن» في التايم لاين: قبل أول عنصر لم يبدأ بعد
+  const nowLineIndex = useMemo(() => {
+    if (!isViewingToday) return -1
+    const index = sortedTimeline.findIndex((item) => item.sortTime > nowMinutes)
+    return index === -1 ? sortedTimeline.length : index
+  }, [isViewingToday, sortedTimeline, nowMinutes])
+
+  // حالة العنصر الزمنية: ماضٍ / جارٍ الآن / قادم
+  const getItemPhase = (item: TimelineItem): 'past' | 'current' | 'upcoming' => {
+    if (!isViewingToday) return 'upcoming'
+    if (item.endTime > 0 && item.endTime < nowMinutes) return 'past'
+    if (item.sortTime <= nowMinutes && (item.endTime === 0 || nowMinutes <= item.endTime)) return 'current'
+    return 'upcoming'
+  }
+
   // القادم قريباً
   const upcomingSupervision = useMemo(() => {
-    const now = new Date()
+    const now = new Date(nowTick)
     const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
 
     const upcoming = sortedSupervisions.find(s => s.window_start && s.window_start > currentTime)
@@ -182,13 +259,13 @@ export function AdminDutyRostersPage() {
 
     // حساب الوقت المتبقي
     const [upcomingHour, upcomingMin] = upcoming.window_start!.split(':').map(Number)
-    const upcomingDate = new Date()
+    const upcomingDate = new Date(nowTick)
     upcomingDate.setHours(upcomingHour, upcomingMin, 0, 0)
     const diffMs = upcomingDate.getTime() - now.getTime()
     const diffMins = Math.max(0, Math.floor(diffMs / 60000))
 
     return { ...upcoming, minutesUntil: diffMins }
-  }, [sortedSupervisions])
+  }, [sortedSupervisions, nowTick])
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ar-SA', {
@@ -237,238 +314,379 @@ export function AdminDutyRostersPage() {
     })
   }
 
-  return (
-    <section className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-1 text-right">
-          <h1 className="text-3xl font-bold text-slate-900">الإشراف اليومي</h1>
-          <p className="text-sm text-muted">
-            عرض جدول الإشراف اليومي مباشرة من القوالب الأسبوعية.
-          </p>
-        </div>
-        <div className="flex flex-col items-end gap-3">
-          <div className="inline-flex rounded-3xl border border-slate-200 bg-white p-1 text-sm shadow-sm">
-            <button
-              type="button"
-              onClick={() => setActiveView('today')}
-              className={`rounded-3xl px-4 py-1.5 font-semibold transition ${activeView === 'today'
-                ? 'bg-indigo-600 text-white shadow'
-                : 'text-slate-600 hover:bg-slate-100'
-                }`}
-            >
-              <Eye className="inline-block h-4 w-4 ml-1" />
-              إشراف اليوم
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveView('templates')}
-              className={`rounded-3xl px-4 py-1.5 font-semibold transition ${activeView === 'templates'
-                ? 'bg-indigo-600 text-white shadow'
-                : 'text-slate-600 hover:bg-slate-100'
-                }`}
-            >
-              <Users className="inline-block h-4 w-4 ml-1" />
-              قوالب الأسبوع
-            </button>
-          </div>
+  // خط «الآن»
+  const NowLine = (
+    <div className="ws-timeline__now">
+      <span className="ws-timeline__now-label">
+        <span className="ws-pulse ws-pulse--red" />
+        الآن {nowLabel}
+      </span>
+      <span className="ws-timeline__now-line" />
+    </div>
+  )
 
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setIsDutyScheduleOpen(true)}
-              className="button-primary flex items-center gap-2"
-            >
-              <Calendar className="h-4 w-4" />
+  return (
+    <WsPage>
+      <WsHeader
+        title="الإشراف اليومي"
+        badge={meta?.weekday ? WEEKDAY_LABELS[meta.weekday] : 'المتابعة'}
+        actions={
+          <>
+            <WsBtn variant="primary" icon={Calendar} onClick={() => setIsDutyScheduleOpen(true)}>
               المناوبة
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsSettingsOpen(true)}
-              className="button-secondary flex items-center gap-2"
-            >
-              <Settings className="h-4 w-4" />
+            </WsBtn>
+            <WsBtn icon={Settings} onClick={() => setIsSettingsOpen(true)}>
               الإعدادات
-            </button>
-            {activeView === 'today' && (
-              <>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
-                />
-                <button
-                  type="button"
-                  className="button-secondary flex items-center gap-2 disabled:opacity-60"
-                  onClick={() => supervisionsQuery.refetch()}
-                  disabled={supervisionsQuery.isFetching}
-                >
-                  {supervisionsQuery.isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
-                  تحديث
-                </button>
-              </>
-            )}
-          </div>
+            </WsBtn>
+          </>
+        }
+        facts={
+          <>
+            <WsFact icon={Users} label="المكلفون:">
+              {stats.totalTeachers.toLocaleString('ar-SA')}
+            </WsFact>
+            <WsFact icon={CheckCircle2} label="حضروا:">
+              {stats.totalPresent.toLocaleString('ar-SA')}
+            </WsFact>
+            <WsFact icon={UserX} label="لم يحضروا:">
+              {stats.totalAbsent.toLocaleString('ar-SA')}
+            </WsFact>
+            <WsFact icon={UserPlus} label="بدلاء:">
+              {stats.replacementsAssigned.toLocaleString('ar-SA')}
+            </WsFact>
+            <WsFact icon={TrendingUp} label="نسبة الحضور:">
+              {stats.attendanceRate}%
+            </WsFact>
+          </>
+        }
+      >
+        {isViewingToday && (
+          <WsChip tone="green">
+            <span className="ws-pulse" />
+            مباشر
+          </WsChip>
+        )}
+      </WsHeader>
+
+      <WsToolbar>
+        <div className="ws-seg" style={{ alignSelf: 'flex-end' }}>
+          <button
+            type="button"
+            onClick={() => setActiveView('today')}
+            className={`ws-seg__btn ${activeView === 'today' ? 'is-active' : ''}`}
+          >
+            <Eye style={{ width: 12, height: 12 }} />
+            إشراف اليوم
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveView('templates')}
+            className={`ws-seg__btn ${activeView === 'templates' ? 'is-active' : ''}`}
+          >
+            <Users style={{ width: 12, height: 12 }} />
+            قوالب الأسبوع
+          </button>
         </div>
-      </header>
+
+        {activeView === 'today' && (
+          <>
+            <div className="ws-field">
+              <label className="ws-label" htmlFor="ws-duty-date">
+                التاريخ
+              </label>
+              <WsInput
+                id="ws-duty-date"
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+              />
+            </div>
+            <WsBtn
+              icon={RefreshCcw}
+              onClick={() => supervisionsQuery.refetch()}
+              disabled={supervisionsQuery.isFetching}
+              style={{ alignSelf: 'flex-end' }}
+            >
+              تحديث
+            </WsBtn>
+          </>
+        )}
+      </WsToolbar>
 
       <DutyRosterSettingsModal open={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
       <DutyScheduleModal open={isDutyScheduleOpen} onClose={() => setIsDutyScheduleOpen(false)} />
 
-      {activeView === 'today' ? (
-        <div className="grid gap-6 lg:grid-cols-[1fr,280px]">
-          {/* Timeline الرئيسي */}
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            {isError ? (
-              <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 text-center text-sm text-rose-700">
-                <AlertCircle className="h-8 w-8" />
-                <p className="font-semibold">{errorMessage}</p>
-                <button
-                  type="button"
-                  onClick={() => supervisionsQuery.refetch()}
-                  className="rounded-full bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700"
-                >
-                  إعادة المحاولة
-                </button>
-              </div>
-            ) : isLoading ? (
-              <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 text-sm text-muted">
-                <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
-                جارٍ تحميل إشراف اليوم...
-              </div>
-            ) : sortedSupervisions.length === 0 && (!dutySchedulesQuery.data?.data || dutySchedulesQuery.data.data.length === 0) ? (
-              <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 text-sm text-muted">
-                <CalendarClock className="h-12 w-12 text-slate-300" />
-                <p className="font-semibold">لا توجد إشرافات أو مناوبات لهذا اليوم</p>
-                <p className="text-xs">تأكد من إنشاء قوالب أسبوعية وتعيين معلمين ليوم {WEEKDAY_LABELS[meta?.weekday ?? ''] || 'هذا اليوم'}</p>
-                <button
-                  type="button"
-                  onClick={() => setActiveView('templates')}
-                  className="mt-2 rounded-full bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
-                >
-                  إدارة قوالب الأسبوع
-                </button>
-              </div>
-            ) : (
-              <div className="relative">
-                {/* خط الـ Timeline */}
-                <div className="absolute right-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-indigo-200 via-indigo-300 to-indigo-200" />
+      <WsLayout>
+        {activeView === 'templates' ? (
+          <DutyRosterTemplatesPanel />
+        ) : (
+          <>
+        {/* العمود الأيمن: ملخص اليوم */}
+        <WsSideCol title="ملخص اليوم" icon={TrendingUp} side="start" width={290} storageKey="ws:duty-rosters:summary">
+          <WsBlock padded>
+            <WsProgress
+              value={stats.attendanceRate}
+              label={
+                <>
+                  نسبة الحضور: <b>{stats.attendanceRate}%</b>
+                </>
+              }
+            />
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
+              <WsChip icon={Users}>المكلفون {stats.totalTeachers.toLocaleString('ar-SA')}</WsChip>
+              <WsChip tone="green" icon={CheckCircle2}>
+                حضروا {stats.totalPresent.toLocaleString('ar-SA')}
+              </WsChip>
+              <WsChip tone="red" icon={UserX}>
+                لم يحضروا {stats.totalAbsent.toLocaleString('ar-SA')}
+              </WsChip>
+              {stats.replacementsAssigned > 0 && (
+                <WsChip tone="amber" icon={UserPlus}>
+                  بديل معين {stats.replacementsAssigned.toLocaleString('ar-SA')}
+                </WsChip>
+              )}
+            </div>
+          </WsBlock>
 
-                <div className="space-y-6">
-                  {sortedTimeline.map((item) => {
+          {/* القادم قريباً */}
+          {upcomingSupervision && (
+            <WsBlock title="القادم قريباً" icon={Clock3} padded style={{ background: 'var(--ws-accent-softer)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700 }}>{upcomingSupervision.name}</span>
+                  <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ws-accent)', fontWeight: 700 }}>
+                    {upcomingSupervision.shift_type} • {upcomingSupervision.window_start}
+                  </span>
+                </span>
+                <WsChip tone="green" className="ws-soft-pulse">
+                  بعد {upcomingSupervision.minutesUntil} دقيقة
+                </WsChip>
+              </div>
+            </WsBlock>
+          )}
+
+          {/* إجراءات سريعة */}
+          <WsBlock title="إجراءات سريعة" padded>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <WsBtn
+                variant="primary"
+                icon={Send}
+                onClick={handleSendReminders}
+                disabled={sendRemindersMutation.isPending}
+              >
+                {sendRemindersMutation.isPending ? 'جارٍ الإرسال...' : 'إرسال التذكيرات الآن'}
+              </WsBtn>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <WsBtn icon={FileText} onClick={handleExportPDF} style={{ flex: 1 }}>
+                  PDF
+                </WsBtn>
+                <WsBtn icon={Image} onClick={handleExportImage} style={{ flex: 1 }}>
+                  صورة
+                </WsBtn>
+              </div>
+            </div>
+          </WsBlock>
+
+          {/* معلومات اليوم */}
+          <WsBlock padded fill>
+            <span className="ws-fact">
+              <Calendar />
+              <span>{formatDate(selectedDate)}</span>
+            </span>
+            <span className="ws-fact" style={{ marginTop: 6 }}>
+              <CalendarClock />
+              <span>
+                <b>{stats.totalSupervisions.toLocaleString('ar-SA')}</b> إشراف مجدول
+              </span>
+            </span>
+          </WsBlock>
+        </WsSideCol>
+
+        <WsMain>
+          {activeView === 'today' ? (
+            <WsBlock title="خط سير اليوم" icon={CalendarClock} count={sortedTimeline.length.toLocaleString('ar-SA')} fill scroll>
+              {isError ? (
+                <WsEmpty icon={AlertTriangle}>
+                  {errorMessage}
+                  <WsBtn size="sm" icon={RefreshCcw} onClick={() => supervisionsQuery.refetch()}>
+                    إعادة المحاولة
+                  </WsBtn>
+                </WsEmpty>
+              ) : isLoading ? (
+                <WsEmpty loading>جارٍ تحميل إشراف اليوم...</WsEmpty>
+              ) : sortedTimeline.length === 0 ? (
+                <WsEmpty icon={CalendarClock}>
+                  لا توجد إشرافات أو مناوبات لهذا اليوم.
+                  <span style={{ fontSize: 11 }}>
+                    تأكد من إنشاء قوالب أسبوعية وتعيين معلمين ليوم {WEEKDAY_LABELS[meta?.weekday ?? ''] || 'هذا اليوم'}.
+                  </span>
+                  <WsBtn size="sm" icon={Users} onClick={() => setActiveView('templates')}>
+                    إدارة قوالب الأسبوع
+                  </WsBtn>
+                </WsEmpty>
+              ) : (
+                <div className="ws-timeline">
+                  {sortedTimeline.map((item, index) => {
+                    const phase = getItemPhase(item)
+                    const showNowLine = index === nowLineIndex
+
                     if (item.type === 'supervision') {
                       const supervision = item.data
+                      const tone = TIMELINE_TONES.supervision
                       return (
-                        <div key={`sup-${supervision.template_id}`} className="relative pr-14">
-                          {/* نقطة الوقت */}
-                          <div className="absolute right-0 flex flex-col items-center">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600 shadow-sm border-4 border-white">
-                              <Clock className="h-5 w-5" />
+                        <div key={`sup-${supervision.template_id}`}>
+                          {showNowLine && NowLine}
+                          <div
+                            className={`ws-timeline__item ${phase === 'past' ? 'is-past' : phase === 'current' ? 'is-current' : ''}`}
+                            style={{ animationDelay: `${Math.min(index * 45, 400)}ms` }}
+                          >
+                            {/* عقدة الوقت */}
+                            <div className="ws-timeline__node">
+                              <span className="ws-timeline__dot" style={{ background: tone.bg, color: tone.color }}>
+                                <Clock3 />
+                              </span>
+                              <span className="ws-timeline__time">{supervision.window_start || '—'}</span>
                             </div>
-                            <span className="mt-1 text-xs font-bold text-indigo-600">
-                              {supervision.window_start || '—'}
-                            </span>
-                          </div>
 
-                          {/* بطاقة الإشراف */}
-                          <div className="rounded-2xl border border-slate-200 bg-slate-50/50 overflow-hidden">
-                            {/* رأس البطاقة */}
-                            <div className="bg-gradient-to-l from-indigo-50 to-white px-5 py-3 border-b border-slate-100">
-                              <div className="flex items-center justify-between">
-                                <div className="text-right">
-                                  <h3 className="text-lg font-bold text-slate-900">{supervision.name}</h3>
-                                  <p className="text-xs text-indigo-600">{supervision.shift_type}</p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <span className="rounded-full bg-white border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600">
-                                    {supervision.window_start} - {supervision.window_end}
+                            {/* بطاقة الإشراف */}
+                            <div className="ws-timeline__card" style={{ borderInlineStartColor: tone.accent }}>
+                              <div className="ws-timeline__card-head" style={{ background: tone.wash }}>
+                                <span style={{ minWidth: 0 }}>
+                                  <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>{supervision.name}</span>
+                                  <span style={{ display: 'block', fontSize: 10.5, color: tone.color, fontWeight: 700 }}>
+                                    {supervision.shift_type}
                                   </span>
-                                  <span className="rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700">
+                                </span>
+                                <span style={{ display: 'inline-flex', gap: 5, flexWrap: 'wrap' }}>
+                                  {phase === 'current' && (
+                                    <WsChip tone="green">
+                                      <span className="ws-pulse" />
+                                      جارٍ الآن
+                                    </WsChip>
+                                  )}
+                                  <WsChip>
+                                    <span style={{ direction: 'ltr' }}>
+                                      {supervision.window_start} - {supervision.window_end}
+                                    </span>
+                                  </WsChip>
+                                  <WsChip tone="green" icon={Users}>
                                     {supervision.teachers.length} معلم
-                                  </span>
-                                </div>
+                                  </WsChip>
+                                </span>
                               </div>
-                            </div>
 
-                            {/* قائمة المعلمين */}
-                            <div className="divide-y divide-slate-100">
-                              {supervision.teachers.map((teacher) => {
-                                const absent = isTeacherAbsent(supervision, teacher.user_id)
-                                const absenceRecord = getAbsenceRecord(supervision, teacher.user_id)
+                              {/* قائمة المعلمين — بطاقات متنفّسة */}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: 10 }}>
+                                {supervision.teachers.map((teacher) => {
+                                  const absent = isTeacherAbsent(supervision, teacher.user_id)
+                                  const absenceRecord = getAbsenceRecord(supervision, teacher.user_id)
 
-                                return (
-                                  <div
-                                    key={teacher.user_id}
-                                    className={`flex items-center justify-between px-5 py-3 ${absent ? 'bg-rose-50/50' : 'bg-white'}`}
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${absent ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                                        {absent ? <UserX className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}
-                                      </div>
-                                      <div className="text-right">
-                                        <button
-                                          type="button"
-                                          className="font-semibold text-slate-900 hover:text-indigo-600 hover:underline transition-colors cursor-pointer"
-                                          onClick={() => setTeacherStatsModal({ userId: teacher.user_id, userName: teacher.name })}
+                                  return (
+                                    <div
+                                      key={teacher.user_id}
+                                      style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        gap: 10,
+                                        flexWrap: 'wrap',
+                                        padding: '8px 12px',
+                                        borderRadius: 9,
+                                        border: `1px solid ${absent ? 'var(--ws-red-bd)' : 'var(--ws-hairline)'}`,
+                                        background: absent ? 'var(--ws-red-bg)' : 'var(--ws-surface)',
+                                      }}
+                                    >
+                                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                                        {/* دائرة الحرف الأول بحالة المعلم */}
+                                        <span
+                                          style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            width: 30,
+                                            height: 30,
+                                            borderRadius: '50%',
+                                            flexShrink: 0,
+                                            fontSize: 13,
+                                            fontWeight: 800,
+                                            background: absent ? 'var(--ws-red)' : 'var(--ws-accent-soft)',
+                                            color: absent ? '#fff' : 'var(--ws-accent)',
+                                            border: `1px solid ${absent ? 'var(--ws-red)' : 'var(--ws-accent-2)'}`,
+                                          }}
                                         >
-                                          {teacher.name}
-                                        </button>
-                                        <div className="flex items-center gap-3 mt-0.5">
-                                          {teacher.phone && (
-                                            <span className="flex items-center gap-1 text-xs text-muted">
-                                              <Phone className="h-3 w-3" />
-                                              {teacher.phone}
-                                            </span>
-                                          )}
-                                          {absenceRecord?.reason && (
-                                            <span className="text-xs text-rose-500">السبب: {absenceRecord.reason}</span>
-                                          )}
-                                          {absenceRecord?.replacement_user_name && (
-                                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
-                                              <UserPlus className="h-3 w-3" />
-                                              البديل: {absenceRecord.replacement_user_name}
-                                            </span>
-                                          )}
-                                        </div>
-                                      </div>
+                                          {teacher.name.trim().charAt(0)}
+                                        </span>
+                                        <span style={{ minWidth: 0 }}>
+                                          <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                            <button
+                                              type="button"
+                                              onClick={() => setTeacherStatsModal({ userId: teacher.user_id, userName: teacher.name })}
+                                              style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                padding: 0,
+                                                cursor: 'pointer',
+                                                fontFamily: 'inherit',
+                                                fontSize: 12.5,
+                                                fontWeight: 700,
+                                                color: 'var(--ws-text)',
+                                              }}
+                                              title="عرض إحصائيات المعلم"
+                                            >
+                                              {teacher.name}
+                                            </button>
+                                            <WsChip tone={absent ? 'red' : 'green'}>{absent ? 'لم يحضر' : 'حاضر'}</WsChip>
+                                          </span>
+                                          <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 3 }}>
+                                            {teacher.phone && (
+                                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                                                <Phone style={{ width: 10, height: 10 }} />
+                                                {teacher.phone}
+                                              </span>
+                                            )}
+                                            {absenceRecord?.reason && (
+                                              <span style={{ fontSize: 10.5, color: 'var(--ws-red)' }}>
+                                                السبب: {absenceRecord.reason}
+                                              </span>
+                                            )}
+                                            {absenceRecord?.replacement_user_name && (
+                                              <WsChip tone="amber" icon={UserPlus}>
+                                                البديل: {absenceRecord.replacement_user_name}
+                                              </WsChip>
+                                            )}
+                                          </span>
+                                        </span>
+                                      </span>
+
+                                      {/* أزرار الإجراءات */}
+                                      <span style={{ display: 'inline-flex', gap: 6, marginInlineStart: 'auto' }}>
+                                        {!absent ? (
+                                          <>
+                                            <WsBtn
+                                              size="sm"
+                                              icon={UserX}
+                                              onClick={() => handleRecordAbsence(supervision, teacher)}
+                                              disabled={recordAbsenceMutation.isPending}
+                                              style={{ color: 'var(--ws-red)' }}
+                                            >
+                                              عدم الحضور
+                                            </WsBtn>
+                                            <WsBtn size="sm" icon={UserPlus} onClick={() => handleAssignReplacement(supervision, teacher)}>
+                                              بديل
+                                            </WsBtn>
+                                          </>
+                                        ) : !absenceRecord?.replacement_user_name ? (
+                                          <WsBtn size="sm" icon={UserPlus} onClick={() => handleAssignReplacement(supervision, teacher)}>
+                                            تعيين بديل
+                                          </WsBtn>
+                                        ) : (
+                                          <WsChip>تم التعيين</WsChip>
+                                        )}
+                                      </span>
                                     </div>
-                                    {/* أزرار الإجراءات */}
-                                    <div className="flex items-center gap-2">
-                                      {!absent ? (
-                                        <>
-                                          <button
-                                            type="button"
-                                            className="rounded-xl bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-200 disabled:opacity-60"
-                                            onClick={() => handleRecordAbsence(supervision, teacher)}
-                                            disabled={recordAbsenceMutation.isPending}
-                                          >
-                                            {recordAbsenceMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'عدم الحضور'}
-                                          </button>
-                                          <button
-                                            type="button"
-                                            className="rounded-xl bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-200"
-                                            onClick={() => handleAssignReplacement(supervision, teacher)}
-                                          >
-                                            <UserPlus className="inline h-3 w-3 ml-1" />
-                                            بديل
-                                          </button>
-                                        </>
-                                      ) : !absenceRecord?.replacement_user_name ? (
-                                        <button
-                                          type="button"
-                                          className="rounded-xl bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-200"
-                                          onClick={() => handleAssignReplacement(supervision, teacher)}
-                                        >
-                                          <UserPlus className="inline h-3 w-3 ml-1" />
-                                          تعيين بديل
-                                        </button>
-                                      ) : (
-                                        <span className="rounded-xl bg-slate-100 px-3 py-1.5 text-xs text-slate-500">تم التعيين</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                )
-                              })}
+                                  )
+                                })}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -476,102 +694,122 @@ export function AdminDutyRostersPage() {
                     } else {
                       // المناوبة
                       const duty = item.data
+                      const tone = duty.duty_type === 'afternoon' ? TIMELINE_TONES.afternoon : TIMELINE_TONES.morning
+                      const DutyIcon = duty.duty_type === 'afternoon' ? Sunset : Sunrise
                       return (
-                        <div key={`duty-${duty.id}`} className="relative pr-14">
-                          {/* نقطة الوقت - لون برتقالي للمناوبة */}
-                          <div className="absolute right-0 flex flex-col items-center">
-                            <div className={`flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm border-4 border-white ${duty.duty_type === 'afternoon'
-                              ? 'bg-orange-100 text-orange-600'
-                              : 'bg-blue-100 text-blue-600'
-                              }`}>
-                              <Sunset className="h-5 w-5" />
+                        <div key={`duty-${duty.id}`}>
+                          {showNowLine && NowLine}
+                          <div
+                            className={`ws-timeline__item ${phase === 'past' ? 'is-past' : phase === 'current' ? 'is-current' : ''}`}
+                            style={{ animationDelay: `${Math.min(index * 45, 400)}ms` }}
+                          >
+                            <div className="ws-timeline__node">
+                              <span className="ws-timeline__dot" style={{ background: tone.bg, color: tone.color }}>
+                                <DutyIcon />
+                              </span>
+                              <span className="ws-timeline__time">{duty.start_time || '—'}</span>
                             </div>
-                            <span className={`mt-1 text-xs font-bold ${duty.duty_type === 'afternoon' ? 'text-orange-600' : 'text-blue-600'
-                              }`}>
-                              {duty.start_time || '—'}
-                            </span>
-                          </div>
 
-                          {/* بطاقة المناوبة */}
-                          <div className={`rounded-2xl border overflow-hidden ${duty.duty_type === 'afternoon'
-                            ? 'border-orange-200 bg-orange-50/50'
-                            : 'border-blue-200 bg-blue-50/50'
-                            }`}>
-                            {/* رأس البطاقة */}
-                            <div className={`px-5 py-3 border-b ${duty.duty_type === 'afternoon'
-                              ? 'bg-gradient-to-l from-orange-100 to-white border-orange-100'
-                              : 'bg-gradient-to-l from-blue-100 to-white border-blue-100'
-                              }`}>
-                              <div className="flex items-center justify-between">
-                                <div className="text-right">
-                                  <h3 className="text-lg font-bold text-slate-900">{duty.duty_type_name}</h3>
-                                  <p className={`text-xs ${duty.duty_type === 'afternoon' ? 'text-orange-600' : 'text-blue-600'}`}>
+                            <div className="ws-timeline__card" style={{ borderInlineStartColor: tone.accent }}>
+                              <div className="ws-timeline__card-head" style={{ background: tone.wash }}>
+                                <span style={{ minWidth: 0 }}>
+                                  <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>{duty.duty_type_name}</span>
+                                  <span style={{ display: 'block', fontSize: 10.5, color: tone.color, fontWeight: 700 }}>
                                     مناوبة فصلية
-                                  </p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <span className="rounded-full bg-white border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600">
-                                    {duty.start_time} - {duty.end_time}
                                   </span>
-                                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${duty.duty_type === 'afternoon'
-                                    ? 'bg-orange-100 text-orange-700'
-                                    : 'bg-blue-100 text-blue-700'
-                                    }`}>
-                                    <Calendar className="inline h-3 w-3 ml-1" />
+                                </span>
+                                <span style={{ display: 'inline-flex', gap: 5, flexWrap: 'wrap' }}>
+                                  {phase === 'current' && (
+                                    <WsChip tone="green">
+                                      <span className="ws-pulse" />
+                                      جارية الآن
+                                    </WsChip>
+                                  )}
+                                  <WsChip>
+                                    <span style={{ direction: 'ltr' }}>
+                                      {duty.start_time} - {duty.end_time}
+                                    </span>
+                                  </WsChip>
+                                  <WsChip tone={duty.duty_type === 'afternoon' ? 'amber' : 'sky'} icon={Calendar}>
                                     مناوبة
-                                  </span>
-                                </div>
+                                  </WsChip>
+                                </span>
                               </div>
-                            </div>
 
-                            {/* المعلم المكلف */}
-                            <div className="px-5 py-3">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${duty.status === 'completed'
-                                    ? 'bg-emerald-100 text-emerald-600'
-                                    : duty.status === 'absent'
-                                      ? 'bg-rose-100 text-rose-600'
-                                      : duty.duty_type === 'afternoon'
-                                        ? 'bg-orange-100 text-orange-600'
-                                        : 'bg-blue-100 text-blue-600'
-                                    }`}>
-                                    {duty.status === 'completed' ? (
-                                      <CheckCircle2 className="h-5 w-5" />
-                                    ) : duty.status === 'absent' ? (
-                                      <UserX className="h-5 w-5" />
-                                    ) : (
-                                      <Users className="h-5 w-5" />
-                                    )}
-                                  </div>
-                                  <div className="text-right">
-                                    <button
-                                      type="button"
-                                      className="font-semibold text-slate-900 hover:text-orange-600 hover:underline transition-colors cursor-pointer"
-                                      onClick={() => duty.user_id && setTeacherStatsModal({ userId: duty.user_id, userName: duty.user_name ?? '' })}
-                                      disabled={!duty.user_id}
+                              {/* المعلم المكلف — بطاقة متنفّسة */}
+                              <div style={{ padding: 10 }}>
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: 10,
+                                    flexWrap: 'wrap',
+                                    padding: '8px 12px',
+                                    borderRadius: 9,
+                                    border: `1px solid ${duty.status === 'absent' ? 'var(--ws-red-bd)' : 'var(--ws-hairline)'}`,
+                                    background: duty.status === 'absent' ? 'var(--ws-red-bg)' : 'var(--ws-surface)',
+                                  }}
+                                >
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                                    <span
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        width: 30,
+                                        height: 30,
+                                        borderRadius: '50%',
+                                        flexShrink: 0,
+                                        fontSize: 13,
+                                        fontWeight: 800,
+                                        background: duty.status === 'absent' ? 'var(--ws-red)' : tone.bg,
+                                        color: duty.status === 'absent' ? '#fff' : tone.color,
+                                        border: `1px solid ${duty.status === 'absent' ? 'var(--ws-red)' : tone.accent}`,
+                                      }}
                                     >
-                                      {duty.user_name ?? 'غير محدد'}
-                                    </button>
-                                    <div className="flex items-center gap-3 mt-0.5">
+                                      {(duty.user_name ?? '؟').trim().charAt(0)}
+                                    </span>
+                                    <span style={{ minWidth: 0 }}>
+                                      <button
+                                        type="button"
+                                        onClick={() => duty.user_id && setTeacherStatsModal({ userId: duty.user_id, userName: duty.user_name ?? '' })}
+                                        disabled={!duty.user_id}
+                                        style={{
+                                          display: 'block',
+                                          background: 'none',
+                                          border: 'none',
+                                          padding: 0,
+                                          cursor: duty.user_id ? 'pointer' : 'default',
+                                          fontFamily: 'inherit',
+                                          fontSize: 12.5,
+                                          fontWeight: 700,
+                                          color: 'var(--ws-text)',
+                                        }}
+                                      >
+                                        {duty.user_name ?? 'غير محدد'}
+                                      </button>
                                       {duty.user_phone && (
-                                        <span className="flex items-center gap-1 text-xs text-muted">
-                                          <Phone className="h-3 w-3" />
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10.5, color: 'var(--ws-text-2)', marginTop: 3 }}>
+                                          <Phone style={{ width: 10, height: 10 }} />
                                           {duty.user_phone}
                                         </span>
                                       )}
-                                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${duty.status === 'completed'
-                                        ? 'bg-emerald-100 text-emerald-700'
+                                    </span>
+                                  </span>
+                                  <WsChip
+                                    tone={
+                                      duty.status === 'completed'
+                                        ? 'green'
                                         : duty.status === 'absent'
-                                          ? 'bg-rose-100 text-rose-700'
+                                          ? 'red'
                                           : duty.status === 'notified'
-                                            ? 'bg-blue-100 text-blue-700'
-                                            : 'bg-slate-100 text-slate-600'
-                                        }`}>
-                                        {duty.status_name}
-                                      </span>
-                                    </div>
-                                  </div>
+                                            ? 'sky'
+                                            : undefined
+                                    }
+                                  >
+                                    {duty.status_name}
+                                  </WsChip>
                                 </div>
                               </div>
                             </div>
@@ -580,172 +818,49 @@ export function AdminDutyRostersPage() {
                       )
                     }
                   })}
+                  {/* خط «الآن» بعد آخر عنصر إذا انتهى اليوم */}
+                  {isViewingToday && nowLineIndex === sortedTimeline.length && sortedTimeline.length > 0 && NowLine}
                 </div>
-              </div>
-            )}
-          </section>
-
-          {/* العمود الجانبي */}
-          <aside className="space-y-4">
-            {/* ملخص اليوم */}
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h3 className="flex items-center gap-2 text-sm font-bold text-slate-900 mb-4">
-                <TrendingUp className="h-4 w-4 text-indigo-500" />
-                ملخص اليوم
-              </h3>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted">إجمالي المكلفين</span>
-                  <span className="text-lg font-bold text-slate-900">{stats.totalTeachers}</span>
-                </div>
-
-                <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-l from-emerald-400 to-emerald-500 transition-all"
-                    style={{ width: `${stats.attendanceRate}%` }}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 text-center">
-                  <div className="rounded-2xl bg-emerald-50 p-3">
-                    <p className="text-2xl font-bold text-emerald-600">{stats.totalPresent}</p>
-                    <p className="text-[10px] text-emerald-600">حضروا</p>
-                  </div>
-                  <div className="rounded-2xl bg-rose-50 p-3">
-                    <p className="text-2xl font-bold text-rose-600">{stats.totalAbsent}</p>
-                    <p className="text-[10px] text-rose-600">لم يحضروا</p>
-                  </div>
-                </div>
-
-                {stats.replacementsAssigned > 0 && (
-                  <div className="rounded-2xl bg-amber-50 p-3 text-center">
-                    <p className="text-lg font-bold text-amber-600">{stats.replacementsAssigned}</p>
-                    <p className="text-[10px] text-amber-600">بديل معين</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* القادم قريباً */}
-            {upcomingSupervision && (
-              <div className="rounded-3xl border border-indigo-100 bg-indigo-50/50 p-5 shadow-sm">
-                <h3 className="flex items-center gap-2 text-sm font-bold text-indigo-900 mb-3">
-                  <Clock className="h-4 w-4 text-indigo-500" />
-                  القادم قريباً
-                </h3>
-
-                <div className="text-right">
-                  <p className="font-semibold text-indigo-900">{upcomingSupervision.name}</p>
-                  <p className="text-xs text-indigo-600">{upcomingSupervision.shift_type}</p>
-                  <div className="mt-3 flex items-center justify-between">
-                    <span className="text-xs text-indigo-600">{upcomingSupervision.window_start}</span>
-                    <span className="rounded-full bg-indigo-100 px-3 py-1 text-xs font-bold text-indigo-700">
-                      بعد {upcomingSupervision.minutesUntil} دقيقة
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* إجراءات سريعة */}
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h3 className="text-sm font-bold text-slate-900 mb-4">إجراءات سريعة</h3>
-
-              <div className="space-y-2">
-                <button
-                  type="button"
-                  onClick={handleSendReminders}
-                  disabled={sendRemindersMutation.isPending}
-                  className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-100 px-4 py-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-200 transition disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {sendRemindersMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                  {sendRemindersMutation.isPending ? 'جارٍ الإرسال...' : 'إرسال التذكيرات الآن'}
-                </button>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleExportPDF}
-                    className="flex-1 flex items-center justify-center gap-1 rounded-2xl bg-slate-100 px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-200 transition"
-                  >
-                    <FileText className="h-4 w-4" />
-                    PDF
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleExportImage}
-                    className="flex-1 flex items-center justify-center gap-1 rounded-2xl bg-slate-100 px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-200 transition"
-                  >
-                    <FileText className="h-4 w-4" />
-                    صورة
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* معلومات إضافية */}
-            <div className="rounded-3xl border border-slate-100 bg-slate-50/50 p-4 text-right">
-              <p className="text-xs text-muted">
-                📅 {meta?.weekday ? WEEKDAY_LABELS[meta.weekday] : ''} • {formatDate(selectedDate)}
-              </p>
-              <p className="text-xs text-muted mt-1">
-                {stats.totalSupervisions} إشراف مجدول
-              </p>
-            </div>
-          </aside>
-        </div>
-      ) : (
-        <DutyRosterTemplatesPanel />
-      )}
+              )}
+            </WsBlock>
+          ) : null}
+        </WsMain>
+          </>
+        )}
+      </WsLayout>
 
       {/* Modal تعيين بديل */}
       {replacementModalData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-          <div className="absolute inset-0" onClick={closeReplacementModal} />
-          <div className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
-            <header className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-              <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
-                  <UserPlus className="h-5 w-5" />
-                </span>
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900">تعيين بديل</h2>
-                  <p className="text-xs text-muted">اختر معلماً بديلاً عن {replacementModalData.teacher.name}</p>
-                </div>
-              </div>
-              <button type="button" onClick={closeReplacementModal} className="rounded-full p-2 text-slate-400 hover:bg-slate-100">✕</button>
-            </header>
-
-            <div className="max-h-[400px] overflow-y-auto p-6">
-              <div className="space-y-2">
-                {allTeachers
-                  .filter((t) => t.id !== replacementModalData.teacher.user_id)
-                  .map((teacher) => (
-                    <button
-                      key={teacher.id}
-                      type="button"
-                      className="w-full rounded-xl border border-slate-200 bg-white p-3 text-right hover:border-amber-300 hover:bg-amber-50"
-                      onClick={() => {
-                        toast({ type: 'info', title: `سيتم تعيين ${teacher.name} كبديل` })
-                        closeReplacementModal()
-                      }}
-                    >
-                      <p className="font-semibold text-slate-900">{teacher.name}</p>
-                      {teacher.phone && <p className="mt-1 text-xs text-muted">{teacher.phone}</p>}
-                    </button>
-                  ))}
-              </div>
-            </div>
-
-            <footer className="border-t border-slate-200 px-6 py-4">
-              <button type="button" onClick={closeReplacementModal} className="w-full button-secondary">إلغاء</button>
-            </footer>
+        <WsModal
+          open
+          onClose={closeReplacementModal}
+          title="تعيين بديل"
+          sub={`اختر معلماً بديلاً عن ${replacementModalData.teacher.name}`}
+          footer={<WsBtn onClick={closeReplacementModal}>إلغاء</WsBtn>}
+        >
+          <div style={{ maxHeight: '48vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {allTeachers
+              .filter((t) => t.id !== replacementModalData.teacher.user_id)
+              .map((teacher) => (
+                <button
+                  key={teacher.id}
+                  type="button"
+                  className="ws-pick"
+                  style={{ width: '100%', textAlign: 'right' }}
+                  onClick={() => {
+                    toast({ type: 'info', title: `سيتم تعيين ${teacher.name} كبديل` })
+                    closeReplacementModal()
+                  }}
+                >
+                  <span style={{ minWidth: 0 }}>
+                    <span className="ws-pick__name">{teacher.name}</span>
+                    {teacher.phone && <span className="ws-pick__sub">{teacher.phone}</span>}
+                  </span>
+                  <UserPlus style={{ width: 14, height: 14, color: 'var(--ws-amber)', flexShrink: 0 }} />
+                </button>
+              ))}
           </div>
-        </div>
+        </WsModal>
       )}
 
       {/* نافذة إحصائيات المعلم */}
@@ -755,7 +870,7 @@ export function AdminDutyRostersPage() {
         userId={teacherStatsModal?.userId ?? 0}
         userName={teacherStatsModal?.userName ?? ''}
       />
-    </section>
+    </WsPage>
   )
 }
 
