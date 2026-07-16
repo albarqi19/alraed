@@ -120,6 +120,7 @@ const AdminBehaviorAnalyticsPage = lazyNamed(() => import('@/modules/admin/pages
 const StudentCasesPage = lazyNamed(() => import('@/modules/admin/pages/student-cases-page'), 'StudentCasesPage')
 const StudentCasesListPage = lazyNamed(() => import('@/modules/admin/pages/student-cases-list-page'), 'StudentCasesListPage')
 const AdminStudentCaseFormPage = lazyNamed(() => import('@/modules/admin/pages/admin-student-case-form-page'), 'AdminStudentCaseFormPage')
+const AdminStudentCaseEditPage = lazyNamed(() => import('@/modules/admin/pages/admin-student-case-form-page'), 'AdminStudentCaseEditPage')
 const AdminStudentCaseDetailsPage = lazyNamed(() => import('@/modules/admin/pages/admin-student-case-details-page'), 'AdminStudentCaseDetailsPage')
 const TreatmentPlansPage = lazyNamed(() => import('@/modules/admin/pages/treatment-plans-page'), 'TreatmentPlansPage')
 const AdminTreatmentPlanFormPage = lazyNamed(() => import('@/modules/admin/pages/admin-treatment-plan-form-page'), 'AdminTreatmentPlanFormPage')
@@ -329,6 +330,7 @@ const appRoutes = [
           { path: 'student-cases/list', element: <StudentCasesListPage /> },
           { path: 'student-cases/new', element: <AdminStudentCaseFormPage mode="create" /> },
           { path: 'student-cases/:caseId', element: <AdminStudentCaseDetailsPage /> },
+          { path: 'student-cases/:caseId/edit', element: <AdminStudentCaseEditPage /> },
           { path: 'subscription', element: <AdminSubscriptionPage /> },
           { path: 'treatment-plans', element: <TreatmentPlansPage /> },
           { path: 'treatment-plans/new', element: <AdminTreatmentPlanFormPage /> },

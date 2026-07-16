@@ -1,20 +1,66 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useAdminGuidanceCaseMutations, useAdminGuidanceStudents } from '../api/guidance-hooks'
+import { useNavigate, useParams } from 'react-router-dom'
+import { ArrowRight, Eye, Plus, Save, Search, Tag, UserRound, X } from 'lucide-react'
+import {
+  WsPage,
+  WsHeader,
+  WsLayout,
+  WsMain,
+  WsSideCol,
+  WsBlock,
+  WsBtn,
+  WsIconBtn,
+  WsInput,
+  WsTextarea,
+  WsField,
+  WsAlert,
+  WsEmpty,
+} from '@/shared/workspace'
+import { useAdminGuidanceCase, useAdminGuidanceCaseMutations, useAdminGuidanceStudents } from '../api/guidance-hooks'
+import { TONES, SEVERITY_META, categoryTone, ToneChip, SeverityMeter, SeverityBadge, InitialAvatar } from './student-cases-ui'
 import type { GuidanceCaseRecord } from '@/modules/guidance/types'
 
 const CATEGORIES = ['سلوكية', 'أكاديمية', 'اجتماعية', 'نفسية', 'صحية', 'أخرى']
 const SEVERITIES: Array<GuidanceCaseRecord['severity']> = ['low', 'medium', 'high', 'critical']
-const SEVERITY_LABELS = {
-  low: 'منخفضة',
-  medium: 'متوسطة',
-  high: 'عالية',
-  critical: 'عاجلة',
-}
 
 interface CaseFormProps {
   initialData?: Partial<GuidanceCaseRecord>
   mode?: 'create' | 'edit'
+}
+
+/** رقم القسم في النموذج — لمسة «خطوات مرقمة» */
+function StepBadge({ step }: { step: number }) {
+  return (
+    <span
+      style={{
+        width: 20,
+        height: 20,
+        borderRadius: '50%',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 11,
+        fontWeight: 800,
+        background: 'var(--ws-accent-soft)',
+        color: 'var(--ws-accent)',
+        flexShrink: 0,
+      }}
+    >
+      {step}
+    </span>
+  )
+}
+
+function SectionHead({ step, title, hint }: { step: number; title: string; hint?: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+      <StepBadge step={step} />
+      <div>
+        <p style={{ margin: 0, fontSize: 12.5, fontWeight: 800 }}>{title}</p>
+        {hint && <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--ws-text-2)' }}>{hint}</p>}
+      </div>
+    </div>
+  )
 }
 
 export function AdminStudentCaseFormPage({ initialData, mode = 'create' }: CaseFormProps) {
@@ -129,262 +175,395 @@ export function AdminStudentCaseFormPage({ initialData, mode = 'create' }: CaseF
 
   const isSubmitting = createCase.isPending || updateCase.isPending
 
+  const previewCatTone = formData.category ? categoryTone(formData.category) : TONES.gray
+  const previewSeverity = (formData.severity || 'medium') as GuidanceCaseRecord['severity']
+
   return (
-    <div className="space-y-6" dir="rtl">
-      <header>
-        <div className="flex items-center gap-3 mb-2">
-          <button
-            onClick={() => navigate('/admin/student-cases')}
-            className="text-gray-600 hover:text-gray-900"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <h1 className="text-3xl font-bold text-gray-900">
-            {mode === 'create' ? 'إضافة حالة جديدة' : 'تعديل الحالة'}
-          </h1>
-        </div>
-      </header>
+    <WsPage>
+      <WsHeader
+        title={mode === 'create' ? 'إضافة حالة جديدة' : 'تعديل الحالة'}
+        badge="الإرشاد الطلابي"
+        actions={<WsIconBtn icon={ArrowRight} label="العودة للقائمة" onClick={() => navigate('/admin/student-cases')} />}
+      />
 
-      <form onSubmit={handleSubmit} className="glass-card p-6 space-y-8">
-        {/* Student Selection */}
-        <fieldset className="space-y-2">
-          <legend className="block text-sm font-medium text-gray-700">
-            الطالب <span className="text-red-500">*</span>
-          </legend>
-          <p className="text-xs text-gray-500">ابحث بالاسم أو الصف أو الفصل لتحديد الطالب بسرعة.</p>
-          {loadingStudents ? (
-            <div className="text-gray-500">جاري تحميل قائمة الطلاب...</div>
-          ) : mode === 'edit' && selectedStudent ? (
-            <input
-              value={`${selectedStudent.name} - ${selectedStudent.grade} ${selectedStudent.class_name}`.trim()}
-              readOnly
-              className="w-full px-4 py-2 border border-dashed border-gray-300 rounded-lg bg-gray-100 text-gray-600"
-            />
-          ) : (
-            <div className="relative" ref={studentSearchRef}>
-              <input
-                type="search"
-                value={studentQuery}
-                onChange={(e) => {
-                  setStudentQuery(e.target.value)
-                  setIsStudentDropdownOpen(true)
-                }}
-                onFocus={() => setIsStudentDropdownOpen(true)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Escape') {
-                    setIsStudentDropdownOpen(false)
-                    ;(event.target as HTMLInputElement).blur()
-                  }
-                }}
-                placeholder="أدخل اسم الطالب أو الصف أو الفصل"
-                className={`w-full px-4 py-2 border ${
-                  formData.student_id ? 'border-gray-300' : 'border-red-300'
-                } rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none pr-10`}
-                aria-expanded={isStudentDropdownOpen}
-                aria-autocomplete="list"
-                required
-              />
-              <svg
-                className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z" />
-              </svg>
-
-              {isStudentDropdownOpen && (
-                <div className="absolute z-10 mt-2 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-72 overflow-y-auto">
-                  {filteredStudents.length === 0 ? (
-                    <div className="px-4 py-3 text-sm text-gray-500">لا توجد نتائج مطابقة.</div>
+      <WsLayout>
+        <WsMain>
+          <form onSubmit={handleSubmit} className="ws-block ws-block--fill" style={{ display: 'flex', flexDirection: 'column' }}>
+            <div className="ws-block__scroll">
+              <div style={{ maxWidth: 720, margin: '0 auto', padding: '18px 16px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+                {/* 1. الطالب */}
+                <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <SectionHead step={1} title="الطالب *" hint="ابحث بالاسم أو الصف أو الفصل لتحديد الطالب بسرعة." />
+                  {loadingStudents ? (
+                    <p style={{ margin: 0, fontSize: 12, color: 'var(--ws-text-2)' }}>جاري تحميل قائمة الطلاب...</p>
+                  ) : mode === 'edit' && selectedStudent ? (
+                    <WsInput
+                      value={`${selectedStudent.name} - ${selectedStudent.grade} ${selectedStudent.class_name}`.trim()}
+                      readOnly
+                      style={{ borderStyle: 'dashed', background: 'var(--ws-surface-2)', color: 'var(--ws-text-2)' }}
+                    />
                   ) : (
-                    <ul role="listbox" className="divide-y divide-gray-100">
-                      {filteredStudents.map((student) => {
-                        const isSelected = student.id === formData.student_id
+                    <div style={{ position: 'relative' }} ref={studentSearchRef}>
+                      <WsInput
+                        type="search"
+                        value={studentQuery}
+                        onChange={(e) => {
+                          setStudentQuery(e.target.value)
+                          setIsStudentDropdownOpen(true)
+                        }}
+                        onFocus={() => setIsStudentDropdownOpen(true)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Escape') {
+                            setIsStudentDropdownOpen(false)
+                            ;(event.target as HTMLInputElement).blur()
+                          }
+                        }}
+                        placeholder="أدخل اسم الطالب أو الصف أو الفصل"
+                        style={{
+                          width: '100%',
+                          paddingInlineStart: 28,
+                          borderColor: formData.student_id ? undefined : TONES.red.bd,
+                        }}
+                        aria-expanded={isStudentDropdownOpen}
+                        aria-autocomplete="list"
+                        required
+                      />
+                      <Search
+                        style={{
+                          width: 13,
+                          height: 13,
+                          position: 'absolute',
+                          insetInlineStart: 9,
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          color: 'var(--ws-text-2)',
+                          pointerEvents: 'none',
+                        }}
+                      />
+
+                      {isStudentDropdownOpen && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            zIndex: 10,
+                            insetInline: 0,
+                            top: '100%',
+                            marginTop: 4,
+                            background: 'var(--ws-surface)',
+                            border: '1px solid var(--ws-border)',
+                            borderRadius: 10,
+                            maxHeight: 280,
+                            overflowY: 'auto',
+                            boxShadow: '0 10px 28px rgba(0,0,0,0.14)',
+                          }}
+                        >
+                          {filteredStudents.length === 0 ? (
+                            <div style={{ padding: '10px 12px', fontSize: 12, color: 'var(--ws-text-2)' }}>لا توجد نتائج مطابقة.</div>
+                          ) : (
+                            <ul role="listbox" style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+                              {filteredStudents.map((student) => {
+                                const isSelected = student.id === formData.student_id
+                                return (
+                                  <li key={student.id} style={{ borderBottom: '1px solid var(--ws-hairline)' }}>
+                                    <button
+                                      type="button"
+                                      onMouseDown={(event) => event.preventDefault()}
+                                      onClick={() => handleSelectStudent(student.id)}
+                                      role="option"
+                                      aria-selected={isSelected}
+                                      style={{
+                                        width: '100%',
+                                        textAlign: 'right',
+                                        padding: '8px 12px',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        fontFamily: 'inherit',
+                                        background: isSelected ? 'var(--ws-accent-soft)' : 'transparent',
+                                        color: isSelected ? 'var(--ws-accent)' : 'var(--ws-text)',
+                                      }}
+                                    >
+                                      <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700 }}>{student.name}</span>
+                                      <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ws-text-2)', marginTop: 2 }}>
+                                        {student.grade} • {student.class_name}
+                                        {student.parent_phone ? ` • ولي الأمر: ${student.parent_phone}` : ''}
+                                      </span>
+                                    </button>
+                                  </li>
+                                )
+                              })}
+                            </ul>
+                          )}
+                          <div
+                            style={{
+                              padding: '6px 12px',
+                              fontSize: 10.5,
+                              color: 'var(--ws-text-2)',
+                              borderTop: '1px solid var(--ws-hairline)',
+                              background: 'var(--ws-surface-2)',
+                            }}
+                          >
+                            يتم عرض أول {filteredStudents.length} نتيجة مطابقة فقط. تابع الكتابة لتصفية أكثر.
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {!formData.student_id && !loadingStudents && (
+                    <p style={{ margin: 0, fontSize: 11, color: TONES.red.tx }}>يرجى اختيار الطالب قبل المتابعة.</p>
+                  )}
+                </fieldset>
+
+                {/* 2. بيانات الحالة */}
+                <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <SectionHead step={2} title="بيانات الحالة الأساسية" hint="املأ التفاصيل الأساسية للحالة لضمان تتبع دقيق وسريع." />
+
+                  <WsField label="العنوان *">
+                    <WsInput
+                      type="text"
+                      value={formData.title || ''}
+                      onChange={(e) => updateField('title', e.target.value)}
+                      placeholder="عنوان مختصر للحالة (مثال: صعوبات في مادة الرياضيات)"
+                      required
+                    />
+                  </WsField>
+
+                  <div>
+                    <p className="ws-label" style={{ marginBottom: 6 }}>التصنيف *</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(105px, 1fr))', gap: 6 }}>
+                      {CATEGORIES.map((cat) => {
+                        const tone = categoryTone(cat)
+                        const isSelected = formData.category === cat
                         return (
-                          <li key={student.id}>
-                            <button
-                              type="button"
-                              onMouseDown={(event) => event.preventDefault()}
-                              onClick={() => handleSelectStudent(student.id)}
-                              className={`w-full text-right px-4 py-3 transition-colors ${
-                                isSelected
-                                  ? 'bg-indigo-50 text-indigo-700'
-                                  : 'hover:bg-gray-50 text-gray-700'
-                              }`}
-                              role="option"
-                              aria-selected={isSelected}
-                            >
-                              <span className="block font-medium">{student.name}</span>
-                              <span className="block text-xs text-gray-500">
-                                {student.grade} • {student.class_name}
-                                {student.parent_phone ? ` • ولي الأمر: ${student.parent_phone}` : ''}
-                              </span>
-                            </button>
-                          </li>
+                          <button
+                            key={cat}
+                            type="button"
+                            className={`ws-choice ${isSelected ? 'is-selected' : ''}`}
+                            style={isSelected
+                              ? { background: tone.bg, borderColor: tone.tx, color: tone.tx, boxShadow: `0 0 0 1px ${tone.tx}` }
+                              : undefined}
+                            onClick={() => updateField('category', cat)}
+                          >
+                            {cat}
+                          </button>
                         )
                       })}
-                    </ul>
-                  )}
-                  <div className="px-4 py-2 text-[11px] text-gray-400 border-t bg-gray-50">
-                    يتم عرض أول {filteredStudents.length} نتيجة مطابقة فقط. تابع الكتابة لتصفية أكثر.
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          )}
-          {!formData.student_id && !loadingStudents && (
-            <p className="text-xs text-red-500">يرجى اختيار الطالب قبل المتابعة.</p>
-          )}
-        </fieldset>
 
-        {/* Case Basics */}
-        <fieldset className="space-y-4">
-          <legend className="text-sm font-medium text-gray-700">بيانات الحالة الأساسية</legend>
-          <p className="text-xs text-gray-500">
-            املأ التفاصيل الأساسية للحالة لضمان تتبع دقيق وسريع.
-          </p>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">
-                العنوان <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.title || ''}
-                onChange={(e) => updateField('title', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
-                placeholder="عنوان مختصر للحالة (مثال: صعوبات في مادة الرياضيات)"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">
-                التصنيف <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={formData.category || ''}
-                onChange={(e) => updateField('category', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
-                required
-              >
-                <option value="">اختر التصنيف</option>
-                {CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+                  <div>
+                    <p className="ws-label" style={{ marginBottom: 6 }}>الأولوية *</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 6 }}>
+                      {SEVERITIES.map((severity) => {
+                        const meta = SEVERITY_META[severity]
+                        const isSelected = formData.severity === severity
+                        return (
+                          <button
+                            key={severity}
+                            type="button"
+                            className={`ws-choice ${isSelected ? 'is-selected' : ''}`}
+                            style={isSelected
+                              ? { background: meta.tone.bg, borderColor: meta.tone.tx, color: meta.tone.tx, boxShadow: `0 0 0 1px ${meta.tone.tx}` }
+                              : undefined}
+                            onClick={() => updateField('severity', severity)}
+                          >
+                            <SeverityMeter severity={severity} />
+                            {meta.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--ws-text-2)' }}>
+                      حدد الأولوية بناءً على مدى تأثير الحالة على الطالب ودرجة الاستجابة المطلوبة.
+                    </p>
+                  </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">
-              الأولوية <span className="text-red-500">*</span>
-            </label>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {SEVERITIES.map((severity) => (
-                <button
-                  key={severity}
-                  type="button"
-                  onClick={() => updateField('severity', severity)}
-                  className={`px-4 py-3 rounded-lg border-2 transition-all font-medium ${
-                    formData.severity === severity
-                      ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                      : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
-                  }`}
-                >
-                  {SEVERITY_LABELS[severity]}
-                </button>
-              ))}
+                  <WsField label="الملخص">
+                    <WsTextarea
+                      value={formData.summary || ''}
+                      onChange={(e) => updateField('summary', e.target.value)}
+                      rows={5}
+                      placeholder="سجل وصفاً مختصراً للحالة مع أبرز الملاحظات الأولية."
+                    />
+                  </WsField>
+                </fieldset>
+
+                {/* 3. الوسوم */}
+                <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <SectionHead step={3} title="الوسوم" hint='استخدم الوسوم لتسهيل البحث والتصنيف لاحقاً (مثال: "سلوك", "تأخر دراسي").' />
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <WsInput
+                      type="text"
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          addTag()
+                        }
+                      }}
+                      placeholder="أضف وسم واضغط Enter"
+                      style={{ flex: 1 }}
+                    />
+                    <WsBtn icon={Plus} onClick={addTag}>إضافة</WsBtn>
+                  </div>
+                  {formData.tags && formData.tags.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                      {formData.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="ws-chip"
+                          style={{ background: 'var(--ws-accent-soft)', color: 'var(--ws-accent)', gap: 4 }}
+                        >
+                          <Tag style={{ width: 10, height: 10 }} />
+                          {tag}
+                          <button
+                            type="button"
+                            onClick={() => removeTag(tag)}
+                            title={`إزالة ${tag}`}
+                            style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'inherit', padding: 0, display: 'inline-flex' }}
+                          >
+                            <X style={{ width: 11, height: 11 }} />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </fieldset>
+              </div>
             </div>
-            <p className="text-xs text-gray-500">
-              حدد الأولوية بناءً على مدى تأثير الحالة على الطالب ودرجة الاستجابة المطلوبة.
-            </p>
-          </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">الملخص</label>
-            <textarea
-              value={formData.summary || ''}
-              onChange={(e) => updateField('summary', e.target.value)}
-              rows={4}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-y"
-              placeholder="سجل وصفاً مختصراً للحالة مع أبرز الملاحظات الأولية."
-            />
-            <p className="text-xs text-gray-500">
-              استخدم الملخص لتقديم نظرة عامة للجهات المختصة حول الحالة ووضعها الحالي.
-            </p>
-          </div>
-        </fieldset>
-
-        {/* Tags */}
-        <fieldset className="space-y-2">
-          <legend className="text-sm font-medium text-gray-700">الوسوم</legend>
-          <p className="text-xs text-gray-500">
-            استخدم الوسوم لتسهيل البحث والتصنيف لاحقاً (مثال: "سلوك", "تأخر دراسي").
-          </p>
-          <div className="flex gap-2 mb-2">
-            <input
-              type="text"
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  addTag()
-                }
+            <footer
+              style={{
+                display: 'flex',
+                gap: 8,
+                justifyContent: 'flex-end',
+                padding: '10px 16px',
+                borderTop: '1px solid var(--ws-hairline)',
+                flexShrink: 0,
               }}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
-              placeholder="أضف وسم واضغط Enter"
-            />
-            <button
-              type="button"
-              onClick={addTag}
-              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition-colors"
             >
-              إضافة
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {formData.tags?.map((tag) => (
-              <span
-                key={tag}
-                className="inline-flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
-              >
-                {tag}
-                <button
-                  type="button"
-                  onClick={() => removeTag(tag)}
-                  className="hover:text-blue-900"
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-        </fieldset>
+              <WsBtn onClick={() => navigate(-1)}>إلغاء</WsBtn>
+              <WsBtn type="submit" variant="primary" icon={Save} disabled={isSubmitting}>
+                {isSubmitting ? 'جاري الحفظ...' : mode === 'create' ? 'إنشاء الحالة' : 'حفظ التعديلات'}
+              </WsBtn>
+            </footer>
+          </form>
+        </WsMain>
 
-        {/* Actions */}
-        <div className="flex gap-3 pt-4 border-t">
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 text-white font-semibold py-3 rounded-lg transition-colors"
-          >
-            {isSubmitting ? 'جاري الحفظ...' : mode === 'create' ? 'إنشاء الحالة' : 'حفظ التعديلات'}
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            إلغاء
-          </button>
-        </div>
-      </form>
-    </div>
+        {/* معاينة حية: هكذا ستظهر بطاقة الحالة في السجل */}
+        <WsSideCol side="end" title="معاينة الحالة" icon={Eye} storageKey="ws:student-case-form:sidecol" width={300}>
+          <WsBlock padded fill>
+            <div
+              style={{
+                border: '1px solid var(--ws-border)',
+                borderRadius: 10,
+                overflow: 'hidden',
+                background: `linear-gradient(to bottom, ${SEVERITY_META[previewSeverity].tone.bg}, var(--ws-surface) 34%)`,
+              }}
+            >
+              <div style={{ padding: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <InitialAvatar name={selectedStudent?.name ?? ''} tone={previewCatTone} size={32} />
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ display: 'block', fontWeight: 700, fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {selectedStudent?.name ?? 'لم يُحدد الطالب بعد'}
+                    </span>
+                    <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                      {selectedStudent ? `${selectedStudent.grade} - ${selectedStudent.class_name}` : '—'}
+                    </span>
+                  </span>
+                </div>
+
+                <p
+                  style={{
+                    margin: '10px 0 8px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: formData.title ? 'var(--ws-text)' : 'var(--ws-text-2)',
+                  }}
+                >
+                  {formData.title || 'عنوان الحالة...'}
+                </p>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                  {formData.category ? (
+                    <ToneChip tone={previewCatTone}>{formData.category}</ToneChip>
+                  ) : (
+                    <span className="ws-chip">بلا تصنيف</span>
+                  )}
+                  <SeverityBadge severity={previewSeverity} />
+                </div>
+
+                {formData.summary && (
+                  <p
+                    style={{
+                      margin: '8px 0 0',
+                      fontSize: 11,
+                      color: 'var(--ws-text-2)',
+                      lineHeight: 1.7,
+                      display: '-webkit-box',
+                      WebkitLineClamp: 4,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {formData.summary}
+                  </p>
+                )}
+
+                {formData.tags && formData.tags.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--ws-hairline)' }}>
+                    {formData.tags.map((tag) => (
+                      <span key={tag} className="ws-chip" style={{ background: 'var(--ws-accent-soft)', color: 'var(--ws-accent)' }}>
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <p style={{ margin: '10px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)', display: 'flex', alignItems: 'center', gap: 5 }}>
+              <UserRound style={{ width: 11, height: 11, flexShrink: 0 }} />
+              هكذا ستظهر بطاقة الحالة في السجل — تتحدث المعاينة أثناء كتابتك.
+            </p>
+          </WsBlock>
+        </WsSideCol>
+      </WsLayout>
+    </WsPage>
   )
+}
+
+/** غلاف صفحة التعديل: يجلب الحالة ثم يمرر بياناتها للنموذج
+    (يُصلح مسار /admin/student-cases/:caseId/edit الذي كان مفقوداً من الراوتر) */
+export function AdminStudentCaseEditPage() {
+  const { caseId } = useParams<{ caseId: string }>()
+  const navigate = useNavigate()
+  const { data: caseData, isLoading, error } = useAdminGuidanceCase(caseId ? Number(caseId) : null)
+
+  if (isLoading) {
+    return (
+      <WsPage>
+        <WsHeader title="تعديل الحالة" />
+        <WsBlock fill>
+          <WsEmpty loading>جاري تحميل بيانات الحالة...</WsEmpty>
+        </WsBlock>
+      </WsPage>
+    )
+  }
+
+  if (error || !caseData) {
+    return (
+      <WsPage>
+        <WsHeader
+          title="تعديل الحالة"
+          actions={<WsBtn icon={ArrowRight} onClick={() => navigate('/admin/student-cases')}>العودة للقائمة</WsBtn>}
+        />
+        <WsBlock fill padded>
+          <WsAlert tone="error" boxed>لم يتم العثور على الحالة المطلوبة</WsAlert>
+        </WsBlock>
+      </WsPage>
+    )
+  }
+
+  return <AdminStudentCaseFormPage key={caseData.id} initialData={caseData} mode="edit" />
 }
