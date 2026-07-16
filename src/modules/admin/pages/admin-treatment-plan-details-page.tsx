@@ -1,54 +1,48 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import {
+  ArrowRight,
+  BarChart3,
+  CalendarClock,
+  CalendarDays,
+  FileText,
+  Gauge,
+  Lightbulb,
+  Plus,
+  Target,
+  Trash2,
+  X,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import {
+  WsPage,
+  WsHeader,
+  WsFact,
+  WsLayout,
+  WsMain,
+  WsSideCol,
+  WsBlock,
+  WsBtn,
+  WsIconBtn,
+  WsInput,
+  WsSelect,
+  WsTextarea,
+  WsField,
+  WsAlert,
+  WsEmpty,
+  WsFactsList,
+  WsFactRow,
+} from '@/shared/workspace'
 import { useAdminTreatmentPlan, useAdminTreatmentPlanMutations } from '../api/guidance-hooks'
+import { TONES, ToneChip, InitialAvatar } from './student-cases-ui'
+import { PLAN_STATUS_META, GOAL_STATUS_META, PROBLEM_META, EFFECTIVENESS_META, ProgressRing, DaysRemainingChip } from './treatment-plans-ui'
 import type {
   TreatmentFollowupFormData,
   TreatmentEvaluationFormData,
   GoalStatus,
+  ProblemType,
   TreatmentPlanStatus,
 } from '@/modules/guidance/types'
-
-const STATUS_LABELS: Record<TreatmentPlanStatus, string> = {
-  draft: 'مسودة',
-  active: 'نشطة',
-  suspended: 'معلقة',
-  completed: 'مكتملة',
-  cancelled: 'ملغاة',
-  on_hold: 'معلقة',
-}
-
-const STATUS_COLORS: Record<TreatmentPlanStatus, string> = {
-  draft: 'bg-gray-100 text-gray-800 border-gray-300',
-  active: 'bg-green-100 text-green-800 border-green-300',
-  suspended: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-  completed: 'bg-blue-100 text-blue-800 border-blue-300',
-  cancelled: 'bg-red-100 text-red-800 border-red-300',
-  on_hold: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-}
-
-const GOAL_STATUS_LABELS: Record<GoalStatus, string> = {
-  not_started: 'لم تبدأ',
-  in_progress: 'قيد التنفيذ',
-  achieved: 'تحققت',
-  partially_achieved: 'تحققت جزئياً',
-  not_achieved: 'لم تتحقق',
-}
-
-const GOAL_STATUS_COLORS: Record<GoalStatus, string> = {
-  not_started: 'bg-gray-100 text-gray-800',
-  in_progress: 'bg-blue-100 text-blue-800',
-  achieved: 'bg-green-100 text-green-800',
-  partially_achieved: 'bg-yellow-100 text-yellow-800',
-  not_achieved: 'bg-red-100 text-red-800',
-}
-
-const EFFECTIVENESS_OPTIONS = [
-  { value: 'highly_effective', label: 'فعالة جداً', color: 'text-green-600' },
-  { value: 'effective', label: 'فعالة', color: 'text-green-500' },
-  { value: 'moderately_effective', label: 'فعالة نسبياً', color: 'text-yellow-600' },
-  { value: 'slightly_effective', label: 'فعالة قليلاً', color: 'text-orange-500' },
-  { value: 'not_effective', label: 'غير فعالة', color: 'text-red-600' },
-]
 
 export function AdminTreatmentPlanDetailsPage() {
   const { planId } = useParams<{ planId: string }>()
@@ -154,25 +148,26 @@ export function AdminTreatmentPlanDetailsPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6" dir="rtl">
-        <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-          <p className="mt-4 text-gray-600">جاري التحميل...</p>
-        </div>
-      </div>
+      <WsPage>
+        <WsHeader title="تفاصيل الخطة العلاجية" />
+        <WsBlock fill>
+          <WsEmpty loading>جاري التحميل...</WsEmpty>
+        </WsBlock>
+      </WsPage>
     )
   }
 
   if (error || !plan) {
     return (
-      <div className="space-y-6" dir="rtl">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-          <h3 className="text-lg font-medium text-red-800 mb-2">خطأ في تحميل الخطة</h3>
-          <button onClick={() => navigate('/admin/treatment-plans')} className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
-            العودة للقائمة
-          </button>
-        </div>
-      </div>
+      <WsPage>
+        <WsHeader
+          title="تفاصيل الخطة العلاجية"
+          actions={<WsBtn icon={ArrowRight} onClick={() => navigate('/admin/treatment-plans')}>العودة للقائمة</WsBtn>}
+        />
+        <WsBlock fill padded>
+          <WsAlert tone="error" boxed>خطأ في تحميل الخطة</WsAlert>
+        </WsBlock>
+      </WsPage>
     )
   }
 
@@ -180,391 +175,476 @@ export function AdminTreatmentPlanDetailsPage() {
   const achievedGoals = plan.goals?.filter(g => g.status === 'achieved').length || 0
   const followupsCount = plan.followups?.length || 0
   const evaluationsCount = plan.evaluations?.length || 0
+  const progress = goalsCount > 0 ? Math.round((achievedGoals / goalsCount) * 100) : 0
+
+  const statusMeta = PLAN_STATUS_META[plan.status as TreatmentPlanStatus] ?? PLAN_STATUS_META.draft
+  const problemMeta = PROBLEM_META[plan.problem_type as ProblemType] ?? PROBLEM_META.مختلطة
+
+  const tabs: Array<{ key: typeof activeTab; label: string; icon: LucideIcon; count: number | null }> = [
+    { key: 'overview', label: 'نظرة عامة', icon: FileText, count: null },
+    { key: 'goals', label: 'الأهداف', icon: Target, count: goalsCount },
+    { key: 'followups', label: 'المتابعات', icon: CalendarClock, count: followupsCount },
+    { key: 'evaluations', label: 'التقييمات', icon: BarChart3, count: evaluationsCount },
+  ]
 
   return (
-    <div className="space-y-6" dir="rtl">
-      {/* Header */}
-      <header className="bg-white rounded-xl shadow-sm p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-4">
-            <button onClick={() => navigate('/admin/treatment-plans')} className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <div>
-              <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-2xl font-bold text-gray-900">{plan.student?.name || `طالب #${plan.student_id}`}</h1>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium border ${STATUS_COLORS[plan.status]}`}>
-                  {STATUS_LABELS[plan.status]}
-                </span>
-              </div>
-              <p className="text-gray-500 text-sm">رقم الخطة: {(plan as any).plan_number || `TP-${plan.id}`}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <select value={plan.status} onChange={(e) => handleUpdateStatus(e.target.value as TreatmentPlanStatus)} className="px-4 py-2 border rounded-lg text-sm">
-              {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
-            <button onClick={handleDeletePlan} className="p-2 text-red-600 hover:bg-red-50 rounded-lg" title="حذف">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
-          </div>
-        </div>
+    <WsPage>
+      <WsHeader
+        title={plan.student?.name || `طالب #${plan.student_id}`}
+        badge={(plan as any).plan_number || `TP-${plan.id}`}
+        actions={
+          <>
+            <WsIconBtn icon={ArrowRight} label="العودة للقائمة" onClick={() => navigate('/admin/treatment-plans')} />
+            <WsField label="حالة الخطة">
+              <WsSelect value={plan.status} onChange={(e) => handleUpdateStatus(e.target.value as TreatmentPlanStatus)}>
+                {(Object.keys(PLAN_STATUS_META) as TreatmentPlanStatus[]).map((value) => (
+                  <option key={value} value={value}>{PLAN_STATUS_META[value].label}</option>
+                ))}
+              </WsSelect>
+            </WsField>
+            <WsBtn icon={Trash2} onClick={handleDeletePlan} style={{ color: TONES.red.tx }}>حذف</WsBtn>
+          </>
+        }
+        facts={
+          <>
+            <WsFact icon={problemMeta.icon} label="نوع المشكلة">
+              <span style={{ color: problemMeta.tone.tx }}>{plan.problem_type}</span>
+            </WsFact>
+            <WsFact icon={Target} label="الأهداف المحققة">
+              <span style={{ color: TONES.green.tx }}>{achievedGoals}/{goalsCount}</span>
+            </WsFact>
+            <WsFact icon={CalendarClock} label="متابعات">{followupsCount}</WsFact>
+            <WsFact icon={BarChart3} label="تقييمات">{evaluationsCount}</WsFact>
+            <WsFact icon={CalendarDays} label="البداية">{new Date(plan.start_date).toLocaleDateString('ar-SA')}</WsFact>
+            {plan.end_date && (
+              <WsFact icon={CalendarDays} label="النهاية">{new Date(plan.end_date).toLocaleDateString('ar-SA')}</WsFact>
+            )}
+          </>
+        }
+      >
+        <ToneChip tone={statusMeta.tone}>{statusMeta.label}</ToneChip>
+      </WsHeader>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-          <div className="bg-purple-50 rounded-lg p-4 text-center">
-            <p className="text-2xl font-bold text-purple-600">{plan.problem_type}</p>
-            <p className="text-xs text-purple-600 mt-1">نوع المشكلة</p>
-          </div>
-          <div className="bg-blue-50 rounded-lg p-4 text-center">
-            <p className="text-2xl font-bold text-blue-600">{achievedGoals}/{goalsCount}</p>
-            <p className="text-xs text-blue-600 mt-1">الأهداف المحققة</p>
-          </div>
-          <div className="bg-green-50 rounded-lg p-4 text-center">
-            <p className="text-2xl font-bold text-green-600">{followupsCount}</p>
-            <p className="text-xs text-green-600 mt-1">المتابعات</p>
-          </div>
-          <div className="bg-orange-50 rounded-lg p-4 text-center">
-            <p className="text-2xl font-bold text-orange-600">{evaluationsCount}</p>
-            <p className="text-xs text-orange-600 mt-1">التقييمات</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-6 mt-4 text-sm text-gray-600">
-          <span>البداية: {new Date(plan.start_date).toLocaleDateString('ar-SA')}</span>
-          {plan.end_date && <span>النهاية: {new Date(plan.end_date).toLocaleDateString('ar-SA')}</span>}
-        </div>
-      </header>
-
-      {/* Tabs */}
-      <div className="bg-white rounded-xl shadow-sm">
-        <div className="border-b border-gray-200">
-          <nav className="flex gap-1 p-2">
-            {[
-              { id: 'overview', label: 'نظرة عامة' },
-              { id: 'goals', label: `الأهداف (${goalsCount})` },
-              { id: 'followups', label: `المتابعات (${followupsCount})` },
-              { id: 'evaluations', label: `التقييمات (${evaluationsCount})` },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === tab.id ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-100'}`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        <div className="p-6">
-          {activeTab === 'overview' && (
-            <div className="space-y-6">
+      <WsLayout>
+        <WsSideCol side="start" title="لوحة التقدم" icon={Gauge} storageKey="ws:treatment-plan:sidecol">
+          <WsBlock padded>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <ProgressRing value={progress} size={64} stroke={6} title={`تقدم الأهداف: ${progress}%`} />
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">وصف المشكلة</h3>
-                <p className="text-gray-600 bg-gray-50 rounded-lg p-4">{plan.problem_description}</p>
+                <p style={{ margin: 0, fontWeight: 800, fontSize: 13 }}>تقدم الأهداف</p>
+                <p style={{ margin: '3px 0 0', fontSize: 11, color: 'var(--ws-text-2)' }}>
+                  تحقق {achievedGoals} من أصل {goalsCount} أهداف
+                </p>
+                <div style={{ marginTop: 6 }}>
+                  <DaysRemainingChip endDate={plan.end_date} />
+                </div>
               </div>
             </div>
-          )}
-
-          {activeTab === 'goals' && (
-            <div className="space-y-4">
-              {!plan.goals || plan.goals.length === 0 ? (
-                <div className="text-center py-12 bg-gray-50 rounded-lg">
-                  <p className="text-gray-500">لا توجد أهداف مسجلة</p>
-                </div>
-              ) : (
-                plan.goals.map((goal, index) => (
-                  <div key={goal.id} className="border border-gray-200 rounded-lg p-5 bg-white">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <span className="w-8 h-8 flex items-center justify-center bg-indigo-100 text-indigo-600 rounded-full text-sm font-bold">{index + 1}</span>
-                        <h4 className="font-semibold text-gray-900">{(goal as any).title || goal.goal}</h4>
-                      </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${GOAL_STATUS_COLORS[goal.status]}`}>
-                        {GOAL_STATUS_LABELS[goal.status]}
+            {plan.goals && plan.goals.length > 0 && (
+              <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--ws-hairline)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {plan.goals.map((goal, index) => {
+                  const goalMeta = GOAL_STATUS_META[goal.status as GoalStatus] ?? GOAL_STATUS_META.not_started
+                  return (
+                    <span key={goal.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: goalMeta.tone.tx }} />
+                      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={(goal as any).title || goal.goal}>
+                        {index + 1}. {(goal as any).title || goal.goal}
                       </span>
+                      <span style={{ fontSize: 10, color: goalMeta.tone.tx, fontWeight: 700, flexShrink: 0 }}>{goalMeta.label}</span>
+                    </span>
+                  )
+                })}
+              </div>
+            )}
+          </WsBlock>
+
+          <WsBlock title="بيانات الخطة" icon={FileText} padded>
+            <WsFactsList>
+              <WsFactRow label="الطالب">
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <InitialAvatar name={plan.student?.name || 'ط'} tone={problemMeta.tone} size={20} />
+                  {plan.student?.name || `طالب #${plan.student_id}`}
+                </span>
+              </WsFactRow>
+              <WsFactRow label="نوع المشكلة"><ToneChip tone={problemMeta.tone}>{plan.problem_type}</ToneChip></WsFactRow>
+              <WsFactRow label="الحالة"><ToneChip tone={statusMeta.tone}>{statusMeta.label}</ToneChip></WsFactRow>
+              <WsFactRow label="تاريخ البدء">{new Date(plan.start_date).toLocaleDateString('ar-SA')}</WsFactRow>
+              {plan.end_date && (
+                <WsFactRow label="النهاية المتوقعة">{new Date(plan.end_date).toLocaleDateString('ar-SA')}</WsFactRow>
+              )}
+            </WsFactsList>
+          </WsBlock>
+
+          <WsBlock title="لماذا المتابعات والتقييمات؟" icon={Lightbulb} padded fill>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 11, lineHeight: 1.8 }}>
+              <div style={{ background: TONES.sky.bg, border: `1px solid ${TONES.sky.bd}`, borderRadius: 8, padding: '8px 10px', color: TONES.sky.tx }}>
+                <b>المتابعات:</b> توثيق التقدم الدوري، رصد التغيرات السلوكية والأكاديمية، تحديد العوائق مبكراً، وتعديل الخطة حسب الحاجة.
+              </div>
+              <div style={{ background: TONES.purple.bg, border: `1px solid ${TONES.purple.bd}`, borderRadius: 8, padding: '8px 10px', color: TONES.purple.tx }}>
+                <b>التقييمات:</b> قياس فعالية الخطة، تحديد نسبة تحقق الأهداف، توثيق نقاط القوة ومجالات التحسين، واتخاذ قرارات مبنية على بيانات.
+              </div>
+            </div>
+          </WsBlock>
+        </WsSideCol>
+
+        <WsMain>
+          <div className="ws-block ws-block--fill">
+            <div className="ws-block__head">
+              <div className="ws-seg">
+                {tabs.map((tab) => {
+                  const TabIcon = tab.icon
+                  return (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      className={`ws-seg__btn ${activeTab === tab.key ? 'is-active' : ''}`}
+                      onClick={() => setActiveTab(tab.key)}
+                    >
+                      <TabIcon style={{ width: 13, height: 13 }} />
+                      {tab.label}
+                      {tab.count != null && <span className="ws-count">{tab.count}</span>}
+                    </button>
+                  )
+                })}
+              </div>
+              <span className="ws-block__tools">
+                {activeTab === 'followups' && (
+                  <WsBtn
+                    size="sm"
+                    variant={showFollowupForm ? undefined : 'primary'}
+                    icon={showFollowupForm ? X : Plus}
+                    onClick={() => setShowFollowupForm(!showFollowupForm)}
+                  >
+                    {showFollowupForm ? 'إلغاء' : 'إضافة متابعة'}
+                  </WsBtn>
+                )}
+                {activeTab === 'evaluations' && (
+                  <WsBtn
+                    size="sm"
+                    variant={showEvaluationForm ? undefined : 'primary'}
+                    icon={showEvaluationForm ? X : Plus}
+                    onClick={() => setShowEvaluationForm(!showEvaluationForm)}
+                  >
+                    {showEvaluationForm ? 'إلغاء' : 'إضافة تقييم'}
+                  </WsBtn>
+                )}
+              </span>
+            </div>
+
+            <div className="ws-block__scroll">
+              <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {activeTab === 'overview' && (
+                  <div>
+                    <p className="ws-label" style={{ marginBottom: 6 }}>وصف المشكلة</p>
+                    <div style={{ background: 'var(--ws-surface-2)', border: '1px solid var(--ws-hairline)', borderRadius: 10, padding: 14 }}>
+                      <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.9, whiteSpace: 'pre-wrap' }}>{plan.problem_description}</p>
                     </div>
-                    <div className="bg-gray-50 rounded-lg p-3 mb-3">
-                      <p className="text-sm"><span className="font-medium">معايير النجاح: </span>{(goal as any).success_criteria || goal.measurable_criteria}</p>
-                    </div>
-                    {goal.interventions && goal.interventions.length > 0 && (
-                      <div className="mt-4">
-                        <p className="text-sm font-medium text-gray-700 mb-2">التدخلات ({goal.interventions.length})</p>
-                        <div className="space-y-2">
-                          {goal.interventions.map((intervention) => (
-                            <div key={intervention.id} className="flex items-start gap-2 text-sm bg-indigo-50 rounded-lg p-3">
-                              <span className="px-2 py-0.5 bg-indigo-200 text-indigo-800 rounded text-xs font-medium">{(intervention as any).category || intervention.intervention_type}</span>
-                              <span className="text-gray-700">{(intervention as any).title || intervention.description}</span>
+                  </div>
+                )}
+
+                {activeTab === 'goals' && (
+                  !plan.goals || plan.goals.length === 0 ? (
+                    <WsEmpty icon={Target}>لا توجد أهداف مسجلة</WsEmpty>
+                  ) : (
+                    plan.goals.map((goal, index) => {
+                      const goalMeta = GOAL_STATUS_META[goal.status as GoalStatus] ?? GOAL_STATUS_META.not_started
+                      return (
+                        <div key={goal.id} style={{ border: '1px solid var(--ws-border)', borderRadius: 10, padding: 12 }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                              <span
+                                style={{
+                                  width: 24,
+                                  height: 24,
+                                  borderRadius: '50%',
+                                  flexShrink: 0,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: 11,
+                                  fontWeight: 800,
+                                  background: goalMeta.tone.bg,
+                                  color: goalMeta.tone.tx,
+                                  border: `1px solid ${goalMeta.tone.bd}`,
+                                }}
+                              >
+                                {index + 1}
+                              </span>
+                              <span style={{ fontWeight: 700, fontSize: 12.5 }}>{(goal as any).title || goal.goal}</span>
                             </div>
-                          ))}
+                            <ToneChip tone={goalMeta.tone}>{goalMeta.label}</ToneChip>
+                          </div>
+                          <div style={{ background: 'var(--ws-surface-2)', borderRadius: 8, padding: '8px 10px', margin: '8px 0 0', fontSize: 11.5 }}>
+                            <b>معايير النجاح: </b>
+                            {(goal as any).success_criteria || goal.measurable_criteria}
+                          </div>
+                          {goal.interventions && goal.interventions.length > 0 && (
+                            <div style={{ marginTop: 8 }}>
+                              <p className="ws-label" style={{ marginBottom: 6 }}>التدخلات ({goal.interventions.length})</p>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                {goal.interventions.map((intervention) => (
+                                  <div
+                                    key={intervention.id}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'flex-start',
+                                      gap: 6,
+                                      fontSize: 11.5,
+                                      background: TONES.sky.bg,
+                                      border: `1px solid ${TONES.sky.bd}`,
+                                      borderRadius: 8,
+                                      padding: '7px 10px',
+                                    }}
+                                  >
+                                    <span className="ws-chip" style={{ background: 'var(--ws-surface)', color: TONES.sky.tx, borderColor: TONES.sky.bd, flexShrink: 0 }}>
+                                      {(intervention as any).category || intervention.intervention_type}
+                                    </span>
+                                    <span style={{ color: TONES.sky.tx }}>{(intervention as any).title || intervention.description}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })
+                  )
+                )}
+
+                {activeTab === 'followups' && (
+                  <>
+                    {showFollowupForm && (
+                      <div
+                        style={{
+                          background: 'var(--ws-surface-2)',
+                          border: '1px solid var(--ws-hairline)',
+                          borderRadius: 10,
+                          padding: 12,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 10,
+                        }}
+                      >
+                        <p style={{ margin: 0, fontWeight: 800, fontSize: 12.5 }}>إضافة متابعة جديدة</p>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+                          <WsField label="تاريخ المتابعة *">
+                            <WsInput type="date" value={followupData.followup_date} onChange={(e) => setFollowupData({ ...followupData, followup_date: e.target.value })} />
+                          </WsField>
+                          <WsField label="نوع المتابعة">
+                            <WsSelect value={followupData.type} onChange={(e) => setFollowupData({ ...followupData, type: e.target.value })}>
+                              <option value="ملاحظة">ملاحظة</option>
+                              <option value="جلسة">جلسة</option>
+                              <option value="اتصال">اتصال</option>
+                              <option value="زيارة">زيارة</option>
+                              <option value="تقرير">تقرير</option>
+                            </WsSelect>
+                          </WsField>
+                          <WsField label="تقدم الطالب">
+                            <WsSelect value={followupData.student_progress ?? ''} onChange={(e) => setFollowupData({ ...followupData, student_progress: e.target.value || undefined })}>
+                              <option value="">-- اختر --</option>
+                              <option value="ممتاز">ممتاز</option>
+                              <option value="جيد">جيد</option>
+                              <option value="متوسط">متوسط</option>
+                              <option value="ضعيف">ضعيف</option>
+                              <option value="لا يوجد تقدم">لا يوجد تقدم</option>
+                            </WsSelect>
+                          </WsField>
+                        </div>
+                        <WsField label="ملاحظات المتابعة *">
+                          <WsTextarea value={followupData.notes} onChange={(e) => setFollowupData({ ...followupData, notes: e.target.value })} rows={3} placeholder="اكتب ملاحظات المتابعة..." />
+                        </WsField>
+                        <WsField label="التوصيات">
+                          <WsTextarea value={followupData.recommendations} onChange={(e) => setFollowupData({ ...followupData, recommendations: e.target.value })} rows={2} placeholder="التوصيات..." />
+                        </WsField>
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                          <WsBtn onClick={() => setShowFollowupForm(false)}>إلغاء</WsBtn>
+                          <WsBtn variant="primary" icon={Plus} onClick={handleAddFollowup} disabled={addFollowup.isPending}>
+                            {addFollowup.isPending ? 'جاري الحفظ...' : 'حفظ المتابعة'}
+                          </WsBtn>
                         </div>
                       </div>
                     )}
-                  </div>
-                ))
-              )}
-            </div>
-          )}
 
-          {activeTab === 'followups' && (
-            <div className="space-y-4">
-              <div className="flex justify-end">
-                <button onClick={() => setShowFollowupForm(!showFollowupForm)} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  إضافة متابعة
-                </button>
+                    {!plan.followups || plan.followups.length === 0 ? (
+                      <WsEmpty icon={CalendarClock}>لا توجد متابعات مسجلة</WsEmpty>
+                    ) : (
+                      plan.followups.map((followup) => (
+                        <div key={followup.id} style={{ border: '1px solid var(--ws-border)', borderRadius: 10, padding: 12 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                            <span
+                              style={{
+                                width: 30,
+                                height: 30,
+                                borderRadius: 8,
+                                flexShrink: 0,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: TONES.green.bg,
+                                color: TONES.green.tx,
+                                border: `1px solid ${TONES.green.bd}`,
+                              }}
+                            >
+                              <CalendarClock style={{ width: 14, height: 14 }} />
+                            </span>
+                            <div>
+                              <p style={{ margin: 0, fontWeight: 700, fontSize: 12.5 }}>
+                                {new Date(followup.followup_date).toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                              </p>
+                              {followup.type && <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>نوع: {followup.type}</span>}
+                            </div>
+                          </div>
+                          <p style={{ margin: '0 0 8px', fontSize: 12, lineHeight: 1.8 }}>{followup.notes}</p>
+                          {followup.student_progress && (
+                            <div style={{ background: TONES.sky.bg, border: `1px solid ${TONES.sky.bd}`, borderRadius: 8, padding: '7px 10px', marginBottom: 6, fontSize: 11.5, color: TONES.sky.tx }}>
+                              <b>تقدم الطالب: </b>{followup.student_progress}
+                            </div>
+                          )}
+                          {followup.recommendations && (
+                            <div style={{ background: TONES.amber.bg, border: `1px solid ${TONES.amber.bd}`, borderRadius: 8, padding: '7px 10px', fontSize: 11.5, color: TONES.amber.tx }}>
+                              <b>التوصيات: </b>{followup.recommendations}
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </>
+                )}
+
+                {activeTab === 'evaluations' && (
+                  <>
+                    {showEvaluationForm && (
+                      <div
+                        style={{
+                          background: 'var(--ws-surface-2)',
+                          border: '1px solid var(--ws-hairline)',
+                          borderRadius: 10,
+                          padding: 12,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 10,
+                        }}
+                      >
+                        <p style={{ margin: 0, fontWeight: 800, fontSize: 12.5 }}>إضافة تقييم جديد</p>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+                          <WsField label="تاريخ التقييم *">
+                            <WsInput type="date" value={evaluationData.evaluation_date} onChange={(e) => setEvaluationData({ ...evaluationData, evaluation_date: e.target.value })} />
+                          </WsField>
+                          <WsField label="نوع التقييم">
+                            <WsSelect value={evaluationData.evaluation_type} onChange={(e) => setEvaluationData({ ...evaluationData, evaluation_type: e.target.value })}>
+                              <option value="دوري">دوري</option>
+                              <option value="ختامي">ختامي</option>
+                              <option value="مرحلي">مرحلي</option>
+                            </WsSelect>
+                          </WsField>
+                          <WsField label="نسبة التقدم %">
+                            <WsInput type="number" min="0" max="100" value={evaluationData.overall_progress_percentage} onChange={(e) => setEvaluationData({ ...evaluationData, overall_progress_percentage: Number(e.target.value) })} />
+                          </WsField>
+                          <WsField label="فعالية الخطة">
+                            <WsSelect value={evaluationData.overall_effectiveness} onChange={(e) => setEvaluationData({ ...evaluationData, overall_effectiveness: e.target.value })}>
+                              <option value="">اختر...</option>
+                              {EFFECTIVENESS_META.map(opt => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
+                            </WsSelect>
+                          </WsField>
+                        </div>
+                        <WsField label="أهم النتائج">
+                          <WsTextarea value={evaluationData.key_findings} onChange={(e) => setEvaluationData({ ...evaluationData, key_findings: e.target.value })} rows={2} placeholder="اكتب أهم النتائج..." />
+                        </WsField>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+                          <WsField label="نقاط القوة">
+                            <WsTextarea value={evaluationData.student_strengths} onChange={(e) => setEvaluationData({ ...evaluationData, student_strengths: e.target.value })} rows={2} placeholder="نقاط القوة..." />
+                          </WsField>
+                          <WsField label="مجالات التحسين">
+                            <WsTextarea value={evaluationData.areas_for_improvement} onChange={(e) => setEvaluationData({ ...evaluationData, areas_for_improvement: e.target.value })} rows={2} placeholder="مجالات التحسين..." />
+                          </WsField>
+                        </div>
+                        <WsField label="التوصيات">
+                          <WsTextarea value={evaluationData.recommendations} onChange={(e) => setEvaluationData({ ...evaluationData, recommendations: e.target.value })} rows={2} placeholder="التوصيات..." />
+                        </WsField>
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                          <WsBtn onClick={() => setShowEvaluationForm(false)}>إلغاء</WsBtn>
+                          <WsBtn variant="primary" icon={Plus} onClick={handleAddEvaluation} disabled={addEvaluation.isPending}>
+                            {addEvaluation.isPending ? 'جاري الحفظ...' : 'حفظ التقييم'}
+                          </WsBtn>
+                        </div>
+                      </div>
+                    )}
+
+                    {!plan.evaluations || plan.evaluations.length === 0 ? (
+                      <WsEmpty icon={BarChart3}>لا توجد تقييمات مسجلة</WsEmpty>
+                    ) : (
+                      plan.evaluations.map((evaluation) => {
+                        const effectiveness = EFFECTIVENESS_META.find(o => o.value === evaluation.overall_effectiveness)
+                        return (
+                          <div key={evaluation.id} style={{ border: '1px solid var(--ws-border)', borderRadius: 10, padding: 12 }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span
+                                  style={{
+                                    width: 30,
+                                    height: 30,
+                                    borderRadius: 8,
+                                    flexShrink: 0,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    background: TONES.purple.bg,
+                                    color: TONES.purple.tx,
+                                    border: `1px solid ${TONES.purple.bd}`,
+                                  }}
+                                >
+                                  <BarChart3 style={{ width: 14, height: 14 }} />
+                                </span>
+                                <div>
+                                  <p style={{ margin: 0, fontWeight: 700, fontSize: 12.5 }}>
+                                    {new Date(evaluation.evaluation_date).toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                  </p>
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                                    {evaluation.evaluation_type && <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>نوع: {evaluation.evaluation_type}</span>}
+                                    {effectiveness && <ToneChip tone={effectiveness.tone}>{effectiveness.label}</ToneChip>}
+                                    {!effectiveness && evaluation.overall_effectiveness && (
+                                      <ToneChip tone={TONES.gray}>{evaluation.overall_effectiveness}</ToneChip>
+                                    )}
+                                  </span>
+                                </div>
+                              </div>
+                              {evaluation.overall_progress_percentage !== undefined && (
+                                <ProgressRing value={evaluation.overall_progress_percentage} size={44} title="نسبة التقدم" />
+                              )}
+                            </div>
+                            {evaluation.key_findings && (
+                              <div style={{ background: 'var(--ws-surface-2)', borderRadius: 8, padding: '7px 10px', marginBottom: 6, fontSize: 11.5 }}>
+                                <b>أهم النتائج: </b>{evaluation.key_findings}
+                              </div>
+                            )}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 6 }}>
+                              {evaluation.student_strengths && (
+                                <div style={{ background: TONES.green.bg, border: `1px solid ${TONES.green.bd}`, borderRadius: 8, padding: '7px 10px', fontSize: 11.5, color: TONES.green.tx }}>
+                                  <b>نقاط القوة: </b>{evaluation.student_strengths}
+                                </div>
+                              )}
+                              {evaluation.areas_for_improvement && (
+                                <div style={{ background: TONES.amber.bg, border: `1px solid ${TONES.amber.bd}`, borderRadius: 8, padding: '7px 10px', fontSize: 11.5, color: TONES.amber.tx }}>
+                                  <b>مجالات التحسين: </b>{evaluation.areas_for_improvement}
+                                </div>
+                              )}
+                            </div>
+                            {evaluation.recommendations && (
+                              <div style={{ background: TONES.sky.bg, border: `1px solid ${TONES.sky.bd}`, borderRadius: 8, padding: '7px 10px', marginTop: 6, fontSize: 11.5, color: TONES.sky.tx }}>
+                                <b>التوصيات: </b>{evaluation.recommendations}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })
+                    )}
+                  </>
+                )}
               </div>
-
-              {showFollowupForm && (
-                <div className="bg-indigo-50 rounded-xl p-6 space-y-4">
-                  <h3 className="font-semibold text-gray-900">إضافة متابعة جديدة</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">تاريخ المتابعة *</label>
-                      <input type="date" value={followupData.followup_date} onChange={(e) => setFollowupData({ ...followupData, followup_date: e.target.value })} className="w-full px-4 py-2 border rounded-lg" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">نوع المتابعة</label>
-                      <select value={followupData.type} onChange={(e) => setFollowupData({ ...followupData, type: e.target.value })} className="w-full px-4 py-2 border rounded-lg">
-                        <option value="ملاحظة">ملاحظة</option>
-                        <option value="جلسة">جلسة</option>
-                        <option value="اتصال">اتصال</option>
-                        <option value="زيارة">زيارة</option>
-                        <option value="تقرير">تقرير</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">ملاحظات المتابعة *</label>
-                    <textarea value={followupData.notes} onChange={(e) => setFollowupData({ ...followupData, notes: e.target.value })} rows={3} className="w-full px-4 py-2 border rounded-lg resize-none" placeholder="اكتب ملاحظات المتابعة..." />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">تقدم الطالب</label>
-                    <select value={followupData.student_progress ?? ''} onChange={(e) => setFollowupData({ ...followupData, student_progress: e.target.value || undefined })} className="w-full px-4 py-2 border rounded-lg">
-                      <option value="">-- اختر --</option>
-                      <option value="ممتاز">ممتاز</option>
-                      <option value="جيد">جيد</option>
-                      <option value="متوسط">متوسط</option>
-                      <option value="ضعيف">ضعيف</option>
-                      <option value="لا يوجد تقدم">لا يوجد تقدم</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">التوصيات</label>
-                    <textarea value={followupData.recommendations} onChange={(e) => setFollowupData({ ...followupData, recommendations: e.target.value })} rows={2} className="w-full px-4 py-2 border rounded-lg resize-none" placeholder="التوصيات..." />
-                  </div>
-                  <div className="flex gap-3 justify-end">
-                    <button onClick={() => setShowFollowupForm(false)} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg">إلغاء</button>
-                    <button onClick={handleAddFollowup} disabled={addFollowup.isPending} className="px-6 py-2 bg-indigo-600 text-white rounded-lg disabled:opacity-50">
-                      {addFollowup.isPending ? 'جاري الحفظ...' : 'حفظ المتابعة'}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {!plan.followups || plan.followups.length === 0 ? (
-                <div className="text-center py-12 bg-gray-50 rounded-lg">
-                  <p className="text-gray-500">لا توجد متابعات مسجلة</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {plan.followups.map((followup) => (
-                    <div key={followup.id} className="border border-gray-200 rounded-lg p-5 bg-white">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900">{new Date(followup.followup_date).toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                            {followup.type && <span className="text-xs text-gray-500">نوع: {followup.type}</span>}
-                          </div>
-                        </div>
-                      </div>
-                      <p className="text-gray-700 mb-3">{followup.notes}</p>
-                      {followup.student_progress && (
-                        <div className="bg-blue-50 rounded-lg p-3 mb-2">
-                          <p className="text-sm"><span className="font-medium text-blue-700">تقدم الطالب: </span>{followup.student_progress}</p>
-                        </div>
-                      )}
-                      {followup.recommendations && (
-                        <div className="bg-yellow-50 rounded-lg p-3">
-                          <p className="text-sm"><span className="font-medium text-yellow-700">التوصيات: </span>{followup.recommendations}</p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
-          )}
-
-          {activeTab === 'evaluations' && (
-            <div className="space-y-4">
-              <div className="flex justify-end">
-                <button onClick={() => setShowEvaluationForm(!showEvaluationForm)} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  إضافة تقييم
-                </button>
-              </div>
-
-              {showEvaluationForm && (
-                <div className="bg-orange-50 rounded-xl p-6 space-y-4">
-                  <h3 className="font-semibold text-gray-900">إضافة تقييم جديد</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">تاريخ التقييم *</label>
-                      <input type="date" value={evaluationData.evaluation_date} onChange={(e) => setEvaluationData({ ...evaluationData, evaluation_date: e.target.value })} className="w-full px-4 py-2 border rounded-lg" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">نوع التقييم</label>
-                      <select value={evaluationData.evaluation_type} onChange={(e) => setEvaluationData({ ...evaluationData, evaluation_type: e.target.value })} className="w-full px-4 py-2 border rounded-lg">
-                        <option value="دوري">دوري</option>
-                        <option value="ختامي">ختامي</option>
-                        <option value="مرحلي">مرحلي</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">نسبة التقدم %</label>
-                      <input type="number" min="0" max="100" value={evaluationData.overall_progress_percentage} onChange={(e) => setEvaluationData({ ...evaluationData, overall_progress_percentage: Number(e.target.value) })} className="w-full px-4 py-2 border rounded-lg" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">فعالية الخطة</label>
-                    <select value={evaluationData.overall_effectiveness} onChange={(e) => setEvaluationData({ ...evaluationData, overall_effectiveness: e.target.value })} className="w-full px-4 py-2 border rounded-lg">
-                      <option value="">اختر...</option>
-                      {EFFECTIVENESS_OPTIONS.map(opt => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">أهم النتائج</label>
-                    <textarea value={evaluationData.key_findings} onChange={(e) => setEvaluationData({ ...evaluationData, key_findings: e.target.value })} rows={2} className="w-full px-4 py-2 border rounded-lg resize-none" placeholder="اكتب أهم النتائج..." />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">نقاط القوة</label>
-                      <textarea value={evaluationData.student_strengths} onChange={(e) => setEvaluationData({ ...evaluationData, student_strengths: e.target.value })} rows={2} className="w-full px-4 py-2 border rounded-lg resize-none" placeholder="نقاط القوة..." />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">مجالات التحسين</label>
-                      <textarea value={evaluationData.areas_for_improvement} onChange={(e) => setEvaluationData({ ...evaluationData, areas_for_improvement: e.target.value })} rows={2} className="w-full px-4 py-2 border rounded-lg resize-none" placeholder="مجالات التحسين..." />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">التوصيات</label>
-                    <textarea value={evaluationData.recommendations} onChange={(e) => setEvaluationData({ ...evaluationData, recommendations: e.target.value })} rows={2} className="w-full px-4 py-2 border rounded-lg resize-none" placeholder="التوصيات..." />
-                  </div>
-                  <div className="flex gap-3 justify-end">
-                    <button onClick={() => setShowEvaluationForm(false)} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg">إلغاء</button>
-                    <button onClick={handleAddEvaluation} disabled={addEvaluation.isPending} className="px-6 py-2 bg-indigo-600 text-white rounded-lg disabled:opacity-50">
-                      {addEvaluation.isPending ? 'جاري الحفظ...' : 'حفظ التقييم'}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {!plan.evaluations || plan.evaluations.length === 0 ? (
-                <div className="text-center py-12 bg-gray-50 rounded-lg">
-                  <p className="text-gray-500">لا توجد تقييمات مسجلة</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {plan.evaluations.map((evaluation) => (
-                    <div key={evaluation.id} className="border border-gray-200 rounded-lg p-5 bg-white">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                            <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                            </svg>
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900">{new Date(evaluation.evaluation_date).toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                            {evaluation.evaluation_type && <span className="text-xs text-gray-500">نوع: {evaluation.evaluation_type}</span>}
-                          </div>
-                        </div>
-                        {evaluation.overall_progress_percentage !== undefined && (
-                          <div className="text-center">
-                            <div className="text-2xl font-bold text-indigo-600">{evaluation.overall_progress_percentage}%</div>
-                            <p className="text-xs text-gray-500">نسبة التقدم</p>
-                          </div>
-                        )}
-                      </div>
-                      {evaluation.overall_effectiveness && (
-                        <div className="mb-3">
-                          <span className={`px-3 py-1 rounded-full text-sm font-medium bg-gray-100 ${EFFECTIVENESS_OPTIONS.find(o => o.value === evaluation.overall_effectiveness)?.color || 'text-gray-600'}`}>
-                            {EFFECTIVENESS_OPTIONS.find(o => o.value === evaluation.overall_effectiveness)?.label || evaluation.overall_effectiveness}
-                          </span>
-                        </div>
-                      )}
-                      {evaluation.key_findings && (
-                        <div className="bg-gray-50 rounded-lg p-3 mb-3">
-                          <p className="text-sm"><span className="font-medium">أهم النتائج: </span>{evaluation.key_findings}</p>
-                        </div>
-                      )}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {evaluation.student_strengths && (
-                          <div className="bg-green-50 rounded-lg p-3">
-                            <p className="text-sm"><span className="font-medium text-green-700">نقاط القوة: </span>{evaluation.student_strengths}</p>
-                          </div>
-                        )}
-                        {evaluation.areas_for_improvement && (
-                          <div className="bg-yellow-50 rounded-lg p-3">
-                            <p className="text-sm"><span className="font-medium text-yellow-700">مجالات التحسين: </span>{evaluation.areas_for_improvement}</p>
-                          </div>
-                        )}
-                      </div>
-                      {evaluation.recommendations && (
-                        <div className="bg-blue-50 rounded-lg p-3 mt-3">
-                          <p className="text-sm"><span className="font-medium text-blue-700">التوصيات: </span>{evaluation.recommendations}</p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Benefits Info */}
-      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 border border-indigo-100">
-        <h3 className="font-semibold text-indigo-900 mb-3">💡 فوائد المتابعات والتقييمات</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div>
-            <h4 className="font-medium text-indigo-800 mb-2">📋 المتابعات:</h4>
-            <ul className="space-y-1 text-indigo-700">
-              <li>• توثيق التقدم الدوري للطالب</li>
-              <li>• رصد التغيرات السلوكية والأكاديمية</li>
-              <li>• تحديد العوائق والتحديات مبكراً</li>
-              <li>• تعديل الخطة حسب الحاجة</li>
-            </ul>
           </div>
-          <div>
-            <h4 className="font-medium text-purple-800 mb-2">📊 التقييمات:</h4>
-            <ul className="space-y-1 text-purple-700">
-              <li>• قياس فعالية الخطة العلاجية</li>
-              <li>• تحديد نسبة تحقق الأهداف</li>
-              <li>• توثيق نقاط القوة ومجالات التحسين</li>
-              <li>• اتخاذ قرارات مبنية على بيانات</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </div>
+        </WsMain>
+      </WsLayout>
+    </WsPage>
   )
 }

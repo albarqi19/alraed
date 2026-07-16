@@ -41,6 +41,7 @@ const WORKSPACE_ROUTES = [
   '/admin/sms-gateway',
   '/admin/schedules',
   '/admin/student-cases',
+  '/admin/treatment-plans',
 ]
 
 export function AdminShell() {
