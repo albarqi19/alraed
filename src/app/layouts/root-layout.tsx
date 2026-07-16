@@ -19,6 +19,7 @@ export function RootLayout() {
   const isAppShellRoute = APP_SHELL_PREFIXES.some((prefix) =>
     location.pathname.startsWith(prefix),
   )
+  const isLandingRoute = ['/', '/landing-v2', '/landing-v3', '/landing-v4', '/story'].includes(location.pathname)
   const isFullscreenRoute = FULLSCREEN_ROUTES.includes(location.pathname) ||
     FULLSCREEN_PREFIXES.some((prefix) => location.pathname.startsWith(prefix))
   const isGuardianPortal = GUARDIAN_PORTAL_PREFIXES.some((prefix) =>
@@ -26,9 +27,13 @@ export function RootLayout() {
   )
   const isNoHeaderRoute = NO_HEADER_ROUTES.includes(location.pathname)
 
-  // Guardian portal and fullscreen routes render directly without any wrapper
-  if (isFullscreenRoute || isGuardianPortal) {
-    return <Outlet />
+  if (isFullscreenRoute || isGuardianPortal || isLandingRoute) {
+    return (
+      <>
+        <Outlet />
+        {isLandingRoute ? <GlobalWhatsappWidget /> : null}
+      </>
+    )
   }
 
   return (
