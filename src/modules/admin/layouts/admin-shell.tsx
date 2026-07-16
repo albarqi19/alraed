@@ -28,6 +28,11 @@ const WORKSPACE_ROUTES = [
   '/admin/duty-rosters',
   '/admin/teacher-standby',
   '/admin/teacher-schedules',
+  '/admin/students',
+  '/admin/students/profile',
+  '/admin/evaluation-settings',
+  '/admin/class-sessions',
+  '/admin/class-schedules',
 ]
 
 export function AdminShell() {

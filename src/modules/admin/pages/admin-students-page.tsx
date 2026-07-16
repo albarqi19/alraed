@@ -9,6 +9,33 @@ import {
 } from '../hooks'
 import type { StudentRecord } from '../types'
 import { useToast } from '@/shared/feedback/use-toast'
+import {
+  AlertTriangle,
+  GraduationCap,
+  Layers,
+  Pencil,
+  Plus,
+  RefreshCcw,
+  Trash2,
+  Users,
+} from 'lucide-react'
+import {
+  WsBlock,
+  WsBtn,
+  WsChip,
+  WsEmpty,
+  WsFact,
+  WsField,
+  WsHeader,
+  WsInput,
+  WsLayout,
+  WsMain,
+  WsPage,
+  WsSelect,
+  WsSideCol,
+  WsTable,
+  WsToolbar,
+} from '@/shared/workspace'
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const
 
@@ -166,168 +193,129 @@ function StudentFormDialog({
 
   if (!open) return null
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" role="dialog">
-      <div className="relative w-full max-w-2xl rounded-3xl bg-white p-6 shadow-xl">
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute left-5 top-5 text-sm font-semibold text-slate-400 transition hover:text-slate-600"
-          disabled={isSubmitting}
-        >
-          إغلاق
-        </button>
+  const fieldError = (key: keyof StudentFormValues) =>
+    errors[key] ? (
+      <span style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--ws-red)' }}>{errors[key]}</span>
+    ) : null
 
-        <header className="mb-6 space-y-1 text-right">
-          <p className="text-xs font-semibold uppercase tracking-widest text-teal-600">{student ? 'تعديل الطالب' : 'إضافة طالب'} </p>
-          <h2 className="text-2xl font-bold text-slate-900">{student ? `تحديث بيانات ${student.name}` : 'إضافة طالب جديد'}</h2>
-          <p className="text-sm text-muted">أدخل معلومات الطالب الأكاديمية وبيانات ولي الأمر لمتابعة التواصل.</p>
+  return (
+    <div className="ws-modal" role="dialog" aria-modal onClick={isSubmitting ? undefined : onClose}>
+      <div className="ws-modal__panel" style={{ maxWidth: 620 }} onClick={(event) => event.stopPropagation()}>
+        <header className="ws-modal__head">
+          <h3 className="ws-modal__title">{student ? `تحديث بيانات ${student.name}` : 'إضافة طالب جديد'}</h3>
+          <p className="ws-modal__sub">أدخل معلومات الطالب الأكاديمية وبيانات ولي الأمر لمتابعة التواصل.</p>
         </header>
 
-        <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSubmit} noValidate>
-          <div className="col-span-2 grid gap-2 text-right">
-            <label htmlFor="student-name" className="text-sm font-medium text-slate-800">
-              اسم الطالب
-            </label>
-            <input
-              id="student-name"
-              name="name"
-              type="text"
-              value={values.name}
-              onChange={(event) => setValues((prev) => ({ ...prev, name: event.target.value }))}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-              disabled={isSubmitting}
-              placeholder="مثال: محمد أحمد"
-              autoFocus
-            />
-            {errors.name ? <span className="text-xs font-medium text-rose-600">{errors.name}</span> : null}
+        <form onSubmit={handleSubmit} noValidate>
+          <div className="ws-modal__body">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <WsField label="اسم الطالب" htmlFor="student-name" style={{ gridColumn: '1 / -1' }}>
+                <WsInput
+                  id="student-name"
+                  name="name"
+                  type="text"
+                  value={values.name}
+                  onChange={(event) => setValues((prev) => ({ ...prev, name: event.target.value }))}
+                  disabled={isSubmitting}
+                  placeholder="مثال: محمد أحمد"
+                  autoFocus
+                />
+                {fieldError('name')}
+              </WsField>
+
+              <WsField label="رقم الهوية" htmlFor="student-national-id">
+                <WsInput
+                  id="student-national-id"
+                  name="national_id"
+                  type="text"
+                  inputMode="numeric"
+                  value={values.national_id}
+                  onChange={(event) => setValues((prev) => ({ ...prev, national_id: event.target.value }))}
+                  disabled={isSubmitting}
+                  placeholder="10 أرقام"
+                />
+                {fieldError('national_id')}
+              </WsField>
+
+              <WsField label="الصف الدراسي" htmlFor="student-grade">
+                <WsInput
+                  id="student-grade"
+                  name="grade"
+                  type="text"
+                  list="student-grade-options"
+                  value={values.grade}
+                  onChange={(event) => setValues((prev) => ({ ...prev, grade: event.target.value, class_name: '' }))}
+                  disabled={isSubmitting}
+                  placeholder="مثال: الصف الأول"
+                />
+                <datalist id="student-grade-options">
+                  {gradeOptions.map((grade) => (
+                    <option key={grade} value={grade} />
+                  ))}
+                </datalist>
+                {fieldError('grade')}
+              </WsField>
+
+              <WsField label="الشعبة" htmlFor="student-class-name">
+                <WsInput
+                  id="student-class-name"
+                  name="class_name"
+                  type="text"
+                  list="student-class-options"
+                  value={values.class_name}
+                  onChange={(event) => setValues((prev) => ({ ...prev, class_name: event.target.value }))}
+                  disabled={isSubmitting}
+                  placeholder="مثال: أ"
+                />
+                <datalist id="student-class-options">
+                  {availableClasses.map((className) => (
+                    <option key={className} value={className} />
+                  ))}
+                </datalist>
+                {fieldError('class_name')}
+              </WsField>
+
+              <WsField label="اسم ولي الأمر *" htmlFor="student-parent-name">
+                <WsInput
+                  id="student-parent-name"
+                  name="parent_name"
+                  type="text"
+                  value={values.parent_name}
+                  onChange={(event) => setValues((prev) => ({ ...prev, parent_name: event.target.value }))}
+                  disabled={isSubmitting}
+                  placeholder="اسم ولي الأمر"
+                  required
+                />
+                {fieldError('parent_name')}
+              </WsField>
+
+              <WsField label="رقم جوال ولي الأمر *" htmlFor="student-parent-phone">
+                <WsInput
+                  id="student-parent-phone"
+                  name="parent_phone"
+                  type="tel"
+                  inputMode="tel"
+                  value={values.parent_phone}
+                  onChange={(event) => setValues((prev) => ({ ...prev, parent_phone: event.target.value }))}
+                  disabled={isSubmitting}
+                  placeholder="05XXXXXXXX"
+                  required
+                />
+                {fieldError('parent_phone')}
+              </WsField>
+            </div>
           </div>
 
-          <div className="grid gap-2 text-right">
-            <label htmlFor="student-national-id" className="text-sm font-medium text-slate-800">
-              رقم الهوية
-            </label>
-            <input
-              id="student-national-id"
-              name="national_id"
-              type="text"
-              inputMode="numeric"
-              value={values.national_id}
-              onChange={(event) => setValues((prev) => ({ ...prev, national_id: event.target.value }))}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-              disabled={isSubmitting}
-              placeholder="10 أرقام"
-            />
-            {errors.national_id ? (
-              <span className="text-xs font-medium text-rose-600">{errors.national_id}</span>
-            ) : null}
-          </div>
-
-          <div className="grid gap-2 text-right">
-            <label htmlFor="student-grade" className="text-sm font-medium text-slate-800">
-              الصف الدراسي
-            </label>
-            <input
-              id="student-grade"
-              name="grade"
-              type="text"
-              list="student-grade-options"
-              value={values.grade}
-              onChange={(event) => setValues((prev) => ({ ...prev, grade: event.target.value, class_name: '' }))}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-              disabled={isSubmitting}
-              placeholder="مثال: الصف الأول"
-            />
-            <datalist id="student-grade-options">
-              {gradeOptions.map((grade) => (
-                <option key={grade} value={grade} />
-              ))}
-            </datalist>
-            {errors.grade ? <span className="text-xs font-medium text-rose-600">{errors.grade}</span> : null}
-          </div>
-
-          <div className="grid gap-2 text-right">
-            <label htmlFor="student-class-name" className="text-sm font-medium text-slate-800">
-              الشعبة
-            </label>
-            <input
-              id="student-class-name"
-              name="class_name"
-              type="text"
-              list="student-class-options"
-              value={values.class_name}
-              onChange={(event) => setValues((prev) => ({ ...prev, class_name: event.target.value }))}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-              disabled={isSubmitting}
-              placeholder="مثال: أ"
-            />
-            <datalist id="student-class-options">
-              {availableClasses.map((className) => (
-                <option key={className} value={className} />
-              ))}
-            </datalist>
-            {errors.class_name ? <span className="text-xs font-medium text-rose-600">{errors.class_name}</span> : null}
-          </div>
-
-          <div className="grid gap-2 text-right">
-            <label htmlFor="student-parent-name" className="text-sm font-medium text-slate-800">
-              اسم ولي الأمر <span className="text-rose-600">*</span>
-            </label>
-            <input
-              id="student-parent-name"
-              name="parent_name"
-              type="text"
-              value={values.parent_name}
-              onChange={(event) => setValues((prev) => ({ ...prev, parent_name: event.target.value }))}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-              disabled={isSubmitting}
-              placeholder="اسم ولي الأمر"
-              required
-            />
-            {errors.parent_name ? <span className="text-xs font-medium text-rose-600">{errors.parent_name}</span> : null}
-          </div>
-
-          <div className="grid gap-2 text-right">
-            <label htmlFor="student-parent-phone" className="text-sm font-medium text-slate-800">
-              رقم جوال ولي الأمر <span className="text-rose-600">*</span>
-            </label>
-            <input
-              id="student-parent-phone"
-              name="parent_phone"
-              type="tel"
-              inputMode="tel"
-              value={values.parent_phone}
-              onChange={(event) => setValues((prev) => ({ ...prev, parent_phone: event.target.value }))}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-              disabled={isSubmitting}
-              placeholder="05XXXXXXXX"
-              required
-            />
-            {errors.parent_phone ? <span className="text-xs font-medium text-rose-600">{errors.parent_phone}</span> : null}
-          </div>
-
-          <div className="col-span-2 flex flex-col gap-3 border-t border-slate-100 pt-4 text-sm sm:flex-row sm:justify-end">
-            <button type="button" onClick={onClose} className="button-secondary sm:w-auto" disabled={isSubmitting}>
+          <footer className="ws-modal__foot">
+            <WsBtn onClick={onClose} disabled={isSubmitting}>
               إلغاء
-            </button>
-            <button type="submit" className="button-primary sm:w-auto" disabled={isSubmitting}>
+            </WsBtn>
+            <WsBtn type="submit" variant="primary" disabled={isSubmitting}>
               {isSubmitting ? 'جاري الحفظ...' : student ? 'حفظ التعديلات' : 'إضافة الطالب'}
-            </button>
-          </div>
+            </WsBtn>
+          </footer>
         </form>
       </div>
-    </div>
-  )
-}
-
-function EmptyState({ onAdd }: { onAdd: () => void }) {
-  return (
-    <div className="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-16 text-center">
-      <p className="text-lg font-semibold text-slate-700">لا توجد بيانات للعرض حالياً</p>
-      <p className="mt-2 text-sm text-muted">ابدأ بإضافة الطلاب أو قم باستيرادهم من ملف Excel.</p>
-      <button type="button" onClick={onAdd} className="button-primary mt-6">
-        إضافة طالب جديد
-      </button>
     </div>
   )
 }
@@ -372,16 +360,20 @@ export function AdminStudentsPage() {
     return record
   }, [students])
 
-  const classFilterOptions = useMemo(() => {
-    if (selectedGrade === 'all') {
-      const set = new Set<string>()
-      students.forEach((student) => {
-        if (student.class_name) set.add(student.class_name)
-      })
-      return Array.from(set).sort((a, b) => a.localeCompare(b, 'ar'))
-    }
-    return classOptionsByGrade[selectedGrade] ?? []
-  }, [classOptionsByGrade, selectedGrade, students])
+  // أعداد الطلاب لكل صف وشعبة — لعمود المستكشف
+  const gradeCounts = useMemo(() => {
+    const byGrade = new Map<string, number>()
+    const byGradeClass = new Map<string, number>()
+    students.forEach((student) => {
+      if (!student.grade) return
+      byGrade.set(student.grade, (byGrade.get(student.grade) ?? 0) + 1)
+      if (student.class_name) {
+        const key = `${student.grade}|${student.class_name}`
+        byGradeClass.set(key, (byGradeClass.get(key) ?? 0) + 1)
+      }
+    })
+    return { byGrade, byGradeClass }
+  }, [students])
 
   useEffect(() => {
     setSelectedClass('all')
@@ -391,16 +383,10 @@ export function AdminStudentsPage() {
   const updateStudentMutation = useUpdateStudentMutation()
   const deleteStudentMutation = useDeleteStudentMutation()
 
-  const stats = useMemo(() => {
-    const total = students.length
-    const gradesCount = gradeOptions.length
-    const classCount = Object.values(classOptionsByGrade).reduce((acc, classes) => acc + classes.length, 0)
-    return [
-      { label: 'إجمالي الطلاب', value: total },
-      { label: 'عدد الصفوف', value: gradesCount },
-      { label: 'عدد الشعب', value: classCount },
-    ]
-  }, [students.length, gradeOptions.length, classOptionsByGrade])
+  const totalClassesCount = useMemo(
+    () => Object.values(classOptionsByGrade).reduce((acc, classes) => acc + classes.length, 0),
+    [classOptionsByGrade],
+  )
 
   const filteredStudents = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
@@ -423,6 +409,7 @@ export function AdminStudentsPage() {
     if (page !== 1) {
       setPage(1)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, selectedGrade, selectedClass, pageSize])
 
   useEffect(() => {
@@ -460,9 +447,9 @@ export function AdminStudentsPage() {
       parent_name: values.parent_name,
       parent_phone: values.parent_phone,
     }
-    
+
     console.log('📝 Submitting student data:', payload)
-    
+
     if (editingStudent) {
       updateStudentMutation.mutate(
         {
@@ -514,246 +501,309 @@ export function AdminStudentsPage() {
   }
 
   const isFormSubmitting = createStudentMutation.isPending || updateStudentMutation.isPending
+  const isFiltered = searchTerm.trim() !== '' || selectedGrade !== 'all' || selectedClass !== 'all'
+
+  const pageHeader = (
+    <WsHeader
+      title="إدارة الطلاب"
+      badge={`${students.length.toLocaleString('ar-SA')} طالب`}
+      actions={
+        <>
+          <WsBtn icon={RefreshCcw} onClick={handleRefresh} disabled={isFetching}>
+            {isFetching ? 'جاري التحديث...' : 'تحديث'}
+          </WsBtn>
+          <WsBtn variant="primary" icon={Plus} onClick={handleAdd}>
+            إضافة طالب
+          </WsBtn>
+        </>
+      }
+      facts={
+        <>
+          <WsFact icon={Users} label="إجمالي الطلاب:">
+            {students.length.toLocaleString('ar-SA')}
+          </WsFact>
+          <WsFact icon={GraduationCap} label="الصفوف:">
+            {gradeOptions.length}
+          </WsFact>
+          <WsFact icon={Layers} label="الشعب:">
+            {totalClassesCount}
+          </WsFact>
+          {isFiltered && (
+            <WsFact label="نتيجة الفلترة:">
+              {totalStudents.toLocaleString('ar-SA')}
+            </WsFact>
+          )}
+        </>
+      }
+    />
+  )
 
   if (isLoading) {
     return (
-      <section className="w-full space-y-6">
-        <header className="space-y-2">
-          <h1 className="text-3xl font-bold text-slate-900">إدارة الطلاب</h1>
-          <p className="text-sm text-muted">جاري تحميل بيانات الطلاب...</p>
-        </header>
-        <div className="glass-card text-center">
-          <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-teal-500/30 border-t-teal-500" />
-          <p className="mt-4 text-sm text-muted">قد يستغرق ذلك بضع ثوانٍ...</p>
-        </div>
-      </section>
+      <WsPage>
+        {pageHeader}
+        <WsLayout>
+          <WsMain>
+            <WsBlock fill>
+              <WsEmpty loading>جاري تحميل بيانات الطلاب... قد يستغرق ذلك بضع ثوانٍ.</WsEmpty>
+            </WsBlock>
+          </WsMain>
+        </WsLayout>
+      </WsPage>
     )
   }
 
   if (isError) {
     return (
-      <section className="w-full space-y-6">
-        <header className="space-y-2">
-          <h1 className="text-3xl font-bold text-slate-900">إدارة الطلاب</h1>
-          <p className="text-sm text-muted">حدث خطأ أثناء تحميل البيانات. حاول مرة أخرى.</p>
-        </header>
-        <div className="glass-card text-center">
-          <p className="text-sm font-semibold text-rose-600">تعذر تحميل قائمة الطلاب</p>
-          <button type="button" onClick={() => refetch()} className="button-primary mt-4">
-            إعادة المحاولة
-          </button>
-        </div>
-      </section>
+      <WsPage>
+        {pageHeader}
+        <WsLayout>
+          <WsMain>
+            <WsBlock fill>
+              <WsEmpty icon={AlertTriangle}>
+                تعذر تحميل قائمة الطلاب.
+                <WsBtn icon={RefreshCcw} onClick={() => refetch()}>
+                  إعادة المحاولة
+                </WsBtn>
+              </WsEmpty>
+            </WsBlock>
+          </WsMain>
+        </WsLayout>
+      </WsPage>
     )
   }
 
   return (
-    <section className="w-full space-y-8">
-      <header className="space-y-2">
-        <h1 className="text-3xl font-bold text-slate-900">إدارة الطلاب</h1>
-        <p className="text-sm text-muted">تابع بيانات الطلاب، حدّث معلومات الاتصال، وحرّكهم بين الصفوف بسهولة.</p>
-      </header>
+    <WsPage>
+      {pageHeader}
 
-      <div className="glass-card grid grid-cols-3 gap-4">
-        {stats.map((stat) => (
-          <div key={stat.label} className="rounded-3xl border border-slate-100 bg-white/80 p-5 text-center shadow-sm">
-            <p className="text-3xl font-semibold text-slate-900">{stat.value}</p>
-            <p className="text-sm text-muted">{stat.label}</p>
-          </div>
-        ))}
-      </div>
+      <WsToolbar>
+        <WsField label="بحث" htmlFor="students-search" grow>
+          <WsInput
+            id="students-search"
+            type="search"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="ابحث بالاسم، الهوية أو بيانات ولي الأمر"
+          />
+        </WsField>
+        <WsField label="عدد الصفوف بالصفحة" htmlFor="students-page-size">
+          <WsSelect id="students-page-size" value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
+            {PAGE_SIZE_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option.toLocaleString('ar-SA')} طالب
+              </option>
+            ))}
+          </WsSelect>
+        </WsField>
+      </WsToolbar>
 
-      <div className="glass-card space-y-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-1 flex-col gap-3 xl:flex-row">
-            <div className="relative flex-1">
-              <input
-                type="search"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 pr-10 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-                placeholder="ابحث بالاسم، الهوية أو بيانات ولي الأمر"
-              />
-              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-300">🔍</span>
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <select
-                value={selectedGrade}
-                onChange={(event) => setSelectedGrade(event.target.value)}
-                className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 sm:w-48"
+      <WsLayout>
+        {/* العمود الأيمن: مستكشف الصفوف والشعب */}
+        <WsSideCol title="الصفوف والشعب" icon={GraduationCap} side="start" width={250} storageKey="ws:students:grades">
+          <WsBlock fill scroll>
+            <div>
+              <button
+                type="button"
+                onClick={() => setSelectedGrade('all')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 6,
+                  width: '100%',
+                  textAlign: 'right',
+                  padding: '8px 12px',
+                  border: 'none',
+                  borderBottom: '1px solid var(--ws-hairline)',
+                  background: selectedGrade === 'all' ? 'var(--ws-accent-soft)' : 'transparent',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
               >
-                <option value="all">جميع الصفوف</option>
-                {gradeOptions.map((grade) => (
-                  <option key={grade} value={grade}>
-                    {grade}
-                  </option>
-                ))}
-              </select>
+                <span style={{ fontSize: 12.5, fontWeight: selectedGrade === 'all' ? 700 : 600, color: 'var(--ws-text)' }}>
+                  جميع الصفوف
+                </span>
+                <WsChip>{students.length.toLocaleString('ar-SA')}</WsChip>
+              </button>
 
-              <select
-                value={selectedClass}
-                onChange={(event) => setSelectedClass(event.target.value)}
-                className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 sm:w-48"
-                disabled={classFilterOptions.length === 0}
-              >
-                <option value="all">كل الشعب</option>
-                {classFilterOptions.map((className) => (
-                  <option key={className} value={className}>
-                    {className}
-                  </option>
-                ))}
-              </select>
+              {gradeOptions.map((grade) => {
+                const isSelected = selectedGrade === grade
+                const gradeClasses = classOptionsByGrade[grade] ?? []
+                return (
+                  <div key={grade} style={{ borderBottom: '1px solid var(--ws-hairline)' }}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedGrade(isSelected ? 'all' : grade)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 6,
+                        width: '100%',
+                        textAlign: 'right',
+                        padding: '8px 12px',
+                        border: 'none',
+                        background: isSelected ? 'var(--ws-accent-soft)' : 'transparent',
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      <span style={{ fontSize: 12.5, fontWeight: isSelected ? 700 : 600, color: 'var(--ws-text)', minWidth: 0 }}>
+                        {grade}
+                      </span>
+                      <WsChip tone={isSelected ? 'sky' : undefined}>
+                        {(gradeCounts.byGrade.get(grade) ?? 0).toLocaleString('ar-SA')}
+                      </WsChip>
+                    </button>
+
+                    {/* شعب الصف المحدد */}
+                    {isSelected && gradeClasses.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: '2px 12px 10px' }}>
+                        <WsChip
+                          tone={selectedClass === 'all' ? 'sky' : undefined}
+                          onClick={() => setSelectedClass('all')}
+                        >
+                          الكل
+                        </WsChip>
+                        {gradeClasses.map((className) => (
+                          <WsChip
+                            key={className}
+                            tone={selectedClass === className ? 'sky' : undefined}
+                            onClick={() => setSelectedClass(selectedClass === className ? 'all' : className)}
+                          >
+                            {className} ({(gradeCounts.byGradeClass.get(`${grade}|${className}`) ?? 0).toLocaleString('ar-SA')})
+                          </WsChip>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
-          </div>
+          </WsBlock>
+        </WsSideCol>
 
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={handleRefresh} className="button-secondary" disabled={isFetching}>
-              {isFetching ? 'جاري التحديث...' : 'تحديث القائمة'}
-            </button>
-            <button type="button" onClick={handleAdd} className="button-primary">
-              إضافة طالب
-            </button>
-          </div>
-        </div>
-
-        {filteredStudents.length === 0 ? (
-          <EmptyState onAdd={handleAdd} />
-        ) : (
-          <div className="overflow-hidden rounded-3xl border border-slate-100">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50/80 text-xs font-semibold uppercase text-slate-500">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-right tracking-wider">الطالب</th>
-                  <th scope="col" className="px-6 py-3 text-right tracking-wider">رقم الهوية</th>
-                  <th scope="col" className="px-6 py-3 text-right tracking-wider">الصف</th>
-                  <th scope="col" className="px-6 py-3 text-right tracking-wider">الشعبة</th>
-                  <th scope="col" className="px-6 py-3 text-right tracking-wider">ولي الأمر</th>
-                  <th scope="col" className="px-6 py-3 text-right tracking-wider">آخر تحديث</th>
-                  <th scope="col" className="px-6 py-3 text-right">إجراءات</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
-                {paginatedStudents.map((student) => {
-                  const isDeleting =
-                    deleteStudentMutation.isPending && deleteStudentMutation.variables === student.id
-                  const isUpdating =
-                    updateStudentMutation.isPending &&
-                    (updateStudentMutation.variables as { id: number } | undefined)?.id === student.id
-
-                  return (
-                    <tr key={student.id} className="transition hover:bg-slate-50/60">
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col gap-1">
-                          <span className="font-semibold text-slate-900">{student.name}</span>
-                          <span className="text-xs text-muted">{student.id ? `#${student.id}` : ''}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 font-mono text-sm text-slate-700">{student.national_id}</td>
-                      <td className="px-6 py-4 text-sm text-slate-600">{student.grade}</td>
-                      <td className="px-6 py-4 text-sm text-slate-600">{student.class_name}</td>
-                      <td className="px-6 py-4 text-sm text-slate-600">
-                        {student.parent_name ? <span>{student.parent_name}</span> : <span className="text-muted">—</span>}
-                        <div className="text-xs text-muted">
-                          {student.parent_phone ? student.parent_phone : 'لا يوجد رقم جوال'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-xs text-muted">{formatDate(student.updated_at ?? student.created_at)}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleEdit(student)}
-                            className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-teal-200 hover:text-teal-600"
-                          >
-                            تعديل
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(student)}
-                            className="rounded-full border border-transparent bg-rose-500 px-3 py-1 text-xs font-semibold text-white shadow hover:bg-rose-600"
-                            disabled={isDeleting}
-                          >
-                            {isDeleting ? 'جاري الحذف...' : 'حذف'}
-                          </button>
-                          {isUpdating ? (
-                            <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                              يتم التحديث...
-                            </span>
-                          ) : null}
-                        </div>
-                      </td>
+        {/* الوسط: جدول الطلاب */}
+        <WsMain>
+          <WsBlock
+            title={
+              selectedGrade === 'all'
+                ? 'كل الطلاب'
+                : selectedClass === 'all'
+                  ? selectedGrade
+                  : `${selectedGrade} / ${selectedClass}`
+            }
+            icon={Users}
+            count={totalStudents.toLocaleString('ar-SA')}
+            fill
+          >
+            {filteredStudents.length === 0 ? (
+              <WsEmpty icon={Users}>
+                {isFiltered ? 'لا توجد نتائج مطابقة للفلاتر الحالية.' : 'لا توجد بيانات للعرض حالياً — ابدأ بإضافة الطلاب أو استيرادهم من Excel.'}
+                {!isFiltered && (
+                  <WsBtn variant="primary" icon={Plus} onClick={handleAdd}>
+                    إضافة طالب جديد
+                  </WsBtn>
+                )}
+              </WsEmpty>
+            ) : (
+              <>
+                <WsTable>
+                  <thead>
+                    <tr>
+                      <th>الطالب</th>
+                      <th>رقم الهوية</th>
+                      <th>الصف</th>
+                      <th>الشعبة</th>
+                      <th>ولي الأمر</th>
+                      <th>آخر تحديث</th>
+                      <th>إجراءات</th>
                     </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-            </div>
-          </div>
-        )}
+                  </thead>
+                  <tbody>
+                    {paginatedStudents.map((student) => {
+                      const isDeleting =
+                        deleteStudentMutation.isPending && deleteStudentMutation.variables === student.id
+                      const isUpdating =
+                        updateStudentMutation.isPending &&
+                        (updateStudentMutation.variables as { id: number } | undefined)?.id === student.id
 
-        {totalStudents > 0 ? (
-          <div className="flex flex-col gap-4 rounded-2xl border border-slate-100 bg-white/70 px-4 py-4 text-sm text-slate-600 shadow-sm lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap items-center gap-2">
-              <span>عرض</span>
-              <select
-                value={pageSize}
-                onChange={(event) => setPageSize(Number(event.target.value))}
-                className="rounded-2xl border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-              >
-                {PAGE_SIZE_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option.toLocaleString('ar-SA')}
-                  </option>
-                ))}
-              </select>
-              <span>طالب لكل صفحة</span>
-              <span className="text-xs text-slate-400 sm:text-sm">
-                عرض {startIndex + 1} - {endIndex} من إجمالي {totalStudents.toLocaleString('ar-SA')} طالب
-              </span>
-            </div>
+                      return (
+                        <tr key={student.id}>
+                          <td>
+                            <span style={{ display: 'block', fontWeight: 700 }}>{student.name}</span>
+                            <span className="ws-cell-sub">{student.id ? `#${student.id}` : ''}</span>
+                          </td>
+                          <td style={{ fontVariantNumeric: 'tabular-nums' }}>{student.national_id}</td>
+                          <td>{student.grade}</td>
+                          <td>{student.class_name}</td>
+                          <td>
+                            <span style={{ display: 'block' }}>{student.parent_name || '—'}</span>
+                            <span className="ws-cell-sub">{student.parent_phone || 'لا يوجد رقم جوال'}</span>
+                          </td>
+                          <td>
+                            <span className="ws-cell-sub">{formatDate(student.updated_at ?? student.created_at)}</span>
+                          </td>
+                          <td>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <WsBtn size="sm" icon={Pencil} onClick={() => handleEdit(student)}>
+                                تعديل
+                              </WsBtn>
+                              <WsBtn size="sm" variant="danger" icon={Trash2} onClick={() => handleDelete(student)} disabled={isDeleting}>
+                                {isDeleting ? 'جاري الحذف...' : 'حذف'}
+                              </WsBtn>
+                              {isUpdating && <WsChip tone="amber">يتم التحديث...</WsChip>}
+                            </span>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </WsTable>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setPage(1)}
-                disabled={page === 1}
-                className="rounded-2xl border border-slate-200 px-3 py-1 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                الأولى
-              </button>
-              <button
-                type="button"
-                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-                disabled={page === 1}
-                className="rounded-2xl border border-slate-200 px-3 py-1 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                السابق
-              </button>
-              <span className="rounded-2xl bg-slate-100 px-4 py-1 text-sm font-semibold text-slate-700">
-                الصفحة {page.toLocaleString('ar-SA')} من {totalPages.toLocaleString('ar-SA')}
-              </span>
-              <button
-                type="button"
-                onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-                disabled={page === totalPages}
-                className="rounded-2xl border border-slate-200 px-3 py-1 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                التالي
-              </button>
-              <button
-                type="button"
-                onClick={() => setPage(totalPages)}
-                disabled={page === totalPages}
-                className="rounded-2xl border border-slate-200 px-3 py-1 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                الأخيرة
-              </button>
-            </div>
-          </div>
-        ) : null}
-      </div>
+                {/* شريط الترقيم */}
+                {totalStudents > 0 && (
+                  <div
+                    style={{
+                      flexShrink: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 10,
+                      flexWrap: 'wrap',
+                      padding: '7px 12px',
+                      borderTop: '1px solid var(--ws-hairline)',
+                    }}
+                  >
+                    <span style={{ fontSize: 11, color: 'var(--ws-text-2)' }}>
+                      عرض {(startIndex + 1).toLocaleString('ar-SA')} - {endIndex.toLocaleString('ar-SA')} من{' '}
+                      {totalStudents.toLocaleString('ar-SA')} طالب
+                    </span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <WsBtn size="sm" onClick={() => setPage(1)} disabled={page === 1}>
+                        الأولى
+                      </WsBtn>
+                      <WsBtn size="sm" onClick={() => setPage((prev) => Math.max(1, prev - 1))} disabled={page === 1}>
+                        السابق
+                      </WsBtn>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, padding: '0 6px' }}>
+                        {page.toLocaleString('ar-SA')} / {totalPages.toLocaleString('ar-SA')}
+                      </span>
+                      <WsBtn size="sm" onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))} disabled={page === totalPages}>
+                        التالي
+                      </WsBtn>
+                      <WsBtn size="sm" onClick={() => setPage(totalPages)} disabled={page === totalPages}>
+                        الأخيرة
+                      </WsBtn>
+                    </span>
+                  </div>
+                )}
+              </>
+            )}
+          </WsBlock>
+        </WsMain>
+      </WsLayout>
 
       <StudentFormDialog
         open={isFormOpen}
@@ -768,6 +818,6 @@ export function AdminStudentsPage() {
         gradeOptions={gradeOptions}
         classOptionsByGrade={classOptionsByGrade}
       />
-    </section>
+    </WsPage>
   )
 }

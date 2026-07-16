@@ -1,5 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import {
+  AlertTriangle,
+  CalendarDays,
+  Clock3,
+  GraduationCap,
+  Layers,
+  Plus,
+  Printer,
+  RefreshCcw,
+  Trash2,
+  Users,
+} from 'lucide-react'
+import {
   useAddQuickClassSessionMutation,
   useApplyScheduleToClassMutation,
   useClassScheduleQuery,
@@ -23,9 +35,46 @@ import type {
   SubjectRecord,
   TeacherRecord,
 } from '../types'
+import {
+  WsAlert,
+  WsBlock,
+  WsBtn,
+  WsChip,
+  WsEmpty,
+  WsFact,
+  WsField,
+  WsHeader,
+  WsInput,
+  WsLayout,
+  WsMain,
+  WsPage,
+  WsSelect,
+  WsSideCol,
+} from '@/shared/workspace'
 
 const daysOfWeek: string[] = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس']
 const defaultPeriods = Array.from({ length: 8 }, (_, index) => index + 1)
+
+/* لوحة ألوان المواد — نفس لوحة صفحة جداول المعلمين لتوحيد الهوية */
+const SUBJECT_COLORS: Array<{ bg: string; bd: string; tx: string }> = [
+  { bg: '#E9F5EC', bd: '#BFE3C9', tx: '#2E7D46' },
+  { bg: '#E8F2FA', bd: '#BFDCF0', tx: '#21689E' },
+  { bg: '#F1EAFB', bd: '#D6C3F0', tx: '#6D3FA9' },
+  { bg: '#FCF3E1', bd: '#EFD9AC', tx: '#A8690A' },
+  { bg: '#FBEAEA', bd: '#EFC5C5', tx: '#C43D3D' },
+  { bg: '#E4F5F5', bd: '#BCE4E4', tx: '#1D7A7A' },
+  { bg: '#FBEEE4', bd: '#F0D2B8', tx: '#B05E1D' },
+  { bg: '#EAF0EE', bd: '#C8D8D2', tx: '#3F6F55' },
+]
+
+function subjectColor(name?: string | null) {
+  if (!name) return SUBJECT_COLORS[7]
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash * 31 + name.charCodeAt(i)) | 0
+  }
+  return SUBJECT_COLORS[Math.abs(hash) % SUBJECT_COLORS.length]
+}
 
 function formatTime(value?: string | null) {
   if (!value) return ''
@@ -84,6 +133,9 @@ function countScheduledSessions(schedule?: ClassScheduleGrid | null) {
   }
   return total
 }
+
+const fieldError = (message: string | null) =>
+  message ? <span style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--ws-red)' }}>{message}</span> : null
 
 interface QuickSessionDialogProps {
   open: boolean
@@ -200,39 +252,16 @@ function QuickSessionDialog({
   const scheduleOptions = sessionData?.schedules ?? []
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" role="dialog" aria-modal>
-      <div className="relative w-full max-w-2xl rounded-3xl bg-white p-6 shadow-xl">
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute left-5 top-5 text-sm font-semibold text-slate-400 transition hover:text-slate-600"
-          disabled={isSubmitting}
-        >
-          إغلاق
-        </button>
-
-        <header className="mb-6 space-y-1 text-right">
-          <p className="text-xs font-semibold uppercase tracking-widest text-teal-600">إضافة حصة سريعة</p>
-          <h2 className="text-2xl font-bold text-slate-900">جدولة حصة جديدة لفصل {classLabel}</h2>
-          <p className="text-sm text-muted">اختر المعلم والمادة وحدد اليوم ورقم الحصة، وسيتم تعيين أوقات الدرس تلقائيًا عند اختيار توقيت.</p>
+    <div className="ws-modal" role="dialog" aria-modal onClick={isSubmitting ? undefined : onClose}>
+      <div className="ws-modal__panel" style={{ maxWidth: 560 }} onClick={(event) => event.stopPropagation()}>
+        <header className="ws-modal__head">
+          <h3 className="ws-modal__title">جدولة حصة جديدة لفصل {classLabel}</h3>
+          <p className="ws-modal__sub">
+            اختر المعلم والمادة وحدد اليوم ورقم الحصة — تُضبط أوقات الدرس تلقائيًا عند اختيار توقيت.
+          </p>
         </header>
 
-        <div className="mb-4 rounded-2xl border border-slate-100 bg-slate-50/60 p-4 text-sm text-slate-600">
-          <div className="flex flex-wrap items-center gap-4">
-            <span className="font-semibold text-slate-800">الفصل:</span>
-            <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-teal-700 shadow-sm">
-              {grade} / {className}
-            </span>
-            {defaultDay ? (
-              <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm">
-                {defaultDay} - الحصة {defaultPeriod}
-              </span>
-            ) : null}
-          </div>
-        </div>
-
         <form
-          className="grid gap-4 md:grid-cols-2"
           onSubmit={(event) => {
             event.preventDefault()
             if (!validate()) return
@@ -247,138 +276,129 @@ function QuickSessionDialog({
           }}
           noValidate
         >
-          <div className="grid gap-2 text-right">
-            <label htmlFor="quick-session-day" className="text-sm font-medium text-slate-800">
-              اليوم الدراسي
-            </label>
-            <select
-              id="quick-session-day"
-              value={values.day}
-              onChange={(event) => setValues((prev) => ({ ...prev, day: event.target.value }))}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-              disabled={isSubmitting}
-            >
-              {daysOfWeek.map((day) => (
-                <option key={day} value={day}>
-                  {day}
-                </option>
-              ))}
-            </select>
-            {errors.day ? <span className="text-xs font-medium text-rose-600">{errors.day}</span> : null}
+          <div className="ws-modal__body">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <WsChip tone="sky">
+                {grade} / {className}
+              </WsChip>
+              {defaultDay ? (
+                <WsChip>
+                  {defaultDay} - الحصة {defaultPeriod}
+                </WsChip>
+              ) : null}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <WsField label="اليوم الدراسي" htmlFor="quick-session-day">
+                <WsSelect
+                  id="quick-session-day"
+                  value={values.day}
+                  onChange={(event) => setValues((prev) => ({ ...prev, day: event.target.value }))}
+                  disabled={isSubmitting}
+                >
+                  {daysOfWeek.map((day) => (
+                    <option key={day} value={day}>
+                      {day}
+                    </option>
+                  ))}
+                </WsSelect>
+                {fieldError(errors.day)}
+              </WsField>
+
+              <WsField label="رقم الحصة" htmlFor="quick-session-period">
+                <WsInput
+                  id="quick-session-period"
+                  type="number"
+                  min={1}
+                  max={12}
+                  value={values.period_number}
+                  onChange={(event) => setValues((prev) => ({ ...prev, period_number: event.target.value }))}
+                  placeholder="مثال: 3"
+                  disabled={isSubmitting}
+                />
+                {fieldError(errors.period_number)}
+              </WsField>
+
+              <WsField label="المعلم المسؤول" htmlFor="quick-session-teacher">
+                <WsSelect
+                  id="quick-session-teacher"
+                  value={values.teacher_id}
+                  onChange={(event) => setValues((prev) => ({ ...prev, teacher_id: event.target.value }))}
+                  disabled={isSubmitting || isSessionDataLoading || teacherOptions.length === 0}
+                >
+                  <option value="">اختر المعلم</option>
+                  {teacherOptions.map((teacher) => (
+                    <option key={teacher.id} value={teacher.id}>
+                      {teacher.name}
+                      {teacher.national_id ? ` • ${teacher.national_id}` : ''}
+                    </option>
+                  ))}
+                </WsSelect>
+                {isSessionDataLoading ? (
+                  <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>جارٍ تحميل قائمة المعلمين...</span>
+                ) : null}
+                {teacherOptions.length === 0 && !isSessionDataLoading ? (
+                  <span style={{ fontSize: 10.5, color: 'var(--ws-amber)' }}>لا يوجد معلمون نشطون حالياً.</span>
+                ) : null}
+                {fieldError(errors.teacher_id)}
+              </WsField>
+
+              <WsField label="المادة الدراسية" htmlFor="quick-session-subject">
+                <WsSelect
+                  id="quick-session-subject"
+                  value={values.subject_id}
+                  onChange={(event) => setValues((prev) => ({ ...prev, subject_id: event.target.value }))}
+                  disabled={isSubmitting || isSessionDataLoading || subjectOptions.length === 0}
+                >
+                  <option value="">اختر المادة</option>
+                  {subjectOptions.map((subject) => (
+                    <option key={subject.id} value={subject.id}>
+                      {subject.name}
+                    </option>
+                  ))}
+                </WsSelect>
+                {isSessionDataLoading ? (
+                  <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>جارٍ تحميل قائمة المواد...</span>
+                ) : null}
+                {subjectOptions.length === 0 && !isSessionDataLoading ? (
+                  <span style={{ fontSize: 10.5, color: 'var(--ws-amber)' }}>لا توجد مواد نشطة متاحة.</span>
+                ) : null}
+                {fieldError(errors.subject_id)}
+              </WsField>
+
+              <WsField label="توقيت الحصة (اختياري)" htmlFor="quick-session-schedule" style={{ gridColumn: '1 / -1' }}>
+                <WsSelect
+                  id="quick-session-schedule"
+                  value={values.schedule_id}
+                  onChange={(event) => setValues((prev) => ({ ...prev, schedule_id: event.target.value }))}
+                  disabled={isSubmitting || isSessionDataLoading || scheduleOptions.length === 0}
+                >
+                  <option value="">بدون توقيت محدد</option>
+                  {scheduleOptions.map((schedule) => (
+                    <option key={schedule.id} value={schedule.id}>
+                      {schedule.name}
+                      {schedule.type ? ` • ${schedule.type === 'winter' ? 'شتوي' : schedule.type === 'summer' ? 'صيفي' : 'مخصص'}` : ''}
+                      {schedule.is_active ? ' • مفعل' : ''}
+                    </option>
+                  ))}
+                </WsSelect>
+                <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                  {scheduleOptions.length === 0 && !isSessionDataLoading
+                    ? 'لم يتم إنشاء أي توقيتات بعد — ستستخدم الحصة التوقيت الافتراضي 08:00 - 08:45.'
+                    : 'استخدام توقيت محدد يضبط أوقات البداية والنهاية تلقائياً حسب إعدادات الجدول.'}
+                </span>
+              </WsField>
+            </div>
           </div>
 
-          <div className="grid gap-2 text-right">
-            <label htmlFor="quick-session-period" className="text-sm font-medium text-slate-800">
-              رقم الحصة
-            </label>
-            <input
-              id="quick-session-period"
-              type="number"
-              min={1}
-              max={12}
-              value={values.period_number}
-              onChange={(event) => setValues((prev) => ({ ...prev, period_number: event.target.value }))}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-              placeholder="مثال: 3"
-              disabled={isSubmitting}
-            />
-            {errors.period_number ? <span className="text-xs font-medium text-rose-600">{errors.period_number}</span> : null}
-          </div>
-
-          <div className="grid gap-2 text-right">
-            <label htmlFor="quick-session-teacher" className="text-sm font-medium text-slate-800">
-              المعلم المسؤول
-            </label>
-            <select
-              id="quick-session-teacher"
-              value={values.teacher_id}
-              onChange={(event) => setValues((prev) => ({ ...prev, teacher_id: event.target.value }))}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-              disabled={isSubmitting || isSessionDataLoading || teacherOptions.length === 0}
-            >
-              <option value="">اختر المعلم</option>
-              {teacherOptions.map((teacher) => (
-                <option key={teacher.id} value={teacher.id}>
-                  {teacher.name}
-                  {teacher.national_id ? ` • ${teacher.national_id}` : ''}
-                </option>
-              ))}
-            </select>
-            {isSessionDataLoading ? (
-              <span className="text-xs text-slate-400">جارٍ تحميل قائمة المعلمين...</span>
-            ) : null}
-            {teacherOptions.length === 0 && !isSessionDataLoading ? (
-              <span className="text-xs text-amber-600">لا يوجد معلمون نشطون حالياً.</span>
-            ) : null}
-            {errors.teacher_id ? <span className="text-xs font-medium text-rose-600">{errors.teacher_id}</span> : null}
-          </div>
-
-          <div className="grid gap-2 text-right">
-            <label htmlFor="quick-session-subject" className="text-sm font-medium text-slate-800">
-              المادة الدراسية
-            </label>
-            <select
-              id="quick-session-subject"
-              value={values.subject_id}
-              onChange={(event) => setValues((prev) => ({ ...prev, subject_id: event.target.value }))}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-              disabled={isSubmitting || isSessionDataLoading || subjectOptions.length === 0}
-            >
-              <option value="">اختر المادة</option>
-              {subjectOptions.map((subject) => (
-                <option key={subject.id} value={subject.id}>
-                  {subject.name}
-                </option>
-              ))}
-            </select>
-            {isSessionDataLoading ? (
-              <span className="text-xs text-slate-400">جارٍ تحميل قائمة المواد...</span>
-            ) : null}
-            {subjectOptions.length === 0 && !isSessionDataLoading ? (
-              <span className="text-xs text-amber-600">لا توجد مواد نشطة متاحة.</span>
-            ) : null}
-            {errors.subject_id ? <span className="text-xs font-medium text-rose-600">{errors.subject_id}</span> : null}
-          </div>
-
-          <div className="grid gap-2 text-right md:col-span-2">
-            <label htmlFor="quick-session-schedule" className="text-sm font-medium text-slate-800">
-              توقيت الحصة (اختياري)
-            </label>
-            <select
-              id="quick-session-schedule"
-              value={values.schedule_id}
-              onChange={(event) => setValues((prev) => ({ ...prev, schedule_id: event.target.value }))}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-              disabled={isSubmitting || isSessionDataLoading || scheduleOptions.length === 0}
-            >
-              <option value="">بدون توقيت محدد</option>
-              {scheduleOptions.map((schedule) => (
-                <option key={schedule.id} value={schedule.id}>
-                  {schedule.name}
-                  {schedule.type ? ` • ${schedule.type === 'winter' ? 'شتوي' : schedule.type === 'summer' ? 'صيفي' : 'مخصص'}` : ''}
-                  {schedule.is_active ? ' • مفعل' : ''}
-                </option>
-              ))}
-            </select>
-            {scheduleOptions.length === 0 && !isSessionDataLoading ? (
-              <span className="text-xs text-slate-500">
-                لم يتم إنشاء أي توقيتات بعد. ستستخدم الحصة التوقيت الافتراضي 08:00 - 08:45.
-              </span>
-            ) : (
-              <span className="text-xs text-muted">
-                استخدام توقيت محدد يضمن ضبط أوقات البداية والنهاية تلقائياً حسب إعدادات الجدول.
-              </span>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-2 md:col-span-2 md:flex-row md:justify-end">
-            <button type="button" onClick={onClose} className="button-secondary sm:w-auto" disabled={isSubmitting}>
+          <footer className="ws-modal__foot">
+            <WsBtn onClick={onClose} disabled={isSubmitting}>
               إلغاء
-            </button>
-            <button type="submit" className="button-primary sm:w-auto" disabled={isSubmitting}>
+            </WsBtn>
+            <WsBtn type="submit" variant="primary" disabled={isSubmitting}>
               {isSubmitting ? 'جاري الإضافة...' : 'إضافة الحصة'}
-            </button>
-          </div>
+            </WsBtn>
+          </footer>
         </form>
       </div>
     </div>
@@ -419,25 +439,16 @@ function ApplyScheduleDialog({
   const hasSchedules = Boolean(schedules && schedules.length > 0)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" role="dialog" aria-modal>
-      <div className="relative w-full max-w-xl rounded-3xl bg-white p-6 shadow-xl">
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute left-5 top-5 text-sm font-semibold text-slate-400 transition hover:text-slate-600"
-          disabled={isSubmitting}
-        >
-          إغلاق
-        </button>
-
-        <header className="mb-6 space-y-1 text-right">
-          <p className="text-xs font-semibold uppercase tracking-widest text-teal-600">تطبيق توقيت على الفصل</p>
-          <h2 className="text-2xl font-bold text-slate-900">اختيار توقيت لفصل {classLabel}</h2>
-          <p className="text-sm text-muted">سيتم تحديث أوقات جميع الحصص الحالية لتتوافق مع التوقيت المحدد، مع الحفاظ على المعلمين والمواد.</p>
+    <div className="ws-modal" role="dialog" aria-modal onClick={isSubmitting ? undefined : onClose}>
+      <div className="ws-modal__panel" style={{ maxWidth: 460 }} onClick={(event) => event.stopPropagation()}>
+        <header className="ws-modal__head">
+          <h3 className="ws-modal__title">اختيار توقيت لفصل {classLabel}</h3>
+          <p className="ws-modal__sub">
+            سيتم تحديث أوقات جميع الحصص الحالية لتتوافق مع التوقيت المحدد، مع الحفاظ على المعلمين والمواد.
+          </p>
         </header>
 
         <form
-          className="space-y-4"
           onSubmit={(event) => {
             event.preventDefault()
             if (!selectedScheduleId) {
@@ -447,47 +458,47 @@ function ApplyScheduleDialog({
             onSubmit(Number(selectedScheduleId))
           }}
         >
-          <div className="grid gap-2 text-right">
-            <label htmlFor="apply-schedule-select" className="text-sm font-medium text-slate-800">
-              اختر التوقيت المناسب
-            </label>
-            <select
-              id="apply-schedule-select"
-              value={selectedScheduleId}
-              onChange={(event) => {
-                setError(null)
-                setSelectedScheduleId(event.target.value)
-              }}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-              disabled={!hasSchedules || isSubmitting}
-            >
-              <option value="">اختر التوقيت</option>
-              {schedules?.map((schedule) => (
-                <option key={schedule.id} value={schedule.id}>
-                  {schedule.name}
-                  {schedule.type ? ` • ${schedule.type === 'winter' ? 'شتوي' : schedule.type === 'summer' ? 'صيفي' : 'مخصص'}` : ''}
-                  {schedule.is_active ? ' • مفعل' : ''}
-                </option>
-              ))}
-            </select>
-            {error ? <span className="text-xs font-medium text-rose-600">{error}</span> : null}
-            {!hasSchedules ? (
-              <span className="text-xs text-amber-600">لا توجد توقيتات متاحة حالياً. قم بإنشاء توقيت من صفحة التوقيتات أولاً.</span>
-            ) : null}
+          <div className="ws-modal__body">
+            <WsField label="اختر التوقيت المناسب" htmlFor="apply-schedule-select">
+              <WsSelect
+                id="apply-schedule-select"
+                value={selectedScheduleId}
+                onChange={(event) => {
+                  setError(null)
+                  setSelectedScheduleId(event.target.value)
+                }}
+                disabled={!hasSchedules || isSubmitting}
+              >
+                <option value="">اختر التوقيت</option>
+                {schedules?.map((schedule) => (
+                  <option key={schedule.id} value={schedule.id}>
+                    {schedule.name}
+                    {schedule.type ? ` • ${schedule.type === 'winter' ? 'شتوي' : schedule.type === 'summer' ? 'صيفي' : 'مخصص'}` : ''}
+                    {schedule.is_active ? ' • مفعل' : ''}
+                  </option>
+                ))}
+              </WsSelect>
+              {fieldError(error)}
+              {!hasSchedules ? (
+                <span style={{ fontSize: 10.5, color: 'var(--ws-amber)' }}>
+                  لا توجد توقيتات متاحة حالياً — أنشئ توقيتاً من صفحة التوقيتات أولاً.
+                </span>
+              ) : null}
+            </WsField>
+
+            <p style={{ margin: 0, fontSize: 10.5, color: 'var(--ws-text-2)', lineHeight: 1.8 }}>
+              التوقيت المطبق يحدد أوقات البداية والنهاية لكل حصة حسب رقمها، ويمكن تغييره لاحقاً دون فقد بيانات الحصص.
+            </p>
           </div>
 
-          <p className="text-xs text-muted">
-            التوقيت المطبق يحدد أوقات البداية والنهاية لكل حصة حسب رقمها. يمكن تغيير التوقيت لاحقاً دون فقد بيانات الحصص.
-          </p>
-
-          <div className="flex flex-col gap-2 md:flex-row md:justify-end">
-            <button type="button" onClick={onClose} className="button-secondary sm:w-auto" disabled={isSubmitting}>
+          <footer className="ws-modal__foot">
+            <WsBtn onClick={onClose} disabled={isSubmitting}>
               إلغاء
-            </button>
-            <button type="submit" className="button-primary sm:w-auto" disabled={isSubmitting || !hasSchedules}>
+            </WsBtn>
+            <WsBtn type="submit" variant="primary" disabled={isSubmitting || !hasSchedules}>
               {isSubmitting ? 'جارٍ التطبيق...' : 'تطبيق التوقيت'}
-            </button>
-          </div>
+            </WsBtn>
+          </footer>
         </form>
       </div>
     </div>
@@ -515,34 +526,24 @@ function ConfirmDeleteDialog({ open, onClose, onConfirm, isSubmitting, sessionIn
   const scheduleSummary = sessionInfo ? `${sessionInfo.day} • الحصة ${sessionInfo.period}` : 'الجدول الحالي'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" role="dialog" aria-modal>
-      <div className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute left-5 top-5 text-sm font-semibold text-slate-400 transition hover:text-slate-600"
-          disabled={isSubmitting}
-        >
-          إغلاق
-        </button>
-
-        <header className="mb-4 space-y-1 text-right">
-          <p className="text-xs font-semibold uppercase tracking-widest text-rose-600">حذف حصة من الجدول</p>
-          <h2 className="text-xl font-bold text-slate-900">هل تريد حذف هذه الحصة؟</h2>
+    <div className="ws-modal" style={{ zIndex: 60 }} role="dialog" aria-modal onClick={isSubmitting ? undefined : onClose}>
+      <div className="ws-modal__panel" style={{ maxWidth: 400 }} onClick={(event) => event.stopPropagation()}>
+        <header className="ws-modal__head">
+          <h3 className="ws-modal__title">هل تريد حذف هذه الحصة؟</h3>
         </header>
-
-        <p className="text-sm text-slate-600">
-          سيتم إزالة الحصة {subjectSummary}
-          {teacherSummary} من جدول {scheduleSummary}. سيتم الاحتفاظ بسجلات الحضور المرتبطة بالحصة.
-        </p>
-
-        <footer className="mt-6 flex flex-col gap-2 md:flex-row md:justify-end">
-          <button type="button" onClick={onClose} className="button-secondary sm:w-auto" disabled={isSubmitting}>
+        <div className="ws-modal__body">
+          <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.9 }}>
+            سيتم إزالة الحصة {subjectSummary}
+            {teacherSummary} من جدول {scheduleSummary}. سيتم الاحتفاظ بسجلات الحضور المرتبطة بالحصة.
+          </p>
+        </div>
+        <footer className="ws-modal__foot">
+          <WsBtn onClick={onClose} disabled={isSubmitting}>
             تراجع
-          </button>
-          <button type="button" onClick={onConfirm} className="button-primary sm:w-auto" disabled={isSubmitting}>
+          </WsBtn>
+          <WsBtn variant="danger" onClick={onConfirm} disabled={isSubmitting}>
             {isSubmitting ? 'جارٍ الحذف...' : 'تأكيد الحذف'}
-          </button>
+          </WsBtn>
         </footer>
       </div>
     </div>
@@ -571,7 +572,7 @@ function QuickEditScheduleDialog({ slot, day, open, onCancel, onConfirm, onDelet
       // البحث عن teacher_id من الاسم
       const teacher = teacherOptions.find(t => t.name === slot.teacher_name)
       setSelectedTeacherId(teacher?.id ?? 0)
-      
+
       // البحث عن subject_id من الاسم
       const subject = subjectOptions.find(s => s.name === slot.subject_name)
       setSelectedSubjectId(subject?.id ?? 0)
@@ -587,26 +588,21 @@ function QuickEditScheduleDialog({ slot, day, open, onCancel, onConfirm, onDelet
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" role="dialog">
-      <div className="w-full max-w-md rounded-3xl bg-white p-6 text-right shadow-xl">
-        <header className="mb-6 space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-widest text-teal-600">تعديل سريع</p>
-          <h2 className="text-xl font-semibold text-slate-900">تعديل المعلم والمادة</h2>
-          <p className="text-sm text-muted">
+    <div className="ws-modal" role="dialog" onClick={onCancel}>
+      <div className="ws-modal__panel" style={{ maxWidth: 420 }} onClick={(event) => event.stopPropagation()}>
+        <header className="ws-modal__head">
+          <h3 className="ws-modal__title">تعديل سريع — المعلم والمادة</h3>
+          <p className="ws-modal__sub">
             {day} | الحصة {slot.period_number} | {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
           </p>
         </header>
 
-        <div className="space-y-4">
-          <div className="grid gap-2 text-right">
-            <label htmlFor="quick-edit-schedule-teacher" className="text-sm font-medium text-slate-800">
-              المعلم
-            </label>
-            <select
+        <div className="ws-modal__body">
+          <WsField label="المعلم" htmlFor="quick-edit-schedule-teacher">
+            <WsSelect
               id="quick-edit-schedule-teacher"
               value={selectedTeacherId}
               onChange={(e) => setSelectedTeacherId(Number(e.target.value))}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
               disabled={isSubmitting}
             >
               <option value="0">اختر المعلم...</option>
@@ -615,18 +611,14 @@ function QuickEditScheduleDialog({ slot, day, open, onCancel, onConfirm, onDelet
                   {teacher.name}
                 </option>
               ))}
-            </select>
-          </div>
+            </WsSelect>
+          </WsField>
 
-          <div className="grid gap-2 text-right">
-            <label htmlFor="quick-edit-schedule-subject" className="text-sm font-medium text-slate-800">
-              المادة
-            </label>
-            <select
+          <WsField label="المادة" htmlFor="quick-edit-schedule-subject">
+            <WsSelect
               id="quick-edit-schedule-subject"
               value={selectedSubjectId}
               onChange={(e) => setSelectedSubjectId(Number(e.target.value))}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
               disabled={isSubmitting}
             >
               <option value="0">اختر المادة...</option>
@@ -635,47 +627,180 @@ function QuickEditScheduleDialog({ slot, day, open, onCancel, onConfirm, onDelet
                   {subject.name}
                 </option>
               ))}
-            </select>
-          </div>
+            </WsSelect>
+          </WsField>
 
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-            <div className="flex gap-2">
-              <i className="bi bi-info-circle mt-0.5 text-amber-600" />
-              <div>
-                <p className="font-semibold">ملاحظة هامة:</p>
-                <p className="mt-1">
-                  السجلات التاريخية للحضور ستبقى كما هي محفوظة بأسماء المعلم والمادة السابقة. التغيير سيؤثر على الحصص الجديدة فقط.
-                </p>
-              </div>
-            </div>
-          </div>
+          <WsAlert tone="warn" boxed>
+            السجلات التاريخية للحضور ستبقى محفوظة بأسماء المعلم والمادة السابقة — التغيير يؤثر على الحصص الجديدة فقط.
+          </WsAlert>
         </div>
 
-        <div className="mt-6 flex flex-col gap-3 text-sm sm:flex-row sm:justify-between">
-          <button
-            type="button"
-            onClick={onDelete}
-            className="rounded-2xl border-2 border-rose-200 bg-rose-50 px-6 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-50 sm:w-auto"
-            disabled={isSubmitting || isDeleting}
-          >
-            <i className="bi bi-trash ml-2" />
+        <footer className="ws-modal__foot" style={{ justifyContent: 'space-between' }}>
+          <WsBtn variant="danger" icon={Trash2} onClick={onDelete} disabled={isSubmitting || isDeleting}>
             {isDeleting ? 'جاري الحذف...' : 'حذف الحصة'}
-          </button>
-          
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <button type="button" onClick={onCancel} className="button-secondary sm:w-auto" disabled={isSubmitting || isDeleting}>
+          </WsBtn>
+          <span style={{ display: 'inline-flex', gap: 6 }}>
+            <WsBtn onClick={onCancel} disabled={isSubmitting || isDeleting}>
               إلغاء
-            </button>
-            <button
-              type="button"
+            </WsBtn>
+            <WsBtn
+              variant="primary"
               onClick={handleSubmit}
-              className="button-primary sm:w-auto"
               disabled={isSubmitting || isDeleting || !selectedTeacherId || !selectedSubjectId}
             >
               {isSubmitting ? 'جاري الحفظ...' : 'حفظ التغييرات'}
-            </button>
-          </div>
+            </WsBtn>
+          </span>
+        </footer>
+      </div>
+    </div>
+  )
+}
+
+/* معالج حذف متعدد الخطوات (لفصل واحد أو للجميع) */
+interface DeletionWizardProps {
+  open: boolean
+  title: string
+  step: 1 | 2 | 3
+  password: string
+  confirmText: string
+  error: string | null
+  confirmPhrase: string
+  introText: React.ReactNode
+  warningTone: 'warn' | 'error'
+  warningItems: React.ReactNode[]
+  isSubmitting: boolean
+  submitLabel: string
+  onClose: () => void
+  onStepChange: (step: 1 | 2 | 3) => void
+  onPasswordChange: (value: string) => void
+  onConfirmTextChange: (value: string) => void
+  onSubmit: () => void
+}
+
+function DeletionWizard({
+  open,
+  title,
+  step,
+  password,
+  confirmText,
+  error,
+  confirmPhrase,
+  introText,
+  warningTone,
+  warningItems,
+  isSubmitting,
+  submitLabel,
+  onClose,
+  onStepChange,
+  onPasswordChange,
+  onConfirmTextChange,
+  onSubmit,
+}: DeletionWizardProps) {
+  if (!open) return null
+
+  return (
+    <div className="ws-modal" role="dialog" aria-modal onClick={isSubmitting ? undefined : onClose}>
+      <div className="ws-modal__panel" style={{ maxWidth: 440 }} onClick={(event) => event.stopPropagation()}>
+        <header className="ws-modal__head">
+          <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--ws-red)' }}>{title}</span>
+          <h3 className="ws-modal__title">
+            {step === 1 && 'التحقق من الهوية'}
+            {step === 2 && 'تنبيه مهم'}
+            {step === 3 && 'التأكيد النهائي'}
+          </h3>
+        </header>
+
+        <div className="ws-modal__body">
+          {step === 1 && (
+            <>
+              <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.9 }}>{introText}</p>
+              <WsField label="الرقم السري" htmlFor={`${title}-password`}>
+                <WsInput
+                  id={`${title}-password`}
+                  type="password"
+                  value={password}
+                  onChange={(e) => onPasswordChange(e.target.value)}
+                  placeholder="أدخل الرقم السري"
+                  autoFocus
+                />
+                {fieldError(error)}
+              </WsField>
+            </>
+          )}
+
+          {step === 2 && (
+            <WsAlert tone={warningTone} boxed>
+              <div>
+                <b>{warningTone === 'error' ? 'تحذير: هذا الإجراء خطير!' : 'هذا الإجراء يؤثر على سير الحصص!'}</b>
+                <ul style={{ margin: '6px 0 0', paddingInlineStart: 18, display: 'grid', gap: 3, fontSize: 11.5 }}>
+                  {warningItems.map((item, index) => (
+                    <li key={index}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            </WsAlert>
+          )}
+
+          {step === 3 && (
+            <>
+              <p style={{ margin: 0, fontSize: 12.5 }}>للتأكيد النهائي، اكتب النص التالي بالضبط:</p>
+              <div
+                style={{
+                  borderRadius: 8,
+                  border: '1px solid var(--ws-hairline)',
+                  background: 'var(--ws-surface-2)',
+                  padding: '8px 12px',
+                  textAlign: 'center',
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  color: 'var(--ws-red)',
+                }}
+              >
+                {confirmPhrase}
+              </div>
+              <WsInput
+                type="text"
+                value={confirmText}
+                onChange={(e) => onConfirmTextChange(e.target.value)}
+                placeholder="اكتب النص هنا"
+                autoFocus
+                dir="rtl"
+                style={{ textAlign: 'center' }}
+              />
+              {fieldError(error)}
+            </>
+          )}
         </div>
+
+        <footer className="ws-modal__foot">
+          {step === 1 && (
+            <>
+              <WsBtn onClick={onClose}>إلغاء</WsBtn>
+              <WsBtn variant="danger" onClick={onSubmit}>
+                التالي
+              </WsBtn>
+            </>
+          )}
+          {step === 2 && (
+            <>
+              <WsBtn onClick={() => onStepChange(1)}>رجوع</WsBtn>
+              <WsBtn variant="danger" onClick={() => onStepChange(3)}>
+                فهمت، المتابعة
+              </WsBtn>
+            </>
+          )}
+          {step === 3 && (
+            <>
+              <WsBtn onClick={() => onStepChange(2)} disabled={isSubmitting}>
+                رجوع
+              </WsBtn>
+              <WsBtn variant="danger" onClick={onSubmit} disabled={isSubmitting || confirmText !== confirmPhrase}>
+                {isSubmitting ? 'جارٍ الحذف...' : submitLabel}
+              </WsBtn>
+            </>
+          )}
+        </footer>
       </div>
     </div>
   )
@@ -858,7 +983,7 @@ export function AdminClassSchedulesPage() {
 
   const handleQuickEditSlot = (teacherId: number, subjectId: number) => {
     if (!slotToQuickEdit || !scheduleQuery.data?.class_info) return
-    
+
     const slot = slotToQuickEdit.slot
     const classInfo = scheduleQuery.data.class_info
     const payload = {
@@ -873,7 +998,7 @@ export function AdminClassSchedulesPage() {
       status: 'active' as const,
       notes: null,
     }
-    
+
     updateSessionMutation.mutate(
       {
         id: slot.id,
@@ -886,7 +1011,7 @@ export function AdminClassSchedulesPage() {
         },
         onError: (error: unknown) => {
           const errorData = (error as { response?: { data?: unknown } })?.response?.data as { message?: string; conflict_details?: string } | undefined
-          
+
           // عرض تفاصيل الحصة المتضاربة إن وجدت
           if (errorData?.conflict_details) {
             alert(`⚠️ ${errorData.message}\n\n${errorData.conflict_details}`)
@@ -908,6 +1033,48 @@ export function AdminClassSchedulesPage() {
     })
   }
 
+  const handlePrintAll = async () => {
+    if (!classSummariesQuery.data || classSummariesQuery.data.length === 0) return
+    setIsPrintingAll(true)
+    try {
+      const schoolName = useAuthStore.getState().user?.school?.name || 'المدرسة'
+      const results = await Promise.all(
+        classSummariesQuery.data.map((cls) =>
+          fetchClassSchedule(cls.grade, cls.class_name).then((res) => ({
+            grade: cls.grade,
+            className: cls.class_name,
+            displayName: cls.name || `${cls.grade} / ${cls.class_name}`,
+            schedule: res.schedule,
+            appliedScheduleName: res.applied_schedule?.name,
+          })),
+        ),
+      )
+      const withSessions = results.filter(
+        (r) => Object.values(r.schedule).some((day) => Object.values(day).some(Boolean)),
+      )
+      printAllClassSchedules(withSessions, schoolName)
+    } catch {
+      alert('حدث خطأ أثناء تحميل الجداول للطباعة')
+    } finally {
+      setIsPrintingAll(false)
+    }
+  }
+
+  const handlePrintClass = () => {
+    if (!scheduleQuery.data?.schedule || !selectedClass) return
+    const schoolName = useAuthStore.getState().user?.school?.name || 'المدرسة'
+    printClassSchedule(
+      scheduleQuery.data.schedule,
+      {
+        grade: selectedClass.grade,
+        class_name: selectedClass.class_name,
+        name: selectedClass.name,
+      },
+      schoolName,
+      scheduleQuery.data.applied_schedule?.name,
+    )
+  }
+
   const summariesErrorMessage =
     classSummariesQuery.error instanceof Error ? classSummariesQuery.error.message : 'تعذر تحميل قائمة الفصول'
   const scheduleErrorMessage =
@@ -918,383 +1085,454 @@ export function AdminClassSchedulesPage() {
     return classSummariesQuery.data?.reduce((total, cls) => total + (cls.sessions_count ?? 0), 0) ?? 0
   }, [classSummariesQuery.data])
 
+  const handleDeleteScheduleSubmit = () => {
+    if (!selectedClass) return
+    if (deleteScheduleStep === 1) {
+      if (!deletePassword.trim()) {
+        setDeleteError('الرقم السري مطلوب')
+        return
+      }
+      setDeleteError(null)
+      setDeleteScheduleStep(2)
+      return
+    }
+    if (deleteConfirmText !== 'حذف جميع الحصص') {
+      setDeleteError('النص غير مطابق')
+      return
+    }
+    deleteScheduleMutation.mutate(
+      {
+        grade: selectedClass.grade,
+        className: selectedClass.class_name,
+        password: deletePassword,
+      },
+      {
+        onSuccess: () => {
+          setIsDeleteScheduleOpen(false)
+          setDeleteScheduleStep(1)
+          setDeletePassword('')
+          setDeleteConfirmText('')
+          setDeleteError(null)
+        },
+        onError: (error) => {
+          const message = error instanceof Error ? error.message : 'حدث خطأ'
+          if (message.includes('السري')) {
+            setDeleteScheduleStep(1)
+          }
+          setDeleteError(message)
+        },
+      },
+    )
+  }
+
+  const handleDeleteAllSubmit = () => {
+    if (deleteAllStep === 1) {
+      if (!deleteAllPassword.trim()) {
+        setDeleteAllError('الرقم السري مطلوب')
+        return
+      }
+      setDeleteAllError(null)
+      setDeleteAllStep(2)
+      return
+    }
+    if (deleteAllConfirmText !== 'حذف جميع الجداول') {
+      setDeleteAllError('النص غير مطابق')
+      return
+    }
+    deleteAllSchedulesMutation.mutate(deleteAllPassword, {
+      onSuccess: () => {
+        setIsDeleteAllSchedulesOpen(false)
+        setDeleteAllStep(1)
+        setDeleteAllPassword('')
+        setDeleteAllConfirmText('')
+        setDeleteAllError(null)
+      },
+      onError: (error) => {
+        const message = error instanceof Error ? error.message : 'حدث خطأ'
+        if (message.includes('السري')) {
+          setDeleteAllStep(1)
+        }
+        setDeleteAllError(message)
+      },
+    })
+  }
+
   return (
-    <section className="space-y-6">
-      <header className="flex items-center justify-between gap-4">
-        <h1 className="text-xl font-bold text-slate-900">جداول الفصول</h1>
-        {totalSessionsAllClasses > 0 && (
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              title="طباعة جداول جميع الفصول"
-              onClick={async () => {
-                if (!classSummariesQuery.data || classSummariesQuery.data.length === 0) return
-                setIsPrintingAll(true)
-                try {
-                  const schoolName = useAuthStore.getState().user?.school?.name || 'المدرسة'
-                  const results = await Promise.all(
-                    classSummariesQuery.data.map((cls) =>
-                      fetchClassSchedule(cls.grade, cls.class_name).then((res) => ({
-                        grade: cls.grade,
-                        className: cls.class_name,
-                        displayName: cls.name || `${cls.grade} / ${cls.class_name}`,
-                        schedule: res.schedule,
-                        appliedScheduleName: res.applied_schedule?.name,
-                      })),
-                    ),
-                  )
-                  const withSessions = results.filter(
-                    (r) => Object.values(r.schedule).some((day) => Object.values(day).some(Boolean)),
-                  )
-                  printAllClassSchedules(withSessions, schoolName)
-                } catch {
-                  alert('حدث خطأ أثناء تحميل الجداول للطباعة')
-                } finally {
-                  setIsPrintingAll(false)
-                }
-              }}
-              className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
-              disabled={isPrintingAll}
-            >
-              <i className="bi bi-printer ml-1" />
-              {isPrintingAll ? 'جارٍ التحميل...' : 'طباعة الكل'}
-            </button>
-            <button
-              type="button"
-              title="حذف جداول جميع الفصول"
-              onClick={() => {
-                setIsDeleteAllSchedulesOpen(true)
-                setDeleteAllStep(1)
-                setDeleteAllPassword('')
-                setDeleteAllConfirmText('')
-                setDeleteAllError(null)
-              }}
-              className="rounded-xl border border-rose-200 px-3 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-50"
-              disabled={deleteAllSchedulesMutation.isPending}
-            >
-              <i className="bi bi-trash ml-1" />
-              حذف الكل
-            </button>
-          </div>
-        )}
-      </header>
-
-      <div className="grid gap-6 lg:grid-cols-[300px,1fr]">
-        <aside className="glass-card flex min-h-[320px] flex-col gap-4 lg:sticky lg:top-24 lg:max-h-[calc(100vh-140px)] lg:overflow-hidden">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-lg font-semibold text-slate-900">قائمة الفصول</h2>
-            <span className="rounded-full bg-teal-100 px-3 py-1 text-xs font-semibold text-teal-700">
-              {classSummariesQuery.isLoading
-                ? '…'
-                : `${filteredClasses.length}${isFiltered ? ` / ${classSummariesQuery.data?.length ?? 0}` : ''}`}
-            </span>
-          </div>
-
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-            <div className="sm:w-44">
-              <label htmlFor="class-grade-filter" className="sr-only">
-                تصفية حسب الصف
-              </label>
-              <select
-                id="class-grade-filter"
-                value={gradeFilter}
-                onChange={(event) => setGradeFilter(event.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+    <WsPage>
+      <WsHeader
+        title="جداول الفصول"
+        badge="الشبكة الأسبوعية"
+        actions={
+          totalSessionsAllClasses > 0 ? (
+            <>
+              <WsBtn icon={Printer} onClick={handlePrintAll} disabled={isPrintingAll}>
+                {isPrintingAll ? 'جارٍ التحميل...' : 'طباعة الكل'}
+              </WsBtn>
+              <WsBtn
+                variant="danger"
+                icon={Trash2}
+                onClick={() => {
+                  setIsDeleteAllSchedulesOpen(true)
+                  setDeleteAllStep(1)
+                  setDeleteAllPassword('')
+                  setDeleteAllConfirmText('')
+                  setDeleteAllError(null)
+                }}
+                disabled={deleteAllSchedulesMutation.isPending}
               >
-                <option value="all">جميع الصفوف</option>
-                {gradeOptions.map((grade) => (
-                  <option key={grade} value={grade}>
-                    {grade}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex-1">
-              <label htmlFor="class-search" className="sr-only">
-                بحث عن فصل
-              </label>
-              <input
-                id="class-search"
-                type="search"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="ابحث بالصف أو الشعبة أو اسم الفصل"
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-              />
-            </div>
+                حذف الكل
+              </WsBtn>
+            </>
+          ) : undefined
+        }
+        facts={
+          <>
+            <WsFact icon={Layers} label="الفصول:">
+              {(classSummariesQuery.data?.length ?? 0).toLocaleString('ar-SA')}
+            </WsFact>
+            <WsFact icon={Clock3} label="إجمالي الحصص:">
+              {totalSessionsAllClasses.toLocaleString('ar-SA')}
+            </WsFact>
+            {selectedClass && (
+              <>
+                <WsFact icon={GraduationCap} label="المحدد:">
+                  {selectedClass.grade} / {selectedClass.class_name}
+                </WsFact>
+                <WsFact icon={Users} label="طلابه:">
+                  {selectedClass.students_count}
+                </WsFact>
+                <WsFact label="حصصه:">{totalSessions}</WsFact>
+              </>
+            )}
+          </>
+        }
+      >
+        {scheduleQuery.isFetching && <WsChip tone="sky">جارٍ التحديث...</WsChip>}
+      </WsHeader>
+
+      <WsLayout>
+        {/* العمود الأيمن: قائمة الفصول */}
+        <WsSideCol title="الفصول" icon={Layers} side="start" width={270} storageKey="ws:class-schedules:list">
+          <div
+            style={{
+              flexShrink: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+              padding: '8px 10px',
+              borderBottom: '1px solid var(--ws-hairline)',
+            }}
+          >
+            <WsSelect value={gradeFilter} onChange={(event) => setGradeFilter(event.target.value)}>
+              <option value="all">جميع الصفوف</option>
+              {gradeOptions.map((grade) => (
+                <option key={grade} value={grade}>
+                  {grade}
+                </option>
+              ))}
+            </WsSelect>
+            <WsInput
+              type="search"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="ابحث بالصف أو الشعبة أو الاسم"
+            />
           </div>
 
-          <div className="flex-1 space-y-2 overflow-y-auto pr-1 lg:pr-2 custom-scrollbar">
+          <WsBlock
+            title="القائمة"
+            count={
+              classSummariesQuery.isLoading
+                ? '…'
+                : `${filteredClasses.length}${isFiltered ? ` / ${classSummariesQuery.data?.length ?? 0}` : ''}`
+            }
+            fill
+            scroll
+          >
             {classSummariesQuery.isLoading ? (
-              Array.from({ length: 5 }).map((_, index) => (
-                <div key={index} className="h-12 animate-pulse rounded-2xl bg-slate-100" />
-              ))
+              <WsEmpty loading>جاري تحميل الفصول...</WsEmpty>
             ) : classSummariesQuery.isError ? (
-              <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-700">
-                <p>تعذر تحميل الفصول: {summariesErrorMessage}</p>
-                <button
-                  type="button"
+              <WsEmpty icon={AlertTriangle}>
+                تعذر تحميل الفصول: {summariesErrorMessage}
+                <WsBtn
+                  size="sm"
+                  icon={RefreshCcw}
                   onClick={() => classSummariesQuery.refetch()}
-                  className="button-secondary mt-3"
                   disabled={classSummariesQuery.isFetching}
                 >
                   {classSummariesQuery.isFetching ? 'جارٍ إعادة المحاولة...' : 'إعادة المحاولة'}
-                </button>
-              </div>
+                </WsBtn>
+              </WsEmpty>
             ) : filteredClasses.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-white/60 p-6 text-center text-sm text-muted">
-                لا توجد فصول مطابقة لبحثك حالياً.
-              </div>
+              <WsEmpty icon={Layers}>لا توجد فصول مطابقة لبحثك حالياً.</WsEmpty>
             ) : (
-              filteredClasses.map((item) => {
-                const isSelected = selectedClass?.id === item.id
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedClassId(item.id)
-                      // على الجوال: فتح نافذة الأيام مباشرة
-                      if (window.innerWidth < 768) {
-                        // انتظر تحديث الحالة ثم فتح النافذة
-                        setTimeout(() => {
-                          const event = new CustomEvent('openDaysPanel')
-                          window.dispatchEvent(event)
-                        }, 100)
-                      }
-                    }}
-                    className={`w-full rounded-2xl border px-3 py-2.5 text-right text-sm transition focus:outline-none focus:ring-2 focus:ring-teal-500/40 ${
-                      isSelected
-                        ? 'border-teal-500 bg-teal-50 text-teal-900 shadow-sm'
-                        : 'border-transparent bg-white/80 hover:border-teal-300 hover:bg-white'
-                    }`}
-                    aria-pressed={isSelected}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-semibold text-slate-900">
-                        {item.grade} / {item.class_name}
+              <div>
+                {filteredClasses.map((item) => {
+                  const isSelected = selectedClass?.id === item.id
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedClassId(item.id)
+                        // على الجوال: فتح نافذة الأيام مباشرة
+                        if (window.innerWidth < 768) {
+                          // انتظر تحديث الحالة ثم فتح النافذة
+                          setTimeout(() => {
+                            const event = new CustomEvent('openDaysPanel')
+                            window.dispatchEvent(event)
+                          }, 100)
+                        }
+                      }}
+                      aria-pressed={isSelected}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        textAlign: 'right',
+                        padding: '8px 12px',
+                        border: 'none',
+                        borderBottom: '1px solid var(--ws-hairline)',
+                        background: isSelected ? 'var(--ws-accent-soft)' : 'transparent',
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                        <span style={{ fontSize: 12.5, fontWeight: isSelected ? 700 : 600, color: 'var(--ws-text)' }}>
+                          {item.grade} / {item.class_name}
+                        </span>
+                        <WsChip tone={isSelected ? 'sky' : undefined}>{item.students_count} طالب</WsChip>
                       </span>
-                      <span className="text-[11px] font-semibold text-teal-600">{item.students_count} طالب</span>
-                    </div>
-                    {item.name && item.name !== `${item.grade} / ${item.class_name}` ? (
-                      <p className="mt-1 text-xs text-slate-500">{item.name}</p>
-                    ) : null}
-                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted">
-                      {typeof item.sessions_count === 'number' ? (
-                        <span className="inline-flex items-center gap-1">
-                          <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                          {item.sessions_count} حصص
+                      {item.name && item.name !== `${item.grade} / ${item.class_name}` ? (
+                        <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ws-text-2)', marginTop: 2 }}>
+                          {item.name}
                         </span>
                       ) : null}
-                      {item.active_schedule ? (
-                        <span className="inline-flex items-center gap-1">
-                          <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
-                          {item.active_schedule}
-                        </span>
-                      ) : null}
-                    </div>
-                  </button>
-                )
-              })
+                      <span style={{ display: 'inline-flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
+                        {typeof item.sessions_count === 'number' ? <WsChip tone="amber">{item.sessions_count} حصص</WsChip> : null}
+                        {item.active_schedule ? <WsChip>{item.active_schedule}</WsChip> : null}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
             )}
-          </div>
-        </aside>
+          </WsBlock>
+        </WsSideCol>
 
-        <div className="glass-card space-y-6">
-          {selectedClass ? (
-            <>
-              <header className="space-y-2">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <h2 className="text-lg font-bold text-slate-900">{selectedClass.name}</h2>
-                    <div className="flex items-center gap-2 text-[11px] text-muted">
-                      <span>{selectedClass.students_count} طالب</span>
-                      <span>•</span>
-                      <span>{totalSessions} حصة</span>
-                      {scheduleQuery.data?.applied_schedule ? (
-                        <>
-                          <span>•</span>
-                          <span className="font-semibold text-teal-700">{scheduleQuery.data.applied_schedule.name}</span>
-                        </>
-                      ) : null}
-                      {scheduleQuery.isFetching ? (
-                        <span className="h-2 w-2 animate-ping rounded-full bg-teal-500" />
-                      ) : null}
-                    </div>
+        {/* الوسط: جدول الفصل الأسبوعي */}
+        <WsMain>
+          <WsBlock
+            title={selectedClass ? `جدول ${selectedClass.name}` : 'جدول الفصل'}
+            icon={CalendarDays}
+            count={selectedClass ? `${totalSessions} حصة` : undefined}
+            tools={
+              selectedClass ? (
+                <>
+                  {totalSessions > 0 && (
+                    <WsBtn size="sm" icon={Printer} onClick={handlePrintClass}>
+                      طباعة
+                    </WsBtn>
+                  )}
+                  <WsBtn size="sm" icon={RefreshCcw} onClick={() => scheduleQuery.refetch()} disabled={scheduleQuery.isFetching}>
+                    تحديث
+                  </WsBtn>
+                  <WsBtn
+                    size="sm"
+                    icon={Clock3}
+                    onClick={() => setIsApplyScheduleOpen(true)}
+                    disabled={applyScheduleMutation.isPending}
+                  >
+                    توقيت
+                  </WsBtn>
+                  <WsBtn
+                    size="sm"
+                    variant="primary"
+                    icon={Plus}
+                    onClick={() => handleOpenQuickSession()}
+                    disabled={addQuickSessionMutation.isPending}
+                  >
+                    إضافة حصة
+                  </WsBtn>
+                  {totalSessions > 0 && (
+                    <WsBtn
+                      size="sm"
+                      variant="danger"
+                      icon={Trash2}
+                      onClick={() => {
+                        setIsDeleteScheduleOpen(true)
+                        setDeleteScheduleStep(1)
+                        setDeletePassword('')
+                        setDeleteConfirmText('')
+                        setDeleteError(null)
+                      }}
+                      disabled={deleteScheduleMutation.isPending}
+                    />
+                  )}
+                </>
+              ) : undefined
+            }
+            fill
+          >
+            {!selectedClass ? (
+              <WsEmpty icon={Layers}>اختر فصلًا من القائمة اليمنى لعرض جدول حصصه الأسبوعي.</WsEmpty>
+            ) : scheduleQuery.isLoading ? (
+              <WsEmpty loading>جاري تحميل جدول الفصل...</WsEmpty>
+            ) : scheduleQuery.isError ? (
+              <WsEmpty icon={AlertTriangle}>
+                تعذر تحميل جدول الفصل: {scheduleErrorMessage}
+                <WsBtn size="sm" icon={RefreshCcw} onClick={() => scheduleQuery.refetch()}>
+                  إعادة المحاولة
+                </WsBtn>
+              </WsEmpty>
+            ) : (
+              <>
+                {scheduleQuery.data?.applied_schedule && (
+                  <div
+                    style={{
+                      flexShrink: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '6px 14px',
+                      borderBottom: '1px solid var(--ws-hairline)',
+                      fontSize: 11,
+                      color: 'var(--ws-text-2)',
+                    }}
+                    className="hidden md:flex"
+                  >
+                    <Clock3 style={{ width: 12, height: 12, color: 'var(--ws-accent-2)' }} />
+                    التوقيت المطبق: <b style={{ color: 'var(--ws-text)' }}>{scheduleQuery.data.applied_schedule.name}</b>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    {totalSessions > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!scheduleQuery.data?.schedule || !selectedClass) return
-                          const schoolName = useAuthStore.getState().user?.school?.name || 'المدرسة'
-                          printClassSchedule(
-                            scheduleQuery.data.schedule,
-                            {
-                              grade: selectedClass.grade,
-                              class_name: selectedClass.class_name,
-                              name: selectedClass.name,
-                            },
-                            schoolName,
-                            scheduleQuery.data.applied_schedule?.name,
-                          )
-                        }}
-                        className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
-                      >
-                        <i className="bi bi-printer ml-1" />
-                        طباعة
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => scheduleQuery.refetch()}
-                      className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
-                      disabled={scheduleQuery.isFetching}
-                    >
-                      <i className={`bi bi-arrow-clockwise ml-1 ${scheduleQuery.isFetching ? 'animate-spin' : ''}`} />
-                      تحديث
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsApplyScheduleOpen(true)}
-                      className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
-                      disabled={applyScheduleMutation.isPending}
-                    >
-                      <i className="bi bi-clock ml-1" />
-                      توقيت
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenQuickSession()}
-                      className="rounded-xl bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-teal-700"
-                      disabled={addQuickSessionMutation.isPending}
-                    >
-                      <i className="bi bi-plus-lg ml-1" />
-                      إضافة حصة
-                    </button>
-                    {totalSessions > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsDeleteScheduleOpen(true)
-                          setDeleteScheduleStep(1)
-                          setDeletePassword('')
-                          setDeleteConfirmText('')
-                          setDeleteError(null)
-                        }}
-                        className="rounded-xl border border-rose-200 px-3 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-50"
-                        disabled={deleteScheduleMutation.isPending}
-                      >
-                        <i className="bi bi-trash ml-1" />
-                        حذف
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </header>
+                )}
 
-              {scheduleQuery.isLoading ? (
-                <div className="flex flex-col items-center justify-center gap-3 py-16 text-center text-sm text-muted">
-                  <span className="h-12 w-12 animate-spin rounded-full border-2 border-teal-500 border-t-transparent" />
-                  جاري تحميل جدول الفصل...
-                </div>
-              ) : scheduleQuery.isError ? (
-                <div className="rounded-3xl border border-rose-100 bg-rose-50 p-6 text-center text-sm text-rose-700">
-                  <p>تعذر تحميل جدول الفصل: {scheduleErrorMessage}</p>
-                  <button type="button" onClick={() => scheduleQuery.refetch()} className="button-primary mt-4">
-                    إعادة المحاولة
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {/* عرض الجدول للشاشات الكبيرة */}
-                  <div className="hidden md:block overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-                    <table className="w-full min-w-[720px] border-collapse text-right text-xs md:text-sm">
-                      <thead className="bg-slate-100 text-slate-600">
-                        <tr>
-                          <th className="sticky right-0 w-28 border border-slate-200 bg-slate-100 px-2.5 py-2 text-[11px] font-semibold text-slate-600">
-                            اليوم / الحصة
-                          </th>
-                          {periods.map((period) => {
-                            const timeLabel = getPeriodTimeLabel(scheduleQuery.data?.schedule, period)
-                            return (
-                              <th key={period} className="border border-slate-200 px-2.5 py-2 text-[11px] font-semibold">
-                                <div className="flex flex-col items-end gap-0.5">
-                                  <span>الحصة {period}</span>
-                                  {timeLabel ? <span className="text-[10px] text-slate-500">{timeLabel}</span> : null}
-                                </div>
-                              </th>
-                            )
-                          })}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {daysOfWeek.map((day) => {
-                          const daySessions = scheduleQuery.data?.schedule?.[day] ?? {}
+                {/* الشبكة للشاشات الكبيرة */}
+                <div className="ws-tablewrap hidden md:block">
+                  <table className="ws-matrix">
+                    <thead>
+                      <tr>
+                        <th className="ws-matrix__stick" style={{ minWidth: 88 }}>
+                          اليوم / الحصة
+                        </th>
+                        {periods.map((period) => {
+                          const timeLabel = getPeriodTimeLabel(scheduleQuery.data?.schedule, period)
                           return (
-                            <tr key={day} className="bg-white even:bg-slate-50/70">
-                              <th
-                                scope="row"
-                                className="sticky right-0 border border-slate-200 bg-slate-100 px-2.5 py-2 text-[11px] font-semibold text-slate-700"
-                              >
-                                {day}
-                              </th>
-                              {periods.map((period) => {
-                                const slot = daySessions?.[period] ?? null
-
-                                return (
-                                  <td key={period} className="border border-slate-200 p-0">
-                                    {slot ? (
-                                      <button
-                                        type="button"
-                                        onClick={() => setSlotToQuickEdit({ slot, day })}
-                                        className="w-full h-full min-h-[70px] flex flex-col justify-center gap-1 text-right transition-all hover:bg-teal-50 p-3 cursor-pointer"
-                                        disabled={deleteSessionMutation.isPending || updateSessionMutation.isPending}
-                                      >
-                                        <p className="font-semibold text-slate-900 leading-tight text-sm">
-                                          {slot.subject_name}
-                                        </p>
-                                        {slot.teacher_name ? (
-                                          <p className="text-xs text-slate-500" title={slot.teacher_name}>
-                                            {shortenTeacherName(slot.teacher_name)}
-                                          </p>
-                                        ) : null}
-                                      </button>
-                                    ) : (
-                                      <button
-                                        type="button"
-                                        onClick={() => handleOpenQuickSession(day, period)}
-                                        className="w-full min-h-[70px] border border-dashed border-teal-300 bg-white py-2 text-xs font-semibold text-teal-600 transition hover:border-teal-400 hover:bg-teal-50"
-                                        disabled={addQuickSessionMutation.isPending}
-                                      >
-                                        إضافة
-                                      </button>
-                                    )}
-                                  </td>
-                                )
-                              })}
-                            </tr>
+                            <th key={period} style={{ minWidth: 112 }}>
+                              <span style={{ display: 'block', fontWeight: 700 }}>الحصة {period}</span>
+                              {timeLabel ? (
+                                <span style={{ display: 'block', fontSize: 9.5, fontWeight: 400, direction: 'ltr' }}>
+                                  {timeLabel}
+                                </span>
+                              ) : null}
+                            </th>
                           )
                         })}
-                      </tbody>
-                    </table>
-                  </div>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {daysOfWeek.map((day) => {
+                        const daySessions = scheduleQuery.data?.schedule?.[day] ?? {}
+                        return (
+                          <tr key={day}>
+                            <td className="ws-matrix__stick" style={{ fontWeight: 700, fontSize: 12 }}>
+                              {day}
+                            </td>
+                            {periods.map((period) => {
+                              const slot = daySessions?.[period] ?? null
+                              const tone = slot ? subjectColor(slot.subject_name) : null
 
-                  <p className="text-xs text-muted">
-                    اضغط على الحصة لتعديل المعلم والمادة أو حذفها. استخدم الخلايا الفارغة لإضافة حصص جديدة مع الحفاظ على سجلات الحضور التاريخية.
-                  </p>
+                              return (
+                                <td key={period} style={{ padding: 3, verticalAlign: 'stretch' }}>
+                                  {slot && tone ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => setSlotToQuickEdit({ slot, day })}
+                                      disabled={deleteSessionMutation.isPending || updateSessionMutation.isPending}
+                                      title="اضغط لتعديل المعلم والمادة أو الحذف"
+                                      style={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        justifyContent: 'center',
+                                        gap: 2,
+                                        width: '100%',
+                                        minHeight: 58,
+                                        padding: '6px 9px',
+                                        borderRadius: 8,
+                                        border: `1px solid ${tone.bd}`,
+                                        background: tone.bg,
+                                        cursor: 'pointer',
+                                        textAlign: 'right',
+                                        fontFamily: 'inherit',
+                                      }}
+                                    >
+                                      <span style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.3, color: tone.tx }}>
+                                        {slot.subject_name}
+                                      </span>
+                                      {slot.teacher_name ? (
+                                        <span style={{ fontSize: 10.5, color: 'var(--ws-text)' }} title={slot.teacher_name}>
+                                          {shortenTeacherName(slot.teacher_name)}
+                                        </span>
+                                      ) : null}
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenQuickSession(day, period)}
+                                      disabled={addQuickSessionMutation.isPending}
+                                      style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        width: '100%',
+                                        minHeight: 58,
+                                        borderRadius: 8,
+                                        border: '1px dashed var(--ws-border)',
+                                        background: 'transparent',
+                                        cursor: 'pointer',
+                                        fontFamily: 'inherit',
+                                        fontSize: 10.5,
+                                        fontWeight: 700,
+                                        color: 'var(--ws-text-2)',
+                                      }}
+                                    >
+                                      + إضافة
+                                    </button>
+                                  )}
+                                </td>
+                              )
+                            })}
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-              )}
-            </>
-          ) : (
-            <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-3 text-center text-sm text-muted">
-              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-2xl text-slate-400">📋</span>
-              اختر فصلًا من القائمة لعرض جدول حصصه الأسبوعي.
-            </div>
-          )}
-        </div>
-      </div>
+
+                <div
+                  style={{
+                    flexShrink: 0,
+                    padding: '6px 14px',
+                    borderTop: '1px solid var(--ws-hairline)',
+                    fontSize: 10.5,
+                    color: 'var(--ws-text-2)',
+                  }}
+                  className="hidden md:block"
+                >
+                  اضغط على الحصة لتعديل المعلم والمادة أو حذفها، واستخدم الخلايا الفارغة لإضافة حصص جديدة — سجلات الحضور
+                  التاريخية محفوظة دائماً.
+                </div>
+
+                {/* عرض الجوال: زر فتح الأيام */}
+                <div className="md:hidden" style={{ padding: 14 }}>
+                  <WsBtn variant="primary" icon={CalendarDays} onClick={() => setShowDaysPanel(true)} style={{ width: '100%' }}>
+                    عرض أيام الأسبوع
+                  </WsBtn>
+                </div>
+              </>
+            )}
+          </WsBlock>
+        </WsMain>
+      </WsLayout>
 
       <QuickSessionDialog
         open={Boolean(selectedClass && quickSessionContext)}
@@ -1312,37 +1550,32 @@ export function AdminClassSchedulesPage() {
 
       {/* نافذة قائمة الأيام للجوال */}
       {showDaysPanel && scheduleQuery.data?.schedule && (
-        <div 
-          className="fixed inset-0 z-50 md:hidden"
-          onClick={() => setShowDaysPanel(false)}
-        >
+        <div className="fixed inset-0 z-50 md:hidden" onClick={() => setShowDaysPanel(false)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div 
-            className="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto rounded-t-3xl bg-white shadow-2xl"
+          <div
+            className="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto rounded-t-3xl shadow-2xl"
+            style={{ background: 'var(--ws-surface)' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="sticky top-0 z-10 flex justify-center bg-white pt-3 pb-2 border-b border-slate-100">
-              <div className="h-1.5 w-12 rounded-full bg-slate-300" />
+            <div
+              className="sticky top-0 z-10 flex justify-center pt-3 pb-2"
+              style={{ background: 'var(--ws-surface)', borderBottom: '1px solid var(--ws-hairline)' }}
+            >
+              <div className="h-1.5 w-12 rounded-full" style={{ background: 'var(--ws-border)' }} />
             </div>
-            
+
             <div className="p-4 space-y-4">
-              <header className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <header className="flex items-center justify-between pb-3" style={{ borderBottom: '1px solid var(--ws-hairline)' }}>
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-900">أيام الأسبوع</h2>
-                  <p className="text-xs text-muted">اختر يوم لعرض حصصه</p>
+                  <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>أيام الأسبوع</h2>
+                  <p style={{ fontSize: 11, color: 'var(--ws-text-2)', margin: '2px 0 0' }}>اختر يوماً لعرض حصصه</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowDaysPanel(false)}
-                  className="rounded-full p-2 hover:bg-slate-100 text-slate-500"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+                <WsBtn size="sm" onClick={() => setShowDaysPanel(false)}>
+                  إغلاق
+                </WsBtn>
               </header>
 
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {daysOfWeek.map((day) => {
                   const daySessions = scheduleQuery.data.schedule?.[day] ?? {}
                   const sessionsCount = Object.values(daySessions).filter(s => s !== null).length
@@ -1354,17 +1587,14 @@ export function AdminClassSchedulesPage() {
                         const event = new CustomEvent('openDaySchedule', { detail: { day, sessions: daySessions } })
                         window.dispatchEvent(event)
                       }}
-                      className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-right shadow-sm hover:border-teal-300 hover:bg-teal-50/50 transition"
+                      className="ws-pick"
+                      style={{ width: '100%' }}
                     >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-semibold text-slate-900">{day}</p>
-                          <p className="text-xs text-muted mt-1">{sessionsCount} حصة</p>
-                        </div>
-                        <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                        </svg>
-                      </div>
+                      <span style={{ minWidth: 0 }}>
+                        <span className="ws-pick__name">{day}</span>
+                        <span className="ws-pick__sub">{sessionsCount} حصة</span>
+                      </span>
+                      <CalendarDays style={{ width: 14, height: 14, color: 'var(--ws-accent-2)', flexShrink: 0 }} />
                     </button>
                   )
                 })}
@@ -1376,57 +1606,59 @@ export function AdminClassSchedulesPage() {
 
       {/* نافذة عرض حصص اليوم للجوال */}
       {selectedDay && (
-        <div 
-          className="fixed inset-0 z-50 md:hidden"
-          onClick={() => setSelectedDay(null)}
-        >
+        <div className="fixed inset-0 z-50 md:hidden" onClick={() => setSelectedDay(null)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div 
-            className="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto rounded-t-3xl bg-white shadow-2xl"
+          <div
+            className="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto rounded-t-3xl shadow-2xl"
+            style={{ background: 'var(--ws-surface)' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="sticky top-0 z-10 flex justify-center bg-white pt-3 pb-2 border-b border-slate-100">
-              <div className="h-1.5 w-12 rounded-full bg-slate-300" />
+            <div
+              className="sticky top-0 z-10 flex justify-center pt-3 pb-2"
+              style={{ background: 'var(--ws-surface)', borderBottom: '1px solid var(--ws-hairline)' }}
+            >
+              <div className="h-1.5 w-12 rounded-full" style={{ background: 'var(--ws-border)' }} />
             </div>
-            
+
             <div className="p-4 space-y-4">
-              <header className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <header className="flex items-center justify-between pb-3" style={{ borderBottom: '1px solid var(--ws-hairline)' }}>
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-900">{selectedDay.day}</h2>
-                  <p className="text-xs text-muted">{Object.keys(selectedDay.sessions).length} حصة</p>
+                  <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{selectedDay.day}</h2>
+                  <p style={{ fontSize: 11, color: 'var(--ws-text-2)', margin: '2px 0 0' }}>
+                    {Object.values(selectedDay.sessions).filter(slot => slot !== null).length} حصة
+                  </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedDay(null)}
-                  className="rounded-full p-2 hover:bg-slate-100 text-slate-500"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+                <WsBtn size="sm" onClick={() => setSelectedDay(null)}>
+                  إغلاق
+                </WsBtn>
               </header>
 
-              <div className="space-y-3">
-                {Object.values(selectedDay.sessions).filter(slot => slot !== null).map((slot) => (
-                  <div key={slot.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <div className="flex items-start justify-between mb-2">
-                      <span className="font-semibold text-teal-600">الحصة {slot.period_number}</span>
-                      <span className="text-xs text-slate-500">
-                        {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+              <div className="space-y-2">
+                {Object.values(selectedDay.sessions).filter(slot => slot !== null).map((slot) => {
+                  const tone = subjectColor(slot.subject_name)
+                  return (
+                    <div
+                      key={slot.id}
+                      style={{
+                        borderRadius: 9,
+                        border: `1px solid ${tone.bd}`,
+                        background: tone.bg,
+                        padding: '9px 12px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span style={{ fontSize: 12.5, fontWeight: 700, color: tone.tx }}>الحصة {slot.period_number}</span>
+                        <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)', direction: 'ltr' }}>
+                          {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+                        </span>
+                      </div>
+                      <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700 }}>{slot.subject_name}</span>
+                      <span style={{ display: 'block', fontSize: 11, color: 'var(--ws-text-2)', marginTop: 2 }}>
+                        {slot.teacher_name}
                       </span>
                     </div>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <span className="text-slate-600">المادة:</span>
-                        <span className="font-semibold text-slate-900">{slot.subject_name}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-slate-600">المعلم:</span>
-                        <span className="font-semibold text-slate-900">{slot.teacher_name}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           </div>
@@ -1481,364 +1713,84 @@ export function AdminClassSchedulesPage() {
         subjectOptions={subjectOptions}
       />
 
-      {/* Dialog حذف جدول الفصل - متعدد الخطوات */}
-      {isDeleteScheduleOpen && selectedClass && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" role="dialog" aria-modal>
-          <div className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
-            <button
-              type="button"
-              onClick={() => setIsDeleteScheduleOpen(false)}
-              className="absolute left-5 top-5 text-sm font-semibold text-slate-400 transition hover:text-slate-600"
-              disabled={deleteScheduleMutation.isPending}
-            >
-              إغلاق
-            </button>
-
-            <header className="mb-4 space-y-1 text-right">
-              <p className="text-xs font-semibold uppercase tracking-widest text-rose-600">حذف جدول الفصل</p>
-              <h2 className="text-xl font-bold text-slate-900">
-                {deleteScheduleStep === 1 && 'التحقق من الهوية'}
-                {deleteScheduleStep === 2 && 'تنبيه مهم'}
-                {deleteScheduleStep === 3 && 'التأكيد النهائي'}
-              </h2>
-            </header>
-
-            {/* الخطوة 1: إدخال الرقم السري */}
-            {deleteScheduleStep === 1 && (
-              <div className="space-y-4">
-                <p className="text-sm text-slate-600">
-                  أنت على وشك حذف جدول الفصل <strong>{selectedClass.name}</strong> الذي يحتوي على{' '}
-                  <strong>{totalSessions} حصة</strong>. للمتابعة، أدخل الرقم السري الخاص بك.
-                </p>
-                <div className="space-y-2">
-                  <label htmlFor="delete-password" className="block text-sm font-medium text-slate-700">
-                    الرقم السري
-                  </label>
-                  <input
-                    id="delete-password"
-                    type="password"
-                    value={deletePassword}
-                    onChange={(e) => {
-                      setDeletePassword(e.target.value)
-                      setDeleteError(null)
-                    }}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
-                    placeholder="أدخل الرقم السري"
-                    autoFocus
-                  />
-                  {deleteError && <p className="text-xs font-medium text-rose-600">{deleteError}</p>}
-                </div>
-                <div className="flex flex-col gap-2 md:flex-row md:justify-end">
-                  <button
-                    type="button"
-                    onClick={() => setIsDeleteScheduleOpen(false)}
-                    className="button-secondary sm:w-auto"
-                  >
-                    إلغاء
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!deletePassword.trim()) {
-                        setDeleteError('الرقم السري مطلوب')
-                        return
-                      }
-                      setDeleteScheduleStep(2)
-                    }}
-                    className="rounded-2xl bg-rose-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 sm:w-auto"
-                  >
-                    التالي
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* الخطوة 2: التنبيه */}
-            {deleteScheduleStep === 2 && (
-              <div className="space-y-4">
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                  <div className="flex items-start gap-3">
-                    <span className="text-2xl">⚠️</span>
-                    <div className="space-y-2 text-sm text-amber-800">
-                      <p className="font-semibold">هذا الإجراء يؤثر على سير الحصص!</p>
-                      <ul className="list-inside list-disc space-y-1 text-amber-700">
-                        <li>سيتم حذف جميع الحصص المسجلة للفصل ({totalSessions} حصة)</li>
-                        <li>سجلات الحضور المرتبطة بالحصص ستبقى محفوظة</li>
-                        <li>لا يمكن التراجع عن هذا الإجراء</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-2 md:flex-row md:justify-end">
-                  <button
-                    type="button"
-                    onClick={() => setDeleteScheduleStep(1)}
-                    className="button-secondary sm:w-auto"
-                  >
-                    رجوع
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDeleteScheduleStep(3)}
-                    className="rounded-2xl bg-rose-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 sm:w-auto"
-                  >
-                    فهمت، المتابعة
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* الخطوة 3: التأكيد النهائي */}
-            {deleteScheduleStep === 3 && (
-              <div className="space-y-4">
-                <p className="text-sm text-slate-600">
-                  للتأكيد النهائي، اكتب النص التالي بالضبط:
-                </p>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-center">
-                  <code className="text-sm font-semibold text-rose-600">حذف جميع الحصص</code>
-                </div>
-                <div className="space-y-2">
-                  <input
-                    type="text"
-                    value={deleteConfirmText}
-                    onChange={(e) => {
-                      setDeleteConfirmText(e.target.value)
-                      setDeleteError(null)
-                    }}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center text-sm shadow-sm focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
-                    placeholder="اكتب النص هنا"
-                    autoFocus
-                    dir="rtl"
-                  />
-                  {deleteError && <p className="text-xs font-medium text-rose-600 text-center">{deleteError}</p>}
-                </div>
-                <div className="flex flex-col gap-2 md:flex-row md:justify-end">
-                  <button
-                    type="button"
-                    onClick={() => setDeleteScheduleStep(2)}
-                    className="button-secondary sm:w-auto"
-                    disabled={deleteScheduleMutation.isPending}
-                  >
-                    رجوع
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (deleteConfirmText !== 'حذف جميع الحصص') {
-                        setDeleteError('النص غير مطابق')
-                        return
-                      }
-                      deleteScheduleMutation.mutate(
-                        {
-                          grade: selectedClass.grade,
-                          className: selectedClass.class_name,
-                          password: deletePassword,
-                        },
-                        {
-                          onSuccess: () => {
-                            setIsDeleteScheduleOpen(false)
-                            setDeleteScheduleStep(1)
-                            setDeletePassword('')
-                            setDeleteConfirmText('')
-                            setDeleteError(null)
-                          },
-                          onError: (error) => {
-                            const message = error instanceof Error ? error.message : 'حدث خطأ'
-                            if (message.includes('السري')) {
-                              setDeleteScheduleStep(1)
-                            }
-                            setDeleteError(message)
-                          },
-                        }
-                      )
-                    }}
-                    className="rounded-2xl bg-rose-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:opacity-50 sm:w-auto"
-                    disabled={deleteScheduleMutation.isPending || deleteConfirmText !== 'حذف جميع الحصص'}
-                  >
-                    {deleteScheduleMutation.isPending ? 'جارٍ الحذف...' : 'تأكيد الحذف'}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+      {/* معالج حذف جدول الفصل - متعدد الخطوات */}
+      {selectedClass && (
+        <DeletionWizard
+          open={isDeleteScheduleOpen}
+          title="حذف جدول الفصل"
+          step={deleteScheduleStep}
+          password={deletePassword}
+          confirmText={deleteConfirmText}
+          error={deleteError}
+          confirmPhrase="حذف جميع الحصص"
+          introText={
+            <>
+              أنت على وشك حذف جدول الفصل <b>{selectedClass.name}</b> الذي يحتوي على <b>{totalSessions} حصة</b>. للمتابعة،
+              أدخل الرقم السري الخاص بك.
+            </>
+          }
+          warningTone="warn"
+          warningItems={[
+            <>سيتم حذف جميع الحصص المسجلة للفصل ({totalSessions} حصة)</>,
+            <>سجلات الحضور المرتبطة بالحصص ستبقى محفوظة</>,
+            <>لا يمكن التراجع عن هذا الإجراء</>,
+          ]}
+          isSubmitting={deleteScheduleMutation.isPending}
+          submitLabel="تأكيد الحذف"
+          onClose={() => setIsDeleteScheduleOpen(false)}
+          onStepChange={setDeleteScheduleStep}
+          onPasswordChange={(value) => {
+            setDeletePassword(value)
+            setDeleteError(null)
+          }}
+          onConfirmTextChange={(value) => {
+            setDeleteConfirmText(value)
+            setDeleteError(null)
+          }}
+          onSubmit={handleDeleteScheduleSubmit}
+        />
       )}
 
-      {/* Dialog حذف جداول جميع الفصول - متعدد الخطوات */}
-      {isDeleteAllSchedulesOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" role="dialog" aria-modal>
-          <div className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
-            <button
-              type="button"
-              onClick={() => setIsDeleteAllSchedulesOpen(false)}
-              className="absolute left-5 top-5 text-sm font-semibold text-slate-400 transition hover:text-slate-600"
-              disabled={deleteAllSchedulesMutation.isPending}
-            >
-              إغلاق
-            </button>
-
-            <header className="mb-4 space-y-1 text-right">
-              <p className="text-xs font-semibold uppercase tracking-widest text-rose-600">حذف جداول جميع الفصول</p>
-              <h2 className="text-xl font-bold text-slate-900">
-                {deleteAllStep === 1 && 'التحقق من الهوية'}
-                {deleteAllStep === 2 && 'تنبيه مهم'}
-                {deleteAllStep === 3 && 'التأكيد النهائي'}
-              </h2>
-            </header>
-
-            {/* الخطوة 1: إدخال الرقم السري */}
-            {deleteAllStep === 1 && (
-              <div className="space-y-4">
-                <p className="text-sm text-slate-600">
-                  أنت على وشك حذف جداول <strong>جميع الفصول</strong> في المدرسة ({totalSessionsAllClasses} حصة في {classSummariesQuery.data?.length ?? 0} فصل). للمتابعة، أدخل الرقم السري الخاص بك.
-                </p>
-                <div className="space-y-2">
-                  <label htmlFor="delete-all-password" className="block text-sm font-medium text-slate-700">
-                    الرقم السري
-                  </label>
-                  <input
-                    id="delete-all-password"
-                    type="password"
-                    value={deleteAllPassword}
-                    onChange={(e) => {
-                      setDeleteAllPassword(e.target.value)
-                      setDeleteAllError(null)
-                    }}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
-                    placeholder="أدخل الرقم السري"
-                    autoFocus
-                  />
-                  {deleteAllError && <p className="text-xs font-medium text-rose-600">{deleteAllError}</p>}
-                </div>
-                <div className="flex flex-col gap-2 md:flex-row md:justify-end">
-                  <button
-                    type="button"
-                    onClick={() => setIsDeleteAllSchedulesOpen(false)}
-                    className="button-secondary sm:w-auto"
-                  >
-                    إلغاء
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!deleteAllPassword.trim()) {
-                        setDeleteAllError('الرقم السري مطلوب')
-                        return
-                      }
-                      setDeleteAllStep(2)
-                    }}
-                    className="rounded-2xl bg-rose-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 sm:w-auto"
-                  >
-                    التالي
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* الخطوة 2: التنبيه */}
-            {deleteAllStep === 2 && (
-              <div className="space-y-4">
-                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
-                  <div className="flex items-start gap-3">
-                    <span className="text-2xl">⚠️</span>
-                    <div className="space-y-2 text-sm text-rose-800">
-                      <p className="font-semibold">تحذير: هذا الإجراء خطير!</p>
-                      <ul className="list-inside list-disc space-y-1 text-rose-700">
-                        <li>سيتم حذف جميع الحصص من <strong>جميع الفصول</strong> ({totalSessionsAllClasses} حصة)</li>
-                        <li>سيتم حذف جداول <strong>{classSummariesQuery.data?.length ?? 0} فصل</strong></li>
-                        <li>سجلات الحضور المرتبطة بالحصص ستبقى محفوظة</li>
-                        <li className="font-semibold">لا يمكن التراجع عن هذا الإجراء</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-2 md:flex-row md:justify-end">
-                  <button
-                    type="button"
-                    onClick={() => setDeleteAllStep(1)}
-                    className="button-secondary sm:w-auto"
-                  >
-                    رجوع
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDeleteAllStep(3)}
-                    className="rounded-2xl bg-rose-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 sm:w-auto"
-                  >
-                    فهمت، المتابعة
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* الخطوة 3: التأكيد النهائي */}
-            {deleteAllStep === 3 && (
-              <div className="space-y-4">
-                <p className="text-sm text-slate-600">
-                  للتأكيد النهائي، اكتب النص التالي بالضبط:
-                </p>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-center">
-                  <code className="text-sm font-semibold text-rose-600">حذف جميع الجداول</code>
-                </div>
-                <div className="space-y-2">
-                  <input
-                    type="text"
-                    value={deleteAllConfirmText}
-                    onChange={(e) => {
-                      setDeleteAllConfirmText(e.target.value)
-                      setDeleteAllError(null)
-                    }}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center text-sm shadow-sm focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
-                    placeholder="اكتب النص هنا"
-                    autoFocus
-                    dir="rtl"
-                  />
-                  {deleteAllError && <p className="text-xs font-medium text-rose-600 text-center">{deleteAllError}</p>}
-                </div>
-                <div className="flex flex-col gap-2 md:flex-row md:justify-end">
-                  <button
-                    type="button"
-                    onClick={() => setDeleteAllStep(2)}
-                    className="button-secondary sm:w-auto"
-                    disabled={deleteAllSchedulesMutation.isPending}
-                  >
-                    رجوع
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (deleteAllConfirmText !== 'حذف جميع الجداول') {
-                        setDeleteAllError('النص غير مطابق')
-                        return
-                      }
-                      deleteAllSchedulesMutation.mutate(deleteAllPassword, {
-                        onSuccess: () => {
-                          setIsDeleteAllSchedulesOpen(false)
-                          setDeleteAllStep(1)
-                          setDeleteAllPassword('')
-                          setDeleteAllConfirmText('')
-                          setDeleteAllError(null)
-                        },
-                        onError: (error) => {
-                          const message = error instanceof Error ? error.message : 'حدث خطأ'
-                          if (message.includes('السري')) {
-                            setDeleteAllStep(1)
-                          }
-                          setDeleteAllError(message)
-                        },
-                      })
-                    }}
-                    className="rounded-2xl bg-rose-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:opacity-50 sm:w-auto"
-                    disabled={deleteAllSchedulesMutation.isPending || deleteAllConfirmText !== 'حذف جميع الجداول'}
-                  >
-                    {deleteAllSchedulesMutation.isPending ? 'جارٍ الحذف...' : 'تأكيد حذف الكل'}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </section>
+      {/* معالج حذف جداول جميع الفصول - متعدد الخطوات */}
+      <DeletionWizard
+        open={isDeleteAllSchedulesOpen}
+        title="حذف جداول جميع الفصول"
+        step={deleteAllStep}
+        password={deleteAllPassword}
+        confirmText={deleteAllConfirmText}
+        error={deleteAllError}
+        confirmPhrase="حذف جميع الجداول"
+        introText={
+          <>
+            أنت على وشك حذف جداول <b>جميع الفصول</b> في المدرسة ({totalSessionsAllClasses} حصة في{' '}
+            {classSummariesQuery.data?.length ?? 0} فصل). للمتابعة، أدخل الرقم السري الخاص بك.
+          </>
+        }
+        warningTone="error"
+        warningItems={[
+          <>
+            سيتم حذف جميع الحصص من <b>جميع الفصول</b> ({totalSessionsAllClasses} حصة)
+          </>,
+          <>
+            سيتم حذف جداول <b>{classSummariesQuery.data?.length ?? 0} فصل</b>
+          </>,
+          <>سجلات الحضور المرتبطة بالحصص ستبقى محفوظة</>,
+          <b>لا يمكن التراجع عن هذا الإجراء</b>,
+        ]}
+        isSubmitting={deleteAllSchedulesMutation.isPending}
+        submitLabel="تأكيد حذف الكل"
+        onClose={() => setIsDeleteAllSchedulesOpen(false)}
+        onStepChange={setDeleteAllStep}
+        onPasswordChange={(value) => {
+          setDeleteAllPassword(value)
+          setDeleteAllError(null)
+        }}
+        onConfirmTextChange={(value) => {
+          setDeleteAllConfirmText(value)
+          setDeleteAllError(null)
+        }}
+        onSubmit={handleDeleteAllSubmit}
+      />
+    </WsPage>
   )
 }
