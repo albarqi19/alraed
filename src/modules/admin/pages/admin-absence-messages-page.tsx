@@ -1,525 +1,343 @@
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  AlertCircle,
+  Check,
+  Clock,
+  Hourglass,
+  PartyPopper,
+  RefreshCw,
+  Send,
+  ShieldAlert,
+  UserX,
+  Users,
+} from 'lucide-react'
 import { fetchAbsenceMessagesStats, resendAbsenceMessages } from '../api'
 import { useToast } from '@/shared/feedback/use-toast'
-import { Check, X, Clock, Send, AlertCircle, Loader2 } from 'lucide-react'
+import {
+  WsPage,
+  WsHeader,
+  WsFact,
+  WsToolbar,
+  WsField,
+  WsInput,
+  WsSwitch,
+  WsLayout,
+  WsMain,
+  WsSideCol,
+  WsBlock,
+  WsTable,
+  WsBtn,
+  WsIconBtn,
+  WsAlert,
+  WsEmpty,
+  WsProgress,
+  WsFactsList,
+  WsFactRow,
+  TONES,
+  ToneChip,
+} from '@/shared/workspace'
+import {
+  GapCell,
+  gapState,
+  gapSeconds,
+  fmtGap,
+  STATE_META,
+  type AbsenceRow,
+} from './absence-messages-ui'
 
-interface SendingProgress {
-  totalMessages: number
-  sentMessages: number
-  failedMessages: number
-  skippedMessages: number
-  isOnBreak: boolean
-  breakTimeRemaining: number
-  currentOffset: number
-  isCompleted: boolean
-}
+const todayLocal = () => new Date().toLocaleDateString('en-CA')
 
 export function AdminAbsenceMessagesPage() {
   const toast = useToast()
   const queryClient = useQueryClient()
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [selectedDate, setSelectedDate] = useState(todayLocal())
   const [skipSent, setSkipSent] = useState(true)
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
   const [isSending, setIsSending] = useState(false)
-  const [progress, setProgress] = useState<SendingProgress>({
-    totalMessages: 0,
-    sentMessages: 0,
-    failedMessages: 0,
-    skippedMessages: 0,
-    isOnBreak: false,
-    breakTimeRemaining: 0,
-    currentOffset: 0,
-    isCompleted: false,
-  })
-  
-  const breakTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const [sent, setSent] = useState(0)
+  const [total, setTotal] = useState(0)
+  const [nowMs, setNowMs] = useState(() => Date.now())
 
-  // تنظيف المؤقت عند إلغاء التحميل
-  useEffect(() => {
-    return () => {
-      if (breakTimerRef.current) {
-        clearInterval(breakTimerRef.current)
-      }
-    }
-  }, [])
+  const cancelRef = useRef(false)
 
   const statsQuery = useQuery({
     queryKey: ['admin', 'absence-messages-stats', selectedDate],
     queryFn: () => fetchAbsenceMessagesStats(selectedDate),
-    refetchInterval: isSending ? false : 30000, // إيقاف التحديث أثناء الإرسال
+    refetchInterval: isSending ? false : 30000,
   })
 
   const resendMutation = useMutation({
     mutationFn: (payload: { date: string; skip_sent: boolean; offset?: number }) => resendAbsenceMessages(payload),
   })
 
-  // دالة الإرسال بالدفعات مع استراحة
-  const sendInBatches = async (offset = 0) => {
-    try {
-      const result = await resendMutation.mutateAsync({
-        date: selectedDate,
-        skip_sent: skipSent,
-        offset,
-      })
+  // نبضة حياة كل ٣٠ ثانية — الصفوف المفتوحة تنمو، والفجوة بالدقائق فلا داعي للثانية
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 30_000)
+    return () => clearInterval(id)
+  }, [])
 
-      // تحديث التقدم
-      setProgress((prev) => ({
-        ...prev,
-        totalMessages: result.total_absent,
-        sentMessages: prev.sentMessages + result.messages_sent,
-        failedMessages: prev.failedMessages + result.messages_failed,
-        skippedMessages: prev.skippedMessages + result.messages_skipped,
-        currentOffset: result.next_offset,
-        isCompleted: !result.has_more,
-      }))
+  const rows: AbsenceRow[] = useMemo(() => statsQuery.data?.students ?? [], [statsQuery.data])
 
-      // إذا كانت هناك رسائل متبقية
-      if (result.has_more) {
-        // إذا كانت هناك حاجة لاستراحة (بعد 20 رسالة)
-        if (result.needs_break) {
-          // استراحة عشوائية بين 2-3 دقائق (120-180 ثانية)
-          const breakDuration = Math.floor(Math.random() * 61) + 120 // 120-180 ثانية
-          
-          setProgress((prev) => ({
-            ...prev,
-            isOnBreak: true,
-            breakTimeRemaining: breakDuration,
-          }))
+  // فرز بالفجوة تنازلياً: الأعلى هو الأب الأطول جهلاً بغياب ابنه
+  const sortedRows = useMemo(
+    () => [...rows].sort((a, b) => gapSeconds(b, nowMs) - gapSeconds(a, nowMs)),
+    [rows, nowMs],
+  )
 
-          // عد تنازلي للاستراحة
-          let remainingTime = breakDuration
-          breakTimerRef.current = setInterval(() => {
-            remainingTime -= 1
-            setProgress((prev) => ({
-              ...prev,
-              breakTimeRemaining: remainingTime,
-            }))
+  const scaleSec = useMemo(
+    () => Math.max(600, ...rows.map((r) => gapSeconds(r, nowMs))),
+    [rows, nowMs],
+  )
 
-            if (remainingTime <= 0) {
-              if (breakTimerRef.current) {
-                clearInterval(breakTimerRef.current)
-              }
-              setProgress((prev) => ({
-                ...prev,
-                isOnBreak: false,
-                breakTimeRemaining: 0,
-              }))
-              // متابعة الإرسال بعد الاستراحة
-              sendInBatches(result.next_offset)
-            }
-          }, 1000)
-        } else {
-          // متابعة فوراً إذا لم نصل لـ 20 رسالة بعد
-          sendInBatches(result.next_offset)
-        }
-      } else {
-        // اكتمل الإرسال - تنظيف Timer
-        if (breakTimerRef.current) {
-          clearInterval(breakTimerRef.current)
-          breakTimerRef.current = null
-        }
-        
-        setIsSending(false)
-        setShowConfirmDialog(false)
-        queryClient.invalidateQueries({ queryKey: ['admin', 'absence-messages-stats'] })
-        
-        toast({
-          type: 'success',
-          title: `✅ اكتمل الإرسال!`,
-          description: `تم إرسال ${progress.sentMessages + result.messages_sent} رسالة بنجاح`,
-        })
-      }
-    } catch {
-      // تنظيف Timer في حالة الخطأ
-      if (breakTimerRef.current) {
-        clearInterval(breakTimerRef.current)
-        breakTimerRef.current = null
-      }
-      
-      setIsSending(false)
-      setProgress((prev) => ({ ...prev, isOnBreak: false, breakTimeRemaining: 0 }))
-      
-      toast({
-        type: 'error',
-        title: 'فشل في إرسال الرسائل',
-        description: 'حدث خطأ أثناء عملية الإرسال',
-      })
+  // كل الحقائق من مقام واحد: عدّ الحالة على المصفوفة نفسها
+  const counts = useMemo(() => {
+    let s = 0
+    let f = 0
+    let u = 0
+    let maxGap = 0
+    for (const r of rows) {
+      const st = gapState(r)
+      if (st === 'sent') s++
+      else if (st === 'failed') f++
+      else u++
+      if (st !== 'sent') maxGap = Math.max(maxGap, gapSeconds(r, nowMs))
     }
-  }
+    return { sent: s, failed: f, unknocked: u, maxGap }
+  }, [rows, nowMs])
 
-  const handleResend = () => {
-    // إعادة تعيين التقدم
-    setProgress({
-      totalMessages: 0,
-      sentMessages: 0,
-      failedMessages: 0,
-      skippedMessages: 0,
-      isOnBreak: false,
-      breakTimeRemaining: 0,
-      currentOffset: 0,
-      isCompleted: false,
-    })
-    
+  const failureReasons = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const r of rows) {
+      if (gapState(r) === 'failed') {
+        const reason = r.error_message?.trim() || 'فشل غير محدّد'
+        map.set(reason, (map.get(reason) ?? 0) + 1)
+      }
+    }
+    return [...map.entries()].sort((a, b) => b[1] - a[1])
+  }, [rows])
+
+  const noPhone = useMemo(() => rows.filter((r) => !r.student_phone).length, [rows])
+
+  const runSend = async () => {
+    setShowConfirm(false)
     setIsSending(true)
-    setShowConfirmDialog(false)
-    sendInBatches(0)
-  }
+    setSent(0)
+    cancelRef.current = false
+    let offset = 0
 
-  const handleCancel = () => {
-    // إيقاف العملية
-    if (breakTimerRef.current) {
-      clearInterval(breakTimerRef.current)
-      breakTimerRef.current = null
+    try {
+      for (;;) {
+        if (cancelRef.current) break
+        const result = await resendMutation.mutateAsync({ date: selectedDate, skip_sent: skipSent, offset })
+        setTotal(result.total_absent)
+        setSent((prev) => prev + result.messages_sent)
+        if (!result.has_more) break
+        offset = result.next_offset
+      }
+      queryClient.invalidateQueries({ queryKey: ['admin', 'absence-messages-stats'] })
+      toast(
+        cancelRef.current
+          ? { type: 'info', title: 'أُوقف الإرسال', description: 'ما بدأ إرساله قد يكون اكتمل' }
+          : { type: 'success', title: 'اكتمل الإرسال' },
+      )
+    } catch {
+      toast({ type: 'error', title: 'تعذّر إكمال الإرسال', description: 'قد تكون بعض الرسائل أُرسلت' })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'absence-messages-stats'] })
+    } finally {
+      setIsSending(false)
     }
-    
-    setIsSending(false)
-    setProgress({
-      totalMessages: 0,
-      sentMessages: 0,
-      failedMessages: 0,
-      skippedMessages: 0,
-      isOnBreak: false,
-      breakTimeRemaining: 0,
-      currentOffset: 0,
-      isCompleted: false,
-    })
-    
-    toast({
-      type: 'info',
-      title: 'تم إيقاف الإرسال',
-      description: 'تم إلغاء عملية الإرسال',
-    })
   }
 
-  const stats = statsQuery.data
-  const studentsWithoutMessages = stats?.students.filter((s) => !s.has_message) ?? []
-  const studentsWithMessages = stats?.students.filter((s) => s.has_message) ?? []
+  const isPast = selectedDate !== todayLocal()
 
   return (
-    <div className="space-y-6">
-      {/* شريط التحذير والتقدم - يظهر أثناء الإرسال */}
-      {isSending && (
-        <div className="fixed left-0 right-0 top-0 z-50 shadow-lg">
-          <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-4">
-            <div className="container mx-auto">
-              <div className="flex items-start gap-4">
-                <AlertCircle className="mt-1 h-6 w-6 flex-shrink-0 text-white" />
-                <div className="flex-1 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-lg font-bold text-white">⚠️ لا تغلق هذه النافذة - جاري الإرسال الآمن</p>
-                      <p className="mt-1 text-sm text-amber-50">
-                        للحفاظ على أمان حسابك من الحظر، دع هذه الصفحة تقوم بعملها في الإرسال التلقائي دون إغلاقها
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-left">
-                        <p className="text-2xl font-bold text-white">
-                          {progress.sentMessages} / {progress.totalMessages}
-                        </p>
-                        <p className="text-xs text-amber-50">رسالة مرسلة</p>
-                      </div>
-                      <button
-                        onClick={handleCancel}
-                        className="rounded-xl bg-white/20 px-4 py-2 text-sm font-semibold text-white hover:bg-white/30 transition-colors"
-                      >
-                        إيقاف
-                      </button>
-                    </div>
-                  </div>
+    <WsPage>
+      <WsHeader
+        title="إدارة رسائل الغياب"
+        actions={<WsIconBtn icon={RefreshCw} label="تحديث" onClick={() => void statsQuery.refetch()} />}
+        facts={
+          <>
+            <WsFact icon={UserX} label="غياب معتمَد">{rows.length}</WsFact>
+            <WsFact icon={Check} label="أُرسل لوليّه">
+              <span style={{ color: counts.sent > 0 ? TONES.green.tx : undefined }}>{counts.sent}</span>
+            </WsFact>
+            <WsFact icon={AlertCircle} label="لن يُرسَل">
+              <span style={{ color: counts.failed > 0 ? TONES.red.tx : undefined }}>{counts.failed}</span>
+            </WsFact>
+            <WsFact icon={Clock} label="لم يُطرَق">
+              <span style={{ color: counts.unknocked > 0 ? TONES.amber.tx : undefined }}>{counts.unknocked}</span>
+            </WsFact>
+            {counts.maxGap > 0 && (
+              <WsFact icon={Hourglass} label="أطول انتظار">{fmtGap(counts.maxGap)}</WsFact>
+            )}
+          </>
+        }
+      />
 
-                  {/* شريط التقدم */}
-                  <div className="space-y-2">
-                    <div className="h-3 w-full overflow-hidden rounded-full bg-white/30">
-                      <div
-                        className="h-full rounded-full bg-white transition-all duration-500"
-                        style={{
-                          width: `${progress.totalMessages > 0 ? (progress.sentMessages / progress.totalMessages) * 100 : 0}%`,
-                        }}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between text-xs text-white">
-                      <span>
-                        متبقي: {progress.totalMessages - progress.sentMessages} رسالة
-                        {progress.failedMessages > 0 && ` • فشل: ${progress.failedMessages}`}
-                        {progress.skippedMessages > 0 && ` • تم تخطي: ${progress.skippedMessages}`}
-                      </span>
-                      <span>
-                        {progress.totalMessages > 0
-                          ? Math.round((progress.sentMessages / progress.totalMessages) * 100)
-                          : 0}
-                        %
-                      </span>
-                    </div>
-                  </div>
+      <WsToolbar>
+        <WsField label="التاريخ" htmlFor="am-date">
+          <WsInput
+            id="am-date"
+            type="date"
+            value={selectedDate}
+            max={todayLocal()}
+            onChange={(e) => setSelectedDate(e.target.value)}
+          />
+        </WsField>
+        <WsField label="تخطّي المُبلَّغ فعلاً">
+          <WsSwitch checked={skipSent} onChange={setSkipSent} />
+        </WsField>
+        {isSending ? (
+          <WsBtn variant="danger" icon={ShieldAlert} onClick={() => (cancelRef.current = true)}>
+            إيقاف
+          </WsBtn>
+        ) : (
+          <WsBtn variant="primary" icon={Send} onClick={() => setShowConfirm(true)} disabled={rows.length === 0}>
+            إرسال الرسائل
+          </WsBtn>
+        )}
+      </WsToolbar>
 
-                  {/* رسالة الاستراحة */}
-                  {progress.isOnBreak && (
-                    <div className="rounded-xl border-2 border-white/40 bg-white/20 p-3 backdrop-blur-sm">
-                      <div className="flex items-center gap-3">
-                        <Clock className="h-5 w-5 animate-pulse text-white" />
-                        <div className="flex-1">
-                          <p className="font-semibold text-white">استراحة أمان - سيتم الاستئناف تلقائياً</p>
-                          <p className="mt-1 text-sm text-amber-50">
-                            متبقي: {Math.floor(progress.breakTimeRemaining / 60)} دقيقة و {progress.breakTimeRemaining % 60}{' '}
-                            ثانية
-                          </p>
-                        </div>
-                        <Loader2 className="h-5 w-5 animate-spin text-white" />
-                      </div>
-                      <p className="mt-2 text-xs text-amber-50">
-                        💡 هذه الاستراحة ضرورية لحماية حسابك من الحظر من WhatsApp. يتم إرسال 20 رسالة ثم استراحة 2-3 دقائق
-                      </p>
-                    </div>
-                  )}
+      <WsLayout>
+        <WsMain>
+          {isSending && (
+            <WsBlock padded>
+              <WsProgress value={total > 0 ? (sent / total) * 100 : 0} label={`جارٍ الإرسال — ${sent} من ${total}`} />
+            </WsBlock>
+          )}
 
-                  {/* معلومات الإرسال الآمن */}
-                  {!progress.isOnBreak && (
-                    <div className="rounded-xl bg-white/10 p-2 text-xs text-white">
-                      <p>🔒 الإرسال الآمن نشط: تأخير 10-15 ثانية بين كل رسالة • استراحة 2-3 دقائق كل 20 رسالة</p>
-                    </div>
-                  )}
-                </div>
+          <WsBlock fill scroll title="أولياء الأمور" icon={Users} count={rows.length}>
+            {statsQuery.isError ? (
+              <div style={{ padding: 14 }}>
+                <WsAlert tone="error" boxed>
+                  {(statsQuery.error as Error)?.message ?? 'تعذّر تحميل الإحصائيات'}
+                  <WsBtn size="sm" icon={RefreshCw} onClick={() => void statsQuery.refetch()}>
+                    إعادة المحاولة
+                  </WsBtn>
+                </WsAlert>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* العنوان */}
-      <header className="space-y-2" style={{ marginTop: isSending ? '220px' : '0' }}>
-        <h1 className="text-3xl font-bold text-slate-900">إدارة رسائل الغياب</h1>
-        <p className="text-sm text-muted">راجع وأعد إرسال رسائل واتساب للطلاب الغائبين</p>
-      </header>
-
-      {/* الإعدادات والإحصائيات */}
-      <div className="glass-card space-y-6">
-        <div className="grid gap-4 md:grid-cols-2">
-          {/* اختيار التاريخ */}
-          <div className="space-y-2 text-right">
-            <label className="text-sm font-semibold text-slate-700">التاريخ</label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            />
-          </div>
-
-          {/* خيار تخطي المرسلة */}
-          <div className="flex items-end">
-            <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
-              <input
-                type="checkbox"
-                checked={skipSent}
-                onChange={(e) => setSkipSent(e.target.checked)}
-                className="h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500/20"
-              />
-              <span className="text-sm font-semibold text-slate-700">تخطي الطلاب الذين تم إرسال رسائل لهم</span>
-            </label>
-          </div>
-        </div>
-
-        {/* الإحصائيات */}
-        {statsQuery.isLoading ? (
-          <div className="flex min-h-[120px] items-center justify-center">
-            <div className="flex items-center gap-3">
-              <span className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
-              <span className="text-sm text-muted">جاري تحميل الإحصائيات...</span>
-            </div>
-          </div>
-        ) : statsQuery.isError ? (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="h-5 w-5 text-rose-600" />
-              <span className="text-sm font-semibold text-rose-700">فشل تحميل الإحصائيات</span>
-            </div>
-          </div>
-        ) : stats ? (
-          <div className="space-y-4">
-            <div className="grid gap-3 md:grid-cols-4">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center">
-                <p className="text-xs font-semibold uppercase text-slate-500">إجمالي الغياب</p>
-                <p className="mt-2 text-3xl font-bold text-slate-900">{stats.total_absent}</p>
-              </div>
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <Check className="h-4 w-4 text-emerald-600" />
-                  <p className="text-xs font-semibold uppercase text-emerald-600">تم الإرسال</p>
-                </div>
-                <p className="mt-2 text-3xl font-bold text-emerald-700">{stats.messages_sent}</p>
-              </div>
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <Clock className="h-4 w-4 text-amber-600" />
-                  <p className="text-xs font-semibold uppercase text-amber-600">قيد الانتظار</p>
-                </div>
-                <p className="mt-2 text-3xl font-bold text-amber-700">{stats.messages_pending}</p>
-              </div>
-              <div className="flex items-center justify-center">
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmDialog(true)}
-                  disabled={isSending || stats.total_absent === 0}
-                  className="button-primary flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {isSending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      جاري الإرسال...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="h-4 w-4" />
-                      إعادة إرسال الرسائل
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* جدول التفاصيل */}
-            <div className="rounded-2xl border border-slate-200 bg-white">
-              <div className="border-b border-slate-200 px-4 py-3">
-                <h3 className="text-sm font-bold text-slate-900">تفاصيل الطلاب</h3>
-              </div>
-              <div className="max-h-[500px] overflow-auto">
-                <table className="w-full text-right text-sm">
-                  <thead className="sticky top-0 bg-slate-50 text-xs uppercase text-slate-500">
-                    <tr>
-                      <th className="px-4 py-3 font-semibold">اسم الطالب</th>
-                      <th className="px-4 py-3 font-semibold">رقم الهاتف</th>
-                      <th className="px-4 py-3 font-semibold">حالة الرسالة</th>
-                      <th className="px-4 py-3 font-semibold">تاريخ الإرسال</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {studentsWithoutMessages.map((student) => (
-                      <tr key={`${student.student_id}-${student.class_session_id}`} className="border-t border-slate-100">
-                        <td className="px-4 py-3 font-semibold text-slate-900">{student.student_name}</td>
-                        <td className="px-4 py-3 text-slate-600">{student.student_phone || '—'}</td>
-                        <td className="px-4 py-3">
-                          <span className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
-                            <X className="h-3 w-3" />
-                            لم يتم الإرسال
-                          </span>
+            ) : statsQuery.isLoading ? (
+              <WsEmpty loading>جارٍ التحميل...</WsEmpty>
+            ) : rows.length === 0 ? (
+              <WsEmpty icon={PartyPopper}>لا غياب معتمَد في هذا اليوم</WsEmpty>
+            ) : (
+              <WsTable>
+                <thead>
+                  <tr>
+                    <th>الطالب</th>
+                    <th style={{ width: 130 }}>ولي الأمر</th>
+                    <th style={{ width: 90 }}>الحالة</th>
+                    <th style={{ width: 210 }}>فجوة العِلم</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedRows.map((row) => {
+                    const st = gapState(row)
+                    return (
+                      <tr key={row.attendance_id}>
+                        <td>
+                          <span style={{ fontWeight: 600 }}>{row.student_name}</span>
                         </td>
-                        <td className="px-4 py-3 text-slate-500">—</td>
-                      </tr>
-                    ))}
-                    {studentsWithMessages.map((student) => (
-                      <tr key={`${student.student_id}-${student.class_session_id}`} className="border-t border-slate-100 bg-emerald-50/30">
-                        <td className="px-4 py-3 font-semibold text-slate-900">{student.student_name}</td>
-                        <td className="px-4 py-3 text-slate-600">{student.student_phone || '—'}</td>
-                        <td className="px-4 py-3">
-                          <span className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
-                            <Check className="h-3 w-3" />
-                            تم الإرسال
-                          </span>
+                        <td style={{ fontFamily: 'monospace', fontSize: 11, direction: 'ltr', textAlign: 'right' }}>
+                          {row.student_phone ? (
+                            row.student_phone
+                          ) : (
+                            <span style={{ color: TONES.red.tx, fontFamily: 'inherit' }} title="لا رقم لولي الأمر — لن تصله رسالة">
+                              بلا رقم
+                            </span>
+                          )}
                         </td>
-                        <td className="px-4 py-3 text-xs text-slate-500">
-                          {student.message_sent_at
-                            ? new Date(student.message_sent_at).toLocaleString('ar-SA', {
-                                dateStyle: 'short',
-                                timeStyle: 'short',
-                              })
-                            : '—'}
+                        <td>
+                          <ToneChip tone={STATE_META[st].tone}>{STATE_META[st].label}</ToneChip>
+                        </td>
+                        <td>
+                          <GapCell row={row} scaleSec={scaleSec} nowMs={nowMs} />
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        ) : null}
-      </div>
+                    )
+                  })}
+                </tbody>
+              </WsTable>
+            )}
+          </WsBlock>
+        </WsMain>
 
-      {/* مربع التأكيد */}
-      {showConfirmDialog && stats && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal>
-          <div className="w-full max-w-lg rounded-3xl bg-white p-6 text-right shadow-xl">
-            <header className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">تأكيد الإجراء</p>
-              <h2 className="text-xl font-semibold text-slate-900">إعادة إرسال رسائل الغياب</h2>
-              <p className="text-sm text-muted">
-                هل أنت متأكد من إعادة إرسال رسائل الغياب لتاريخ{' '}
-                {new Date(selectedDate).toLocaleDateString('ar-SA', { dateStyle: 'long' })}؟
-              </p>
+        {/* ما يمنع الإبلاغ — تشخيصيّ، يُطوى بقيّة الوقت */}
+        <WsSideCol
+          side="end"
+          title="ما يمنع الإبلاغ"
+          icon={ShieldAlert}
+          storageKey="ws:absence-messages:blockers"
+          width={300}
+        >
+          <WsBlock fill scroll>
+            <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {isPast && (
+                <WsAlert tone="info" boxed>تعرض يوماً ماضياً — الأرقام تاريخية.</WsAlert>
+              )}
+
+              {counts.unknocked > 0 && (
+                <WsAlert tone="warn" boxed>
+                  {counts.unknocked} لم يُطرَق باب وليّه بعد — إما في الطابور أو لم تُجدَل لهم رسالة عند
+                  الاعتماد (الإرسال التلقائي قد يكون متوقّفاً).
+                </WsAlert>
+              )}
+
+              {noPhone > 0 && (
+                <WsAlert tone="warn" boxed>
+                  {noPhone} بلا رقم ولي أمر — لن تصلهم رسالة مهما أرسلت.
+                </WsAlert>
+              )}
+
+              {failureReasons.length > 0 && (
+                <div>
+                  <p className="ws-label" style={{ marginBottom: 5 }}>أسباب الفشل</p>
+                  <WsFactsList>
+                    {failureReasons.map(([reason, n]) => (
+                      <WsFactRow key={reason} label={reason}>
+                        <span style={{ color: TONES.red.tx, fontWeight: 700 }}>{n}</span>
+                      </WsFactRow>
+                    ))}
+                  </WsFactsList>
+                </div>
+              )}
+
+              {counts.failed === 0 && counts.unknocked === 0 && noPhone === 0 && rows.length > 0 && (
+                <WsEmpty icon={Check}>لا حواجز — كل من له رقم بُلِّغ وليّه</WsEmpty>
+              )}
+            </div>
+          </WsBlock>
+        </WsSideCol>
+      </WsLayout>
+
+      {/* تأكيد الإرسال */}
+      {showConfirm && (
+        <div className="ws-modal" onClick={() => setShowConfirm(false)}>
+          <div className="ws-modal__panel" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
+            <header className="ws-modal__head">
+              <h3 className="ws-modal__title">إرسال رسائل الغياب</h3>
+              <p className="ws-modal__sub">{selectedDate}</p>
             </header>
-
-            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-slate-600">إجمالي الغياب:</span>
-                  <span className="font-bold text-slate-900">{stats.total_absent}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">تم إرسال رسائل:</span>
-                  <span className="font-bold text-emerald-700">{stats.messages_sent}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">قيد الانتظار:</span>
-                  <span className="font-bold text-amber-700">{stats.messages_pending}</span>
-                </div>
-                {skipSent && (
-                  <div className="mt-3 flex items-start gap-2 rounded-xl border border-indigo-200 bg-indigo-50 p-3">
-                    <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-indigo-600" />
-                    <p className="text-xs text-indigo-800">سيتم تخطي الطلاب الذين تم إرسال رسائل لهم مسبقاً</p>
-                  </div>
-                )}
-              </div>
+            <div className="ws-modal__body">
+              <WsAlert tone="warn" boxed>
+                {skipSent
+                  ? `سيُرسَل لمن لم يُبلَّغ بعد فقط (${counts.unknocked} ولي أمر).`
+                  : `سيُرسَل لكل أولياء أمور الغائبين (${rows.length}) — بمن فيهم من بُلِّغ سابقاً.`}
+              </WsAlert>
+              <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--ws-text-2)', lineHeight: 1.7 }}>
+                يُرسَل على دفعات بفواصل زمنية. يمكنك الإيقاف أثناء الإرسال، لكن ما بدأ إرساله قد يكون اكتمل.
+              </p>
             </div>
-
-            {/* معلومات الإرسال الآمن */}
-            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" />
-                <div className="space-y-2 text-sm">
-                  <p className="font-semibold text-amber-900">⚠️ تنبيه: لا تغلق النافذة أثناء الإرسال</p>
-                  <ul className="mr-4 list-disc space-y-1 text-amber-800">
-                    <li>سيتم إرسال 20 رسالة في كل دفعة</li>
-                    <li>تأخير عشوائي 10-15 ثانية بين كل رسالة</li>
-                    <li>استراحة 2-3 دقائق بعد كل 20 رسالة</li>
-                    <li>سيتم الاستئناف تلقائياً بعد الاستراحة</li>
-                  </ul>
-                  <p className="font-semibold text-amber-900">💡 هذا النظام يحمي حسابك من الحظر</p>
-                </div>
-              </div>
-            </div>
-
-            <footer className="mt-6 flex flex-wrap items-center justify-end gap-2">
-              <button
-                type="button"
-                className="button-secondary"
-                onClick={() => setShowConfirmDialog(false)}
-                disabled={isSending}
-              >
-                إلغاء
-              </button>
-              <button
-                type="button"
-                className="button-primary flex items-center gap-2"
-                onClick={handleResend}
-                disabled={isSending}
-              >
-                {isSending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    جارٍ الإرسال...
-                  </>
-                ) : (
-                  <>
-                    <Send className="h-4 w-4" />
-                    تأكيد الإرسال
-                  </>
-                )}
-              </button>
+            <footer className="ws-modal__foot">
+              <WsBtn onClick={() => setShowConfirm(false)}>إلغاء</WsBtn>
+              <WsBtn variant="primary" icon={Send} onClick={runSend}>
+                إرسال
+              </WsBtn>
             </footer>
           </div>
         </div>
       )}
-    </div>
+    </WsPage>
   )
 }

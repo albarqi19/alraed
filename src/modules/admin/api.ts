@@ -2078,10 +2078,14 @@ export async function fetchAbsenceMessagesStats(date: string): Promise<{
     student_id: number
     student_name: string
     student_phone: string | null
-    class_session_id: number
+    class_session_id: number | null
+    attendance_id: number
     has_message: boolean
+    approved_at: string | null
     message_sent_at: string | null
+    message_created_at: string | null
     message_status: string | null
+    error_message: string | null
   }>
 }> {
   const { data } = await apiClient.get<
@@ -2091,14 +2095,18 @@ export async function fetchAbsenceMessagesStats(date: string): Promise<{
       messages_sent: number
       messages_pending: number
       students: Array<{
-        student_id: number
-        student_name: string
-        student_phone: string | null
-        class_session_id: number
-        has_message: boolean
-        message_sent_at: string | null
-        message_status: string | null
-      }>
+    student_id: number
+    student_name: string
+    student_phone: string | null
+    class_session_id: number | null
+    attendance_id: number
+    has_message: boolean
+    approved_at: string | null
+    message_sent_at: string | null
+    message_created_at: string | null
+    message_status: string | null
+    error_message: string | null
+  }>
     }>
   >('/admin/attendance-reports/absence-messages-stats', { params: { date } })
   return unwrapResponse(data, 'تعذر تحميل إحصائيات الرسائل')

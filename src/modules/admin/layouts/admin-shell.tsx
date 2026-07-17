@@ -60,6 +60,7 @@ const WORKSPACE_ROUTES = [
   '/admin/subjects',
   '/admin/barcode-print',
   '/admin/barcode-settings',
+  '/admin/absence-messages',
 ]
 
 /**
