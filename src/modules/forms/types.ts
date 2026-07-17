@@ -142,6 +142,8 @@ export interface FormSummary {
   created_at: string
   updated_at: string
   submissions_count?: number
+  /** عدد الأسئلة الحقيقي (كل الحقول لا المستقلة) — يصل عبر withCount في index */
+  fields_count?: number
   sections?: FormSection[]
   fields?: FormField[]
   assignments?: FormAssignment[]
