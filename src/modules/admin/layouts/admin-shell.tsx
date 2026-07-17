@@ -52,6 +52,7 @@ const WORKSPACE_ROUTES = [
   '/admin/theme',
   '/admin/settings',
   '/admin/permissions',
+  '/admin/subscription',
 ]
 
 export function AdminShell() {
