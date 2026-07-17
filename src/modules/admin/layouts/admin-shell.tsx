@@ -51,6 +51,7 @@ const WORKSPACE_ROUTES = [
   '/admin/referrals',
   '/admin/theme',
   '/admin/settings',
+  '/admin/permissions',
 ]
 
 export function AdminShell() {

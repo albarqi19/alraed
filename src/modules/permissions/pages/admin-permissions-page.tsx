@@ -1,36 +1,41 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { getRoles, getRolePermissions, updateRolePermissions } from '../api'
 import type { Permission, RoleInfo, RolePermission } from '../types'
-import { Loader2, Check, Shield, Save } from 'lucide-react'
+import { Check, Grid2x2, KeyRound, Lock, PenLine, RotateCcw, Save, Search, Users } from 'lucide-react'
+import {
+  WsPage,
+  WsHeader,
+  WsFact,
+  WsToolbar,
+  WsField,
+  WsInput,
+  WsSelect,
+  WsLayout,
+  WsMain,
+  WsSideCol,
+  WsBlock,
+  WsBtn,
+  WsEmpty,
+  TONES,
+  ToneChip,
+} from '@/shared/workspace'
 
-// --- Components ---
+type LensKey = 'all' | 'diff' | 'held' | 'dirty'
 
-function Switch({ checked, onChange, disabled }: { checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      disabled={disabled}
-      onClick={() => !disabled && onChange(!checked)}
-      className={`
-                relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2
-                ${checked ? 'bg-blue-600' : 'bg-slate-200'}
-                ${disabled ? 'cursor-not-allowed opacity-50' : ''}
-            `}
-    >
-      <span
-        aria-hidden="true"
-        className={`
-                    pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out
-                    ${checked ? '-translate-x-5' : 'translate-x-0'}
-                `}
-      />
-    </button>
-  )
+const ACTION_LABELS: Record<string, string> = {
+  view: 'عرض',
+  create: 'إضافة',
+  edit: 'تعديل',
+  delete: 'حذف',
+  approve: 'اعتماد',
+  reject: 'رفض',
+  send: 'إرسال',
+  import: 'استيراد',
+  export: 'تصدير',
 }
 
-// --- Main Page ---
+/** صلاحية «إدارة الصلاحيات» تُحجب عن مدير المدرسة منعاً للتلاعب — الحارس الأصلي حرفياً */
+const isBlocked = (role: string, slug: string) => role === 'school_principal' && slug === 'admin.permissions'
 
 export function AdminPermissionsPage() {
   const [roles, setRoles] = useState<RoleInfo[]>([])
@@ -41,6 +46,18 @@ export function AdminPermissionsPage() {
 
   const [allPermissions, setAllPermissions] = useState<Record<string, Permission[]>>({})
   const [enabledPermissions, setEnabledPermissions] = useState<Map<number, RolePermission>>(new Map())
+
+  /* لقطة آخر تحميل للدور المركّز — لحساب «غير محفوظة» وزر التراجع (عميل خالص) */
+  const [baseline, setBaseline] = useState<Map<number, RolePermission>>(new Map())
+
+  /* خرائط بقية الأدوار — قراءة فقط، تُغذّي أعمدة المقارنة في المصفوفة */
+  const [otherRoles, setOtherRoles] = useState<Record<string, Set<number>>>({})
+
+  /* حالات عرض */
+  const [search, setSearch] = useState('')
+  const [category, setCategory] = useState('all')
+  const [lens, setLens] = useState<LensKey>('all')
+  const [focusedPermission, setFocusedPermission] = useState<Permission | null>(null)
 
   useEffect(() => {
     loadRoles()
@@ -83,6 +100,7 @@ export function AdminPermissionsPage() {
           permMap.set(ep.permission_id, ep)
         })
         setEnabledPermissions(permMap)
+        setBaseline(new Map(permMap))
       }
     } catch (error) {
       console.error('Error loading role permissions:', error)
@@ -91,6 +109,33 @@ export function AdminPermissionsPage() {
       setLoadingPermissions(false)
     }
   }
+
+  /* قراءة بقية الأدوار للمقارنة — نفس نداء القراءة القائم، بلا كتابة */
+  useEffect(() => {
+    if (roles.length === 0) return
+    let cancelled = false
+
+    const loadOthers = async () => {
+      for (const role of roles) {
+        if (cancelled) return
+        try {
+          const data = await getRolePermissions(role.value)
+          if (cancelled) return
+          if (data.success) {
+            setOtherRoles((prev) => ({
+              ...prev,
+              [role.value]: new Set(data.enabled_permissions.map((ep) => ep.permission_id)),
+            }))
+          }
+        } catch {
+          /* دور تعذّرت قراءته يبقى «؟» في المصفوفة — لا نخترع بيانات */
+        }
+      }
+    }
+
+    loadOthers()
+    return () => { cancelled = true }
+  }, [roles])
 
   function togglePermission(permissionId: number, permission: Permission) {
     const newMap = new Map(enabledPermissions)
@@ -129,19 +174,10 @@ export function AdminPermissionsPage() {
         ? currentActions.filter(a => a !== action)
         : [...currentActions, action]
 
-      if (newActions.length === 0) {
-        // الخيار للمستخدم: هل يريد حذف الصلاحية كاملة عند إزالة كل الإجراءات؟
-        // هنا سنبقي الصلاحية مفعلة ولكن بدون إجراءات (لأن بعض الصلاحيات للعرض فقط)
-        newMap.set(permissionId, {
-          ...current,
-          actions: newActions,
-        })
-      } else {
-        newMap.set(permissionId, {
-          ...current,
-          actions: newActions,
-        })
-      }
+      newMap.set(permissionId, {
+        ...current,
+        actions: newActions,
+      })
     }
 
     setEnabledPermissions(newMap)
@@ -169,6 +205,11 @@ export function AdminPermissionsPage() {
       if (data.success) {
         alert('تم حفظ الصلاحيات بنجاح ✅')
         loadRolePermissions(selectedRole)
+        // خريطة المقارنة للدور المحفوظ تُحدَّث كي لا يكذب عمودُه على نفسه
+        setOtherRoles((prev) => ({
+          ...prev,
+          [selectedRole]: new Set(Array.from(enabledPermissions.keys())),
+        }))
       }
     } catch (error) {
       console.error('Error saving permissions:', error)
@@ -180,240 +221,455 @@ export function AdminPermissionsPage() {
 
   const selectedRoleInfo = roles.find(r => r.value === selectedRole)
 
+  /* ── مشتقات العرض ── */
+  const flatPermissions = useMemo(() => Object.values(allPermissions).flat(), [allPermissions])
+  const totalPermissions = flatPermissions.length
+  const heldCount = flatPermissions.filter((p) => enabledPermissions.has(p.id)).length
+  const loadedRoles = Object.keys(otherRoles).length
+
+  const categories = useMemo(() => {
+    const map = new Map<string, string>()
+    Object.entries(allPermissions).forEach(([key, perms]) => {
+      map.set(key, perms[0]?.category_ar || key)
+    })
+    return Array.from(map.entries()).map(([value, label]) => ({ value, label }))
+  }, [allPermissions])
+
+  /** أي صلاحية اختلف حاملوها عن الأساس؟ */
+  const dirtyIds = useMemo(() => {
+    const ids = new Set<number>()
+    flatPermissions.forEach((p) => {
+      const now = enabledPermissions.get(p.id)
+      const before = baseline.get(p.id)
+      if (Boolean(now) !== Boolean(before)) { ids.add(p.id); return }
+      if (now && before) {
+        const a = [...(now.actions ?? [])].sort().join(',')
+        const b = [...(before.actions ?? [])].sort().join(',')
+        if (a !== b) ids.add(p.id)
+      }
+    })
+    return ids
+  }, [flatPermissions, enabledPermissions, baseline])
+
+  /** الصلاحية التي لا تتفق فيها الأدوار المقروءة — جوهر سؤال المقارنة */
+  const isDiffAcrossRoles = (permissionId: number) => {
+    const values = Object.entries(otherRoles).map(([roleValue, set]) => {
+      const slug = flatPermissions.find((p) => p.id === permissionId)?.slug ?? ''
+      if (isBlocked(roleValue, slug)) return null
+      return set.has(permissionId)
+    }).filter((v) => v !== null)
+    if (values.length < 2) return false
+    return values.some((v) => v !== values[0])
+  }
+
+  const rows = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return Object.entries(allPermissions)
+      .filter(([key]) => category === 'all' || key === category)
+      .flatMap(([key, perms]) =>
+        perms
+          .filter((p) => {
+            if (q && !`${p.name_ar} ${p.slug} ${p.description ?? ''}`.toLowerCase().includes(q)) return false
+            if (lens === 'held' && !enabledPermissions.has(p.id)) return false
+            if (lens === 'dirty' && !dirtyIds.has(p.id)) return false
+            if (lens === 'diff' && !isDiffAcrossRoles(p.id)) return false
+            return true
+          })
+          .map((p) => ({ permission: p, categoryKey: key, categoryAr: perms[0]?.category_ar || key })),
+      )
+  }, [allPermissions, category, search, lens, enabledPermissions, dirtyIds, otherRoles, flatPermissions])
+
+  const focusedEnabled = focusedPermission ? enabledPermissions.get(focusedPermission.id) : undefined
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
-          <p className="text-slate-500 font-medium">جاري تحميل البيانات...</p>
-        </div>
-      </div>
+      <WsPage>
+        <WsHeader title="الصلاحيات" />
+        <WsBlock fill>
+          <WsEmpty loading>جاري تحميل البيانات...</WsEmpty>
+        </WsBlock>
+      </WsPage>
     )
   }
 
   return (
-    <div className="admin-permissions-page p-6 max-w-7xl mx-auto space-y-8">
-      {/* Header */}
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
-            <span className="p-2 bg-blue-100 rounded-xl text-blue-600">
-              <Shield className="w-8 h-8" />
-            </span>
-            إدارة الصلاحيات
-          </h1>
-          <p className="text-slate-500 mt-2 text-lg">
-            التحكم الكامل في الوصول والعمليات المتاحة لكل دور وظيفي
-          </p>
-        </div>
+    <WsPage>
+      <WsHeader
+        title="الصلاحيات"
+        badge={selectedRoleInfo?.label}
+        actions={
+          <>
+            <WsBtn
+              icon={RotateCcw}
+              onClick={() => setEnabledPermissions(new Map(baseline))}
+              disabled={dirtyIds.size === 0 || saving}
+            >
+              تراجع
+            </WsBtn>
+            <WsBtn variant="primary" icon={Save} onClick={handleSave} disabled={saving}>
+              {saving ? 'جاري الحفظ...' : dirtyIds.size > 0 ? `حفظ ${dirtyIds.size} تغيير` : 'حفظ التغييرات'}
+            </WsBtn>
+          </>
+        }
+        facts={
+          <>
+            <WsFact icon={KeyRound} label="صلاحية">{totalPermissions}</WsFact>
+            <WsFact icon={Users} label="أدوار">{roles.length}</WsFact>
+            <WsFact icon={Check} label={`يحملها ${selectedRoleInfo?.label ?? '—'}`}>
+              <span style={{ color: TONES.green.tx }}>{heldCount}/{totalPermissions}</span>
+            </WsFact>
+            {dirtyIds.size > 0 && (
+              <WsFact icon={PenLine} label="غير محفوظة">
+                <span className="ws-soft-pulse" style={{ color: TONES.amber.tx }}>{dirtyIds.size}</span>
+              </WsFact>
+            )}
+            {loadedRoles < roles.length && (
+              <WsFact icon={Grid2x2} label="أدوار مقروءة">{loadedRoles}/{roles.length}</WsFact>
+            )}
+          </>
+        }
+      />
 
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="flex items-center gap-2 px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-lg shadow-lg shadow-blue-200 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
-        >
-          {saving ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              جاري الحفظ...
-            </>
-          ) : (
-            <>
-              <Save className="w-5 h-5" />
-              حفظ التغييرات
-            </>
-          )}
-        </button>
-      </header>
-
-      {/* Role Selection */}
-      <section className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6">
-        <h2 className="text-lg font-bold text-slate-800 mb-4">اختر الدور الوظيفي</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {roles.map(role => {
-            const isSelected = selectedRole === role.value
-            return (
-              <button
-                key={role.value}
-                onClick={() => setSelectedRole(role.value)}
-                className={`
-                                    relative flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 transition-all duration-200 group
-                                    ${isSelected
-                    ? `border-${role.color}-500 bg-${role.color}-50 shadow-md ring-2 ring-${role.color}-200 ring-offset-2`
-                    : 'border-slate-100 bg-white hover:border-slate-300 hover:bg-slate-50'
-                  }
-                                `}
-              >
-                <div className={`
-                                    text-4xl transition-transform duration-300 transform group-hover:scale-110
-                                    ${isSelected ? 'scale-110' : ''}
-                                `}>
-                  {role.icon}
-                </div>
-                <span className={`
-                                    font-bold text-sm text-center
-                                    ${isSelected ? `text-${role.color}-700` : 'text-slate-600'}
-                                `}>
-                  {role.label}
-                </span>
-                {isSelected && (
-                  <div className={`absolute top-3 inset-x-0 mx-auto w-1 h-1 rounded-full bg-${role.color}-500`} />
-                )}
-              </button>
-            )
-          })}
-        </div>
-      </section>
-
-      {/* Permissions List */}
-      {selectedRoleInfo && (
-        <section className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-          {/* Section Header */}
-          <div className={`
-                        px-8 py-6 border-b border-slate-100 flex items-center gap-4
-                        bg-gradient-to-l from-white via-white to-${selectedRoleInfo.color || 'blue'}-50
-                    `}>
-            <div className={`
-                            w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-sm
-                            bg-${selectedRoleInfo.color || 'blue'}-100 text-${selectedRoleInfo.color || 'blue'}-700
-                        `}>
-              {selectedRoleInfo.icon}
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">
-                تعديل صلاحيات {selectedRoleInfo.label}
-              </h2>
-              <p className="text-slate-500 text-sm">
-                قم بتفعيل أو تعطيل الصلاحيات وتحديد مستوى الوصول بدقة
-              </p>
-            </div>
+      <WsToolbar>
+        <WsField label="بحث" grow>
+          <div style={{ position: 'relative' }}>
+            <WsInput
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="ابحث في 64 صلاحية بالاسم أو المعرّف..."
+              style={{ width: '100%', paddingInlineStart: 26 }}
+            />
+            <Search style={{ width: 13, height: 13, position: 'absolute', insetInlineStart: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--ws-text-2)', pointerEvents: 'none' }} />
           </div>
+        </WsField>
 
-          {loadingPermissions ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-4 text-slate-400">
-              <Loader2 className="w-12 h-12 animate-spin text-blue-500/50" />
-              <p>جاري جلب قائمة الصلاحيات...</p>
-            </div>
-          ) : (
-            <div className="p-8 space-y-10">
-              {Object.entries(allPermissions).map(([category, permissions]) => {
-                const categoryAr = permissions[0]?.category_ar || category
+        <WsField label="الفئة">
+          <WsSelect value={category} onChange={(e) => setCategory(e.target.value)}>
+            <option value="all">كل الفئات</option>
+            {categories.map((c) => (<option key={c.value} value={c.value}>{c.label}</option>))}
+          </WsSelect>
+        </WsField>
 
-                return (
-                  <div key={category} className="space-y-5">
-                    <div className="flex items-center gap-4">
-                      <h3 className="text-lg font-bold text-slate-800 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200/60 inline-flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                        {categoryAr}
-                      </h3>
-                      <div className="h-px bg-slate-100 flex-1"></div>
-                    </div>
+        <WsField label="العدسة">
+          <div className="ws-seg">
+            {([
+              ['all', 'الكل'],
+              ['diff', 'المختلف بين الأدوار'],
+              ['held', 'يحملها المركّز'],
+              ['dirty', 'معدّلة'],
+            ] as Array<[LensKey, string]>).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className={`ws-seg__btn ${lens === value ? 'is-active' : ''}`}
+                onClick={() => setLens(value)}
+              >
+                {label}
+                {value === 'dirty' && dirtyIds.size > 0 && <span className="ws-count">{dirtyIds.size}</span>}
+              </button>
+            ))}
+          </div>
+        </WsField>
+      </WsToolbar>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {permissions.map(permission => {
-                        const isEnabled = enabledPermissions.has(permission.id)
-                        const enabledActions = enabledPermissions.get(permission.id)?.actions || []
-
-                        // إخفاء صلاحية "إدارة الصلاحيات" عن مدير المدرسة لمنع التلاعب
-                        const isSchoolPrincipal = selectedRole === 'school_principal'
-                        const isPermissionsManagement = permission.slug === 'admin.permissions'
-
-                        if (isSchoolPrincipal && isPermissionsManagement) return null
-
+      <WsLayout>
+        <WsMain>
+          {/* ★ مصفوفة الحَمَلة — صلاحية × سبعة أدوار: الفرق بين دورين يُقرأ بالمسح البصري */}
+          <WsBlock fill title="مصفوفة الحَمَلة" icon={Grid2x2} count={rows.length}>
+            {loadingPermissions ? (
+              <WsEmpty loading>جاري جلب قائمة الصلاحيات...</WsEmpty>
+            ) : rows.length === 0 ? (
+              <WsEmpty icon={KeyRound}>
+                <p style={{ margin: 0 }}>لا صلاحيات مطابقة</p>
+                {(search || category !== 'all' || lens !== 'all') && (
+                  <WsBtn
+                    size="sm"
+                    icon={RotateCcw}
+                    style={{ marginTop: 8 }}
+                    onClick={() => { setSearch(''); setCategory('all'); setLens('all') }}
+                  >
+                    مسح المرشحات
+                  </WsBtn>
+                )}
+              </WsEmpty>
+            ) : (
+              <div className="ws-tablewrap">
+                <table className="ws-table ws-matrix">
+                  <thead>
+                    <tr>
+                      <th className="ws-matrix__stick" style={{ minWidth: 240, textAlign: 'right' }}>الصلاحية</th>
+                      {roles.map((role) => {
+                        const isFocused = role.value === selectedRole
                         return (
-                          <div
-                            key={permission.id}
-                            className={`
-                                                            group relative flex flex-col p-5 rounded-2xl border transition-all duration-200
-                                                            ${isEnabled
-                                ? 'bg-blue-50/50 border-blue-200 shadow-sm'
-                                : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm'
-                              }
-                                                        `}
+                          <th key={role.value} style={{ minWidth: 68, padding: 3 }}>
+                            {/* رأس الجدول هو منتقي الأدوار — فيسقط قسم كامل كان يفعل هذا بثلث الشاشة */}
+                            <button
+                              type="button"
+                              onClick={() => setSelectedRole(role.value)}
+                              title={role.label}
+                              style={{
+                                width: '100%',
+                                border: 'none',
+                                borderRadius: 6,
+                                padding: '4px 2px',
+                                cursor: 'pointer',
+                                fontFamily: 'inherit',
+                                fontSize: 10,
+                                fontWeight: isFocused ? 800 : 600,
+                                lineHeight: 1.4,
+                                background: isFocused ? 'var(--ws-accent)' : 'transparent',
+                                color: isFocused ? '#fff' : 'var(--ws-text-2)',
+                              }}
+                            >
+                              <span style={{ display: 'block', fontSize: 13 }}>{role.icon}</span>
+                              <span style={{ display: 'block' }}>{role.label}</span>
+                            </button>
+                          </th>
+                        )
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map(({ permission, categoryAr }) => {
+                      const isFocusedRow = focusedPermission?.id === permission.id
+                      const isDirty = dirtyIds.has(permission.id)
+                      return (
+                        <tr
+                          key={permission.id}
+                          className={`is-clickable ${isFocusedRow ? 'is-selected' : ''}`}
+                          onClick={() => setFocusedPermission(permission)}
+                          style={!isFocusedRow && isDirty ? { background: TONES.amber.bg } : undefined}
+                        >
+                          <td className="ws-matrix__stick" style={{ textAlign: 'right' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              {permission.icon && <span style={{ fontSize: 13, flexShrink: 0 }}>{permission.icon}</span>}
+                              <span style={{ minWidth: 0 }}>
+                                <span style={{ display: 'block', fontWeight: 600 }}>{permission.name_ar}</span>
+                                <span className="ws-cell-sub" style={{ direction: 'ltr', textAlign: 'right' }}>
+                                  {permission.slug} · {categoryAr}
+                                </span>
+                              </span>
+                              {isDirty && <PenLine style={{ width: 11, height: 11, color: TONES.amber.tx, flexShrink: 0 }} />}
+                            </span>
+                          </td>
+                          {roles.map((role) => {
+                            const blocked = isBlocked(role.value, permission.slug)
+                            const isFocusedRole = role.value === selectedRole
+                            const set = otherRoles[role.value]
+                            const held = isFocusedRole ? enabledPermissions.has(permission.id) : set?.has(permission.id)
+                            const unknown = !isFocusedRole && !set
+
+                            return (
+                              <td key={role.value} style={{ padding: 3 }} onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  disabled={!isFocusedRole || blocked}
+                                  onClick={() => {
+                                    if (!isFocusedRole || blocked) return
+                                    togglePermission(permission.id, permission)
+                                    setFocusedPermission(permission)
+                                  }}
+                                  title={
+                                    blocked
+                                      ? 'محجوبة عن مدير المدرسة منعاً للتلاعب'
+                                      : unknown
+                                        ? 'لم يُقرأ هذا الدور بعد'
+                                        : `${role.label}: ${held ? 'يحملها' : 'لا يحملها'}${isFocusedRole ? ' — اضغط للتبديل' : ''}`
+                                  }
+                                  style={{
+                                    width: '100%',
+                                    minHeight: 28,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    borderRadius: 6,
+                                    border: isFocusedRole ? '1px solid var(--ws-border)' : 'none',
+                                    background: isFocusedRole && held ? TONES.green.bg : 'transparent',
+                                    cursor: isFocusedRole && !blocked ? 'pointer' : 'default',
+                                    padding: 0,
+                                  }}
+                                >
+                                  {blocked ? (
+                                    <Lock style={{ width: 11, height: 11, color: 'var(--ws-text-2)', opacity: 0.5 }} />
+                                  ) : unknown ? (
+                                    <span style={{ fontSize: 10, color: 'var(--ws-text-2)', opacity: 0.4 }}>؟</span>
+                                  ) : held ? (
+                                    /* نقطة صلبة = يحملها */
+                                    <span
+                                      style={{
+                                        width: 9,
+                                        height: 9,
+                                        borderRadius: '50%',
+                                        background: isFocusedRole ? TONES.green.tx : 'var(--ws-text-2)',
+                                        opacity: isFocusedRole ? 1 : 0.55,
+                                      }}
+                                    />
+                                  ) : (
+                                    /* حلقة فارغة = لا يحملها */
+                                    <span
+                                      style={{
+                                        width: 9,
+                                        height: 9,
+                                        borderRadius: '50%',
+                                        border: '1px solid var(--ws-border)',
+                                      }}
+                                    />
+                                  )}
+                                </button>
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </WsBlock>
+        </WsMain>
+
+        {/* الإجراءات الفرعية للصلاحية المركّزة — كانت مبعثرة تحت 64 بطاقة */}
+        <WsSideCol
+          side="end"
+          title={focusedPermission ? focusedPermission.name_ar : 'الإجراءات'}
+          icon={KeyRound}
+          storageKey="ws:permissions:sidecol"
+          width={320}
+        >
+          <WsBlock fill scroll>
+            {!focusedPermission ? (
+              <WsEmpty icon={KeyRound}>اضغط صلاحية في المصفوفة لضبط إجراءاتها</WsEmpty>
+            ) : (
+              <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div>
+                  <p style={{ margin: 0, fontSize: 12.5, fontWeight: 800 }}>{focusedPermission.name_ar}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 10, fontFamily: 'monospace', color: 'var(--ws-text-2)', direction: 'ltr', textAlign: 'right' }}>
+                    {focusedPermission.slug}
+                  </p>
+                  {focusedPermission.description && (
+                    <p style={{ margin: '5px 0 0', fontSize: 11, color: 'var(--ws-text-2)', lineHeight: 1.7 }}>
+                      {focusedPermission.description}
+                    </p>
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 8,
+                    border: '1px solid var(--ws-border)',
+                    borderRadius: 10,
+                    padding: 9,
+                    background: focusedEnabled ? TONES.green.bg : 'transparent',
+                  }}
+                >
+                  <span style={{ fontSize: 11.5, fontWeight: 700 }}>
+                    {selectedRoleInfo?.label} {focusedEnabled ? 'يحملها' : 'لا يحملها'}
+                  </span>
+                  {isBlocked(selectedRole ?? '', focusedPermission.slug) ? (
+                    <ToneChip tone={TONES.gray}>محجوبة</ToneChip>
+                  ) : (
+                    <WsBtn
+                      size="sm"
+                      icon={focusedEnabled ? Check : undefined}
+                      onClick={() => togglePermission(focusedPermission.id, focusedPermission)}
+                      style={focusedEnabled
+                        ? { color: TONES.green.tx, borderColor: TONES.green.bd, background: TONES.green.bg }
+                        : undefined}
+                    >
+                      {focusedEnabled ? 'مفعّلة' : 'تفعيل'}
+                    </WsBtn>
+                  )}
+                </div>
+
+                <div>
+                  <p className="ws-label" style={{ marginBottom: 6 }}>الإجراءات الفرعية</p>
+                  {focusedPermission.actions && focusedPermission.actions.length > 0 ? (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, opacity: focusedEnabled ? 1 : 0.45 }}>
+                      {focusedPermission.actions.map((action) => {
+                        const isActive = (focusedEnabled?.actions ?? []).includes(action)
+                        return (
+                          <button
+                            key={action}
+                            type="button"
+                            className="ws-chip"
+                            disabled={!focusedEnabled}
+                            onClick={() => focusedEnabled && toggleAction(focusedPermission.id, action)}
+                            style={isActive
+                              ? { background: TONES.green.bg, borderColor: TONES.green.tx, color: TONES.green.tx }
+                              : undefined}
                           >
-                            <div className="flex items-start justify-between gap-4 mb-4">
-                              <div className="flex gap-4">
-                                <div className={`
-                                                                    flex-shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center text-2xl transition-colors
-                                                                    ${isEnabled ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400'}
-                                                                `}>
-                                  {permission.icon}
-                                </div>
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <h4 className={`font-bold text-lg ${isEnabled ? 'text-slate-900' : 'text-slate-600'}`}>
-                                      {permission.name_ar}
-                                    </h4>
-                                    {isEnabled && <Check className="w-4 h-4 text-blue-500" />}
-                                  </div>
-                                  <p className="text-slate-500 text-sm leading-relaxed mt-1">
-                                    {permission.description || permission.name}
-                                  </p>
-                                </div>
-                              </div>
-
-                              <Switch
-                                checked={isEnabled}
-                                onChange={() => togglePermission(permission.id, permission)}
-                              />
-                            </div>
-
-                            {/* Actions Area */}
-                            <div className={`
-                                                            mt-auto pt-4 border-t transition-all duration-200
-                                                            ${isEnabled ? 'border-blue-200 opacity-100' : 'border-slate-100 opacity-50 grayscale pointer-events-none'}
-                                                        `}>
-                              <div className="flex flex-wrap gap-2">
-                                {permission.actions && permission.actions.length > 0 ? (
-                                  permission.actions.map(action => {
-                                    const actionLabels: Record<string, string> = {
-                                      view: 'عرض',
-                                      create: 'إضافة',
-                                      edit: 'تعديل',
-                                      delete: 'حذف',
-                                      approve: 'اعتماد',
-                                      reject: 'رفض',
-                                      send: 'إرسال',
-                                      import: 'استيراد',
-                                      export: 'تصدير',
-                                    }
-                                    const isActive = enabledActions.includes(action)
-
-                                    return (
-                                      <button
-                                        key={action}
-                                        onClick={() => isEnabled && toggleAction(permission.id, action)}
-                                        disabled={!isEnabled}
-                                        className={`
-                                                                                    px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200
-                                                                                    ${isActive
-                                            ? 'bg-blue-600 text-white shadow-md shadow-blue-200 scale-105'
-                                            : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'
-                                          }
-                                                                                `}
-                                      >
-                                        {actionLabels[action] || action}
-                                      </button>
-                                    )
-                                  })
-                                ) : (
-                                  <span className="text-xs text-slate-400 italic px-2 py-1">
-                                    لا توجد إجراءات فرعية
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
+                            {ACTION_LABELS[action] || action}
+                          </button>
                         )
                       })}
                     </div>
+                  ) : (
+                    <p style={{ margin: 0, fontSize: 11, color: 'var(--ws-text-2)' }}>لا توجد إجراءات فرعية</p>
+                  )}
+                  {!focusedEnabled && (
+                    <p style={{ margin: '5px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                      فعّل الصلاحية أولاً لضبط إجراءاتها
+                    </p>
+                  )}
+                </div>
+
+                {/* من يحملها من الأدوار — الجواب الذي جاء المدير لأجله */}
+                <div style={{ borderTop: '1px solid var(--ws-hairline)', paddingTop: 8 }}>
+                  <p className="ws-label" style={{ marginBottom: 5 }}>من يحملها</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    {roles.map((role) => {
+                      const blocked = isBlocked(role.value, focusedPermission.slug)
+                      const set = otherRoles[role.value]
+                      const isFocusedRole = role.value === selectedRole
+                      const held = isFocusedRole ? enabledPermissions.has(focusedPermission.id) : set?.has(focusedPermission.id)
+                      const unknown = !isFocusedRole && !set
+                      return (
+                        <span
+                          key={role.value}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            fontSize: 11.5,
+                            padding: '3px 5px',
+                            borderRadius: 6,
+                            background: isFocusedRole ? 'var(--ws-accent-soft)' : 'transparent',
+                          }}
+                        >
+                          {blocked ? (
+                            <Lock style={{ width: 10, height: 10, color: 'var(--ws-text-2)', opacity: 0.5, flexShrink: 0 }} />
+                          ) : unknown ? (
+                            <span style={{ width: 8, height: 8, flexShrink: 0, textAlign: 'center', fontSize: 9, color: 'var(--ws-text-2)' }}>؟</span>
+                          ) : (
+                            <span
+                              style={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: '50%',
+                                flexShrink: 0,
+                                background: held ? TONES.green.tx : 'transparent',
+                                border: held ? 'none' : '1px solid var(--ws-border)',
+                              }}
+                            />
+                          )}
+                          <span style={{ flex: 1, color: isFocusedRole ? 'var(--ws-accent)' : undefined, fontWeight: isFocusedRole ? 700 : 400 }}>
+                            {role.label}
+                          </span>
+                        </span>
+                      )
+                    })}
                   </div>
-                )
-              })}
-            </div>
-          )}
-        </section>
-      )}
-    </div>
+                </div>
+              </div>
+            )}
+          </WsBlock>
+        </WsSideCol>
+      </WsLayout>
+    </WsPage>
   )
 }
