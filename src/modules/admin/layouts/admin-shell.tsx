@@ -56,9 +56,19 @@ const WORKSPACE_ROUTES = [
   '/admin/chat',
   '/admin/app-notifications',
   '/admin/school-tools/academic-calendar',
-  '/admin/forms',
   '/admin/dashboard',
   '/admin/subjects',
+]
+
+/**
+ * مسارات ملتصقة بمطابقة **دقيقة** لا بادئة — لأن لها أبناءً لم يُحوَّلوا بعد.
+ * `/admin/forms` محوّلة، لكن `forms/new` و`forms/:id` و`forms/:id/submissions`
+ * ما زالت بالنمط القديم؛ ولو طابقناها بادئةً لسقطت داخل غلاف
+ * `overflow:hidden` بلا ارتفاع فيُقصّ محتواها صامتاً.
+ * تُنقل إلى WORKSPACE_ROUTES فور تحويل أبنائها.
+ */
+const WORKSPACE_ROUTES_EXACT = [
+  '/admin/forms',
 ]
 
 export function AdminShell() {
@@ -214,9 +224,10 @@ export function AdminShell() {
     }))
   }
 
-  const isWorkspaceRoute = WORKSPACE_ROUTES.some((route) =>
-    location.pathname === route || location.pathname.startsWith(route + '/'),
-  )
+  const isWorkspaceRoute =
+    WORKSPACE_ROUTES.some((route) =>
+      location.pathname === route || location.pathname.startsWith(route + '/'),
+    ) || WORKSPACE_ROUTES_EXACT.includes(location.pathname)
 
   const isOnSubscriptionPage = location.pathname.includes('/admin/subscription')
   const subscriptionEndsAt = admin?.school?.subscription_ends_at ?? null
