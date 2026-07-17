@@ -62,6 +62,7 @@ const WORKSPACE_ROUTES = [
   '/admin/barcode-settings',
   '/admin/absence-messages',
   '/admin/faris',
+  '/admin/lesson-plans',
 ]
 
 /**

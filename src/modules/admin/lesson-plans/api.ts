@@ -44,7 +44,19 @@ export interface TeacherWeekPlan {
     grade: string
     status: string // 'not_submitted' | 'draft' | 'teacher_approved' | 'admin_approved' | 'rejected'
     sessions_count: number
-    sessions: Array<{ session_number: number; topic: string; homework?: string }>
+    /** كل الحقول تصل — lesson_title/objectives كانت تُرمى ووليّ الأمر يقرأها */
+    sessions: Array<{
+      session_number: number
+      topic: string
+      lesson_title?: string
+      objectives?: string
+      homework?: string
+      notes?: string
+    }>
+    /** عدد الحصص المقرّرة منهجياً — مقام الاكتمال (null إن لا توزيع) */
+    prescribed_sessions: number | null
+    /** كم طالباً سيقرأ هذه الخطة بعد النشر */
+    audience_count: number
   }>
   total_subjects: number
   submitted_count: number
