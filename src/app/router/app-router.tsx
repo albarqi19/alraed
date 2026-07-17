@@ -83,7 +83,6 @@ const AdminTeacherStandbyPage = lazyNamed(() => import('@/modules/admin/pages/ad
 const AdminTeacherSchedulesPage = lazyNamed(() => import('@/modules/admin/pages/admin-teacher-schedules-page'), 'AdminTeacherSchedulesPage')
 const AdminTeacherPreparationPage = lazyNamed(() => import('@/modules/admin/pages/admin-teacher-preparation-page'), 'AdminTeacherPreparationPage')
 const AdminMadrasatiReportPage = lazyNamed(() => import('@/modules/admin/pages/admin-madrasati-report-page'), 'AdminMadrasatiReportPage')
-const AdminMadrasatiTeacherPage = lazyNamed(() => import('@/modules/admin/pages/admin-madrasati-teacher-page'), 'AdminMadrasatiTeacherPage')
 const AdminRemoteAttendancePage = lazy(() => import('@/modules/admin/pages/admin-remote-attendance-page'))
 const AdminLessonPlansPage = lazyNamed(() => import('@/modules/admin/pages/admin-lesson-plans-page'), 'AdminLessonPlansPage')
 const AdminFarisPage = lazy(() => import('@/modules/admin/pages/admin-faris-page'))
@@ -303,7 +302,7 @@ const appRoutes = [
           { path: 'live-tracker', element: <LiveTrackerPage /> },
           { path: 'team-pulse', element: <AdminTeamPulsePage /> },
           { path: 'madrasati-report', element: <AdminMadrasatiReportPage /> },
-          { path: 'madrasati-report/:teacherId', element: <AdminMadrasatiTeacherPage /> },
+          { path: 'madrasati-report/:teacherId', element: <AdminMadrasatiReportPage /> },
           { path: 'teacher-preparation', element: <AdminTeacherPreparationPage /> },
           { path: 'approval', element: <AdminApprovalPage /> },
           { path: 'absence-messages', element: <AdminAbsenceMessagesPage /> },

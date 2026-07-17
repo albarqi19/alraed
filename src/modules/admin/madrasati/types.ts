@@ -87,6 +87,17 @@ export interface MadrasatiTeacherRanking {
   activities_count: number
   enrichments_count: number
   subjects_count: number
+  /** المقرَّرات المفصّلة — صف×مادة مفكوكة، لمِشط النصاب */
+  courses?: MadrasatiCourse[]
+}
+
+/** مقرَّر واحد (صف × مادة) لمعلم */
+export interface MadrasatiCourse {
+  grade: string
+  subject: string
+  students: number
+  homework: number
+  corrected: number
 }
 
 // ترتيب المعلمين
