@@ -649,16 +649,9 @@ export function AdminReferralDetailPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <InitialAvatar name={referral.student?.name ?? '؟'} tone={typeTone} size={44} />
               <div style={{ minWidth: 0 }}>
-                {referral.student?.id ? (
-                  <Link
-                    to={`/admin/students/profile/${referral.student.id}`}
-                    style={{ fontSize: 13, fontWeight: 800, color: 'var(--ws-accent)', textDecoration: 'none' }}
-                  >
-                    {referral.student.name}
-                  </Link>
-                ) : (
-                  <p style={{ margin: 0, fontWeight: 800, fontSize: 13 }}>{referral.student?.name}</p>
-                )}
+                {/* لا رابط لملف الطالب: مسار /admin/students/profile لا يقبل معرّفاً
+                    (الصفحة تختار الطالب داخلياً) — رابط بمعرّف كان سيؤدي إلى 404 */}
+                <p style={{ margin: 0, fontWeight: 800, fontSize: 13 }}>{referral.student?.name}</p>
                 <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--ws-text-2)' }}>
                   {[referral.student?.student_number, referral.student?.classroom?.name].filter(Boolean).join(' • ') || '—'}
                 </p>
