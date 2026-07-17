@@ -58,6 +58,7 @@ const WORKSPACE_ROUTES = [
   '/admin/school-tools/academic-calendar',
   '/admin/dashboard',
   '/admin/subjects',
+  '/admin/barcode-print',
 ]
 
 /**

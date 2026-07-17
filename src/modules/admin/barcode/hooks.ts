@@ -65,6 +65,20 @@ export function useBarcodeStudentsQuery(filters: { grade?: string; class_name?: 
   })
 }
 
+/**
+ * الروستر الكامل بلا فلاتر — مفتاح كاش ثابت فيعيش محلياً.
+ * الصفحة تُفلتر النطاق والبحث محلياً بالكامل: كانت كل ضغطة مفتاح تجلب
+ * ٢٠٥ كيلوبايت وترتدّ القائمة إلى «جاري التحميل». أكبر مدرسة ١١٠٣ طالباً
+ * = جلبة واحدة، فلا حاجة لـdebounce أصلاً (حلٌّ لعرَض لا لمرض).
+ */
+export function useBarcodeRosterQuery() {
+  return useQuery({
+    queryKey: barcodeQueryKeys.students({}),
+    queryFn: () => fetchBarcodeStudents({}),
+    staleTime: 5 * 60_000,
+  })
+}
+
 // ========== Mutation Hooks ==========
 
 export function useScanBarcodeMutation() {
@@ -164,17 +178,18 @@ export function usePrintBarcodesBatchMutation() {
   const toast = useToast()
 
   return useMutation({
-    mutationFn: printBarcodesBatch,
-    onSuccess: (blob) => {
-      // تحميل الملف
+    mutationFn: ({ filename: _filename, ...payload }: { student_ids: number[]; format: 'card' | 'label' | 'list'; filename?: string }) =>
+      printBarcodesBatch(payload),
+    onSuccess: (blob, variables) => {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = 'barcode-cards.pdf'
+      a.download = variables.filename ?? 'barcode-cards.pdf'
       document.body.appendChild(a)
       a.click()
-      window.URL.revokeObjectURL(url)
       a.remove()
+      // revoke متأخّر: بعض المتصفحات تلغي التنزيل إن أُبطل الـblob فوراً
+      setTimeout(() => window.URL.revokeObjectURL(url), 4000)
       toast({ type: 'success', title: 'تم تحميل ملف الباركود بنجاح' })
     },
     onError: () => {
