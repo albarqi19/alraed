@@ -50,6 +50,7 @@ const WORKSPACE_ROUTES = [
   // عائلة الإحالات كاملة محوّلة (القائمة بمساراتها الثلاثة + التفاصيل)
   '/admin/referrals',
   '/admin/theme',
+  '/admin/settings',
 ]
 
 export function AdminShell() {
