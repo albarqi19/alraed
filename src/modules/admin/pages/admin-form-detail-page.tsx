@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { Archive, ArrowRight, Send, Trash2 } from 'lucide-react'
 import { FormDesigner } from '@/modules/forms/components/form-designer'
 import {
   useAdminForm,
@@ -9,6 +10,25 @@ import {
   useUpdateAdminFormMutation,
 } from '@/modules/forms/hooks'
 import type { FormUpsertPayload } from '@/modules/forms/types'
+import {
+  WsPage,
+  WsHeader,
+  WsFact,
+  WsMain,
+  WsLayout,
+  WsBlock,
+  WsBtn,
+  WsAlert,
+  WsEmpty,
+  TONES,
+  ToneChip,
+} from '@/shared/workspace'
+
+const STATUS_META = {
+  draft: { label: 'مسودة', tone: TONES.gray },
+  published: { label: 'منشور', tone: TONES.green },
+  archived: { label: 'مؤرشف', tone: TONES.gray },
+} as const
 
 export function AdminFormDetailPage() {
   const params = useParams()
@@ -22,137 +42,149 @@ export function AdminFormDetailPage() {
   const archiveMutation = useArchiveAdminFormMutation()
   const deleteMutation = useDeleteAdminFormMutation()
 
+  const [pendingDelete, setPendingDelete] = useState(false)
+
   useEffect(() => {
-    if (!Number.isFinite(rawFormId)) {
-      navigate('/admin/forms')
-    }
+    if (!Number.isFinite(rawFormId)) navigate('/admin/forms')
   }, [rawFormId, navigate])
 
   const handleSubmit = async (payload: FormUpsertPayload) => {
     try {
       await updateMutation.mutateAsync(payload)
     } catch {
-      // toast handled in hook
+      /* toast في الهوك */
     }
   }
 
-  const handlePublish = async () => {
-    if (!Number.isFinite(rawFormId)) return
-    try {
-      await publishMutation.mutateAsync(safeFormId)
-    } catch {
-      // handled by hook
-    }
-  }
-
-  const handleArchive = async () => {
-    if (!Number.isFinite(rawFormId)) return
-    try {
-      await archiveMutation.mutateAsync(safeFormId)
-    } catch {
-      // handled by hook
-    }
-  }
-
-  const handleDelete = async () => {
-    if (!Number.isFinite(rawFormId)) return
-    
-    const submissionsCount = formQuery.data?.submissions_count ?? 0
-    
-    let confirmed = false
-    if (submissionsCount > 0) {
-      confirmed = window.confirm(
-        `⚠️ تحذير هام!\n\n` +
-        `هذا النموذج يحتوي على ${submissionsCount} رد مسجل.\n\n` +
-        `سيتم حذف النموذج وجميع الردود المرتبطة به بشكل نهائي.\n\n` +
-        `هل أنت متأكد تماماً من المتابعة؟`
-      )
-    } else {
-      confirmed = window.confirm('هل أنت متأكد من حذف النموذج؟ لا يمكن التراجع عن هذا الإجراء.')
-    }
-    
-    if (!confirmed) return
-    
-    try {
-      await deleteMutation.mutateAsync(safeFormId)
-      navigate('/admin/forms')
-    } catch {
-      // handled by hook
-    }
-  }
-
-  if (!Number.isFinite(rawFormId)) {
-    return null
-  }
+  if (!Number.isFinite(rawFormId)) return null
 
   if (formQuery.isLoading) {
     return (
-      <section className="space-y-4">
-        <div className="h-20 animate-pulse rounded-3xl bg-slate-100" />
-        <div className="h-40 animate-pulse rounded-3xl bg-slate-100" />
-        <div className="h-64 animate-pulse rounded-3xl bg-slate-100" />
-      </section>
+      <WsPage>
+        <WsHeader title="النموذج" />
+        <WsLayout>
+          <WsMain>
+            <WsBlock padded>
+              <WsEmpty loading>جارٍ تحميل النموذج...</WsEmpty>
+            </WsBlock>
+          </WsMain>
+        </WsLayout>
+      </WsPage>
     )
   }
 
   if (formQuery.isError || !formQuery.data) {
     return (
-      <section className="space-y-4 text-center">
-        <p className="text-xl font-semibold text-rose-600">تعذر تحميل بيانات النموذج.</p>
-        <Link
-          to="/admin/forms"
-          className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-400 hover:text-slate-700"
-        >
-          العودة لقائمة النماذج
-        </Link>
-      </section>
+      <WsPage>
+        <WsHeader title="النموذج" />
+        <WsLayout>
+          <WsMain>
+            <WsBlock padded>
+              <WsAlert tone="error" boxed>
+                تعذّر تحميل بيانات النموذج.
+                <WsBtn size="sm" icon={ArrowRight} onClick={() => navigate('/admin/forms')}>
+                  العودة للقائمة
+                </WsBtn>
+              </WsAlert>
+            </WsBlock>
+          </WsMain>
+        </WsLayout>
+      </WsPage>
     )
   }
 
   const form = formQuery.data
+  const status = STATUS_META[form.status] ?? STATUS_META.draft
+  const busy = updateMutation.isPending || publishMutation.isPending || archiveMutation.isPending
+  const noFields = form.fields_count === 0
 
   return (
-    <section className="space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">{form.title}</h1>
-          <p className="text-sm text-muted">آخر تحديث: {new Date(form.updated_at).toLocaleString('ar-SA')}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-          <button
-            type="button"
-            onClick={handlePublish}
-            className="rounded-full border border-emerald-300 px-3 py-1 text-emerald-600 transition hover:border-emerald-400 hover:text-emerald-700"
-            disabled={publishMutation.isPending || updateMutation.isPending || archiveMutation.isPending}
-          >
-            {publishMutation.isPending ? 'جاري النشر...' : 'نشر النموذج'}
-          </button>
-          <button
-            type="button"
-            onClick={handleArchive}
-            className="rounded-full border border-amber-300 px-3 py-1 text-amber-600 transition hover:border-amber-400 hover:text-amber-700"
-            disabled={archiveMutation.isPending || updateMutation.isPending || publishMutation.isPending}
-          >
-            {archiveMutation.isPending ? 'جاري الأرشفة...' : 'أرشفة النموذج'}
-          </button>
-          <button
-            type="button"
-            onClick={handleDelete}
-            className="rounded-full border border-rose-300 px-3 py-1 text-rose-600 transition hover:border-rose-400 hover:text-rose-700"
-            disabled={deleteMutation.isPending}
-          >
-            {deleteMutation.isPending ? 'جاري الحذف...' : 'حذف النموذج'}
-          </button>
-        </div>
-      </header>
-
-      <FormDesigner
-        mode="edit"
-        initialForm={form}
-        submitting={updateMutation.isPending}
-        onSubmit={handleSubmit}
-        onCancel={() => navigate('/admin/forms')}
+    <WsPage>
+      <WsHeader
+        title={form.title}
+        badge={<ToneChip tone={status.tone}>{status.label}</ToneChip>}
+        actions={
+          <>
+            {form.status === 'draft' && (
+              <WsBtn
+                variant="primary"
+                icon={Send}
+                onClick={() => publishMutation.mutate(safeFormId)}
+                disabled={busy || noFields}
+              >
+                {noFields ? 'لا أسئلة بعد' : publishMutation.isPending ? 'جارٍ النشر...' : 'نشر'}
+              </WsBtn>
+            )}
+            {form.status === 'published' && (
+              <WsBtn icon={Archive} onClick={() => archiveMutation.mutate(safeFormId)} disabled={busy}>
+                أرشفة
+              </WsBtn>
+            )}
+            <WsBtn variant="danger" icon={Trash2} onClick={() => setPendingDelete(true)}>
+              حذف
+            </WsBtn>
+          </>
+        }
+        facts={
+          <>
+            <WsFact label="الأسئلة">{form.fields_count ?? 0}</WsFact>
+            <WsFact label="الردود">{form.submissions_count ?? 0}</WsFact>
+            <WsFact label="آخر تحديث">{new Date(form.updated_at).toLocaleDateString('ar-SA')}</WsFact>
+          </>
+        }
       />
-    </section>
+
+      <WsLayout>
+        <WsMain>
+          <WsBlock fill scroll padded>
+            {/* المصمّم مكوّن مستقل بحاويته — يُغلَّف بلا لمس منطقه */}
+            <FormDesigner
+              mode="edit"
+              initialForm={form}
+              submitting={updateMutation.isPending}
+              onSubmit={handleSubmit}
+              onCancel={() => navigate('/admin/forms')}
+            />
+          </WsBlock>
+        </WsMain>
+      </WsLayout>
+
+      {/* مودال الحذف — بدل window.confirm الخام */}
+      {pendingDelete && (
+        <div className="ws-modal" onClick={() => setPendingDelete(false)}>
+          <div className="ws-modal__panel" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
+            <header className="ws-modal__head">
+              <h3 className="ws-modal__title">حذف «{form.title}»</h3>
+              <p className="ws-modal__sub">لا يمكن التراجع</p>
+            </header>
+            <div className="ws-modal__body">
+              <WsAlert tone="error" boxed>
+                {(form.submissions_count ?? 0) > 0
+                  ? `سيُحذف النموذج ومعه ${form.submissions_count} ردّاً من أولياء الأمور.`
+                  : 'سيُحذف النموذج نهائياً.'}
+              </WsAlert>
+            </div>
+            <footer className="ws-modal__foot">
+              <WsBtn onClick={() => setPendingDelete(false)}>إلغاء</WsBtn>
+              <WsBtn
+                variant="danger"
+                icon={Trash2}
+                disabled={deleteMutation.isPending}
+                onClick={async () => {
+                  try {
+                    await deleteMutation.mutateAsync(safeFormId)
+                    navigate('/admin/forms')
+                  } catch {
+                    /* toast في الهوك */
+                  }
+                }}
+              >
+                حذف نهائي
+              </WsBtn>
+            </footer>
+          </div>
+        </div>
+      )}
+    </WsPage>
   )
 }

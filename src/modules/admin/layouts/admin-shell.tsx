@@ -76,6 +76,16 @@ const WORKSPACE_ROUTES = [
  */
 const WORKSPACE_ROUTES_EXACT = [
   '/admin/forms',
+  '/admin/forms/new',
+]
+
+/**
+ * أنماط ملتصقة بمطابقة regex — لصفحات لها معرّف متغيّر وأشقّاء غير محوَّلين.
+ * `/admin/forms/123` محوّلة (المصمّم)، لكن `/admin/forms/123/submissions`
+ * ما زالت بالنمط القديم — فنطابق المعرّف وحده لا ما بعده.
+ */
+const WORKSPACE_ROUTE_PATTERNS = [
+  /^\/admin\/forms\/\d+$/,
 ]
 
 export function AdminShell() {
@@ -234,7 +244,9 @@ export function AdminShell() {
   const isWorkspaceRoute =
     WORKSPACE_ROUTES.some((route) =>
       location.pathname === route || location.pathname.startsWith(route + '/'),
-    ) || WORKSPACE_ROUTES_EXACT.includes(location.pathname)
+    ) ||
+    WORKSPACE_ROUTES_EXACT.includes(location.pathname) ||
+    WORKSPACE_ROUTE_PATTERNS.some((re) => re.test(location.pathname))
 
   const isOnSubscriptionPage = location.pathname.includes('/admin/subscription')
   const subscriptionEndsAt = admin?.school?.subscription_ends_at ?? null
