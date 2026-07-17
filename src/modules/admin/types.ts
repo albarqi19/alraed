@@ -5,12 +5,35 @@ export interface AdminDashboardStats {
   absent_today: number
   late_today: number
   pending_approvals: number
+  /** حصص اليوم — كان يصل بلا نوع */
+  today_classes?: number
+  /**
+   * ⚠️ بسطه يطرح المتأخرين من الحاضرين (DashboardController:49-53):
+   * مدرسة حضر كل طلابها متأخرين تعطي 0%. لا يُعرض.
+   */
+  attendance_rate?: number
+  /** زمن حساب الحمولة لا زمن الطلب — الكاش 30 دقيقة */
+  generated_at?: string
   weekly_attendance?: Array<{
     day: string
+    /** Y-m-d بتوقيت الرياض — الحارس الوحيد ضد قراءة «اليوم» من الفهرس [0] */
+    date: string
     present: number
     absent: number
     late: number
+    excused: number
     absent_teachers: number
+    /**
+     * ⚠️ مقام اليوم مُسقَطاً على كل الأيام السبعة (:74 يمرّره فـ:113 لا تُطلق).
+     * فالكميات المطلقة أعلاه صادقة، والنِسَب أدناه كاذبة للأيام الماضية.
+     */
+    total_students: number
+    recorded_students: number
+    unrecorded_students: number
+    attendance_rate: number
+    absence_rate: number
+    late_rate: number
+    coverage_rate: number
   }>
 }
 

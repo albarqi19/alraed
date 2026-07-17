@@ -57,6 +57,7 @@ const WORKSPACE_ROUTES = [
   '/admin/app-notifications',
   '/admin/school-tools/academic-calendar',
   '/admin/forms',
+  '/admin/dashboard',
 ]
 
 export function AdminShell() {
@@ -718,6 +719,18 @@ export function AdminShell() {
           {/* صفحات بدون فراغات لعرض أكبر قدر من البيانات */}
           {isWorkspaceRoute ? (
             <div className="flex w-full flex-1 flex-col lg:min-h-0 lg:overflow-hidden">
+              {/* إنذار قرب انتهاء الاشتراك كان مركَّباً في الفرع غير-الملتصق وحده،
+                  فكل صفحة تُنقل للنمط الملتصق كانت تُطفئه صامتاً — وأخطرها لوحة
+                  «نظرة عامة» التي يهبط عليها كل مدير كل صباح. المكوّن يُرجع null
+                  حين لا خطر، فوضعه هنا بلا ثمن. */}
+              {!isOnSubscriptionPage && subscriptionEndsAt && (
+                <div className="shrink-0 px-4 pt-3 lg:px-5">
+                  <SubscriptionExpiryAlert
+                    endsAt={subscriptionEndsAt}
+                    status={subscriptionStatus ?? undefined}
+                  />
+                </div>
+              )}
               <Outlet />
             </div>
           ) : location.pathname === '/admin/live-tracker' || location.pathname === '/admin/notebook' || location.pathname.startsWith('/admin/guides/') ? (
