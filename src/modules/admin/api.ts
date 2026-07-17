@@ -41,6 +41,8 @@ import type {
   StudentRecord,
   StaffRole,
   SubjectRecord,
+  SubjectsResult,
+  SubjectsMeta,
   TeacherCredentials,
   TeacherRecord,
   TeacherHudoriAttendanceFilters,
@@ -1536,6 +1538,21 @@ export async function fetchGradesWithClasses(): Promise<GradeWithClasses[]> {
 export async function fetchSubjects(): Promise<SubjectRecord[]> {
   const { data } = await apiClient.get<ApiResponse<SubjectRecord[]>>('/admin/subjects')
   return unwrapResponse(data, 'تعذر تحميل قائمة المواد')
+}
+
+/**
+ * نفس النقطة، لكن مع meta (الفصل المحلول وعمى المنهج).
+ * منفصلة عن fetchSubjects لأن صفحتَي الجداول والحصص تستهلكان المصفوفة خاماً.
+ */
+export async function fetchSubjectsWithMeta(): Promise<SubjectsResult> {
+  const { data } = await apiClient.get<ApiResponse<SubjectRecord[]> & { meta?: SubjectsMeta }>(
+    '/admin/subjects',
+  )
+  const list = unwrapResponse(data, 'تعذر تحميل قائمة المواد')
+  return {
+    data: list,
+    meta: data.meta ?? { semester_code: 'second', semester_label: null, curriculum_blind: false },
+  }
 }
 
 export async function createSubject(payload: Partial<SubjectRecord>): Promise<SubjectRecord> {

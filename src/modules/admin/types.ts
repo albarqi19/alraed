@@ -98,8 +98,41 @@ export interface SubjectRecord {
   name_en?: string | null
   description?: string | null
   status: 'active' | 'inactive'
+  /** الاسم الوزاري المربوط — يصل في كل صف ولم يكن يُقرأ في الفرونت إطلاقاً */
+  curriculum_subject_name?: string | null
   created_at?: string
   updated_at?: string
+  /** ثِقَل المدرسة الحقيقي — يصل من index بعد تجميع class_sessions */
+  weight?: SubjectWeight
+  /** عدد المهارات — السلسلة cascadeOnDelete حتى تقييمات الطلاب */
+  skills_count?: number
+}
+
+/** خلية (مادة × صف) كما تُدرَّس فعلاً في الجدول */
+export interface SubjectGradeCell {
+  grade: string
+  /** عدد الحصص — بلا فلتر status، مطابقةً لحارس الحذف */
+  slots: number
+  sections: number
+  has_curriculum: boolean
+  sessions_per_week: number | null
+}
+
+export interface SubjectWeight {
+  grades: SubjectGradeCell[]
+  total_slots: number
+}
+
+export interface SubjectsMeta {
+  semester_code: string
+  semester_label: string | null
+  /** صفر توزيع للفصل المحلول — عندها لا يجوز طلي كل سنٍّ كهرماناً */
+  curriculum_blind: boolean
+}
+
+export interface SubjectsResult {
+  data: SubjectRecord[]
+  meta: SubjectsMeta
 }
 
 export interface ClassSessionTeacher {

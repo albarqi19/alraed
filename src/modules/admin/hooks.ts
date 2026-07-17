@@ -131,6 +131,7 @@ import {
   deleteSubject,
   fetchStudents,
   fetchSubjects,
+  fetchSubjectsWithMeta,
   fetchGrades,
   fetchClasses,
   fetchGradesWithClasses,
@@ -664,6 +665,14 @@ export function useSubjectsQuery() {
   return useQuery({
     queryKey: adminQueryKeys.subjects.all(),
     queryFn: fetchSubjects,
+  })
+}
+
+/** لصفحة إدارة المواد وحدها: تحتاج meta (الفصل المحلول وعمى المنهج) */
+export function useSubjectsWithMetaQuery() {
+  return useQuery({
+    queryKey: [...adminQueryKeys.subjects.all(), 'with-meta'],
+    queryFn: fetchSubjectsWithMeta,
   })
 }
 
