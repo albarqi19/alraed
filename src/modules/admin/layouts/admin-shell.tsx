@@ -44,6 +44,7 @@ const WORKSPACE_ROUTES = [
   '/admin/treatment-plans',
   '/admin/activities',
   '/admin/parent-meeting',
+  '/admin/points-program',
 ]
 
 export function AdminShell() {

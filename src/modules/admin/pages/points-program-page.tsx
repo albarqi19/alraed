@@ -3,18 +3,49 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/services/api/client'
 import {
   Activity,
+  Award,
+  Crown,
   CreditCard,
   Download,
+  ListChecks,
   Plus,
   RefreshCcw,
+  Save,
+  Search,
   Settings as SettingsIcon,
+  ShieldCheck,
+  Trash2,
   Trophy,
   Undo,
   Users,
+  X,
 } from 'lucide-react'
 import QRCode from 'qrcode'
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
+import {
+  WsPage,
+  WsHeader,
+  WsFact,
+  WsToolbar,
+  WsField,
+  WsInput,
+  WsSelect,
+  WsTextarea,
+  WsSwitch,
+  WsLayout,
+  WsMain,
+  WsSideCol,
+  WsBlock,
+  WsTable,
+  WsBtn,
+  WsIconBtn,
+  WsAlert,
+  WsEmpty,
+  TONES,
+  ToneChip,
+  InitialAvatar,
+} from '@/shared/workspace'
 import {
   usePointSettingsQuery,
   useUpdatePointSettingsMutation,
@@ -29,7 +60,17 @@ import {
   usePointCardsQuery,
   useRegeneratePointCardMutation,
   useStudentsQuery,
+  useTeachersQuery,
 } from '../hooks'
+import {
+  UndoCountdown,
+  isUndoWindowOver,
+  Pager,
+  LeaderBar,
+  PointsCardFace,
+  sourceMeta,
+  type CardFaceData,
+} from './points-program-ui'
 import type {
   PointCardFilters,
   PointCardRecord,
@@ -48,14 +89,15 @@ const DATE_FORMATTER = new Intl.DateTimeFormat('ar-SA', {
   timeStyle: 'short',
 })
 
-type TabKey = 'overview' | 'settings' | 'reasons' | 'transactions' | 'cards'
+/* تبويب «نظرة عامة» حُلّ لا نُقل: بطاقاته صارت حقائق في الترويسة تُرى في كل التبويبات،
+   و«آخر العمليات» كانت نسخة مبتورة من جدول السجل، ولوحة الشرف صارت عموداً مقيماً. */
+type TabKey = 'transactions' | 'cards' | 'reasons' | 'settings'
 
-const TABS: Array<{ key: TabKey; label: string; icon: React.ComponentType<{ className?: string }> }> = [
-  { key: 'overview', label: 'نظرة عامة', icon: Trophy },
-  { key: 'settings', label: 'الإعدادات', icon: SettingsIcon },
-  { key: 'reasons', label: 'أسباب النقاط', icon: Plus },
+const TABS: Array<{ key: TabKey; label: string; icon: React.ComponentType<{ style?: React.CSSProperties }> }> = [
   { key: 'transactions', label: 'سجل العمليات', icon: Activity },
   { key: 'cards', label: 'بطاقات الطلاب', icon: CreditCard },
+  { key: 'reasons', label: 'أسباب النقاط', icon: ListChecks },
+  { key: 'settings', label: 'الإعدادات', icon: SettingsIcon },
 ]
 
 const DEFAULT_SETTINGS: PointSettingsUpdatePayload = {
@@ -130,7 +172,7 @@ function getSettingsPayload(settings: PointSettingsRecord | null | undefined): P
 }
 
 export function PointsProgramPage() {
-  const [activeTab, setActiveTab] = useState<TabKey>('overview')
+  const [activeTab, setActiveTab] = useState<TabKey>('transactions')
   const [settingsDraft, setSettingsDraft] = useState<PointSettingsUpdatePayload>(DEFAULT_SETTINGS)
   const [reasonForm, setReasonForm] = useState<PointReasonPayload>(DEFAULT_REASON_FORM)
   const [editingReason, setEditingReason] = useState<PointReasonRecord | null>(null)
@@ -142,21 +184,30 @@ export function PointsProgramPage() {
   const [exportingCardId, setExportingCardId] = useState<number | null>(null)
   const [exportCardElement, setExportCardElement] = useState<HTMLDivElement | null>(null)
 
+  /* حالات عرض للأعمدة المقيمة */
+  const [studentQuery, setStudentQuery] = useState('')
+  const [previewCardId, setPreviewCardId] = useState<number | null>(null)
+  const [previewQrDataUrl, setPreviewQrDataUrl] = useState<string | null>(null)
+  const [showInactiveReasons, setShowInactiveReasons] = useState(true)
+  const [reasonTypeFilter, setReasonTypeFilter] = useState<'all' | 'reward' | 'violation'>('all')
+  const [regenerateTarget, setRegenerateTarget] = useState<PointCardRecord | null>(null)
+
   const studentsQuery = useStudentsQuery()
+  const teachersQuery = useTeachersQuery()
   const settingsQuery = usePointSettingsQuery()
   const leaderboardQuery = usePointLeaderboardQuery({ page: 1, per_page: 10 })
   const reasonsQuery = usePointReasonsQuery()
   const transactionsQuery = usePointTransactionsQuery(transactionFilters)
-  
+
   // Fetch cards with pagination
-  const cardsQuery = usePointCardsQuery({ 
+  const cardsQuery = usePointCardsQuery({
     ...cardFilters,
     page: cardPage,
     per_page: 20,
   })
 
   // Fetch all cards without filters to get all grades/classes for filters
-  const allCardsQuery = usePointCardsQuery({ 
+  const allCardsQuery = usePointCardsQuery({
     page: 1,
     per_page: 1000, // جلب عدد كبير للحصول على جميع الصفوف والفصول
   })
@@ -209,6 +260,7 @@ export function PointsProgramPage() {
   const cardsMeta = cardsQuery.data?.meta
   const reasons = reasonsQuery.data ?? []
   const students = studentsQuery.data ?? []
+  const teachers = teachersQuery.data ?? []
   const allCards = allCardsQuery.data?.items ?? []
 
   // استخراج الصفوف والفصول الفريدة من جميع البطاقات
@@ -226,11 +278,9 @@ export function PointsProgramPage() {
       if (record.student.class_name) set.add(record.student.class_name)
     })
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'ar'))
-  }, [cards])
+  }, [allCards])
 
   const totalCardPages = cardsMeta?.last_page ?? 1
-  const paginatedStartIndex = cardsMeta ? (cardsMeta.current_page - 1) * cardsMeta.per_page + 1 : 0
-  const paginatedEndIndex = cardsMeta ? Math.min(cardsMeta.total, cardsMeta.current_page * cardsMeta.per_page) : 0
 
   const topStudent = leaderboardItems[0]
   const totalTransactions = transactionMeta?.total ?? transactions.length
@@ -309,6 +359,7 @@ export function PointsProgramPage() {
     createManualTransactionMutation.mutate(payload, {
       onSuccess: () => {
         setManualForm(DEFAULT_MANUAL_FORM)
+        setStudentQuery('')
       },
     })
   }
@@ -377,16 +428,7 @@ export function PointsProgramPage() {
         }
         // Generate QR code for this specific student
         const qrPayload = record.card.token
-        
-        // 🔍 Debug: عرض القيمة التي سيتم وضعها في QR
-        console.log('🔍 Generating QR for student:', {
-          studentId: record.student.id,
-          studentName: record.student.name,
-          cardToken: record.card.token,
-          qrPayload: qrPayload,
-          isUUID: /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(qrPayload),
-        })
-        
+
         const qrDataUrl = await QRCode.toDataURL(qrPayload, {
           errorCorrectionLevel: 'M',
           margin: 1,
@@ -406,7 +448,7 @@ export function PointsProgramPage() {
         cardContent.querySelector('[data-card-version]')!.textContent = record.card.version
         cardContent.querySelector('[data-card-status]')!.textContent = record.card.is_active ? 'نشطة' : 'معطلة'
         cardContent.querySelector('[data-card-issued]')!.textContent = record.card.issued_at ? formatDate(record.card.issued_at) : '—'
-        
+
         const qrImage = cardContent.querySelector('[data-qr-image]') as HTMLImageElement
         if (qrImage) {
           qrImage.src = qrDataUrl
@@ -430,7 +472,7 @@ export function PointsProgramPage() {
 
         pdf.addImage(canvas.toDataURL('image/jpeg', 0.85), 'JPEG', 0, 0, width, height, undefined, 'FAST')
 
-        const safeName = record.student.name.replace(/[^\w\s\u0600-\u06FF-]/g, '_').trim() || `${record.student.id}`
+        const safeName = record.student.name.replace(/[^\w\s؀-ۿ-]/g, '_').trim() || `${record.student.id}`
         pdf.save(`بطاقة_${safeName}.pdf`)
       } catch (error) {
         console.error('تعذر تصدير بطاقة الطالب:', record.student.id, error)
@@ -461,15 +503,7 @@ export function PointsProgramPage() {
         try {
           // Generate QR code for this specific student
           const qrPayload = record.card.token ?? String(record.student.id)
-          
-          // 🔍 Debug: عرض القيمة التي سيتم وضعها في QR (للدفعة)
-          console.log('🔍 [Bulk Export] Generating QR for:', {
-            studentId: record.student.id,
-            studentName: record.student.name,
-            cardToken: record.card.token,
-            qrPayload: qrPayload,
-          })
-          
+
           const qrDataUrl = await QRCode.toDataURL(qrPayload, {
             errorCorrectionLevel: 'M',
             margin: 1,
@@ -489,7 +523,7 @@ export function PointsProgramPage() {
           cardContent.querySelector('[data-card-version]')!.textContent = record.card.version
           cardContent.querySelector('[data-card-status]')!.textContent = record.card.is_active ? 'نشطة' : 'معطلة'
           cardContent.querySelector('[data-card-issued]')!.textContent = record.card.issued_at ? formatDate(record.card.issued_at) : '—'
-          
+
           const qrImage = cardContent.querySelector('[data-qr-image]') as HTMLImageElement
           if (qrImage) {
             qrImage.src = qrDataUrl
@@ -529,1020 +563,1224 @@ export function PointsProgramPage() {
     }
   }, [cards, exportCardElement])
 
+  /* ── البطاقة الحيّة: أول صف افتراضياً، وQR مستقل تماماً عن مسار التصدير ── */
+  const previewRecord = useMemo(
+    () => cards.find((record) => record.card.id === previewCardId) ?? cards[0] ?? null,
+    [cards, previewCardId],
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    const token = previewRecord?.card.token
+
+    if (!token) {
+      setPreviewQrDataUrl(null)
+      return
+    }
+
+    QRCode.toDataURL(token, {
+      errorCorrectionLevel: 'M',
+      margin: 1,
+      width: 256,
+      color: { dark: '#0f172a', light: '#ffffff' },
+    })
+      .then((url) => { if (!cancelled) setPreviewQrDataUrl(url) })
+      .catch(() => { if (!cancelled) setPreviewQrDataUrl(null) })
+
+    return () => { cancelled = true }
+  }, [previewRecord?.card.token])
+
+  const previewData: CardFaceData | undefined = previewRecord
+    ? {
+      token: previewRecord.card.token || '—',
+      studentName: previewRecord.student.name,
+      studentGrade: `${previewRecord.student.grade} — ${previewRecord.student.class_name}`,
+      studentId: previewRecord.student.national_id ?? '—',
+      version: previewRecord.card.version,
+      status: previewRecord.card.is_active ? 'نشطة' : 'معطلة',
+      issued: previewRecord.card.issued_at ? formatDate(previewRecord.card.issued_at) : '—',
+      qrDataUrl: previewQrDataUrl,
+    }
+    : undefined
+
+  /* أسباب مصفّاة لعمود المحرر */
+  const filteredReasons = useMemo(
+    () => reasons.filter((reason) => {
+      if (reasonTypeFilter !== 'all' && reason.type !== reasonTypeFilter) return false
+      if (!showInactiveReasons && !reason.is_active) return false
+      return true
+    }),
+    [reasons, reasonTypeFilter, showInactiveReasons],
+  )
+
+  /* الطلاب المطابقون لبحث عمود التسجيل */
+  const matchedStudents = useMemo(() => {
+    const q = studentQuery.trim().toLowerCase()
+    if (!q) return []
+    return students
+      .filter((student) => `${student.name} ${student.grade} ${student.class_name}`.toLowerCase().includes(q))
+      .slice(0, 8)
+  }, [students, studentQuery])
+
+  const selectedStudent = students.find((student) => student.id === Number(manualForm.student_id))
+  const selectedReason = reasons.find((reason) => reason.id === Number(manualForm.reason_id))
+  const activeReasons = manualForm.type === 'reward' ? rewardReasons : violationReasons
+  const quickValues = (manualForm.type === 'reward' ? settingsDraft.reward_values : settingsDraft.violation_values) ?? []
+
+  /* حالة البرنامج للشارة: المفتاحان مدفونان في الإعدادات، والشارة ترفعهما لكل الشاشات */
+  const programBadge = useMemo(() => {
+    const rewards = settingsQuery.data?.rewards_enabled ?? true
+    const violations = settingsQuery.data?.violations_enabled ?? true
+    if (!rewards && !violations) return { label: 'البرنامج متوقف', tone: TONES.red }
+    if (rewards && violations) return { label: 'مكافآت + مخالفات', tone: TONES.green }
+    if (rewards) return { label: 'تعزيز فقط', tone: TONES.green }
+    return { label: 'مخالفات فقط', tone: TONES.amber }
+  }, [settingsQuery.data])
+
+  /* حقول غير محفوظة في الإعدادات */
+  const unsavedSettingsCount = useMemo(() => {
+    const saved = getSettingsPayload(settingsQuery.data)
+    return (Object.keys(settingsDraft) as Array<keyof PointSettingsUpdatePayload>).filter((key) => {
+      const a = settingsDraft[key]
+      const b = saved[key]
+      if (Array.isArray(a) || Array.isArray(b)) return JSON.stringify(a ?? []) !== JSON.stringify(b ?? [])
+      return a !== b
+    }).length
+  }, [settingsDraft, settingsQuery.data])
+
+  const studentFilterActive = transactionFilters.student_id != null
+  const filteredStudentName = studentFilterActive
+    ? leaderboardItems.find((e) => e.student_id === transactionFilters.student_id)?.student.name
+      ?? students.find((s) => s.id === transactionFilters.student_id)?.name
+    : null
+
   return (
-    <div className="space-y-8 py-6">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">برنامج نقاطي</h1>
-          <p className="text-sm text-slate-500">إدارة برنامج تعزيز السلوك الإيجابي للطلاب</p>
-        </div>
-        <nav className="flex flex-wrap items-center gap-2 rounded-2xl bg-slate-100/60 p-1 text-sm">
+    <WsPage>
+      <WsHeader
+        title="برنامج نقاطي"
+        badge={<span style={{ color: programBadge.tone.tx }}>{programBadge.label}</span>}
+        actions={
+          <>
+            {activeTab === 'cards' && (
+              <WsBtn
+                variant="primary"
+                icon={Download}
+                onClick={handleExportAllCards}
+                disabled={isExportingAllCards || !cards.length}
+              >
+                {isExportingAllCards ? 'جارٍ التصدير...' : `تصدير بطاقات هذه الصفحة (${cards.length}) PDF`}
+              </WsBtn>
+            )}
+            {activeTab === 'settings' && (
+              <WsBtn
+                variant="primary"
+                icon={Save}
+                type="submit"
+                form="points-settings-form"
+                disabled={updateSettingsMutation.isPending}
+              >
+                {updateSettingsMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ الإعدادات'}
+              </WsBtn>
+            )}
+            {activeTab === 'reasons' && editingReason && (
+              <WsBtn icon={Plus} onClick={() => setEditingReason(null)}>إنشاء سبب جديد</WsBtn>
+            )}
+          </>
+        }
+        facts={
+          <>
+            {/* تسمية صادقة: الرقم مجموع أول عشرة فقط لأن الاستعلام مثبّت على per_page:10 */}
+            <WsFact icon={Trophy} label="نقاط أعلى ١٠">{formatNumber(totalPoints)}</WsFact>
+            <WsFact icon={Users} label="طلاب لديهم نقاط">{formatNumber(totalTrackedStudents)}</WsFact>
+            <WsFact icon={Activity} label="عمليات">{formatNumber(totalTransactions)}</WsFact>
+            <WsFact icon={CreditCard} label="بطاقات QR">{formatNumber(cardsMeta?.total ?? cards.length)}</WsFact>
+            {topStudent && (
+              <WsFact icon={Crown} label="المتصدر">
+                <span style={{ color: TONES.green.tx }}>{topStudent.student.name}</span>
+              </WsFact>
+            )}
+          </>
+        }
+      />
+
+      <WsToolbar>
+        <div className="ws-seg">
           {TABS.map(({ key, label, icon: Icon }) => (
             <button
               key={key}
               type="button"
+              className={`ws-seg__btn ${activeTab === key ? 'is-active' : ''}`}
               onClick={() => setActiveTab(key)}
-              className={`flex items-center gap-2 rounded-2xl px-4 py-2 transition ${
-                activeTab === key
-                  ? 'bg-white text-emerald-600 shadow'
-                  : 'text-slate-600 hover:bg-white hover:text-emerald-600'
-              }`}
             >
-              <Icon className="h-4 w-4" />
-              <span>{label}</span>
+              <Icon style={{ width: 13, height: 13 }} />
+              {label}
             </button>
           ))}
-        </nav>
-      </header>
+        </div>
 
-      {activeTab === 'overview' && (
-        <section className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div className="rounded-2xl bg-emerald-100 p-2 text-emerald-600">
-                  <Trophy className="h-5 w-5" />
-                </div>
-                <span className="text-sm text-slate-500">إجمالي النقاط الموزعة</span>
+        {activeTab === 'transactions' && (
+          <>
+            <WsField label="النوع">
+              <div className="ws-seg">
+                {([
+                  ['', 'الكل'],
+                  ['reward', 'مكافآت'],
+                  ['violation', 'مخالفات'],
+                ] as const).map(([value, label]) => (
+                  <button
+                    key={value || 'all'}
+                    type="button"
+                    className={`ws-seg__btn ${(transactionFilters.type ?? '') === value ? 'is-active' : ''}`}
+                    onClick={() => handleTransactionFilterChange('type', value || undefined)}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
-              <p className="mt-4 text-3xl font-bold text-slate-900">{formatNumber(totalPoints)}</p>
-              <p className="mt-2 text-xs text-slate-500">يشمل المكافآت والخصومات للطلاب</p>
-            </article>
-
-            <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div className="rounded-2xl bg-indigo-100 p-2 text-indigo-600">
-                  <Users className="h-5 w-5" />
-                </div>
-                <span className="text-sm text-slate-500">طلاب لديهم نقاط</span>
-              </div>
-              <p className="mt-4 text-3xl font-bold text-slate-900">{formatNumber(totalTrackedStudents)}</p>
-              <p className="mt-2 text-xs text-slate-500">يمثل الطلاب الذين حصلوا على نقاط نشطة</p>
-            </article>
-
-            <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div className="rounded-2xl bg-amber-100 p-2 text-amber-600">
-                  <Activity className="h-5 w-5" />
-                </div>
-                <span className="text-sm text-slate-500">عدد العمليات المسجلة</span>
-              </div>
-              <p className="mt-4 text-3xl font-bold text-slate-900">{formatNumber(totalTransactions)}</p>
-              <p className="mt-2 text-xs text-slate-500">يشمل التعزيزات والمخالفات المسجلة عبر المنصة</p>
-            </article>
-
-            <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div className="rounded-2xl bg-teal-100 p-2 text-teal-600">
-                  <CreditCard className="h-5 w-5" />
-                </div>
-                <span className="text-sm text-slate-500">بطاقات QR جاهزة</span>
-              </div>
-              <p className="mt-4 text-3xl font-bold text-slate-900">{formatNumber(cardsMeta?.total ?? cards.length)}</p>
-              <p className="mt-2 text-xs text-slate-500">بطاقات صالحة لتتبع النقاط عبر رمز QR</p>
-            </article>
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr),minmax(0,1fr)]">
-            <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <header className="mb-4 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-slate-900">لوحة الشرف</h2>
-                {topStudent && (
-                  <div className="text-xs text-slate-500">
-                    أعلى الطلاب: <span className="font-semibold text-emerald-600">{topStudent.student.name}</span>
-                  </div>
-                )}
-              </header>
-              {leaderboardQuery.isLoading ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 5 }).map((_, index) => (
-                    <div key={index} className="h-14 animate-pulse rounded-2xl bg-slate-100" />
-                  ))}
-                </div>
-              ) : leaderboardItems.length ? (
-                <ul className="space-y-2">
-                  {leaderboardItems.map((entry, index) => (
-                    <li
-                      key={entry.id}
-                      className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white/70 px-4 py-3"
-                    >
-                      <div className="flex items-center gap-4 text-right">
-                        <span className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-50 text-sm font-bold text-emerald-600">
-                          #{index + 1}
-                        </span>
-                        <div>
-                          <p className="text-sm font-semibold text-slate-900">{entry.student.name}</p>
-                          <p className="text-xs text-slate-500">
-                            {entry.student.grade} - {entry.student.class_name}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-slate-900">{formatNumber(entry.total_points)}</p>
-                        <p className="text-xs text-slate-500">نقاط إجمالية</p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
-                  لا توجد نقاط مسجلة بعد.
-                </div>
-              )}
-            </section>
-
-            <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <header className="mb-4 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-slate-900">آخر العمليات</h2>
-                <button
-                  type="button"
-                  className="text-xs font-semibold text-emerald-600 hover:text-emerald-700"
-                  onClick={() => setActiveTab('transactions')}
-                >
-                  عرض السجل الكامل
-                </button>
-              </header>
-              {transactionsQuery.isLoading ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 5 }).map((_, index) => (
-                    <div key={index} className="h-12 animate-pulse rounded-2xl bg-slate-100" />
-                  ))}
-                </div>
-              ) : transactions.length ? (
-                <ul className="space-y-2">
-                  {transactions.slice(0, 5).map((transaction) => (
-                    <li
-                      key={transaction.id}
-                      className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white/70 px-4 py-3"
-                    >
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-slate-900">
-                          {transaction.student?.name ?? 'طالب غير معروف'}
-                        </p>
-                        <p className="text-xs text-slate-500">{transaction.reason?.title ?? transaction.source}</p>
-                      </div>
-                      <div className="text-right">
-                        <p
-                          className={`text-lg font-bold ${
-                            transaction.type === 'reward' ? 'text-emerald-600' : 'text-rose-600'
-                          }`}
-                        >
-                          {transaction.type === 'reward' ? '+' : '-'}
-                          {formatNumber(transaction.amount)}
-                        </p>
-                        <p className="text-xs text-slate-500">{formatDate(transaction.created_at)}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
-                  لم يتم تسجيل عمليات بعد.
-                </div>
-              )}
-            </section>
-          </div>
-        </section>
-      )}
-
-      {activeTab === 'settings' && (
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <header className="mb-6">
-            <h2 className="text-xl font-semibold text-slate-900">ضبط برنامج النقاط</h2>
-            <p className="mt-1 text-sm text-slate-500">عدل سياسات البرنامج للتوافق مع لوائح المدرسة.</p>
-          </header>
-
-          <form onSubmit={handleSettingsSubmit} className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <label className="flex flex-col gap-2 rounded-2xl border border-slate-200 p-4 text-right">
-                <span className="text-sm font-semibold text-slate-700">حد نقاط المعلم اليومية</span>
-                <input
-                  type="number"
-                  min={0}
-                  value={settingsDraft.daily_teacher_cap}
-                  onChange={(event) => handleSettingsFieldChange('daily_teacher_cap', Number(event.target.value))}
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-                />
-                <p className="text-xs text-slate-500">أقصى مجموع نقاط يمكن للمعلم توزيعها في اليوم.</p>
-              </label>
-
-              <label className="flex flex-col gap-2 rounded-2xl border border-slate-200 p-4 text-right">
-                <span className="text-sm font-semibold text-slate-700">حد نقاط الطالب اليومية</span>
-                <input
-                  type="number"
-                  min={0}
-                  value={settingsDraft.per_student_cap}
-                  onChange={(event) => handleSettingsFieldChange('per_student_cap', Number(event.target.value))}
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-                />
-                <p className="text-xs text-slate-500">أقصى مجموع نقاط يحصل عليها الطالب في اليوم.</p>
-              </label>
-
-              <label className="flex flex-col gap-2 rounded-2xl border border-slate-200 p-4 text-right">
-                <span className="text-sm font-semibold text-slate-700">حد المخالفات اليومية</span>
-                <input
-                  type="number"
-                  min={0}
-                  value={settingsDraft.daily_violation_cap}
-                  onChange={(event) => handleSettingsFieldChange('daily_violation_cap', Number(event.target.value))}
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-                />
-                <p className="text-xs text-slate-500">أقصى عدد مخالفات يمكن تسجيلها للطالب خلال يوم واحد.</p>
-              </label>
-
-              <label className="flex flex-col gap-2 rounded-2xl border border-slate-200 p-4 text-right md:col-span-2 lg:col-span-3">
-                <span className="text-sm font-semibold text-slate-700">قيم المكافآت المقترحة</span>
-                <input
-                  type="text"
-                  placeholder="مثال: 5,10,15"
-                  value={settingsDraft.reward_values?.join(', ') ?? ''}
-                  onChange={(event) => handleSettingsFieldChange('reward_values', sanitizeNumericList(event.target.value))}
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-                />
-                <p className="text-xs text-slate-500">استخدم فاصلة للفصل بين القيم المقترحة للمكافآت.</p>
-              </label>
-
-              <label className="flex flex-col gap-2 rounded-2xl border border-slate-200 p-4 text-right md:col-span-2 lg:col-span-3">
-                <span className="text-sm font-semibold text-slate-700">قيم المخالفات المقترحة</span>
-                <input
-                  type="text"
-                  placeholder="مثال: 5,10,15"
-                  value={settingsDraft.violation_values?.join(', ') ?? ''}
-                  onChange={(event) => handleSettingsFieldChange('violation_values', sanitizeNumericList(event.target.value))}
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-                />
-                <p className="text-xs text-slate-500">القيم المقترحة لخصم النقاط بسبب المخالفات.</p>
-              </label>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <label className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 p-4 text-right">
-                <div>
-                  <p className="text-sm font-semibold text-slate-700">تفعيل المكافآت</p>
-                  <p className="text-xs text-slate-500">السماح للمعلمين بمنح نقاط إيجابية.</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={settingsDraft.rewards_enabled}
-                  onChange={(event) => handleSettingsFieldChange('rewards_enabled', event.target.checked)}
-                  className="h-5 w-5 rounded border border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                />
-              </label>
-
-              <label className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 p-4 text-right">
-                <div>
-                  <p className="text-sm font-semibold text-slate-700">تفعيل المخالفات</p>
-                  <p className="text-xs text-slate-500">السماح بتسجيل مخالفات وخصم نقاط.</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={settingsDraft.violations_enabled}
-                  onChange={(event) => handleSettingsFieldChange('violations_enabled', event.target.checked)}
-                  className="h-5 w-5 rounded border border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                />
-              </label>
-
-              <label className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 p-4 text-right">
-                <div>
-                  <p className="text-sm font-semibold text-slate-700">تأكيد بالكاميرا</p>
-                  <p className="text-xs text-slate-500">طلب صورة توثيقية عند منح النقاط.</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={settingsDraft.require_camera_confirmation}
-                  onChange={(event) =>
-                    handleSettingsFieldChange('require_camera_confirmation', event.target.checked)
-                  }
-                  className="h-5 w-5 rounded border border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                />
-              </label>
-
-              <label className="flex flex-col gap-2 rounded-2xl border border-slate-200 p-4 text-right md:col-span-2 lg:col-span-3">
-                <span className="text-sm font-semibold text-slate-700">مهلة التراجع عن العملية (بالثواني)</span>
-                <input
-                  type="number"
-                  min={0}
-                  value={settingsDraft.undo_timeout_seconds}
-                  onChange={(event) => handleSettingsFieldChange('undo_timeout_seconds', Number(event.target.value))}
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-                />
-                <p className="text-xs text-slate-500">عدد الثواني المتاحة للتراجع عن العملية بعد تسجيلها.</p>
-              </label>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-end gap-3">
-              {settingsQuery.isFetching && <span className="text-xs text-slate-400">جارٍ المزامنة...</span>}
-              <button
-                type="submit"
-                className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
-                disabled={updateSettingsMutation.isPending}
+            </WsField>
+            <WsField label="بحث" grow>
+              <WsInput
+                type="search"
+                placeholder="بحث عن طالب أو سبب"
+                value={transactionFilters.search ?? ''}
+                onChange={(event) => handleTransactionFilterChange('search', event.target.value || undefined)}
+                style={{ width: '100%' }}
+              />
+            </WsField>
+            <WsField label="من">
+              <WsInput
+                type="date"
+                value={transactionFilters.date_from ?? ''}
+                onChange={(event) => handleTransactionFilterChange('date_from', event.target.value || undefined)}
+              />
+            </WsField>
+            <WsField label="إلى">
+              <WsInput
+                type="date"
+                value={transactionFilters.date_to ?? ''}
+                onChange={(event) => handleTransactionFilterChange('date_to', event.target.value || undefined)}
+              />
+            </WsField>
+            {studentFilterActive && (
+              <WsBtn
+                size="sm"
+                icon={X}
+                onClick={() => handleTransactionFilterChange('student_id', undefined)}
               >
-                {updateSettingsMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ الإعدادات'}
-              </button>
-            </div>
-          </form>
-        </section>
-      )}
+                {filteredStudentName ?? 'طالب محدد'}
+              </WsBtn>
+            )}
+          </>
+        )}
 
-      {activeTab === 'reasons' && (
-        <section className="space-y-6">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <header className="mb-4 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-slate-900">
-                {editingReason ? 'تعديل سبب النقاط' : 'إضافة سبب جديد'}
-              </h2>
-              {editingReason && (
-                <button
-                  type="button"
-                  className="text-xs font-semibold text-emerald-600 hover:text-emerald-700"
-                  onClick={() => setEditingReason(null)}
-                >
-                  إنشاء سبب جديد
-                </button>
+        {activeTab === 'cards' && (
+          <>
+            <WsField label="بحث" grow>
+              <div style={{ position: 'relative' }}>
+                <WsInput
+                  type="search"
+                  placeholder="بحث عن طالب"
+                  value={cardFilters.search ?? ''}
+                  onChange={(event) => handleCardFilterChange('search', event.target.value)}
+                  style={{ width: '100%', paddingInlineStart: 26 }}
+                />
+                <Search style={{ width: 13, height: 13, position: 'absolute', insetInlineStart: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--ws-text-2)', pointerEvents: 'none' }} />
+              </div>
+            </WsField>
+            <WsField label="الصف">
+              <WsSelect value={cardFilters.grade ?? ''} onChange={(event) => handleCardFilterChange('grade', event.target.value)}>
+                <option value="">جميع الصفوف</option>
+                {gradeOptions.map((grade) => (<option key={grade} value={grade}>{grade}</option>))}
+              </WsSelect>
+            </WsField>
+            <WsField label="الفصل">
+              <WsSelect value={cardFilters.class_name ?? ''} onChange={(event) => handleCardFilterChange('class_name', event.target.value)}>
+                <option value="">جميع الفصول</option>
+                {classOptions.map((className) => (<option key={className} value={className}>{className}</option>))}
+              </WsSelect>
+            </WsField>
+          </>
+        )}
+
+        {activeTab === 'reasons' && (
+          <>
+            <WsField label="النوع">
+              <div className="ws-seg">
+                {([
+                  ['all', 'الكل'],
+                  ['reward', 'مكافآت'],
+                  ['violation', 'مخالفات'],
+                ] as const).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={`ws-seg__btn ${reasonTypeFilter === value ? 'is-active' : ''}`}
+                    onClick={() => setReasonTypeFilter(value)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </WsField>
+            <WsField label="إظهار المعطلة">
+              <WsSwitch checked={showInactiveReasons} onChange={setShowInactiveReasons} />
+            </WsField>
+          </>
+        )}
+
+        {activeTab === 'settings' && settingsQuery.isFetching && (
+          <span style={{ fontSize: 11, color: 'var(--ws-text-2)', marginInlineStart: 'auto' }}>جارٍ المزامنة...</span>
+        )}
+      </WsToolbar>
+
+      <WsLayout>
+        {/* ═══ لوحة الشرف — عمود مقيم مع سجل العمليات ═══ */}
+        {activeTab === 'transactions' && (
+          <WsSideCol side="start" title="لوحة الشرف" icon={Award} storageKey="ws:points:board" width={300}>
+            <WsBlock fill scroll>
+              {leaderboardQuery.isLoading ? (
+                <WsEmpty loading>جارٍ التحميل...</WsEmpty>
+              ) : leaderboardItems.length === 0 ? (
+                <WsEmpty icon={Trophy}>لا توجد نقاط مسجلة بعد</WsEmpty>
+              ) : (
+                leaderboardItems.map((entry, index) => {
+                  const isFiltered = transactionFilters.student_id === entry.student_id
+                  return (
+                    <div
+                      key={entry.id}
+                      onClick={() => {
+                        handleTransactionFilterChange('student_id', isFiltered ? undefined : entry.student_id)
+                        if (!isFiltered) {
+                          setManualForm((current) => ({ ...current, student_id: entry.student_id }))
+                          setStudentQuery(entry.student.name)
+                        }
+                      }}
+                      style={{
+                        padding: '8px 12px',
+                        borderBottom: '1px solid var(--ws-hairline)',
+                        cursor: 'pointer',
+                        background: isFiltered ? 'var(--ws-accent-soft)' : 'transparent',
+                        boxShadow: isFiltered ? 'inset 0 0 0 1px var(--ws-accent)' : undefined,
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <span
+                          style={{
+                            width: 22,
+                            height: 22,
+                            borderRadius: 6,
+                            flexShrink: 0,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 10.5,
+                            fontWeight: 800,
+                            background: index === 0 ? TONES.green.bg : 'var(--ws-surface-2)',
+                            color: index === 0 ? TONES.green.tx : 'var(--ws-text-2)',
+                            border: `1px solid ${index === 0 ? TONES.green.bd : 'var(--ws-border)'}`,
+                          }}
+                        >
+                          {index + 1}
+                        </span>
+                        <InitialAvatar name={entry.student.name} tone={TONES.sky} size={24} />
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ display: 'block', fontSize: 12, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {entry.student.name}
+                          </span>
+                          <span style={{ display: 'block', fontSize: 10, color: 'var(--ws-text-2)' }}>
+                            {entry.student.grade} - {entry.student.class_name}
+                          </span>
+                        </span>
+                        <b style={{ fontSize: 12.5, flexShrink: 0 }}>{formatNumber(entry.total_points)}</b>
+                      </div>
+                      <div style={{ marginTop: 5 }}>
+                        <LeaderBar
+                          totalPoints={entry.total_points}
+                          topPoints={topStudent?.total_points ?? entry.total_points}
+                          rewards={entry.lifetime_rewards}
+                          violations={entry.lifetime_violations}
+                        />
+                      </div>
+                    </div>
+                  )
+                })
               )}
-            </header>
+            </WsBlock>
+          </WsSideCol>
+        )}
 
-            <form onSubmit={handleReasonSubmit} className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <label className="flex flex-col gap-2 rounded-2xl border border-slate-200 p-4 text-right">
-                <span className="text-sm font-semibold text-slate-700">عنوان السبب</span>
-                <input
-                  type="text"
-                  value={reasonForm.title}
-                  onChange={(event) => setReasonForm((current) => ({ ...current, title: event.target.value }))}
-                  required
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+        <WsMain>
+          {/* ═══ سجل العمليات ═══ */}
+          {activeTab === 'transactions' && (
+            <WsBlock
+              fill
+              title="سجل العمليات"
+              icon={Activity}
+              count={transactionMeta?.total ?? transactions.length}
+              tools={
+                <Pager
+                  page={transactionMeta?.current_page ?? 1}
+                  lastPage={transactionMeta?.last_page ?? 1}
+                  total={transactionMeta?.total}
+                  unit="عملية"
+                  onChange={handleTransactionPageChange}
                 />
-              </label>
+              }
+            >
+              {transactionsQuery.isLoading ? (
+                <WsEmpty loading>جارٍ تحميل السجل...</WsEmpty>
+              ) : transactions.length === 0 ? (
+                <WsEmpty icon={Activity}>لا توجد عمليات مسجلة مطابقة للمرشحات الحالية</WsEmpty>
+              ) : (
+                <WsTable>
+                  <thead>
+                    <tr>
+                      <th>الطالب</th>
+                      <th>النوع</th>
+                      <th>القيمة</th>
+                      <th>السبب</th>
+                      <th>المصدر</th>
+                      <th>المعلم</th>
+                      <th>تاريخ التنفيذ</th>
+                      <th>إجراءات</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {transactions.map((transaction) => {
+                      const isUndone = Boolean(transaction.undone_at)
+                      const src = sourceMeta(transaction.source)
+                      const windowOver = isUndoWindowOver(transaction.undoable_until)
+                      const isUndoing = undoTransactionMutation.isPending && undoTransactionMutation.variables === transaction.id
+                      const isDeleting = deleteTransactionMutation.isPending && deleteTransactionMutation.variables === transaction.id
+                      return (
+                        <tr key={transaction.id} style={isUndone ? { background: TONES.gray.bg, opacity: 0.75 } : undefined}>
+                          <td style={{ fontWeight: 600 }}>{transaction.student?.name ?? 'طالب غير معروف'}</td>
+                          <td>
+                            <ToneChip tone={transaction.type === 'reward' ? TONES.green : TONES.red}>
+                              {transaction.type === 'reward' ? 'مكافأة' : 'مخالفة'}
+                            </ToneChip>
+                          </td>
+                          <td
+                            style={{
+                              fontWeight: 800,
+                              color: transaction.type === 'reward' ? TONES.green.tx : TONES.red.tx,
+                              textDecoration: isUndone ? 'line-through' : undefined,
+                            }}
+                          >
+                            {transaction.type === 'reward' ? '+' : '−'}
+                            {formatNumber(transaction.amount)}
+                          </td>
+                          <td style={{ color: 'var(--ws-text-2)' }}>{transaction.reason?.title ?? '—'}</td>
+                          <td><ToneChip tone={src.tone}>{src.label}</ToneChip></td>
+                          <td style={{ color: 'var(--ws-text-2)' }}>{transaction.teacher?.name ?? '—'}</td>
+                          <td style={{ color: 'var(--ws-text-2)', whiteSpace: 'nowrap' }}>{formatDate(transaction.created_at)}</td>
+                          <td>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              {isUndone ? (
+                                <ToneChip tone={TONES.gray}>ملغاة</ToneChip>
+                              ) : (
+                                <>
+                                  <WsBtn
+                                    size="sm"
+                                    icon={Undo}
+                                    onClick={() => handleUndoTransaction(transaction)}
+                                    disabled={undoTransactionMutation.isPending || Boolean(transaction.undone_at)}
+                                  >
+                                    {isUndoing ? 'جارٍ...' : 'تراجع'}
+                                    {transaction.undoable_until && !windowOver && (
+                                      <UndoCountdown until={transaction.undoable_until} />
+                                    )}
+                                  </WsBtn>
+                                  {windowOver && <ToneChip tone={TONES.gray}>انتهت المهلة</ToneChip>}
+                                </>
+                              )}
+                              <WsIconBtn
+                                icon={Trash2}
+                                label={isDeleting ? 'جارٍ الحذف...' : 'حذف السجل'}
+                                onClick={() => {
+                                  if (confirm('هل أنت متأكد من حذف هذا السجل؟ لا يمكن التراجع عن هذا الإجراء.')) {
+                                    deleteTransactionMutation.mutate(transaction.id)
+                                  }
+                                }}
+                                disabled={deleteTransactionMutation.isPending}
+                                style={{ color: TONES.red.tx }}
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </WsTable>
+              )}
+            </WsBlock>
+          )}
 
-              <label className="flex flex-col gap-2 rounded-2xl border border-slate-200 p-4 text-right">
-                <span className="text-sm font-semibold text-slate-700">النوع</span>
-                <select
-                  value={reasonForm.type}
-                  onChange={(event) =>
-                    setReasonForm((current) => ({ ...current, type: event.target.value as PointReasonPayload['type'] }))
-                  }
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-                >
-                  <option value="reward">مكافأة</option>
-                  <option value="violation">مخالفة</option>
-                </select>
-              </label>
-
-              <label className="flex flex-col gap-2 rounded-2xl border border-slate-200 p-4 text-right">
-                <span className="text-sm font-semibold text-slate-700">قيمة النقاط</span>
-                <input
-                  type="number"
-                  value={reasonForm.value}
-                  onChange={(event) =>
-                    setReasonForm((current) => ({ ...current, value: Number(event.target.value) }))
-                  }
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+          {/* ═══ بطاقات الطلاب ═══ */}
+          {activeTab === 'cards' && (
+            <WsBlock
+              fill
+              title="بطاقات نقاط الطلاب"
+              icon={CreditCard}
+              count={cardsMeta?.total ?? cards.length}
+              tools={
+                <Pager
+                  page={cardPage}
+                  lastPage={totalCardPages}
+                  total={cardsMeta?.total}
+                  unit="طالب"
+                  onChange={handleCardPageChange}
                 />
-              </label>
+              }
+            >
+              {cardsQuery.isLoading ? (
+                <WsEmpty loading>جارٍ تحميل البطاقات...</WsEmpty>
+              ) : cards.length === 0 ? (
+                <WsEmpty icon={CreditCard}>لم يتم العثور على بطاقات مطابقة للمرشحات الحالية</WsEmpty>
+              ) : (
+                <WsTable>
+                  <thead>
+                    <tr>
+                      <th style={{ width: 40 }}>#</th>
+                      <th>اسم الطالب</th>
+                      <th>الصف</th>
+                      <th>الفصل</th>
+                      <th>رقم الهوية</th>
+                      <th>حالة البطاقة</th>
+                      <th>إجراءات</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cards.map((record, index) => {
+                      const isPreviewed = previewRecord?.card.id === record.card.id
+                      const isRegenerating = regenerateCardMutation.isPending && regenerateCardMutation.variables === record.student.id
+                      return (
+                        <tr
+                          key={record.card.id}
+                          className={`is-clickable ${isPreviewed ? 'is-selected' : ''}`}
+                          onClick={() => setPreviewCardId(record.card.id)}
+                        >
+                          <td style={{ color: 'var(--ws-text-2)' }}>{((cardPage - 1) * 20) + index + 1}</td>
+                          <td style={{ fontWeight: 600 }}>{record.student.name}</td>
+                          <td style={{ color: 'var(--ws-text-2)' }}>{record.student.grade}</td>
+                          <td style={{ color: 'var(--ws-text-2)' }}>{record.student.class_name}</td>
+                          {/* البطاقة المطبوعة تحمل national_id — فليقل العمود ما تقوله البطاقة */}
+                          <td style={{ color: 'var(--ws-text-2)' }}>{record.student.national_id ?? '—'}</td>
+                          <td>
+                            {record.card.is_active
+                              ? <span style={{ fontSize: 11.5, color: 'var(--ws-text-2)' }}>نشطة</span>
+                              : <ToneChip tone={TONES.gray}>معطلة</ToneChip>}
+                          </td>
+                          <td onClick={(e) => e.stopPropagation()}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <WsBtn
+                                size="sm"
+                                icon={RefreshCcw}
+                                onClick={() => setRegenerateTarget(record)}
+                                disabled={regenerateCardMutation.isPending}
+                              >
+                                {isRegenerating ? 'جارٍ...' : 'إعادة'}
+                              </WsBtn>
+                              <WsBtn
+                                size="sm"
+                                variant="primary"
+                                icon={Download}
+                                onClick={() => handleExportSingleCard(record)}
+                                disabled={isExportingAllCards || exportingCardId === record.student.id}
+                              >
+                                {exportingCardId === record.student.id ? 'جارٍ...' : 'تصدير'}
+                              </WsBtn>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </WsTable>
+              )}
+            </WsBlock>
+          )}
 
-              <label className="flex flex-col gap-2 rounded-2xl border border-slate-200 p-4 text-right">
-                <span className="text-sm font-semibold text-slate-700">التصنيف</span>
-                <input
-                  type="text"
-                  value={reasonForm.category ?? ''}
-                  onChange={(event) => setReasonForm((current) => ({ ...current, category: event.target.value }))
-                  }
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-                  placeholder="سلوك، انضباط، مشاركة..."
-                />
-              </label>
+          {/* ═══ أسباب النقاط ═══ */}
+          {activeTab === 'reasons' && (
+            <WsBlock fill title="قائمة الأسباب" icon={ListChecks} count={filteredReasons.length}>
+              {reasonsQuery.isLoading ? (
+                <WsEmpty loading>جارٍ تحميل الأسباب...</WsEmpty>
+              ) : filteredReasons.length === 0 ? (
+                <WsEmpty icon={ListChecks}>لا توجد أسباب مطابقة</WsEmpty>
+              ) : (
+                <WsTable>
+                  <thead>
+                    <tr>
+                      <th>العنوان</th>
+                      <th>النوع</th>
+                      <th>القيمة</th>
+                      <th>التصنيف</th>
+                      <th>الحالة</th>
+                      <th>آخر تحديث</th>
+                      <th>إجراءات</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredReasons.map((reason) => (
+                      <tr
+                        key={reason.id}
+                        className={`is-clickable ${editingReason?.id === reason.id ? 'is-selected' : ''}`}
+                        onClick={() => setEditingReason(reason)}
+                        style={!reason.is_active ? { opacity: 0.65 } : undefined}
+                      >
+                        <td style={{ fontWeight: 600 }}>{reason.title}</td>
+                        <td>
+                          <ToneChip tone={reason.type === 'reward' ? TONES.green : TONES.red}>
+                            {reason.type === 'reward' ? 'مكافأة' : 'مخالفة'}
+                          </ToneChip>
+                        </td>
+                        <td style={{ fontWeight: 700 }}>{formatNumber(reason.value)}</td>
+                        <td style={{ color: 'var(--ws-text-2)' }}>{reason.category ?? '—'}</td>
+                        {/* الحياد الافتراضي: «نشط» بلا شارة، والمعطل وحده يُعلَّم */}
+                        <td>{reason.is_active ? <span style={{ fontSize: 11.5, color: 'var(--ws-text-2)' }}>نشط</span> : <ToneChip tone={TONES.gray}>معطل</ToneChip>}</td>
+                        <td style={{ color: 'var(--ws-text-2)', whiteSpace: 'nowrap' }}>{formatDate(reason.updated_at)}</td>
+                        <td onClick={(e) => e.stopPropagation()}>
+                          {reason.is_active ? (
+                            <WsBtn
+                              size="sm"
+                              icon={X}
+                              onClick={() => handleDeactivateReason(reason)}
+                              disabled={deactivateReasonMutation.isPending}
+                              style={{ color: TONES.red.tx }}
+                            >
+                              تعطيل
+                            </WsBtn>
+                          ) : (
+                            <span style={{ color: 'var(--ws-text-2)' }}>—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </WsTable>
+              )}
+            </WsBlock>
+          )}
 
-              <label className="flex flex-col gap-2 rounded-2xl border border-slate-200 p-4 text-right">
-                <span className="text-sm font-semibold text-slate-700">الترتيب في العرض</span>
-                <input
-                  type="number"
-                  value={reasonForm.display_order}
-                  onChange={(event) =>
-                    setReasonForm((current) => ({ ...current, display_order: Number(event.target.value) }))
-                  }
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-                />
-              </label>
+          {/* ═══ الإعدادات ═══ */}
+          {activeTab === 'settings' && (
+            <WsBlock fill scroll>
+              <form id="points-settings-form" onSubmit={handleSettingsSubmit}>
+                <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 720 }}>
+                  <div>
+                    <p className="ws-label" style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <ShieldCheck style={{ width: 12, height: 12 }} /> السقوف اليومية
+                    </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
+                      <WsField label="حد نقاط المعلم اليومية">
+                        <WsInput
+                          type="number"
+                          min={0}
+                          value={settingsDraft.daily_teacher_cap}
+                          onChange={(event) => handleSettingsFieldChange('daily_teacher_cap', Number(event.target.value))}
+                        />
+                        <p style={{ margin: '4px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)' }}>أقصى مجموع نقاط يمكن للمعلم توزيعها في اليوم.</p>
+                      </WsField>
+                      <WsField label="حد نقاط الطالب اليومية">
+                        <WsInput
+                          type="number"
+                          min={0}
+                          value={settingsDraft.per_student_cap}
+                          onChange={(event) => handleSettingsFieldChange('per_student_cap', Number(event.target.value))}
+                        />
+                        <p style={{ margin: '4px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)' }}>أقصى مجموع نقاط يستقبلها الطالب في اليوم — <b>من كل معلم على حدة</b>.</p>
+                      </WsField>
+                      <WsField label="حد المخالفات اليومية">
+                        <WsInput
+                          type="number"
+                          min={0}
+                          value={settingsDraft.daily_violation_cap}
+                          onChange={(event) => handleSettingsFieldChange('daily_violation_cap', Number(event.target.value))}
+                        />
+                        <p style={{ margin: '4px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)' }}>أقصى مجموع نقاط مخالفات تُسجَّل للطالب خلال يوم واحد.</p>
+                      </WsField>
+                    </div>
+                  </div>
 
-              <label className="flex flex-col gap-2 rounded-2xl border border-slate-200 p-4 text-right md:col-span-2 lg:col-span-3">
-                <span className="text-sm font-semibold text-slate-700">الوصف</span>
-                <textarea
-                  value={reasonForm.description ?? ''}
-                  onChange={(event) => setReasonForm((current) => ({ ...current, description: event.target.value }))
-                  }
-                  rows={3}
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-                  placeholder="اشرح الاستخدام المثالي لهذا السبب"
-                />
-              </label>
+                  <div>
+                    <p className="ws-label" style={{ marginBottom: 8 }}>ما هو مفعّل</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 }}>
+                      {([
+                        ['rewards_enabled', 'تفعيل المكافآت', 'السماح للمعلمين بمنح نقاط إيجابية.'],
+                        ['violations_enabled', 'تفعيل المخالفات', 'السماح بتسجيل مخالفات وخصم نقاط.'],
+                        ['require_camera_confirmation', 'تأكيد بالكاميرا', 'طلب صورة توثيقية عند منح النقاط.'],
+                      ] as Array<[keyof PointSettingsUpdatePayload, string, string]>).map(([field, label, hint]) => (
+                        <div
+                          key={field}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 8,
+                            border: '1px solid var(--ws-border)',
+                            borderRadius: 10,
+                            padding: 10,
+                          }}
+                        >
+                          <div>
+                            <p style={{ margin: 0, fontSize: 12, fontWeight: 700 }}>{label}</p>
+                            <p style={{ margin: '2px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)' }}>{hint}</p>
+                          </div>
+                          <WsSwitch
+                            checked={Boolean(settingsDraft[field])}
+                            onChange={(checked) => handleSettingsFieldChange(field, checked)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
 
-              <label className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 p-4 text-right">
-                <div>
-                  <p className="text-sm font-semibold text-slate-700">متاح للاستخدام</p>
-                  <p className="text-xs text-slate-500">عند التعطيل يختفي السبب من تطبيق المعلمين.</p>
+                  <div>
+                    <p className="ws-label" style={{ marginBottom: 8 }}>القيم المقترحة ومهلة التراجع</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <WsField label="قيم المكافآت المقترحة">
+                        <WsInput
+                          type="text"
+                          placeholder="مثال: 5,10,15"
+                          value={settingsDraft.reward_values?.join(', ') ?? ''}
+                          onChange={(event) => handleSettingsFieldChange('reward_values', sanitizeNumericList(event.target.value))}
+                        />
+                        <p style={{ margin: '4px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)' }}>استخدم فاصلة للفصل بين القيم — تظهر كأزرار سريعة في عمود التسجيل.</p>
+                      </WsField>
+                      <WsField label="قيم المخالفات المقترحة">
+                        <WsInput
+                          type="text"
+                          placeholder="مثال: 5,10,15"
+                          value={settingsDraft.violation_values?.join(', ') ?? ''}
+                          onChange={(event) => handleSettingsFieldChange('violation_values', sanitizeNumericList(event.target.value))}
+                        />
+                      </WsField>
+                      <WsField label="مهلة التراجع عن العملية (بالثواني)">
+                        <WsInput
+                          type="number"
+                          min={0}
+                          value={settingsDraft.undo_timeout_seconds}
+                          onChange={(event) => handleSettingsFieldChange('undo_timeout_seconds', Number(event.target.value))}
+                        />
+                        <p style={{ margin: '4px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)' }}>يظهر أثرها كعدّاد نابض على زر التراجع في سجل العمليات.</p>
+                      </WsField>
+                    </div>
+                  </div>
                 </div>
-                <input
-                  type="checkbox"
-                  checked={reasonForm.is_active}
-                  onChange={(event) => setReasonForm((current) => ({ ...current, is_active: event.target.checked }))
-                  }
-                  className="h-5 w-5 rounded border border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                />
-              </label>
+              </form>
+            </WsBlock>
+          )}
+        </WsMain>
 
-              <div className="md:col-span-2 lg:col-span-3">
-                <button
+        {/* ═══ التسجيل السريع — طرف الحلقة مع لوحة الشرف ═══ */}
+        {activeTab === 'transactions' && (
+          <WsSideCol side="end" title="تسجيل سريع" icon={Plus} storageKey="ws:points:entry" width={360}>
+            <WsBlock fill scroll>
+              <form onSubmit={handleManualFormSubmit} style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {/* الطالب: بحث بدل قائمة بمئات الأسماء */}
+                <WsField label="الطالب *">
+                  {selectedStudent ? (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 7,
+                        background: 'var(--ws-accent-soft)',
+                        border: '1px solid var(--ws-accent)',
+                        borderRadius: 8,
+                        padding: '6px 8px',
+                      }}
+                    >
+                      <InitialAvatar name={selectedStudent.name} tone={TONES.sky} size={24} />
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: 'block', fontSize: 12, fontWeight: 700 }}>{selectedStudent.name}</span>
+                        <span style={{ display: 'block', fontSize: 10, color: 'var(--ws-text-2)' }}>
+                          {selectedStudent.grade} - {selectedStudent.class_name}
+                        </span>
+                      </span>
+                      <WsIconBtn
+                        icon={X}
+                        label="إلغاء تحديد الطالب"
+                        onClick={() => {
+                          setManualForm((current) => ({ ...current, student_id: 0 }))
+                          setStudentQuery('')
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      <WsInput
+                        type="search"
+                        value={studentQuery}
+                        onChange={(event) => setStudentQuery(event.target.value)}
+                        placeholder="ابحث عن الطالب بالاسم أو الصف..."
+                      />
+                      {matchedStudents.length > 0 && (
+                        <div style={{ marginTop: 4, border: '1px solid var(--ws-border)', borderRadius: 8, overflow: 'hidden' }}>
+                          {matchedStudents.map((student) => (
+                            <button
+                              key={student.id}
+                              type="button"
+                              onClick={() => {
+                                setManualForm((current) => ({ ...current, student_id: student.id }))
+                                setStudentQuery(student.name)
+                              }}
+                              style={{
+                                display: 'block',
+                                width: '100%',
+                                textAlign: 'right',
+                                padding: '6px 9px',
+                                border: 'none',
+                                borderBottom: '1px solid var(--ws-hairline)',
+                                background: 'transparent',
+                                cursor: 'pointer',
+                                fontFamily: 'inherit',
+                                color: 'var(--ws-text)',
+                              }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--ws-accent-soft)' }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                            >
+                              <span style={{ display: 'block', fontSize: 12, fontWeight: 600 }}>{student.name}</span>
+                              <span style={{ display: 'block', fontSize: 10, color: 'var(--ws-text-2)' }}>
+                                {student.grade} - {student.class_name}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </WsField>
+
+                {/* السبب أولاً: نقرة تضبط النوع والقيمة معاً فلا يقع زوج متناقض */}
+                <div>
+                  <p className="ws-label" style={{ marginBottom: 6 }}>السبب — يضبط النوع والقيمة</p>
+                  <div className="ws-seg" style={{ marginBottom: 6 }}>
+                    {([
+                      ['reward', 'مكافأة'],
+                      ['violation', 'مخالفة'],
+                    ] as const).map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        className={`ws-seg__btn ${manualForm.type === value ? 'is-active' : ''}`}
+                        onClick={() => setManualForm((current) => ({ ...current, type: value, reason_id: undefined }))}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  {activeReasons.length === 0 ? (
+                    <p style={{ margin: 0, fontSize: 11, color: 'var(--ws-text-2)' }}>لا توجد أسباب نشطة من هذا النوع.</p>
+                  ) : (
+                    <div className="ws-choice-grid" style={{ gridTemplateColumns: '1fr' }}>
+                      {activeReasons.map((reason) => {
+                        const isSelected = Number(manualForm.reason_id) === reason.id
+                        const tone = reason.type === 'reward' ? TONES.green : TONES.red
+                        return (
+                          <button
+                            key={reason.id}
+                            type="button"
+                            className={`ws-choice ${isSelected ? 'is-selected' : ''}`}
+                            style={{
+                              justifyContent: 'space-between',
+                              ...(isSelected
+                                ? { background: tone.bg, borderColor: tone.tx, color: tone.tx, boxShadow: `0 0 0 1px ${tone.tx}` }
+                                : {}),
+                            }}
+                            onClick={() => setManualForm((current) => ({
+                              ...current,
+                              reason_id: reason.id,
+                              type: reason.type,
+                              amount: reason.value,
+                            }))}
+                          >
+                            <span>{reason.title}</span>
+                            <b style={{ color: tone.tx }}>{reason.type === 'reward' ? '+' : '−'}{reason.value}</b>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <WsField label="القيمة">
+                  <WsInput
+                    type="number"
+                    value={manualForm.amount}
+                    onChange={(event) => setManualForm((current) => ({ ...current, amount: Number(event.target.value) }))}
+                  />
+                  {quickValues.length > 0 && (
+                    <div style={{ display: 'flex', gap: 4, marginTop: 5, flexWrap: 'wrap' }}>
+                      {quickValues.map((value) => (
+                        <button
+                          key={value}
+                          type="button"
+                          className="ws-chip"
+                          onClick={() => setManualForm((current) => ({ ...current, amount: value }))}
+                          style={Number(manualForm.amount) === value
+                            ? {
+                              background: manualForm.type === 'reward' ? TONES.green.bg : TONES.red.bg,
+                              borderColor: manualForm.type === 'reward' ? TONES.green.tx : TONES.red.tx,
+                              color: manualForm.type === 'reward' ? TONES.green.tx : TONES.red.tx,
+                            }
+                            : undefined}
+                        >
+                          {value}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </WsField>
+
+                <WsField label="المعلم (اختياري)">
+                  <WsSelect
+                    value={manualForm.teacher_id ?? ''}
+                    onChange={(event) =>
+                      setManualForm((current) => ({
+                        ...current,
+                        teacher_id: event.target.value ? Number(event.target.value) : undefined,
+                      }))
+                    }
+                  >
+                    <option value="">بدون معلم</option>
+                    {teachers.map((teacher) => (
+                      <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
+                    ))}
+                  </WsSelect>
+                </WsField>
+
+                <WsField label="السياق (اختياري)">
+                  <WsInput
+                    type="text"
+                    value={manualForm.context ?? ''}
+                    onChange={(event) => setManualForm((current) => ({ ...current, context: event.target.value }))}
+                    placeholder="مثال: حصة الرياضيات، الطابور الصباحي"
+                  />
+                </WsField>
+
+                <WsField label="ملاحظات">
+                  <WsTextarea
+                    value={manualForm.notes ?? ''}
+                    onChange={(event) => setManualForm((current) => ({ ...current, notes: event.target.value }))}
+                    rows={2}
+                    placeholder="أضف أي تفاصيل إضافية توضح سبب منح النقاط"
+                  />
+                </WsField>
+
+                <WsBtn
                   type="submit"
-                  className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+                  variant="primary"
+                  icon={Plus}
+                  disabled={createManualTransactionMutation.isPending || !manualForm.student_id || Number(manualForm.amount) === 0}
+                  style={{ justifyContent: 'center' }}
+                >
+                  {createManualTransactionMutation.isPending ? 'جارٍ التسجيل...' : 'تسجيل العملية'}
+                </WsBtn>
+                {(!manualForm.student_id || Number(manualForm.amount) === 0) && (
+                  <p style={{ margin: 0, fontSize: 10.5, color: 'var(--ws-text-2)', textAlign: 'center' }}>
+                    {!manualForm.student_id ? 'اختر الطالب أولاً' : 'القيمة لا يمكن أن تكون صفراً'}
+                  </p>
+                )}
+                {selectedReason && Number(manualForm.amount) !== selectedReason.value && (
+                  <p style={{ margin: 0, fontSize: 10.5, color: TONES.amber.tx, textAlign: 'center' }}>
+                    القيمة معدّلة يدوياً — قيمة «{selectedReason.title}» الافتراضية {selectedReason.value}
+                  </p>
+                )}
+              </form>
+            </WsBlock>
+          </WsSideCol>
+        )}
+
+        {/* ═══ ★ البطاقة الحيّة — القالب يخرج من المنفى ═══ */}
+        {activeTab === 'cards' && (
+          <WsSideCol side="end" title="البطاقة الحيّة" icon={CreditCard} storageKey="ws:points:card" width={400}>
+            <WsBlock fill scroll>
+              {!previewRecord ? (
+                <WsEmpty icon={CreditCard}>اختر بطاقة من الجدول لمعاينتها</WsEmpty>
+              ) : (
+                <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700 }}>{previewRecord.student.name}</span>
+                    {!previewRecord.card.token && <ToneChip tone={TONES.red}>بلا رمز مميز — أعد التوليد</ToneChip>}
+                  </div>
+
+                  {/* وجه البطاقة الحقيقي مصغّراً — ما تراه هو ما يُطبع */}
+                  <div style={{ height: 450, overflow: 'hidden' }}>
+                    <div className="ws-rise" key={previewRecord.card.token} style={{ transform: 'scale(0.78)', transformOrigin: 'top right', width: 384 }}>
+                      <PointsCardFace data={previewData} />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <WsBtn
+                      variant="primary"
+                      icon={Download}
+                      onClick={() => handleExportSingleCard(previewRecord)}
+                      disabled={isExportingAllCards || exportingCardId === previewRecord.student.id || !previewRecord.card.token}
+                      style={{ flex: 1, justifyContent: 'center' }}
+                    >
+                      {exportingCardId === previewRecord.student.id ? 'جارٍ...' : 'تصدير هذه البطاقة'}
+                    </WsBtn>
+                    <WsBtn
+                      icon={RefreshCcw}
+                      onClick={() => setRegenerateTarget(previewRecord)}
+                      disabled={regenerateCardMutation.isPending}
+                      style={{ flex: 1, justifyContent: 'center' }}
+                    >
+                      إعادة توليد
+                    </WsBtn>
+                  </div>
+                </div>
+              )}
+            </WsBlock>
+          </WsSideCol>
+        )}
+
+        {/* ═══ محرر السبب ═══ */}
+        {activeTab === 'reasons' && (
+          <WsSideCol
+            side="end"
+            title={editingReason ? `تعديل: ${editingReason.title}` : 'إضافة سبب'}
+            icon={editingReason ? ListChecks : Plus}
+            storageKey="ws:points:reason"
+            width={360}
+            tools={editingReason ? <WsIconBtn icon={X} label="إنهاء التعديل" onClick={() => setEditingReason(null)} /> : undefined}
+          >
+            <WsBlock fill scroll>
+              <form onSubmit={handleReasonSubmit} style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <WsField label="عنوان السبب *">
+                  <WsInput
+                    type="text"
+                    value={reasonForm.title}
+                    onChange={(event) => setReasonForm((current) => ({ ...current, title: event.target.value }))}
+                    required
+                  />
+                </WsField>
+
+                <div>
+                  <p className="ws-label" style={{ marginBottom: 6 }}>النوع</p>
+                  <div className="ws-choice-grid">
+                    {([
+                      ['reward', 'مكافأة', TONES.green],
+                      ['violation', 'مخالفة', TONES.red],
+                    ] as const).map(([value, label, tone]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        className={`ws-choice ${reasonForm.type === value ? 'is-selected' : ''}`}
+                        style={reasonForm.type === value
+                          ? { background: tone.bg, borderColor: tone.tx, color: tone.tx, boxShadow: `0 0 0 1px ${tone.tx}` }
+                          : undefined}
+                        onClick={() => setReasonForm((current) => ({ ...current, type: value }))}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <WsField label="قيمة النقاط">
+                    <WsInput
+                      type="number"
+                      value={reasonForm.value}
+                      onChange={(event) => setReasonForm((current) => ({ ...current, value: Number(event.target.value) }))}
+                    />
+                  </WsField>
+                  <WsField label="الترتيب في العرض">
+                    <WsInput
+                      type="number"
+                      value={reasonForm.display_order}
+                      onChange={(event) => setReasonForm((current) => ({ ...current, display_order: Number(event.target.value) }))}
+                    />
+                  </WsField>
+                </div>
+
+                <WsField label="التصنيف">
+                  <WsInput
+                    type="text"
+                    value={reasonForm.category ?? ''}
+                    onChange={(event) => setReasonForm((current) => ({ ...current, category: event.target.value }))}
+                    placeholder="سلوك، انضباط، مشاركة..."
+                  />
+                </WsField>
+
+                <WsField label="الوصف">
+                  <WsTextarea
+                    value={reasonForm.description ?? ''}
+                    onChange={(event) => setReasonForm((current) => ({ ...current, description: event.target.value }))}
+                    rows={3}
+                    placeholder="اشرح الاستخدام المثالي لهذا السبب"
+                  />
+                </WsField>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 8,
+                    border: '1px solid var(--ws-border)',
+                    borderRadius: 10,
+                    padding: 10,
+                  }}
+                >
+                  <div>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 700 }}>متاح للاستخدام</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)' }}>عند التعطيل يختفي السبب من تطبيق المعلمين.</p>
+                  </div>
+                  <WsSwitch
+                    checked={reasonForm.is_active}
+                    onChange={(checked) => setReasonForm((current) => ({ ...current, is_active: checked }))}
+                  />
+                </div>
+
+                <WsBtn
+                  type="submit"
+                  variant="primary"
+                  icon={Save}
                   disabled={createReasonMutation.isPending || updateReasonMutation.isPending}
+                  style={{ justifyContent: 'center' }}
                 >
                   {editingReason
                     ? updateReasonMutation.isPending
                       ? 'جارٍ التحديث...'
                       : 'تحديث السبب'
                     : createReasonMutation.isPending
-                    ? 'جارٍ الإضافة...'
-                    : 'إضافة السبب'}
-                </button>
-              </div>
-            </form>
-          </div>
+                      ? 'جارٍ الإضافة...'
+                      : 'إضافة السبب'}
+                </WsBtn>
+              </form>
+            </WsBlock>
+          </WsSideCol>
+        )}
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <header className="mb-4">
-              <h2 className="text-lg font-semibold text-slate-900">قائمة الأسباب</h2>
-              <p className="text-sm text-slate-500">انقر على أي صف لتعديل السبب أو تعطيله.</p>
-            </header>
-
-            {reasonsQuery.isLoading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 6 }).map((_, index) => (
-                  <div key={index} className="h-14 animate-pulse rounded-2xl bg-slate-100" />
-                ))}
-              </div>
-            ) : reasons.length ? (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-slate-200 text-right text-sm">
-                  <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-                    <tr>
-                      <th className="px-3 py-3 font-semibold">العنوان</th>
-                      <th className="px-3 py-3 font-semibold">النوع</th>
-                      <th className="px-3 py-3 font-semibold">القيمة</th>
-                      <th className="px-3 py-3 font-semibold">التصنيف</th>
-                      <th className="px-3 py-3 font-semibold">الحالة</th>
-                      <th className="px-3 py-3 font-semibold">آخر تحديث</th>
-                      <th className="px-3 py-3 font-semibold">إجراءات</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {reasons.map((reason) => (
-                      <tr key={reason.id} className="hover:bg-slate-50">
-                        <td className="px-3 py-3 font-semibold text-slate-900">{reason.title}</td>
-                        <td className="px-3 py-3">
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                              reason.type === 'reward'
-                                ? 'bg-emerald-50 text-emerald-600'
-                                : 'bg-rose-50 text-rose-600'
-                            }`}
-                          >
-                            {reason.type === 'reward' ? 'مكافأة' : 'مخالفة'}
-                          </span>
-                        </td>
-                        <td className="px-3 py-3 font-semibold text-slate-900">{formatNumber(reason.value)}</td>
-                        <td className="px-3 py-3 text-slate-600">{reason.category ?? '—'}</td>
-                        <td className="px-3 py-3 text-slate-600">
-                          {reason.is_active ? (
-                            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-600">
-                              نشط
-                            </span>
-                          ) : (
-                            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">
-                              معطل
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-3 py-3 text-slate-500">{formatDate(reason.updated_at)}</td>
-                        <td className="px-3 py-3">
-                          <div className="flex flex-wrap items-center justify-end gap-2">
-                            <button
-                              type="button"
-                              className="text-xs font-semibold text-emerald-600 hover:text-emerald-700"
-                              onClick={() => setEditingReason(reason)}
-                            >
-                              تعديل
-                            </button>
-                            {reason.is_active ? (
-                              <button
-                                type="button"
-                                className="text-xs font-semibold text-rose-600 hover:text-rose-700"
-                                onClick={() => handleDeactivateReason(reason)}
-                                disabled={deactivateReasonMutation.isPending}
-                              >
-                                تعطيل
-                              </button>
-                            ) : (
-                              <span className="text-xs text-slate-400">—</span>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
-                لا توجد أسباب مسجلة بعد.
-              </div>
-            )}
-          </div>
-        </section>
-      )}
-
-      {activeTab === 'transactions' && (
-        <section className="space-y-6">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <header className="mb-4">
-              <h2 className="text-lg font-semibold text-slate-900">تسجيل عملية يدوية</h2>
-              <p className="text-sm text-slate-500">
-                استخدم هذا النموذج لتسجيل مكافأة أو مخالفة للطالب مع تحديد السبب والسياق.
-              </p>
-            </header>
-            <form onSubmit={handleManualFormSubmit} className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <label className="flex flex-col gap-2 text-right">
-                <span className="text-sm font-semibold text-slate-700">الطالب</span>
-                <select
-                  value={manualForm.student_id}
-                  onChange={(event) =>
-                    setManualForm((current) => ({ ...current, student_id: Number(event.target.value) }))
-                  }
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-                  required
-                >
-                  <option value={0} disabled>
-                    اختر الطالب
-                  </option>
-                  {students.map((student) => (
-                    <option key={student.id} value={student.id}>
-                      {student.name} — {student.grade} / {student.class_name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="flex flex-col gap-2 text-right">
-                <span className="text-sm font-semibold text-slate-700">نوع العملية</span>
-                <select
-                  value={manualForm.type}
-                  onChange={(event) =>
-                    setManualForm((current) => ({ ...current, type: event.target.value as 'reward' | 'violation' }))
-                  }
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-                >
-                  <option value="reward">مكافأة</option>
-                  <option value="violation">مخالفة</option>
-                </select>
-              </label>
-
-              <label className="flex flex-col gap-2 text-right">
-                <span className="text-sm font-semibold text-slate-700">القيمة</span>
-                <input
-                  type="number"
-                  value={manualForm.amount}
-                  onChange={(event) =>
-                    setManualForm((current) => ({ ...current, amount: Number(event.target.value) }))
-                  }
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-                />
-              </label>
-
-              <label className="flex flex-col gap-2 text-right">
-                <span className="text-sm font-semibold text-slate-700">السبب</span>
-                <select
-                  value={manualForm.reason_id ?? ''}
-                  onChange={(event) =>
-                    setManualForm((current) => ({
-                      ...current,
-                      reason_id: event.target.value ? Number(event.target.value) : undefined,
-                    }))
-                  }
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-                >
-                  <option value="">
-                    بدون سبب محدد
-                  </option>
-                  {(manualForm.type === 'reward' ? rewardReasons : violationReasons).map((reason) => (
-                    <option key={reason.id} value={reason.id}>
-                      {reason.title}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="flex flex-col gap-2 text-right">
-                <span className="text-sm font-semibold text-slate-700">المعلم (اختياري)</span>
-                <input
-                  type="number"
-                  value={manualForm.teacher_id ?? ''}
-                  onChange={(event) =>
-                    setManualForm((current) => ({
-                      ...current,
-                      teacher_id: event.target.value ? Number(event.target.value) : undefined,
-                    }))
-                  }
-                  placeholder="أدخل رقم المعلم إن وجد"
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-                />
-              </label>
-
-              <label className="flex flex-col gap-2 text-right md:col-span-2 lg:col-span-3">
-                <span className="text-sm font-semibold text-slate-700">ملاحظات</span>
-                <textarea
-                  value={manualForm.notes ?? ''}
-                  onChange={(event) => setManualForm((current) => ({ ...current, notes: event.target.value }))
-                  }
-                  rows={3}
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-                  placeholder="أضف أي تفاصيل إضافية توضح سبب منح النقاط"
-                />
-              </label>
-
-              <div className="md:col-span-2 lg:col-span-3">
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
-                  disabled={createManualTransactionMutation.isPending}
-                >
-                  {createManualTransactionMutation.isPending ? 'جارٍ التسجيل...' : 'تسجيل العملية'}
-                </button>
-              </div>
-            </form>
-          </div>
-
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <header className="mb-4 flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">سجل العمليات</h2>
-                <p className="text-sm text-slate-500">يمكنك التراجع عن العملية خلال المهلة المحددة في الإعدادات.</p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <select
-                  value={transactionFilters.type ?? ''}
-                  onChange={(event) =>
-                    handleTransactionFilterChange('type', event.target.value ? event.target.value : undefined)
-                  }
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-                >
-                  <option value="">الكل</option>
-                  <option value="reward">المكافآت</option>
-                  <option value="violation">المخالفات</option>
-                </select>
-                <input
-                  type="search"
-                  placeholder="بحث عن طالب أو سبب"
-                  value={transactionFilters.search ?? ''}
-                  onChange={(event) => handleTransactionFilterChange('search', event.target.value || undefined)}
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-                />
-              </div>
-            </header>
-
-            {transactionsQuery.isLoading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 8 }).map((_, index) => (
-                  <div key={index} className="h-16 animate-pulse rounded-2xl bg-slate-100" />
-                ))}
-              </div>
-            ) : transactions.length ? (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-slate-200 text-right text-sm">
-                  <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-                    <tr>
-                      <th className="px-3 py-3 font-semibold">الطالب</th>
-                      <th className="px-3 py-3 font-semibold">النوع</th>
-                      <th className="px-3 py-3 font-semibold">القيمة</th>
-                      <th className="px-3 py-3 font-semibold">السبب</th>
-                      <th className="px-3 py-3 font-semibold">المعلم</th>
-                      <th className="px-3 py-3 font-semibold">تاريخ التنفيذ</th>
-                      <th className="px-3 py-3 font-semibold">إجراءات</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {transactions.map((transaction) => (
-                      <tr key={transaction.id} className="hover:bg-slate-50">
-                        <td className="px-3 py-3 font-semibold text-slate-900">
-                          {transaction.student?.name ?? 'طالب غير معروف'}
-                        </td>
-                        <td className="px-3 py-3">
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                              transaction.type === 'reward'
-                                ? 'bg-emerald-50 text-emerald-600'
-                                : 'bg-rose-50 text-rose-600'
-                            }`}
-                          >
-                            {transaction.type === 'reward' ? 'مكافأة' : 'مخالفة'}
-                          </span>
-                        </td>
-                        <td className="px-3 py-3 font-semibold text-slate-900">
-                          {transaction.type === 'reward' ? '+' : '-'}
-                          {formatNumber(transaction.amount)}
-                        </td>
-                        <td className="px-3 py-3 text-slate-600">{transaction.reason?.title ?? '—'}</td>
-                        <td className="px-3 py-3 text-slate-600">{transaction.teacher?.name ?? '—'}</td>
-                        <td className="px-3 py-3 text-slate-500">{formatDate(transaction.created_at)}</td>
-                        <td className="px-3 py-3">
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              className="inline-flex items-center gap-1 rounded-2xl border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-emerald-400 hover:text-emerald-600"
-                              onClick={() => handleUndoTransaction(transaction)}
-                              disabled={undoTransactionMutation.isPending || Boolean(transaction.undone_at)}
-                            >
-                              <Undo className="h-3.5 w-3.5" />
-                              تراجع
-                            </button>
-                            <button
-                              type="button"
-                              className="inline-flex items-center gap-1 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-600 transition hover:border-rose-400 hover:bg-rose-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                              onClick={() => {
-                                if (confirm('هل أنت متأكد من حذف هذا السجل؟ لا يمكن التراجع عن هذا الإجراء.')) {
-                                  deleteTransactionMutation.mutate(transaction.id)
-                                }
-                              }}
-                              disabled={deleteTransactionMutation.isPending}
-                            >
-                              <span>🗑️</span>
-                              حذف
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
-                لا توجد عمليات مسجلة مطابقة للمرشحات الحالية.
-              </div>
-            )}
-
-            {transactionMeta && transactionMeta.last_page > 1 && (
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
-                <span>
-                  صفحة {transactionMeta.current_page} من {transactionMeta.last_page} — إجمالي{' '}
-                  {formatNumber(transactionMeta.total)} عملية
-                </span>
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: transactionMeta.last_page }).map((_, index) => {
-                    const page = index + 1
-                    return (
-                      <button
-                        key={page}
-                        type="button"
-                        onClick={() => handleTransactionPageChange(page)}
-                        className={`h-8 w-8 rounded-xl text-sm font-semibold ${
-                          transactionMeta.current_page === page
-                            ? 'bg-emerald-600 text-white'
-                            : 'bg-slate-100 text-slate-600 hover:bg-white'
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        </section>
-      )}
-
-      {activeTab === 'cards' && (
-        <section className="space-y-6">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <header className="mb-6 space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-900">بطاقات نقاط الطلاب</h2>
-                  <p className="text-sm text-slate-500">
-                    قم بتصفية البطاقات حسب الصف أو الفصل أو ابحث باسم الطالب.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleExportAllCards}
-                  disabled={isExportingAllCards || !cards.length}
-                  className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <Download className="h-4 w-4" />
-                  {isExportingAllCards ? 'جارٍ التصدير...' : 'تصدير جميع البطاقات PDF'}
-                </button>
-              </div>
-              
-              <div className="flex flex-wrap items-center gap-2">
-                <input
-                  type="search"
-                  placeholder="بحث عن طالب"
-                  value={cardFilters.search ?? ''}
-                  onChange={(event) => handleCardFilterChange('search', event.target.value)}
-                  className="w-48 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                />
-                <select
-                  value={cardFilters.grade ?? ''}
-                  onChange={(event) => handleCardFilterChange('grade', event.target.value)}
-                  className="w-40 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                >
-                  <option value="">جميع الصفوف</option>
-                  {gradeOptions.map((grade) => (
-                    <option key={grade} value={grade}>
-                      {grade}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={cardFilters.class_name ?? ''}
-                  onChange={(event) => handleCardFilterChange('class_name', event.target.value)}
-                  className="w-40 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                >
-                  <option value="">جميع الفصول</option>
-                  {classOptions.map((className) => (
-                    <option key={className} value={className}>
-                      {className}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </header>
-
-            {cardsQuery.isLoading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 20 }).map((_, index) => (
-                  <div key={index} className="h-14 animate-pulse rounded-2xl bg-slate-100" />
-                ))}
-              </div>
-            ) : cards.length ? (
-              <>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-slate-200 text-right text-sm">
-                    <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-                      <tr>
-                        <th className="px-4 py-3 font-semibold">#</th>
-                        <th className="px-4 py-3 font-semibold">اسم الطالب</th>
-                        <th className="px-4 py-3 font-semibold">الصف</th>
-                        <th className="px-4 py-3 font-semibold">الفصل</th>
-                        <th className="px-4 py-3 font-semibold">رقم الطالب</th>
-                        <th className="px-4 py-3 font-semibold">حالة البطاقة</th>
-                        <th className="px-4 py-3 font-semibold">إجراءات</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {cards.map((record, index) => (
-                        <tr key={record.card.id} className="hover:bg-slate-50">
-                          <td className="px-4 py-3 text-slate-500">
-                            {((cardPage - 1) * 20) + index + 1}
-                          </td>
-                          <td className="px-4 py-3 font-semibold text-slate-900">
-                            {record.student.name}
-                          </td>
-                          <td className="px-4 py-3 text-slate-600">
-                            {record.student.grade}
-                          </td>
-                          <td className="px-4 py-3 text-slate-600">
-                            {record.student.class_name}
-                          </td>
-                          <td className="px-4 py-3 text-slate-600">
-                            {record.student.id}
-                          </td>
-                          <td className="px-4 py-3">
-                            {record.card.is_active ? (
-                              <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-600">
-                                نشطة
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">
-                                معطلة
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-emerald-400 hover:text-emerald-600 disabled:cursor-not-allowed disabled:opacity-70"
-                                onClick={() => handleRegenerateCard(record.student.id)}
-                                disabled={regenerateCardMutation.isPending}
-                              >
-                                <RefreshCcw className="h-3.5 w-3.5" />
-                                {regenerateCardMutation.isPending ? 'جارٍ...' : 'إعادة'}
-                              </button>
-                              <button
-                                type="button"
-                                className="inline-flex items-center gap-1.5 rounded-2xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
-                                onClick={() => handleExportSingleCard(record)}
-                                disabled={isExportingAllCards || exportingCardId === record.student.id}
-                              >
-                                <Download className="h-3.5 w-3.5" />
-                                {exportingCardId === record.student.id ? 'جارٍ...' : 'تصدير'}
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {totalCardPages > 1 && (
-                  <div className="mt-6 flex flex-wrap items-center justify-between gap-4 text-sm text-slate-600">
-                    <span>
-                      عرض {paginatedStartIndex} - {paginatedEndIndex} من {cards.length} طالب
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleCardPageChange(cardPage - 1)}
-                        disabled={cardPage === 1}
-                        className="rounded-xl border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        السابق
-                      </button>
-                      <span className="px-3 text-sm font-semibold">
-                        صفحة {cardPage} من {totalCardPages}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleCardPageChange(cardPage + 1)}
-                        disabled={cardPage === totalCardPages}
-                        className="rounded-xl border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        التالي
-                      </button>
-                    </div>
-                  </div>
+        {/* ═══ ما الذي سيراه المعلم؟ — ترجمة الإعدادات لجمل حيّة ═══ */}
+        {activeTab === 'settings' && (
+          <WsSideCol side="end" title="ما الذي سيراه المعلم؟" icon={ShieldCheck} storageKey="ws:points:policy" width={340}>
+            <WsBlock fill scroll>
+              <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {unsavedSettingsCount > 0 && (
+                  <ToneChip tone={TONES.amber}>{unsavedSettingsCount} حقول غير محفوظة</ToneChip>
                 )}
-              </>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
-                لم يتم العثور على بطاقات مطابقة للمرشحات الحالية.
-              </div>
-            )}
 
-            {/* Single card template for on-demand PDF export */}
-            <div
-              ref={(node) => setExportCardElement(node)}
-              style={{ position: 'absolute', left: '-9999px', top: 0 }}
-              className="mx-auto flex h-[576px] w-[384px] flex-col justify-between rounded-[32px] border border-slate-200 bg-gradient-to-b from-slate-50 via-white to-slate-100 p-6 text-right shadow-inner"
-            >
-              <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
-                <span>برنامج نقاطي</span>
-                <span data-card-token>رمز: ...</span>
-              </div>
-
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <p className="text-sm text-slate-500">اسم الطالب</p>
-                  <h3 data-student-name className="text-3xl font-bold text-slate-900">...</h3>
-                  <p data-student-grade className="text-sm font-semibold text-slate-600">...</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 11.5, lineHeight: 1.9 }}>
+                  <PolicyLine
+                    on={settingsDraft.rewards_enabled}
+                    text={settingsDraft.rewards_enabled
+                      ? `المعلم يمنح حتى ${formatNumber(settingsDraft.daily_teacher_cap)} نقطة يومياً`
+                      : 'المكافآت معطّلة — لا يستطيع المعلم منح نقاط'}
+                  />
+                  <PolicyLine
+                    on={settingsDraft.violations_enabled}
+                    text={settingsDraft.violations_enabled
+                      ? `المخالفات مفعّلة — حتى ${formatNumber(settingsDraft.daily_violation_cap)} نقطة خصم للطالب يومياً`
+                      : 'المخالفات معطّلة — لا خصم نقاط'}
+                  />
+                  <PolicyLine
+                    on
+                    text={`الطالب يستقبل حتى ${formatNumber(settingsDraft.per_student_cap)} نقطة يومياً من كل معلم على حدة`}
+                  />
+                  <PolicyLine
+                    on={settingsDraft.undo_timeout_seconds > 0}
+                    text={settingsDraft.undo_timeout_seconds > 0
+                      ? `التراجع متاح ${Math.round(settingsDraft.undo_timeout_seconds / 60)} دقيقة بعد التسجيل`
+                      : 'لا مهلة تراجع — العملية نهائية فور تسجيلها'}
+                  />
+                  <PolicyLine
+                    on={settingsDraft.require_camera_confirmation}
+                    text={settingsDraft.require_camera_confirmation
+                      ? 'يُطلب من المعلم صورة توثيقية عند منح النقاط'
+                      : 'لا صورة توثيقية مطلوبة'}
+                  />
                 </div>
 
-                {/* QR Code في الوسط */}
-                <div className="flex justify-center">
-                  <div className="grid place-items-center rounded-3xl bg-white/90 p-4 shadow-inner">
-                    <img
-                      data-qr-image
-                      alt="QR Code"
-                      className="h-40 w-40"
-                    />
-                    <p className="mt-2 text-[10px] text-slate-500">امسح لفتح بطاقة النقاط</p>
+                {/* المعاينة تُظهر ما فهمَته sanitizeNumericList فعلاً لا ما كُتب */}
+                <div style={{ marginTop: 4, paddingTop: 8, borderTop: '1px solid var(--ws-hairline)' }}>
+                  <p className="ws-label" style={{ marginBottom: 5 }}>أزرار القيم التي سيراها</p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {(settingsDraft.reward_values ?? []).length === 0 && (settingsDraft.violation_values ?? []).length === 0 ? (
+                      <span style={{ fontSize: 11, color: 'var(--ws-text-2)' }}>لا قيم مقترحة</span>
+                    ) : (
+                      <>
+                        {(settingsDraft.reward_values ?? []).map((value) => (
+                          <ToneChip key={`r${value}`} tone={TONES.green}>+{value}</ToneChip>
+                        ))}
+                        {(settingsDraft.violation_values ?? []).map((value) => (
+                          <ToneChip key={`v${value}`} tone={TONES.red}>−{value}</ToneChip>
+                        ))}
+                      </>
+                    )}
                   </div>
                 </div>
 
-                {/* رقم الطالب والإصدار بجانب بعض */}
-                <div className="flex items-center justify-between gap-4 text-xs text-slate-600">
-                  <div className="flex-1 text-right">
-                    <p className="text-[11px] text-slate-500">رقم الطالب</p>
-                    <p data-student-id className="text-lg font-semibold text-slate-900">...</p>
-                  </div>
-                  <div className="flex-1 text-right">
-                    <p className="text-[11px] text-slate-500">الإصدار الحالي</p>
-                    <p data-card-version className="text-sm font-semibold text-slate-700">...</p>
-                  </div>
-                </div>
+                <WsAlert tone="info" boxed>
+                  التسجيل اليدوي من هذه الصفحة لا يخضع للسقوف أعلاه — السقوف تسري على تطبيق المعلمين.
+                </WsAlert>
               </div>
+            </WsBlock>
+          </WsSideCol>
+        )}
+      </WsLayout>
 
-              <div className="space-y-1 text-right text-xs text-slate-500">
-                <p>حالة البطاقة: <span data-card-status>...</span></p>
-                <p>
-                  تاريخ الإصدار: <span data-card-issued className="font-semibold text-slate-700">...</span>
-                </p>
-              </div>
+      {/*
+        قالب التصدير 384×576 — يسكن جذر الصفحة بلا شرط تبويب ولا عمود جانبي.
+        السبب: WsSideCol يفصل أبناءه من الشجرة عند الطي، وربطه بتبويب cards كان يعني
+        أن انتقال المدير لتبويب آخر أثناء تصدير جماعي يقتل الالتقاط في منتصفه.
+      */}
+      <PointsCardFace hidden innerRef={(node) => setExportCardElement(node)} />
+
+      {/* تأكيد إعادة التوليد: البطاقة القديمة في جيب الطالب تموت بهذه النقرة */}
+      {regenerateTarget && (
+        <div className="ws-modal" onClick={() => setRegenerateTarget(null)}>
+          <div className="ws-modal__panel" style={{ maxWidth: 400 }} onClick={(e) => e.stopPropagation()}>
+            <header className="ws-modal__head">
+              <h3 className="ws-modal__title">إعادة توليد بطاقة {regenerateTarget.student.name}</h3>
+              <p className="ws-modal__sub">سيُسك رمز جديد للبطاقة</p>
+            </header>
+            <div className="ws-modal__body">
+              <WsAlert tone="warn" boxed>
+                البطاقة المطبوعة الحالية ستتوقف عن العمل فور إعادة التوليد — يلزم طباعة البطاقة الجديدة وتسليمها للطالب.
+              </WsAlert>
             </div>
+            <footer className="ws-modal__foot">
+              <WsBtn onClick={() => setRegenerateTarget(null)}>إلغاء</WsBtn>
+              <WsBtn
+                variant="primary"
+                icon={RefreshCcw}
+                disabled={regenerateCardMutation.isPending}
+                onClick={() => {
+                  handleRegenerateCard(regenerateTarget.student.id)
+                  setRegenerateTarget(null)
+                }}
+              >
+                {regenerateCardMutation.isPending ? 'جارٍ...' : 'إعادة التوليد'}
+              </WsBtn>
+            </footer>
           </div>
-        </section>
+        </div>
       )}
-    </div>
+    </WsPage>
+  )
+}
+
+/** سطر سياسة في عمود المعاينة: نقطة خضراء مفعّل / رمادية معطّل */
+function PolicyLine({ on, text }: { on: boolean; text: string }) {
+  return (
+    <span style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+      <span
+        style={{
+          width: 7,
+          height: 7,
+          borderRadius: '50%',
+          marginTop: 6,
+          flexShrink: 0,
+          background: on ? TONES.green.tx : TONES.gray.tx,
+        }}
+      />
+      <span style={{ color: on ? 'var(--ws-text)' : 'var(--ws-text-2)' }}>{text}</span>
+    </span>
   )
 }
