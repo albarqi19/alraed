@@ -64,6 +64,7 @@ const WORKSPACE_ROUTES = [
   '/admin/faris',
   '/admin/lesson-plans',
   '/admin/madrasati-report',
+  '/admin/teacher-preparation',
 ]
 
 /**
