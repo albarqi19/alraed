@@ -208,3 +208,258 @@ export function StatusChip({ status, label }: { status: ReferralStatus; label?: 
   const meta = STATUS_META[status] ?? STATUS_META.pending
   return <ToneChip tone={meta.tone}>{label ?? meta.label}</ToneChip>
 }
+
+/* ══════════════════════════════════════════════════════════
+   ★ سلسلة العُهدة — التوقيع
+   الإحالة عُهدة تنتقل بين أيدٍ. النظام نفسه يعترف: أنواع مستنداته حرفياً
+   إيصالات تسليم (teacher_to_admin · admin_to_counselor). فالعهدة نموذج
+   المجال مكتوباً في الشيفرة لا استعارة مستوردة.
+   المدد حقيقية من created_at + workflow_logs المحمَّلة أصلاً — صفر نداء جديد.
+   ══════════════════════════════════════════════════════════ */
+
+/** أفعال تفتح/تغلق قطعة عُهدة — ما عداها علامات على القطعة الجارية */
+const HANDOVER_ACTIONS = new Set([
+  'created', 'received', 'assigned', 'transferred', 'completed', 'closed', 'cancelled', 'reopened',
+])
+
+export interface CustodyLog {
+  id: number | string
+  action: string
+  action_label?: string
+  notes?: string | null
+  performed_by?: { id: number; name: string } | null
+  created_at: string
+}
+
+export interface CustodySegment {
+  kind: 'held' | 'gap'
+  holder?: string
+  startsAt: number
+  endsAt: number
+  durationMs: number
+  open: boolean
+  marks: Array<{ id: number | string; action: string; label: string; at: number }>
+}
+
+/** مدة بالعربية — «٦ أيام»، «دقيقتان» */
+export function humanDuration(ms: number): string {
+  const minutes = Math.max(0, Math.round(ms / 60_000))
+  if (minutes < 1) return 'لحظات'
+  if (minutes < 60) return minutes === 1 ? 'دقيقة' : minutes === 2 ? 'دقيقتان' : `${minutes} دقيقة`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return hours === 1 ? 'ساعة' : hours === 2 ? 'ساعتان' : `${hours} ساعة`
+  const days = Math.round(hours / 24)
+  return days === 1 ? 'يوم' : days === 2 ? 'يومان' : `${days} أيام`
+}
+
+/**
+ * يبني سلسلة العهدة من سجل الوقائع.
+ * فخّان معالَجان صراحةً:
+ *  (١) receive() في الخادم يسجّل received ثم assigned في نفس اللحظة — فتُدمج
+ *      أحداث التسليم المتتالية خلال أقل من ثانيتين في تسليم واحد يأخذ حامل الأخير.
+ *  (٢) transfer() يضبط assigned_to_user_id = null — فالمحوَّلة فعلاً بلا يد: فجوة لا قطعة.
+ */
+export function buildCustody(logs: CustodyLog[], createdAt: string, now: number): CustodySegment[] {
+  const sorted = [...(logs ?? [])].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+  )
+
+  const segments: CustodySegment[] = []
+
+  const makeSegment = (kind: 'held' | 'gap', at: number, holder?: string): CustodySegment => ({
+    kind, holder, startsAt: at, endsAt: at, durationMs: 0, open: true, marks: [],
+  })
+
+  const closeCurrent = (at: number) => {
+    const last = segments[segments.length - 1]
+    if (last && last.open) {
+      last.endsAt = at
+      last.durationMs = Math.max(0, at - last.startsAt)
+      last.open = false
+    }
+  }
+
+  // الإحالة تولد بلا يد
+  segments.push(makeSegment('gap', new Date(createdAt).getTime()))
+
+  for (const log of sorted) {
+    const at = new Date(log.created_at).getTime()
+    const last = segments[segments.length - 1]
+
+    if (!HANDOVER_ACTIONS.has(log.action)) {
+      // علامة على القطعة الجارية — لا تفتح قطعة
+      last?.marks.push({ id: log.id, action: log.action, label: log.action_label ?? log.action, at })
+      continue
+    }
+
+    switch (log.action) {
+      case 'created':
+        break
+      case 'received':
+      case 'assigned': {
+        // دمج أحداث التسليم المتتالية (<2s) في تسليم واحد يأخذ حامل الأخير
+        if (last && last.open && last.kind === 'held' && at - last.startsAt < 2000) {
+          last.holder = log.performed_by?.name ?? last.holder
+          break
+        }
+        closeCurrent(at)
+        segments.push(makeSegment('held', at, log.performed_by?.name))
+        break
+      }
+      case 'transferred':
+      case 'reopened':
+        closeCurrent(at)
+        segments.push(makeSegment('gap', at))
+        break
+      case 'completed':
+      case 'closed':
+      case 'cancelled':
+        closeCurrent(at)
+        break
+      default:
+        break
+    }
+  }
+
+  const tail = segments[segments.length - 1]
+  if (tail && tail.open) {
+    tail.endsAt = now
+    tail.durationMs = Math.max(0, now - tail.startsAt)
+  }
+
+  return segments.filter((s) => s.durationMs > 0 || s.open)
+}
+
+/** جملة الحصيلة فوق الشريط — ما لا تقوله الصفحة اليوم */
+export function custodySummary(segments: CustodySegment[], isClosed: boolean): string {
+  if (segments.length === 0) return ''
+  const total = segments.reduce((sum, s) => sum + s.durationMs, 0)
+  const gapMs = segments.filter(s => s.kind === 'gap').reduce((sum, s) => sum + s.durationMs, 0)
+  const openGap = segments[segments.length - 1]?.kind === 'gap' && segments[segments.length - 1]?.open
+
+  if (isClosed) {
+    return gapMs > 0
+      ? `${humanDuration(total)} من الإحالة إلى الإغلاق — منها ${humanDuration(gapMs)} بلا يد`
+      : `${humanDuration(total)} من الإحالة إلى الإغلاق`
+  }
+  if (openGap) return `${humanDuration(total)} منذ الإحالة — بلا يد حتى الآن`
+  return gapMs > 0
+    ? `${humanDuration(total)} منذ الإحالة — منها ${humanDuration(gapMs)} بلا يد`
+    : `${humanDuration(total)} منذ الإحالة`
+}
+
+/**
+ * شريط السلسلة: العرض ∝ المدة (بحدّ أدنى 44px ثم تناسب في الباقي — نفس علاج
+ * الحصص القصيرة في «مسطرة اليوم»)، والمدّة مكتوبة نصّاً دائماً فالتناسب لا يكذب.
+ * بلا أرقام سحرية: لا عتبة «متأخر» مخترعة — الفجوة كهرمانية دائماً (انتظار)،
+ * والمفتوحة الآن تنبض. الاتهام تحمله النسبة: فجوة ستة أيام تظهر ستة أضعاف فجوة يوم.
+ */
+export function CustodyChain({
+  segments,
+  onPickMark,
+}: {
+  segments: CustodySegment[]
+  onPickMark?: (id: number | string) => void
+}) {
+  if (segments.length === 0) return null
+
+  const MIN_PCT = 8
+  const totalMs = segments.reduce((sum, s) => sum + s.durationMs, 0) || 1
+
+  return (
+    <span style={{ display: 'flex', alignItems: 'stretch', gap: 3, width: '100%', minHeight: 42 }}>
+      {segments.map((seg, index) => {
+        const rawPct = (seg.durationMs / totalMs) * 100
+        const pct = Math.max(MIN_PCT, rawPct)
+        const isGap = seg.kind === 'gap'
+        const tone = isGap ? TONES.amber : TONES.sky
+        return (
+          <span
+            key={index}
+            className={isGap && seg.open ? 'ws-soft-pulse' : undefined}
+            title={
+              isGap
+                ? `بلا يد — ${humanDuration(seg.durationMs)}${seg.open ? ' (مستمرة)' : ''}`
+                : `بيد ${seg.holder ?? '—'} — ${humanDuration(seg.durationMs)}${seg.open ? ' (مستمرة)' : ''}`
+            }
+            style={{
+              flex: `1 1 ${pct}%`,
+              minWidth: 44,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              gap: 2,
+              padding: '4px 6px',
+              borderRadius: 7,
+              background: tone.bg,
+              border: `1px ${isGap ? 'dashed' : 'solid'} ${tone.bd}`,
+              overflow: 'hidden',
+              /* الماضي يهدأ بالشفافية لا بتدرّج لوني — فتبقى الأصباغ بمعانيها */
+              opacity: seg.open ? 1 : 0.62,
+            }}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+              {!isGap && seg.holder && (
+                <span
+                  style={{
+                    width: 15,
+                    height: 15,
+                    borderRadius: '50%',
+                    flexShrink: 0,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 8.5,
+                    fontWeight: 800,
+                    background: tone.tx,
+                    color: '#fff',
+                  }}
+                >
+                  {seg.holder.charAt(0)}
+                </span>
+              )}
+              <span
+                style={{
+                  fontSize: 9.5,
+                  fontWeight: 700,
+                  color: tone.tx,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {isGap ? 'بلا يد' : seg.holder ?? 'بيد'}
+              </span>
+            </span>
+            <span style={{ fontSize: 9, color: tone.tx, opacity: 0.85, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {humanDuration(seg.durationMs)}
+            </span>
+            {/* العلامات: السلسلة فهرس للسرد لا تكرار له */}
+            {seg.marks.length > 0 && (
+              <span style={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                {seg.marks.slice(0, 6).map((mark) => (
+                  <button
+                    key={mark.id}
+                    type="button"
+                    title={mark.label}
+                    onClick={() => onPickMark?.(mark.id)}
+                    style={{
+                      width: 5,
+                      height: 5,
+                      borderRadius: '50%',
+                      border: 'none',
+                      padding: 0,
+                      cursor: onPickMark ? 'pointer' : 'default',
+                      background: tone.tx,
+                      opacity: 0.55,
+                    }}
+                  />
+                ))}
+              </span>
+            )}
+          </span>
+        )
+      })}
+    </span>
+  )
+}

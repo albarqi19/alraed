@@ -1,6 +1,64 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
+  ArrowLeftRight,
+  ArrowRight,
+  AlertTriangle,
+  Bell,
+  CalendarCheck,
+  Check,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Circle,
+  ClipboardList,
+  ExternalLink,
+  FileText,
+  FilePlus2,
+  FolderPlus,
+  Gavel,
+  History,
+  MessageCircle,
+  PackageCheck,
+  Plus,
+  Printer,
+  RefreshCw,
+  RotateCcw,
+  Send,
+  StickyNote,
+  Trash2,
+  UserCheck,
+  UserRound,
+  X,
+  XCircle,
+  XOctagon,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import {
+  WsPage,
+  WsHeader,
+  WsFact,
+  WsToolbar,
+  WsLayout,
+  WsMain,
+  WsSideCol,
+  WsBlock,
+  WsBtn,
+  WsIconBtn,
+  WsInput,
+  WsSelect,
+  WsTextarea,
+  WsField,
+  WsSwitch,
+  WsAlert,
+  WsEmpty,
+  WsFactsList,
+  WsFactRow,
+  TONES,
+  ToneChip,
+  InitialAvatar,
+} from '@/shared/workspace'
+import {
   useAdminReferralDetailQuery,
   useReceiveReferralMutation,
   useAssignReferralMutation,
@@ -12,7 +70,7 @@ import {
   useNotifyParentMutation,
   useDeleteReferralMutation,
 } from '../referrals/hooks'
-import type { ReferralStatus, ReferralTargetRole } from '../referrals/types'
+import type { ReferralTargetRole } from '../referrals/types'
 import { useBehaviorStore } from '../behavior/store/use-behavior-store'
 import { useBehaviorConfigStore } from '../behavior/store/use-behavior-config-store'
 import { ViolationBadge } from '../behavior/components/violation-badge'
@@ -20,11 +78,19 @@ import { BEHAVIOR_DEGREE_OPTIONS, BEHAVIOR_LOCATIONS } from '../behavior/constan
 import type { BehaviorDegree, BehaviorProcedureDefinition } from '../behavior/types'
 import type { CreateBehaviorViolationPayload } from '../behavior/api'
 import { useToast } from '@/shared/feedback/use-toast'
-import { CheckCircle, ChevronLeft, ChevronRight, X, ExternalLink, Trash2 } from 'lucide-react'
 import { DocumentPreviewModal } from '../referrals/components/document-preview-modal'
 import { CaseFormModal } from '../referrals/components/CaseFormModal'
 import { TreatmentPlanFormModal } from '../referrals/components/TreatmentPlanFormModal'
 import { useAuthStore } from '@/modules/auth/store/auth-store'
+import {
+  StatusChip,
+  TypeChip,
+  PriorityBadge,
+  CustodyChain,
+  buildCustody,
+  custodySummary,
+  sinceText,
+} from './referrals-ui'
 
 type ViolationRecordStep = 1 | 2 | 3 | 4
 
@@ -38,31 +104,22 @@ const VIOLATION_RECORD_STEPS: { id: ViolationRecordStep; label: string }[] = [
 const clampViolationStep = (value: number): ViolationRecordStep =>
   Math.min(4, Math.max(1, value)) as ViolationRecordStep
 
-const STATUS_STYLES: Record<ReferralStatus, { bg: string; text: string; icon: string }> = {
-  pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: 'bi-clock' },
-  received: { bg: 'bg-blue-100', text: 'text-blue-800', icon: 'bi-check2' },
-  in_progress: { bg: 'bg-purple-100', text: 'text-purple-800', icon: 'bi-gear' },
-  transferred: { bg: 'bg-orange-100', text: 'text-orange-800', icon: 'bi-arrow-repeat' },
-  completed: { bg: 'bg-green-100', text: 'text-green-800', icon: 'bi-check2-circle' },
-  closed: { bg: 'bg-slate-100', text: 'text-slate-800', icon: 'bi-x-circle' },
-  cancelled: { bg: 'bg-red-100', text: 'text-red-800', icon: 'bi-x-lg' },
-}
-
-const ACTION_ICONS: Record<string, string> = {
-  created: 'bi-plus-circle',
-  received: 'bi-check2',
-  assigned: 'bi-person-check',
-  transferred: 'bi-arrow-repeat',
-  violation_recorded: 'bi-exclamation-triangle',
-  case_opened: 'bi-folder-plus',
-  plan_created: 'bi-journal-text',
-  session_held: 'bi-calendar-check',
-  parent_contacted: 'bi-telephone',
-  note_added: 'bi-sticky',
-  completed: 'bi-check2-circle',
-  closed: 'bi-x-circle',
-  cancelled: 'bi-x-lg',
-  reopened: 'bi-arrow-clockwise',
+/* خريطة أفعال السجل — النقطة رمادية افتراضاً، وتُلوَّن عند المنعطف وحده */
+const ACTION_META: Record<string, { icon: LucideIcon; tone?: typeof TONES.red }> = {
+  created: { icon: FilePlus2 },
+  received: { icon: Check },
+  assigned: { icon: UserCheck },
+  transferred: { icon: ArrowLeftRight, tone: TONES.amber },
+  violation_recorded: { icon: AlertTriangle, tone: TONES.red },
+  case_opened: { icon: FolderPlus, tone: TONES.purple },
+  plan_created: { icon: ClipboardList, tone: TONES.purple },
+  session_held: { icon: CalendarCheck },
+  parent_contacted: { icon: MessageCircle, tone: TONES.green },
+  note_added: { icon: StickyNote },
+  completed: { icon: CheckCircle2, tone: TONES.green },
+  closed: { icon: XCircle },
+  cancelled: { icon: XOctagon, tone: TONES.red },
+  reopened: { icon: RotateCcw, tone: TONES.amber },
 }
 
 const DOCUMENT_TYPES = [
@@ -72,6 +129,9 @@ const DOCUMENT_TYPES = [
   { value: 'violation_record', label: 'محضر مخالفة' },
   { value: 'parent_notification', label: 'إشعار ولي أمر' },
 ]
+
+/** الخادم يفرض max:1000 على الرسالة المُركَّبة كاملةً */
+const PARENT_MESSAGE_LIMIT = 1000
 
 export function AdminReferralDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -92,29 +152,29 @@ export function AdminReferralDetailPage() {
   const toast = useToast()
   const user = useAuthStore((state) => state.user)
 
-  const [showAssignModal, setShowAssignModal] = useState(false)
   const [showTransferModal, setShowTransferModal] = useState(false)
-  const [showNoteModal, setShowNoteModal] = useState(false)
-  const [showDocumentModal, setShowDocumentModal] = useState(false)
   const [showViolationModal, setShowViolationModal] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false)
   const [showDocumentPreview, setShowDocumentPreview] = useState(false)
   const [previewDocument, setPreviewDocument] = useState<{ html: string; title: string } | null>(null)
   const [showParentMessageModal, setShowParentMessageModal] = useState(false)
   const [parentMessageText, setParentMessageText] = useState('')
   const [meetingDate, setMeetingDate] = useState<string | null>(null)
-  const [showDatePicker, setShowDatePicker] = useState(false)
   const [enableReply, setEnableReply] = useState(true)
   const [showCaseModal, setShowCaseModal] = useState(false)
   const [showTreatmentPlanModal, setShowTreatmentPlanModal] = useState(false)
+  const [generatingDocType, setGeneratingDocType] = useState<string | null>(null)
 
   // تحديد ما إذا كانت الإحالة محولة للموجه الطلابي
   // هذه الإحالات يمكن إنشاء دراسة حالة وخطة علاجية منها (سواء ضعف دراسي أو مخالفة سلوكية)
   const canCreateCaseOrPlan = referral?.target_role === 'counselor'
   const [selectedAssignee, setSelectedAssignee] = useState<number | null>(null)
   const [transferTarget, setTransferTarget] = useState<ReferralTargetRole>('counselor')
+  /* noteText كانت حالة واحدة مشتركة بين التحويل والملاحظة — اقتران غير مبرَّر يُسرّب
+     سبب التحويل إلى حقل الملاحظة. فُصلا. */
   const [noteText, setNoteText] = useState('')
-  const [selectedDocType, setSelectedDocType] = useState('')
+  const [composerNote, setComposerNote] = useState('')
 
   // حالة نموذج المخالفة السلوكية (نظام الخطوات الكامل)
   const [violationRecordStep, setViolationRecordStep] = useState<ViolationRecordStep>(1)
@@ -201,7 +261,6 @@ export function AdminReferralDetailPage() {
         id: referral.id,
         payload: { user_id: selectedAssignee },
       })
-      setShowAssignModal(false)
       setSelectedAssignee(null)
       refetch()
     } catch (err) {
@@ -228,15 +287,14 @@ export function AdminReferralDetailPage() {
 
   const handleComplete = async () => {
     if (!referral) return
-    if (window.confirm('هل أنت متأكد من إكمال هذه الإحالة؟')) {
-      try {
-        await completeMutation.mutateAsync({ id: referral.id })
-        refetch()
-      } catch (err) {
-        console.error('Error completing referral:', err)
-        alert('حدث خطأ أثناء إكمال الإحالة')
-      }
+    try {
+      await completeMutation.mutateAsync({ id: referral.id })
+      refetch()
+    } catch (err) {
+      console.error('Error completing referral:', err)
+      alert('حدث خطأ أثناء إكمال الإحالة')
     }
+    setShowCompleteConfirm(false)
   }
 
   // دوال نموذج المخالفة السلوكية (نظام الخطوات)
@@ -352,11 +410,10 @@ export function AdminReferralDetailPage() {
   }
 
   const handleAddNote = async () => {
-    if (!referral || !noteText.trim()) return
+    if (!referral || !composerNote.trim()) return
     try {
-      await noteMutation.mutateAsync({ id: referral.id, note: noteText })
-      setShowNoteModal(false)
-      setNoteText('')
+      await noteMutation.mutateAsync({ id: referral.id, note: composerNote })
+      setComposerNote('')
       refetch()
     } catch (err) {
       console.error('Error adding note:', err)
@@ -364,19 +421,18 @@ export function AdminReferralDetailPage() {
     }
   }
 
-  const handleGenerateDocument = async () => {
-    if (!referral || !selectedDocType) return
+  const handleGenerateDocument = async (docType: string) => {
+    if (!referral || !docType) return
+    setGeneratingDocType(docType)
     try {
       const result = await documentMutation.mutateAsync({
         id: referral.id,
-        documentType: selectedDocType,
+        documentType: docType,
       })
-      setShowDocumentModal(false)
-      setSelectedDocType('')
 
       // عرض المستند في Modal عائم
       if (result.content) {
-        const docTitle = DOCUMENT_TYPES.find(d => d.value === selectedDocType)?.label || 'مستند'
+        const docTitle = DOCUMENT_TYPES.find(d => d.value === docType)?.label || 'مستند'
         setPreviewDocument({ html: result.content, title: docTitle })
         setShowDocumentPreview(true)
       }
@@ -386,6 +442,8 @@ export function AdminReferralDetailPage() {
     } catch (err) {
       console.error('Error generating document:', err)
       alert('حدث خطأ أثناء إنشاء المستند')
+    } finally {
+      setGeneratingDocType(null)
     }
   }
 
@@ -481,1141 +539,952 @@ export function AdminReferralDetailPage() {
     }
   }
 
+  /* ── مشتقات العرض (قبل أي return شرطي كي لا تختل ترتيب الهوكس) ── */
+  const custodySegments = useMemo(
+    () => (referral ? buildCustody(referral.workflow_logs ?? [], referral.created_at, Date.now()) : []),
+    [referral],
+  )
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-sky-600" />
-      </div>
+      <WsPage>
+        <WsHeader title="تفاصيل الإحالة" />
+        <WsBlock fill>
+          <WsEmpty loading>جارٍ التحميل...</WsEmpty>
+        </WsBlock>
+      </WsPage>
     )
   }
 
   if (error || !referral) {
     return (
-      <div className="text-center py-20">
-        <i className="bi bi-exclamation-triangle text-5xl text-red-400" />
-        <p className="mt-4 text-lg font-medium text-slate-600">حدث خطأ في تحميل البيانات</p>
-        <button
-          onClick={() => navigate(-1)}
-          className="mt-4 text-sky-600 hover:text-sky-800"
-        >
-          العودة
-        </button>
-      </div>
+      <WsPage>
+        <WsHeader
+          title="تفاصيل الإحالة"
+          actions={<WsBtn icon={ArrowRight} onClick={() => navigate(-1)}>العودة</WsBtn>}
+        />
+        <WsBlock fill padded>
+          <WsAlert tone="error" boxed>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              حدث خطأ في تحميل البيانات
+              <WsBtn size="sm" icon={RefreshCw} onClick={() => refetch()}>إعادة المحاولة</WsBtn>
+            </span>
+          </WsAlert>
+        </WsBlock>
+      </WsPage>
     )
   }
 
-  const statusStyle = STATUS_STYLES[referral.status] || STATUS_STYLES.pending
   // يمكن تنفيذ الإجراءات فقط بعد استلام الإحالة (لا يمكن العمل على إحالة pending)
   const canPerformActions = ['received', 'in_progress'].includes(referral.status)
   // هل الإحالة معلقة وتحتاج استلام؟
   const needsReceiving = referral.status === 'pending'
+  const isClosedLike = ['completed', 'closed', 'cancelled'].includes(referral.status)
+
+  const typeTone = referral.referral_type === 'behavioral_violation' ? TONES.red : TONES.gray
+  const age = sinceText(referral.created_at)
+  const holder = referral.assigned_to?.name
+  const composedMessage = buildCompleteMessage()
+  const messageLength = composedMessage.length
+  const overLimit = messageLength > PARENT_MESSAGE_LIMIT
+
+  const generatedDocTypes = new Set((referral.documents ?? []).map((d) => d.document_type))
+  const hasOutcome = Boolean(
+    referral.behavior_violation_id || referral.student_case_id || referral.treatment_plan_id ||
+    (referral.documents?.length ?? 0) > 0 || referral.parent_notified,
+  )
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <button
-          onClick={() => navigate(-1)}
-          className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200"
-        >
-          <i className="bi bi-arrow-right text-lg" />
-        </button>
-        <div className="flex-1">
-          <h1 className="text-xl font-bold text-slate-900">تفاصيل الإحالة</h1>
-          <p className="text-sm text-slate-500">{referral.referral_number}</p>
-        </div>
-        <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-medium ${statusStyle.bg} ${statusStyle.text}`}>
-          <i className={statusStyle.icon} />
-          {referral.status_label}
+    <WsPage>
+      <WsHeader
+        title={referral.student?.name ?? 'إحالة'}
+        badge={referral.referral_number}
+        actions={
+          <>
+            <WsIconBtn icon={ArrowRight} label="رجوع" onClick={() => navigate(-1)} />
+            <WsIconBtn icon={RefreshCw} label="إعادة الجلب" onClick={() => refetch()} />
+            <WsIconBtn
+              icon={Trash2}
+              label="حذف الإحالة"
+              onClick={() => setShowDeleteConfirm(true)}
+              style={{ color: TONES.red.tx }}
+            />
+          </>
+        }
+        facts={
+          <>
+            <WsFact icon={UserRound} label="الفصل">
+              {referral.student?.classroom?.name ?? referral.student?.class_name ?? '—'}
+            </WsFact>
+            <WsFact icon={FileText} label="الجهة">{referral.target_role_label}</WsFact>
+            <WsFact icon={UserCheck} label="المحيل">{referral.referred_by?.name ?? 'غير محدد'}</WsFact>
+            {/* حقيقتان لا وجود لهما اليوم — وهما بيت القصيد */}
+            <WsFact icon={UserCheck} label="في يد">
+              <span style={{ color: holder ? TONES.sky.tx : TONES.amber.tx }}>{holder ?? 'لا أحد'}</span>
+            </WsFact>
+            <WsFact icon={History} label="العمر">{age.text}</WsFact>
+          </>
+        }
+      >
+        <StatusChip status={referral.status} label={referral.status_label} />
+        <TypeChip type={referral.referral_type} label={referral.referral_type_label} />
+        <PriorityBadge priority={referral.priority} />
+      </WsHeader>
+
+      {/* ★ سلسلة العُهدة — تعلو العمودين: الزمن محور يتدلى منه كل شيء */}
+      <WsToolbar style={{ flexDirection: 'column', alignItems: 'stretch', gap: 4 }}>
+        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <span className="ws-label" style={{ margin: 0 }}>سلسلة العُهدة</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ws-text-2)' }}>
+            {custodySummary(custodySegments, isClosedLike)}
+          </span>
         </span>
-      </div>
+        <CustodyChain segments={custodySegments} />
+      </WsToolbar>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Student Info */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <h3 className="font-semibold text-slate-900 mb-4">معلومات الطالب</h3>
-            <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-sky-100">
-                <i className="bi bi-person text-3xl text-sky-600" />
-              </div>
-              <div>
-                <h2 className="font-bold text-xl text-slate-900">{referral.student?.name}</h2>
-                <p className="text-sm text-slate-500">
-                  {referral.student?.student_number} • {referral.student?.classroom?.name}
+      <WsLayout>
+        {/* ── الطالب ── */}
+        <WsSideCol side="start" title="الطالب" icon={UserRound} storageKey="ws:referral-detail:student" width={300}>
+          <WsBlock padded>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <InitialAvatar name={referral.student?.name ?? '؟'} tone={typeTone} size={44} />
+              <div style={{ minWidth: 0 }}>
+                {referral.student?.id ? (
+                  <Link
+                    to={`/admin/students/profile/${referral.student.id}`}
+                    style={{ fontSize: 13, fontWeight: 800, color: 'var(--ws-accent)', textDecoration: 'none' }}
+                  >
+                    {referral.student.name}
+                  </Link>
+                ) : (
+                  <p style={{ margin: 0, fontWeight: 800, fontSize: 13 }}>{referral.student?.name}</p>
+                )}
+                <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--ws-text-2)' }}>
+                  {[referral.student?.student_number, referral.student?.classroom?.name].filter(Boolean).join(' • ') || '—'}
                 </p>
               </div>
             </div>
-          </div>
+          </WsBlock>
 
-          {/* Referral Details */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
-            <h3 className="font-semibold text-slate-900">معلومات الإحالة</h3>
+          <WsBlock title="بيانات الإحالة" icon={FileText} padded fill>
+            <WsFactsList>
+              <WsFactRow label="النوع"><TypeChip type={referral.referral_type} label={referral.referral_type_label} /></WsFactRow>
+              <WsFactRow label="الجهة">{referral.target_role_label}</WsFactRow>
+              <WsFactRow label="الأولوية"><PriorityBadge priority={referral.priority} /></WsFactRow>
+              <WsFactRow label="المحيل">{referral.referred_by?.name ?? 'غير محدد'}</WsFactRow>
+              <WsFactRow label="المكلَّف">{referral.assigned_to?.name ?? 'غير معيّن'}</WsFactRow>
+              <WsFactRow label="تاريخ الإحالة">{new Date(referral.created_at).toLocaleString('ar-SA')}</WsFactRow>
+              {referral.received_at && (
+                <WsFactRow label="تاريخ الاستلام">{new Date(referral.received_at).toLocaleString('ar-SA')}</WsFactRow>
+              )}
+              {referral.completed_at && (
+                <WsFactRow label="تاريخ الإكمال">{new Date(referral.completed_at).toLocaleString('ar-SA')}</WsFactRow>
+              )}
+              <WsFactRow label="آخر تحديث">{new Date(referral.updated_at).toLocaleString('ar-SA')}</WsFactRow>
+            </WsFactsList>
+          </WsBlock>
+        </WsSideCol>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <p className="text-xs text-slate-500">نوع الإحالة</p>
-                <span className={`inline-flex items-center gap-1 mt-1 rounded px-2 py-0.5 text-sm font-medium ${referral.referral_type === 'academic_weakness'
-                  ? 'bg-amber-100 text-amber-800'
-                  : 'bg-red-100 text-red-800'
-                  }`}>
-                  <i className={referral.referral_type === 'academic_weakness' ? 'bi-book' : 'bi-exclamation-triangle'} />
-                  {referral.referral_type_label}
-                </span>
-              </div>
-
-              <div>
-                <p className="text-xs text-slate-500">الجهة المحول إليها</p>
-                <p className="font-medium text-slate-900 mt-1">{referral.target_role_label}</p>
-              </div>
-
-              <div>
-                <p className="text-xs text-slate-500">درجة الأهمية</p>
-                <p className="font-medium text-slate-900 mt-1">{referral.priority_label}</p>
-              </div>
-
-              <div>
-                <p className="text-xs text-slate-500">تاريخ الإحالة</p>
-                <p className="font-medium text-slate-900 mt-1">
-                  {new Date(referral.created_at).toLocaleDateString('ar-SA')}
-                </p>
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-slate-100">
-              <p className="text-xs text-slate-500 mb-2">المحيل</p>
-              <p className="font-medium text-slate-900">
-                <i className="bi bi-person ml-1 text-slate-400" />
-                {referral.referred_by?.name || 'غير محدد'}
+        {/* ── السرد ── */}
+        <WsMain>
+          <WsBlock title="ما قاله المعلم" icon={MessageCircle} padded>
+            <div
+              style={{
+                background: 'var(--ws-surface-2)',
+                border: '1px solid var(--ws-hairline)',
+                borderRadius: 10,
+                padding: 12,
+              }}
+            >
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.9, whiteSpace: 'pre-wrap' }}>
+                {referral.description || 'بلا وصف'}
+              </p>
+              <p style={{ margin: '8px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                — {referral.referred_by?.name ?? 'غير محدد'} · {new Date(referral.created_at).toLocaleString('ar-SA')}
               </p>
             </div>
+          </WsBlock>
 
-            {referral.assigned_to && (
-              <div className="pt-4 border-t border-slate-100">
-                <p className="text-xs text-slate-500 mb-2">المكلف بالمتابعة</p>
-                <p className="font-medium text-slate-900">
-                  <i className="bi bi-person-check ml-1 text-green-600" />
-                  {referral.assigned_to.name}
-                </p>
-              </div>
-            )}
-
-            <div className="pt-4 border-t border-slate-100">
-              <p className="text-xs text-slate-500 mb-2">وصف الحالة</p>
-              <p className="text-slate-700 whitespace-pre-wrap">{referral.description}</p>
-            </div>
-          </div>
-
-          {/* Linked Entities */}
-          {referral.linked_entities && (
-            <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
-              <h3 className="font-semibold text-slate-900">الكيانات المرتبطة</h3>
-
-              {referral.linked_entities.behavior_violation && (
-                <div className="flex items-center justify-between p-3 rounded-lg bg-red-50 border border-red-100">
-                  <div className="flex items-center gap-3">
-                    <i className="bi bi-exclamation-triangle text-red-600" />
-                    <div>
-                      <p className="font-medium text-slate-900">مخالفة سلوكية</p>
-                      <p className="text-sm text-slate-500">{referral.linked_entities.behavior_violation.description}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {referral.linked_entities.student_case && (
-                <div className="flex items-center justify-between p-3 rounded-lg bg-purple-50 border border-purple-100">
-                  <div className="flex items-center gap-3">
-                    <i className="bi bi-folder text-purple-600" />
-                    <div>
-                      <p className="font-medium text-slate-900">حالة طالب</p>
-                      <p className="text-sm text-slate-500">
-                        {referral.linked_entities.student_case.case_number} - {referral.linked_entities.student_case.title}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => navigate(`/admin/student-cases/${referral.linked_entities!.student_case!.id}`)}
-                    className="text-sm text-purple-600 hover:text-purple-800"
-                  >
-                    عرض
-                  </button>
-                </div>
-              )}
-
-              {referral.linked_entities.treatment_plan && (
-                <div className="flex items-center justify-between p-3 rounded-lg bg-green-50 border border-green-100">
-                  <div className="flex items-center gap-3">
-                    <i className="bi bi-journal-text text-green-600" />
-                    <div>
-                      <p className="font-medium text-slate-900">خطة علاجية</p>
-                      <p className="text-sm text-slate-500">
-                        {referral.linked_entities.treatment_plan.plan_number} - {referral.linked_entities.treatment_plan.title}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => navigate(`/admin/treatment-plans/${referral.linked_entities!.treatment_plan!.id}`)}
-                    className="text-sm text-green-600 hover:text-green-800"
-                  >
-                    عرض
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Workflow Timeline */}
-          {referral.workflow_logs && referral.workflow_logs.length > 0 && (
-            <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
-              <h3 className="font-semibold text-slate-900">سجل الإجراءات</h3>
-
-              <div className="relative pr-6">
-                <div className="absolute right-2 top-2 bottom-2 w-0.5 bg-slate-200" />
-
-                <div className="space-y-4">
-                  {referral.workflow_logs.map((log, index) => (
-                    <div key={log.id} className="relative flex gap-3">
-                      <div className={`absolute right-0 -mr-0.5 flex h-5 w-5 items-center justify-center rounded-full ${index === 0 ? 'bg-sky-500' : 'bg-slate-300'
-                        }`}>
-                        <i className={`${ACTION_ICONS[log.action] || 'bi-record'} text-xs text-white`} />
-                      </div>
-
-                      <div className="flex-1 pr-4">
-                        <p className="font-medium text-slate-900">{log.action_label}</p>
-                        {log.notes && (
-                          <p className="text-sm text-slate-700 mt-0.5 bg-slate-50 px-2 py-1 rounded">{log.notes}</p>
-                        )}
-                        <div className="flex items-center gap-2 mt-1 text-xs text-slate-400">
-                          {log.performed_by && (
-                            <span>بواسطة: {log.performed_by.name}</span>
-                          )}
-                          <span>•</span>
-                          <span>{new Date(log.created_at).toLocaleString('ar-SA')}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Actions */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
-            <h3 className="font-semibold text-slate-900">الإجراءات</h3>
-
-            <div className="space-y-3">
-              {needsReceiving && (
-                <>
-                  {/* تنبيه بأن الإحالة تحتاج استلام */}
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
-                    <div className="flex items-start gap-2">
-                      <i className="bi bi-exclamation-triangle text-amber-600 mt-0.5" />
-                      <div className="text-sm text-amber-800">
-                        <p className="font-medium">الإحالة معلقة</p>
-                        <p className="text-amber-600">يجب استلام الإحالة أولاً قبل تنفيذ أي إجراءات</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={handleReceive}
-                    disabled={receiveMutation.isPending}
-                    className="w-full flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    <i className="bi bi-check2" />
-                    استلام الإحالة
-                  </button>
-                </>
-              )}
-
-              {/* زر فتح المخالفة السلوكية - يظهر دائماً إذا كانت مرتبطة بمخالفة */}
-              {referral.referral_type === 'behavioral_violation' && referral.behavior_violation_id && (
-                <Link
-                  to={`/admin/behavior/${referral.behavior_violation_id}`}
-                  className="w-full flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-700"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  فتح المخالفة السلوكية
-                </Link>
-              )}
-
-              {canPerformActions && (
-                <>
-                  {/* زر تنفيذ مخالفة سلوكية - يظهر فقط إذا لم تكن مرتبطة بمخالفة */}
-                  {referral.referral_type === 'behavioral_violation' && !referral.behavior_violation_id && (
-                    <button
-                      onClick={handleOpenViolationModal}
-                      className="w-full flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-700"
-                    >
-                      <i className="bi bi-exclamation-triangle" />
-                      تنفيذ مخالفة سلوكية
-                    </button>
-                  )}
-
-                  {/* صف: تعيين مسؤول + تحويل الإحالة */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => setShowAssignModal(true)}
-                      className={`flex items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-medium ${referral.assigned_to
-                        ? 'border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100'
-                        : 'bg-purple-600 text-white hover:bg-purple-700'
-                        }`}
-                    >
-                      <i className={`bi ${referral.assigned_to ? 'bi-person-gear' : 'bi-person-plus'}`} />
-                      {referral.assigned_to ? 'تغيير المسؤول' : 'تعيين مسؤول'}
-                    </button>
-
-                    <button
-                      onClick={() => setShowTransferModal(true)}
-                      className="flex items-center justify-center gap-1 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-medium text-orange-700 hover:bg-orange-100"
-                    >
-                      <i className="bi bi-arrow-repeat" />
-                      تحويل الإحالة
-                    </button>
-                  </div>
-
-                  {/* صف: إكمال الإحالة + إضافة ملاحظة */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={handleComplete}
-                      disabled={completeMutation.isPending}
-                      className="flex items-center justify-center gap-1 rounded-lg bg-green-600 px-3 py-2 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50"
-                    >
-                      <i className="bi bi-check2-circle" />
-                      إكمال الإحالة
-                    </button>
-
-                    <button
-                      onClick={() => setShowNoteModal(true)}
-                      className="flex items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                    >
-                      <i className="bi bi-sticky" />
-                      إضافة ملاحظة
-                    </button>
-                  </div>
-
-                  {/* صف: إنشاء مستند + إشعار ولي الأمر */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => setShowDocumentModal(true)}
-                      className="flex items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                    >
-                      <i className="bi bi-file-earmark-plus" />
-                      إنشاء مستند
-                    </button>
-
-                    {!referral.parent_notified ? (
-                      <button
-                        onClick={handleNotifyParent}
-                        disabled={parentNotifyMutation.isPending}
-                        className="flex items-center justify-center gap-1 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-medium text-sky-700 hover:bg-sky-100 disabled:opacity-50"
-                      >
-                        <i className="bi bi-bell" />
-                        إشعار ولي الأمر
-                      </button>
-                    ) : (
-                      <div className="flex items-center justify-center gap-1 rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-xs font-medium text-green-700">
-                        <i className="bi bi-check2-circle" />
-                        تم الإشعار
-                      </div>
-                    )}
-                  </div>
-
-                  {/* صف: دراسة حالة + خطة علاجية (يظهر للإحالات من نوع ضعف دراسي المحولة للموجه الطلابي) */}
-                  {canCreateCaseOrPlan && (
-                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
-                      {!referral.student_case_id ? (
-                        <button
-                          onClick={() => setShowCaseModal(true)}
-                          className="flex items-center justify-center gap-1 rounded-lg bg-purple-600 px-3 py-2.5 text-xs font-medium text-white hover:bg-purple-700"
-                        >
-                          <i className="bi bi-folder-plus" />
-                          دراسة حالة
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => navigate(`/admin/student-cases/${referral.student_case_id}`)}
-                          className="flex items-center justify-center gap-1 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2.5 text-xs font-medium text-purple-700 hover:bg-purple-100"
-                        >
-                          <i className="bi bi-folder-check" />
-                          فتح الحالة
-                        </button>
-                      )}
-
-                      {!referral.treatment_plan_id ? (
-                        <button
-                          onClick={() => setShowTreatmentPlanModal(true)}
-                          className="flex items-center justify-center gap-1 rounded-lg bg-green-600 px-3 py-2.5 text-xs font-medium text-white hover:bg-green-700"
-                        >
-                          <i className="bi bi-journal-medical" />
-                          خطة علاجية
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => navigate(`/admin/treatment-plans/${referral.treatment_plan_id}`)}
-                          className="flex items-center justify-center gap-1 rounded-lg border border-green-200 bg-green-50 px-3 py-2.5 text-xs font-medium text-green-700 hover:bg-green-100"
-                        >
-                          <i className="bi bi-journal-check" />
-                          فتح الخطة
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* زر حذف الإحالة */}
-              <button
-                onClick={() => setShowDeleteConfirm(true)}
-                className="w-full flex items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100"
-              >
-                <Trash2 className="h-4 w-4" />
-                حذف الإحالة
-              </button>
-            </div>
-          </div>
-
-          {/* Parent Notification */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${referral.parent_notified ? 'bg-green-100' : 'bg-slate-100'
-                  }`}>
-                  <i className={`bi ${referral.parent_notified ? 'bi-check2-circle text-green-600' : 'bi-bell text-slate-500'}`} />
-                </div>
-                <div>
-                  <p className="font-medium text-slate-900">إشعار ولي الأمر</p>
-                  <p className="text-xs text-slate-500">
-                    {referral.parent_notified
-                      ? `تم ${new Date(referral.parent_notified_at!).toLocaleDateString('ar-SA')}`
-                      : 'لم يتم الإشعار'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Documents */}
-          {referral.documents && referral.documents.length > 0 && (
-            <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
-              <h3 className="font-semibold text-slate-900">المستندات</h3>
-
-              <div className="space-y-2">
-                {referral.documents.map((doc) => (
-                  <div
-                    key={doc.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-100"
-                  >
-                    <div className="flex items-center gap-2">
-                      <i className="bi bi-file-earmark-text text-slate-500" />
-                      <div>
-                        <p className="font-medium text-slate-900 text-sm">{doc.title}</p>
-                        <p className="text-xs text-slate-500">{doc.document_type_label}</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handlePrintDocument(doc.id)}
-                      className="text-sm text-sky-600 hover:text-sky-800"
-                    >
-                      <i className="bi bi-printer" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Assign Modal */}
-      {showAssignModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md bg-white rounded-xl p-6 m-4">
-            <h3 className="font-semibold text-lg text-slate-900 mb-4">تعيين مسؤول</h3>
-
-            <select
-              value={selectedAssignee ?? ''}
-              onChange={(e) => setSelectedAssignee(Number(e.target.value) || null)}
-              className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:border-sky-500 focus:outline-none mb-4"
-            >
-              <option value="">اختر المسؤول...</option>
-              {referral.available_assignees && referral.available_assignees.length > 0 ? (
-                referral.available_assignees.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.name} {user.role_label ? `(${user.role_label})` : ''}
-                  </option>
-                ))
-              ) : (
-                <option value="" disabled>لا يوجد مسؤولين متاحين</option>
-              )}
-            </select>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowAssignModal(false)}
-                className="flex-1 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                إلغاء
-              </button>
-              <button
-                onClick={handleAssign}
-                disabled={!selectedAssignee || assignMutation.isPending}
-                className="flex-1 rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
-              >
-                تعيين
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Transfer Modal */}
-      {showTransferModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md bg-white rounded-xl p-6 m-4">
-            <h3 className="font-semibold text-lg text-slate-900 mb-4">تحويل الإحالة</h3>
-
-            <select
-              value={transferTarget}
-              onChange={(e) => setTransferTarget(e.target.value as ReferralTargetRole)}
-              className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:border-sky-500 focus:outline-none mb-4"
-            >
-              <option value="counselor">الموجه الطلابي</option>
-              <option value="vice_principal">وكيل المدرسة</option>
-              <option value="committee">اللجنة السلوكية</option>
-            </select>
-
-            <textarea
-              value={noteText}
-              onChange={(e) => setNoteText(e.target.value)}
-              placeholder="سبب التحويل..."
-              rows={3}
-              className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:border-sky-500 focus:outline-none mb-4"
-            />
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => { setShowTransferModal(false); setNoteText(''); }}
-                className="flex-1 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                إلغاء
-              </button>
-              <button
-                onClick={handleTransfer}
-                disabled={!noteText.trim() || transferMutation.isPending}
-                className="flex-1 rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-50"
-              >
-                تحويل
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Note Modal */}
-      {showNoteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md bg-white rounded-xl p-6 m-4">
-            <h3 className="font-semibold text-lg text-slate-900 mb-4">إضافة ملاحظة</h3>
-
-            <textarea
-              value={noteText}
-              onChange={(e) => setNoteText(e.target.value)}
-              placeholder="اكتب ملاحظتك هنا..."
-              rows={4}
-              className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:border-sky-500 focus:outline-none mb-4"
-            />
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => { setShowNoteModal(false); setNoteText(''); }}
-                className="flex-1 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                إلغاء
-              </button>
-              <button
-                onClick={handleAddNote}
-                disabled={!noteText.trim() || noteMutation.isPending}
-                className="flex-1 rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50"
-              >
-                إضافة
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Violation Modal - نموذج الرصد الموحد */}
-      {showViolationModal && referral && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="relative w-full max-w-4xl rounded-3xl bg-white shadow-2xl flex flex-col max-h-[90vh]">
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4 rounded-t-3xl">
-              <div>
-                <p className="text-xs font-semibold text-red-600">رصد مخالفة سلوكية</p>
-                <h2 className="text-xl font-bold text-slate-900">نموذج الرصد الموحد</h2>
-              </div>
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={resetViolationForm} className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg hover:bg-slate-50">
-                  إعادة التعيين
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCloseViolationModal}
-                  className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
+          <div className="ws-block ws-block--fill" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            <div className="ws-block__head">
+              <span className="ws-block__title">
+                <History />
+                سجل الوقائع
+                <span className="ws-count">{referral.workflow_logs?.length ?? 0}</span>
+              </span>
             </div>
 
-            <div className="flex flex-col flex-1 min-h-0">
-              {/* مؤشر الخطوات */}
-              <div className="px-6 py-3 border-b border-slate-200 bg-slate-50/30">
-                <div className="flex items-center justify-center gap-1.5">
-                  {VIOLATION_RECORD_STEPS.map((step, index) => {
-                    const isActive = step.id === violationRecordStep
-                    const isDone = step.id < violationRecordStep
+            <div className="ws-block__scroll">
+              {referral.workflow_logs && referral.workflow_logs.length > 0 ? (
+                <div className="ws-timeline">
+                  {referral.workflow_logs.map((log, index) => {
+                    const meta = ACTION_META[log.action] ?? { icon: Circle }
+                    const Icon = meta.icon
+                    /* رمادي افتراضاً، ملوّن عند المنعطف — فتصير النقاط الملوّنة خريطة */
+                    const tone = meta.tone ?? TONES.gray
                     return (
-                      <div key={step.id} className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setViolationRecordStep(step.id)}
-                          className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition ${isActive
-                            ? 'bg-red-600 text-white shadow-sm'
-                            : isDone
-                              ? 'bg-emerald-500/10 text-emerald-700 border border-emerald-200'
-                              : 'bg-slate-100 text-slate-500'
-                            }`}
-                        >
-                          {step.id}
-                        </button>
-                        <span className={`text-[11px] font-semibold ${isActive ? 'text-red-700' : 'text-muted'}`}>
-                          {step.label}
+                      <div
+                        key={log.id}
+                        className={`ws-timeline__item ${index === 0 ? 'is-current' : ''}`}
+                        style={{ paddingInlineStart: 54 }}
+                      >
+                        <span className="ws-timeline__node" style={{ width: 46 }}>
+                          <span className="ws-timeline__dot" style={{ background: tone.bg, color: tone.tx }}>
+                            <Icon />
+                          </span>
                         </span>
-                        {index !== VIOLATION_RECORD_STEPS.length - 1 && (
-                          <span className="h-px w-4 bg-slate-200 mx-0.5" />
-                        )}
+                        <div style={{ paddingTop: 3 }}>
+                          <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700 }}>{log.action_label}</p>
+                          {log.notes && (
+                            <p
+                              style={{
+                                margin: '4px 0 0',
+                                fontSize: 11.5,
+                                lineHeight: 1.7,
+                                background: 'var(--ws-surface-2)',
+                                border: '1px solid var(--ws-hairline)',
+                                borderRadius: 7,
+                                padding: '5px 8px',
+                              }}
+                            >
+                              {log.notes}
+                            </p>
+                          )}
+                          <p style={{ margin: '3px 0 0', fontSize: 10, color: 'var(--ws-text-2)' }}>
+                            {log.performed_by ? `${log.performed_by.name} · ` : ''}
+                            {new Date(log.created_at).toLocaleString('ar-SA')}
+                          </p>
+                        </div>
                       </div>
                     )
                   })}
                 </div>
-              </div>
+              ) : (
+                <WsEmpty icon={History}>لا وقائع مسجّلة بعد</WsEmpty>
+              )}
+            </div>
 
-              {/* معلومات الطالب الثابتة */}
-              <div className="px-6 py-3 bg-slate-50 border-b border-slate-200">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
-                    <i className="bi bi-person text-2xl text-red-600" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-bold text-slate-900">{referral.student?.name}</p>
-                    <p className="text-sm text-slate-500">
-                      {referral.student?.student_number} • {referral.student?.classroom?.name}
-                    </p>
-                  </div>
-                  <div className="text-left">
-                    <p className="text-xs text-slate-500">المُبلِغ (المحيل)</p>
-                    <p className="font-medium text-slate-900">{referral.referred_by?.name || 'غير محدد'}</p>
-                  </div>
+            {/* مُسجِّل الوقائع مثبّت في القدم — يسكن WsMain لا العمود
+                لأن WsSideCol يفصل أبناءه عند الطي فتضيع ملاحظة نصف مكتوبة */}
+            {canPerformActions && (
+              <div style={{ borderTop: '1px solid var(--ws-hairline)', padding: 10, flexShrink: 0, display: 'flex', gap: 6, alignItems: 'flex-end' }}>
+                <WsTextarea
+                  value={composerNote}
+                  onChange={(e) => setComposerNote(e.target.value)}
+                  rows={2}
+                  placeholder="سجّل واقعة أو ملاحظة..."
+                  style={{ flex: 1 }}
+                />
+                <WsBtn
+                  variant="primary"
+                  icon={Plus}
+                  onClick={handleAddNote}
+                  disabled={!composerNote.trim() || noteMutation.isPending}
+                >
+                  {noteMutation.isPending ? 'جارٍ...' : 'أضف'}
+                </WsBtn>
+              </div>
+            )}
+          </div>
+        </WsMain>
+
+        {/* ── القرار ── */}
+        <WsSideCol side="end" title="القرار" icon={Gavel} storageKey="ws:referral-detail:actions" width={340}>
+          <WsBlock padded>
+            {/* بوابة القرار: سطر يعلن الحالة، ثم زر أساسي واحد، والباقي محايد */}
+            {needsReceiving ? (
+              <>
+                <WsAlert tone="warn" boxed>الإحالة معلّقة — استلمها لتُفتح الإجراءات</WsAlert>
+                <WsBtn
+                  variant="primary"
+                  icon={Check}
+                  onClick={handleReceive}
+                  disabled={receiveMutation.isPending}
+                  style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}
+                >
+                  {receiveMutation.isPending ? 'جارٍ الاستلام...' : 'استلام الإحالة'}
+                </WsBtn>
+              </>
+            ) : canPerformActions ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <WsBtn
+                  variant="primary"
+                  icon={CheckCircle2}
+                  onClick={() => setShowCompleteConfirm(true)}
+                  disabled={completeMutation.isPending}
+                  style={{ width: '100%', justifyContent: 'center' }}
+                >
+                  إكمال الإحالة
+                </WsBtn>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                  <WsBtn icon={ArrowLeftRight} onClick={() => setShowTransferModal(true)}>تحويل</WsBtn>
+                  {!referral.parent_notified ? (
+                    <WsBtn icon={Bell} onClick={handleNotifyParent} disabled={parentNotifyMutation.isPending}>
+                      إشعار ولي الأمر
+                    </WsBtn>
+                  ) : (
+                    <ToneChip tone={TONES.green}>تم الإشعار</ToneChip>
+                  )}
                 </div>
-              </div>
 
-              {/* المحتوى */}
-              <div className="flex-1 overflow-y-auto px-6 py-4">
-                {/* الخطوة 1: نوع المخالفة */}
-                {violationRecordStep === 1 && (
-                  <div className="space-y-6">
-                    <div className="space-y-3">
-                      <p className="text-sm font-semibold text-slate-700">اختر درجة المخالفة</p>
-                      <div className="grid gap-3 md:grid-cols-4">
-                        {BEHAVIOR_DEGREE_OPTIONS.map((degree) => (
-                          <button
-                            key={degree}
-                            type="button"
-                            onClick={() => {
-                              setSelectedDegree(degree)
-                              setSelectedViolationType('')
-                            }}
-                            className={`rounded-2xl border px-3 py-4 transition ${selectedDegree === degree
-                              ? 'border-red-500 bg-red-50 shadow-sm'
-                              : 'border-slate-200 bg-white hover:border-red-300'
-                              }`}
-                          >
-                            <ViolationBadge degree={degree} size="md" />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {selectedDegree && (
-                      <div className="space-y-3">
-                        <p className="text-sm font-semibold text-slate-700">نوع المخالفة</p>
-                        {isConfigLoading ? (
-                          <div className="py-8 text-center text-sm text-slate-500">جاري تحميل أنواع المخالفات...</div>
-                        ) : availableViolations.length > 0 ? (
-                          <select
-                            value={selectedViolationType}
-                            onChange={(event) => setSelectedViolationType(event.target.value)}
-                            className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm shadow-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/20"
-                          >
-                            <option value="" disabled>اختر نوع المخالفة</option>
-                            {availableViolations.map((violation) => (
-                              <option key={violation} value={violation}>{violation}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <div className="py-4 text-center text-sm text-slate-500 bg-slate-50 rounded-xl">
-                            لا توجد أنواع مخالفات محددة لهذه الدرجة
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {selectedDegree && selectedViolationType && (
-                      <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4 text-sm text-amber-700">
-                        <div className="flex items-center gap-2 mb-2">
-                          <i className="bi bi-info-circle" />
-                          <span className="font-semibold">معلومة مهمة</span>
-                        </div>
-                        <p>
-                          هذه هي المخالفة رقم <span className="font-bold text-amber-900">{studentViolationOccurrence}</span> للطالب من نفس النوع والدرجة.
-                          {targetProcedure && (
-                            <span> سيتم تطبيق إجراء: <span className="font-bold">{targetProcedure.title}</span></span>
-                          )}
-                        </p>
-                      </div>
-                    )}
+                {/* تنفيذ المخالفة يُنهي الإحالة ويُغلقها — سلوك خادم مُتحقَّق تُخفيه الصفحة اليوم */}
+                {referral.referral_type === 'behavioral_violation' && !referral.behavior_violation_id && (
+                  <div>
+                    <WsBtn
+                      variant="danger"
+                      icon={AlertTriangle}
+                      onClick={handleOpenViolationModal}
+                      style={{ width: '100%', justifyContent: 'center' }}
+                    >
+                      تنفيذ مخالفة سلوكية
+                    </WsBtn>
+                    <p style={{ margin: '3px 0 0', fontSize: 10, color: TONES.red.tx, textAlign: 'center' }}>
+                      سيُنهي الإحالة ويُغلقها
+                    </p>
                   </div>
                 )}
 
-                {/* الخطوة 2: تفاصيل الحالة */}
-                {violationRecordStep === 2 && (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold text-slate-700">التاريخ</label>
-                      <input
+                {canCreateCaseOrPlan && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, paddingTop: 6, borderTop: '1px solid var(--ws-hairline)' }}>
+                    {!referral.student_case_id ? (
+                      <WsBtn
+                        icon={FolderPlus}
+                        onClick={() => setShowCaseModal(true)}
+                        style={{ color: TONES.purple.tx, borderColor: TONES.purple.bd, background: TONES.purple.bg }}
+                      >
+                        دراسة حالة
+                      </WsBtn>
+                    ) : (
+                      <WsBtn icon={ExternalLink} onClick={() => navigate(`/admin/student-cases/${referral.student_case_id}`)}>
+                        فتح الحالة
+                      </WsBtn>
+                    )}
+                    {!referral.treatment_plan_id ? (
+                      <WsBtn
+                        icon={ClipboardList}
+                        onClick={() => setShowTreatmentPlanModal(true)}
+                        style={{ color: TONES.purple.tx, borderColor: TONES.purple.bd, background: TONES.purple.bg }}
+                      >
+                        خطة علاجية
+                      </WsBtn>
+                    ) : (
+                      <WsBtn icon={ExternalLink} onClick={() => navigate(`/admin/treatment-plans/${referral.treatment_plan_id}`)}>
+                        فتح الخطة
+                      </WsBtn>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* الطريق المسدود يُقال صراحةً بدل انهيار اللوحة بلا كلمة تفسير */
+              <WsAlert tone="info" boxed>
+                {referral.status === 'transferred'
+                  ? `الإحالة محوّلة إلى ${referral.target_role_label} — بانتظار الجهة الجديدة`
+                  : `الإحالة ${referral.status_label} — لا إجراءات متاحة من هذه الصفحة`}
+              </WsAlert>
+            )}
+          </WsBlock>
+
+          {/* المكلَّف — يقتل مودالاً كان لأجل select واحد */}
+          {canPerformActions && (
+            <WsBlock title="المكلَّف" icon={UserCheck} padded>
+              {referral.assigned_to && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 7 }}>
+                  <InitialAvatar name={referral.assigned_to.name} tone={TONES.sky} size={24} />
+                  <span style={{ fontSize: 12, fontWeight: 700 }}>{referral.assigned_to.name}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 6 }}>
+                <WsSelect
+                  value={selectedAssignee ?? ''}
+                  onChange={(e) => setSelectedAssignee(Number(e.target.value) || null)}
+                  style={{ flex: 1 }}
+                >
+                  <option value="">اختر المسؤول...</option>
+                  {referral.available_assignees && referral.available_assignees.length > 0 ? (
+                    referral.available_assignees.map((assignee) => (
+                      <option key={assignee.id} value={assignee.id}>
+                        {assignee.name} {assignee.role_label ? `(${assignee.role_label})` : ''}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="" disabled>لا يوجد مسؤولين متاحين</option>
+                  )}
+                </WsSelect>
+                <WsBtn
+                  size="sm"
+                  icon={UserCheck}
+                  onClick={handleAssign}
+                  disabled={!selectedAssignee || assignMutation.isPending}
+                >
+                  {referral.assigned_to ? 'تغيير' : 'تعيين'}
+                </WsBtn>
+              </div>
+            </WsBlock>
+          )}
+
+          {/* الحصيلة: العهدة تقول من حمل، والحصيلة تقول ماذا خرج */}
+          <WsBlock title="الحصيلة" icon={PackageCheck} padded fill scroll>
+            {!hasOutcome ? (
+              <WsEmpty icon={PackageCheck}>لم تُنتج هذه الإحالة شيئاً بعد</WsEmpty>
+            ) : (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+                {referral.behavior_violation_id && (
+                  <Link to={`/admin/behavior/${referral.behavior_violation_id}`} style={{ textDecoration: 'none' }}>
+                    <ToneChip tone={TONES.red}>مخالفة مرصودة</ToneChip>
+                  </Link>
+                )}
+                {referral.student_case_id && (
+                  <Link to={`/admin/student-cases/${referral.student_case_id}`} style={{ textDecoration: 'none' }}>
+                    <ToneChip tone={TONES.purple}>دراسة حالة</ToneChip>
+                  </Link>
+                )}
+                {referral.treatment_plan_id && (
+                  <Link to={`/admin/treatment-plans/${referral.treatment_plan_id}`} style={{ textDecoration: 'none' }}>
+                    <ToneChip tone={TONES.purple}>خطة علاجية</ToneChip>
+                  </Link>
+                )}
+                {referral.parent_notified && (
+                  <ToneChip tone={TONES.green}>
+                    أُشعر ولي الأمر{referral.parent_notified_at ? ` · ${new Date(referral.parent_notified_at).toLocaleDateString('ar-SA')}` : ''}
+                  </ToneChip>
+                )}
+              </div>
+            )}
+
+            {/* رفّ المستندات: الأنواع الخمسة صفوف دائمة — ما وُلّد صلب وما لم يُولّد شبحي بنقرة */}
+            <p className="ws-label" style={{ marginBottom: 5 }}>رفّ المستندات</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {DOCUMENT_TYPES.map((type) => {
+                const doc = referral.documents?.find((d) => d.document_type === type.value)
+                const exists = generatedDocTypes.has(type.value)
+                const busy = generatingDocType === type.value
+                return (
+                  <div
+                    key={type.value}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 7,
+                      border: `1px ${exists ? 'solid' : 'dashed'} var(--ws-border)`,
+                      borderRadius: 8,
+                      padding: '6px 8px',
+                      background: exists ? 'var(--ws-surface)' : 'transparent',
+                      opacity: exists ? 1 : 0.72,
+                    }}
+                  >
+                    <FileText style={{ width: 13, height: 13, flexShrink: 0, color: exists ? 'var(--ws-accent)' : 'var(--ws-text-2)' }} />
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, fontWeight: exists ? 700 : 400 }}>
+                      {/* التسمية من الثابت المحلي: document_type_label لا يصل من الخادم أبداً */}
+                      {type.label}
+                    </span>
+                    {exists && doc ? (
+                      <WsIconBtn icon={Printer} label="عرض/طباعة" onClick={() => handlePrintDocument(doc.id)} />
+                    ) : (
+                      <WsBtn
+                        size="sm"
+                        icon={FilePlus2}
+                        onClick={() => handleGenerateDocument(type.value)}
+                        disabled={documentMutation.isPending}
+                      >
+                        {busy ? 'جارٍ...' : 'توليد'}
+                      </WsBtn>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </WsBlock>
+        </WsSideCol>
+      </WsLayout>
+
+      {/* ═══ مودال التحويل ═══ */}
+      {showTransferModal && (
+        <div className="ws-modal" onClick={() => { setShowTransferModal(false); setNoteText('') }}>
+          <div className="ws-modal__panel" style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
+            <header className="ws-modal__head">
+              <h3 className="ws-modal__title">تحويل الإحالة</h3>
+              <p className="ws-modal__sub">التحويل يُخلي المكلَّف الحالي — تعود الإحالة بلا يد حتى تستلمها الجهة الجديدة</p>
+            </header>
+            <div className="ws-modal__body">
+              <WsField label="الجهة الجديدة">
+                <WsSelect value={transferTarget} onChange={(e) => setTransferTarget(e.target.value as ReferralTargetRole)}>
+                  <option value="counselor">الموجه الطلابي</option>
+                  <option value="vice_principal">وكيل المدرسة</option>
+                  <option value="committee">اللجنة السلوكية</option>
+                </WsSelect>
+              </WsField>
+              <WsField label="سبب التحويل *">
+                <WsTextarea
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                  rows={3}
+                  placeholder="سبب التحويل..."
+                />
+              </WsField>
+            </div>
+            <footer className="ws-modal__foot">
+              <WsBtn onClick={() => { setShowTransferModal(false); setNoteText('') }}>إلغاء</WsBtn>
+              <WsBtn
+                variant="primary"
+                icon={ArrowLeftRight}
+                onClick={handleTransfer}
+                disabled={!noteText.trim() || transferMutation.isPending}
+              >
+                {transferMutation.isPending ? 'جارٍ التحويل...' : 'تحويل'}
+              </WsBtn>
+            </footer>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ تأكيد الإكمال ═══ */}
+      {showCompleteConfirm && (
+        <div className="ws-modal" onClick={() => setShowCompleteConfirm(false)}>
+          <div className="ws-modal__panel" style={{ maxWidth: 400 }} onClick={(e) => e.stopPropagation()}>
+            <header className="ws-modal__head">
+              <h3 className="ws-modal__title">إكمال الإحالة</h3>
+              <p className="ws-modal__sub">هل أنت متأكد من إكمال هذه الإحالة؟</p>
+            </header>
+            <div className="ws-modal__body">
+              <WsAlert tone="info" boxed>
+                ستُغلق الإحالة وتخرج من قائمة العمل. سجل الوقائع والمستندات تبقى محفوظة.
+              </WsAlert>
+            </div>
+            <footer className="ws-modal__foot">
+              <WsBtn onClick={() => setShowCompleteConfirm(false)}>إلغاء</WsBtn>
+              <WsBtn variant="primary" icon={CheckCircle2} onClick={handleComplete} disabled={completeMutation.isPending}>
+                {completeMutation.isPending ? 'جارٍ...' : 'تأكيد الإكمال'}
+              </WsBtn>
+            </footer>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ مودال رصد المخالفة — أربع خطوات + سلّم التصعيد ═══ */}
+      {showViolationModal && referral && (
+        <div className="ws-modal">
+          <div className="ws-modal__panel" style={{ maxWidth: 820, display: 'flex', flexDirection: 'column' }}>
+            <header className="ws-modal__head">
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                <div>
+                  <h3 className="ws-modal__title" style={{ color: TONES.red.tx }}>رصد مخالفة سلوكية</h3>
+                  <p className="ws-modal__sub">نموذج الرصد الموحد — سيُنهي الإحالة ويُغلقها بعد الحفظ</p>
+                </div>
+                <span style={{ display: 'inline-flex', gap: 4 }}>
+                  <WsBtn size="sm" icon={RotateCcw} onClick={resetViolationForm}>إعادة التعيين</WsBtn>
+                  <WsIconBtn icon={X} label="إغلاق" onClick={handleCloseViolationModal} />
+                </span>
+              </div>
+
+              <div className="ws-seg" style={{ marginTop: 8 }}>
+                {VIOLATION_RECORD_STEPS.map((step) => (
+                  <button
+                    key={step.id}
+                    type="button"
+                    className={`ws-seg__btn ${step.id === violationRecordStep ? 'is-active' : ''}`}
+                    onClick={() => setViolationRecordStep(step.id)}
+                  >
+                    <span className="ws-count">{step.id}</span>
+                    {step.label}
+                  </button>
+                ))}
+              </div>
+            </header>
+
+            {/* هوية الطالب ثابتة */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '8px 16px',
+                background: 'var(--ws-surface-2)',
+                borderBottom: '1px solid var(--ws-hairline)',
+              }}
+            >
+              <InitialAvatar name={referral.student?.name ?? '؟'} tone={TONES.red} size={32} />
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: 'block', fontSize: 12.5, fontWeight: 800 }}>{referral.student?.name}</span>
+                <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                  {[referral.student?.student_number, referral.student?.classroom?.name].filter(Boolean).join(' • ')}
+                </span>
+              </span>
+              <span style={{ textAlign: 'left' }}>
+                <span style={{ display: 'block', fontSize: 10, color: 'var(--ws-text-2)' }}>المُبلِغ (المحيل)</span>
+                <span style={{ display: 'block', fontSize: 11.5, fontWeight: 700 }}>{referral.referred_by?.name || 'غير محدد'}</span>
+              </span>
+            </div>
+
+            <div className="ws-modal__body" style={{ maxHeight: '52vh', overflowY: 'auto' }}>
+              {/* الخطوة 1 */}
+              {violationRecordStep === 1 && (
+                <>
+                  <div>
+                    <p className="ws-label" style={{ marginBottom: 6 }}>درجة المخالفة</p>
+                    <div className="ws-choice-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))' }}>
+                      {BEHAVIOR_DEGREE_OPTIONS.map((degree) => (
+                        <button
+                          key={degree}
+                          type="button"
+                          className={`ws-choice ${selectedDegree === degree ? 'is-selected' : ''}`}
+                          onClick={() => { setSelectedDegree(degree); setSelectedViolationType('') }}
+                          style={selectedDegree === degree
+                            ? { background: TONES.red.bg, borderColor: TONES.red.tx, boxShadow: `0 0 0 1px ${TONES.red.tx}` }
+                            : undefined}
+                        >
+                          <ViolationBadge degree={degree} size="sm" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {selectedDegree && (
+                    <WsField label="نوع المخالفة">
+                      {isConfigLoading ? (
+                        <WsEmpty loading>جاري تحميل أنواع المخالفات...</WsEmpty>
+                      ) : availableViolations.length > 0 ? (
+                        <WsSelect
+                          value={selectedViolationType}
+                          onChange={(event) => setSelectedViolationType(event.target.value)}
+                        >
+                          <option value="" disabled>اختر نوع المخالفة</option>
+                          {availableViolations.map((violation) => (
+                            <option key={violation} value={violation}>{violation}</option>
+                          ))}
+                        </WsSelect>
+                      ) : (
+                        <WsAlert tone="warn" boxed>لا توجد أنواع مخالفات محددة لهذه الدرجة</WsAlert>
+                      )}
+                    </WsField>
+                  )}
+
+                  {selectedDegree && selectedViolationType && (
+                    <EscalationLadder
+                      procedures={availableProcedures}
+                      occurrence={studentViolationOccurrence}
+                      target={targetProcedure}
+                    />
+                  )}
+                </>
+              )}
+
+              {/* الخطوة 2 */}
+              {violationRecordStep === 2 && (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <WsField label="التاريخ">
+                      <WsInput
                         type="date"
                         value={violationDetails.date}
                         onChange={(event) => setViolationDetails((prev) => ({ ...prev, date: event.target.value }))}
-                        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm shadow-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/20"
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold text-slate-700">الوقت</label>
-                      <input
+                    </WsField>
+                    <WsField label="الوقت">
+                      <WsInput
                         type="time"
                         value={violationDetails.time}
                         onChange={(event) => setViolationDetails((prev) => ({ ...prev, time: event.target.value }))}
-                        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm shadow-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/20"
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold text-slate-700">الموقع</label>
-                      <select
+                    </WsField>
+                    <WsField label="الموقع *">
+                      <WsSelect
                         value={violationDetails.location}
                         onChange={(event) => setViolationDetails((prev) => ({ ...prev, location: event.target.value }))}
-                        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm shadow-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/20"
                       >
                         <option value="" disabled>اختر موقع المخالفة</option>
                         {BEHAVIOR_LOCATIONS.map((location) => (
                           <option key={location} value={location}>{location}</option>
                         ))}
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold text-slate-700">المبلغ عن الحالة</label>
-                      <input
-                        type="text"
-                        value={referral.referred_by?.name || 'غير محدد'}
-                        disabled
-                        className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 text-sm text-slate-600"
-                      />
-                    </div>
-                    <div className="md:col-span-2 space-y-2">
-                      <label className="text-sm font-semibold text-slate-700">الوصف التفصيلي</label>
-                      <textarea
-                        value={violationDetails.description}
-                        onChange={(event) => setViolationDetails((prev) => ({ ...prev, description: event.target.value }))}
-                        rows={4}
-                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/20"
-                        placeholder="أدخل وصفاً مختصراً للحالة"
-                      />
-                    </div>
+                      </WsSelect>
+                    </WsField>
+                    <WsField label="المبلغ عن الحالة">
+                      <WsInput type="text" value={referral.referred_by?.name || 'غير محدد'} disabled />
+                    </WsField>
                   </div>
-                )}
+                  <WsField label="الوصف التفصيلي">
+                    <WsTextarea
+                      value={violationDetails.description}
+                      onChange={(event) => setViolationDetails((prev) => ({ ...prev, description: event.target.value }))}
+                      rows={4}
+                      placeholder="أدخل وصفاً مختصراً للحالة"
+                    />
+                  </WsField>
+                </>
+              )}
 
-                {/* الخطوة 3: الإجراءات المقترحة */}
-                {violationRecordStep === 3 && (
-                  <div className="space-y-4">
-                    <div className="rounded-2xl border border-sky-200 bg-sky-50/60 p-4 text-sm text-sky-700">
-                      يتم تحديد الإجراء تلقائياً بناءً على سجل الطالب. يمكن تحديث حالة التنفيذ لاحقاً من صفحة تفاصيل المخالفة.
-                    </div>
+              {/* الخطوة 3 */}
+              {violationRecordStep === 3 && (
+                <>
+                  <WsAlert tone="info" boxed>
+                    يتم تحديد الإجراء تلقائياً بناءً على سجل الطالب. يمكن تحديث حالة التنفيذ لاحقاً من صفحة تفاصيل المخالفة.
+                  </WsAlert>
 
-                    {targetProcedure && (
-                      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                        <div className="flex items-start gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
-                            <span className="font-bold text-red-600">{targetProcedure.step}</span>
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-slate-900">{targetProcedure.title}</h4>
-                            <p className="text-sm text-slate-600 mt-1">{targetProcedure.description}</p>
+                  <EscalationLadder
+                    procedures={availableProcedures}
+                    occurrence={studentViolationOccurrence}
+                    target={targetProcedure}
+                  />
 
-                          </div>
-                        </div>
+                  <div>
+                    <p className="ws-label" style={{ marginBottom: 6 }}>الإجراءات الإضافية</p>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 8,
+                        border: '1px solid var(--ws-border)',
+                        borderRadius: 10,
+                        padding: 10,
+                      }}
+                    >
+                      <div>
+                        <p style={{ margin: 0, fontSize: 12, fontWeight: 700 }}>إرسال إشعار لولي الأمر</p>
+                        <p style={{ margin: '2px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                          سيتم إرسال رسالة واتساب لولي الأمر
+                        </p>
                       </div>
-                    )}
-
-                    <div className="space-y-3 pt-4">
-                      <p className="text-sm font-semibold text-slate-700">الإجراءات الإضافية</p>
-
-                      <label className="flex items-center gap-3 p-4 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50">
-                        <input
-                          type="checkbox"
-                          checked={sendParentMessage}
-                          onChange={(e) => setSendParentMessage(e.target.checked)}
-                          className="w-5 h-5 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                        />
-                        <div>
-                          <span className="text-sm font-medium text-slate-700">إرسال إشعار لولي الأمر</span>
-                          <p className="text-xs text-slate-500">سيتم إرسال رسالة واتساب لولي الأمر</p>
-                        </div>
-                      </label>
-
-                      {sendParentMessage && (
-                        <textarea
+                      <WsSwitch checked={sendParentMessage} onChange={setSendParentMessage} />
+                    </div>
+                    {sendParentMessage && (
+                      <div style={{ marginTop: 6 }}>
+                        <WsTextarea
                           value={parentMessage}
                           onChange={(e) => setParentMessage(e.target.value)}
                           placeholder="نص الرسالة لولي الأمر (اختياري - سيتم استخدام نص افتراضي)..."
                           rows={2}
-                          className="w-full rounded-xl border border-sky-200 bg-white px-4 py-3 text-sm focus:border-sky-500 focus:outline-none"
                         />
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* الخطوة 4: المراجعة والتأكيد */}
-                {violationRecordStep === 4 && (
-                  <div className="space-y-4">
-                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 text-sm text-emerald-700">
-                      راجع البيانات التالية قبل الحفظ النهائي. سيتم تسجيل المخالفة في سجل المخالفات وربطها بهذه الإحالة.
-                    </div>
-
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
-                        <h3 className="text-sm font-semibold text-slate-700">بيانات الطالب</h3>
-                        <div className="mt-3 space-y-2 text-sm text-muted">
-                          <p>
-                            <span className="font-semibold text-slate-900">الاسم:</span> {referral.student?.name}
-                          </p>
-                          <p>
-                            <span className="font-semibold text-slate-900">الفصل:</span> {referral.student?.classroom?.name}
-                          </p>
-                          <p>
-                            <span className="font-semibold text-slate-900">المخالفة رقم:</span> {studentViolationOccurrence}
-                          </p>
-                        </div>
                       </div>
-
-                      <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
-                        <h3 className="text-sm font-semibold text-slate-700">تفاصيل المخالفة</h3>
-                        <div className="mt-3 space-y-2 text-sm text-muted">
-                          {selectedDegree && (
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-slate-900">الدرجة:</span>
-                              <ViolationBadge degree={selectedDegree} size="sm" />
-                            </div>
-                          )}
-                          <p>
-                            <span className="font-semibold text-slate-900">النوع:</span> {selectedViolationType}
-                          </p>
-                          <p>
-                            <span className="font-semibold text-slate-900">التاريخ:</span> {violationDetails.date}
-                          </p>
-                          <p>
-                            <span className="font-semibold text-slate-900">الوقت:</span> {violationDetails.time}
-                          </p>
-                          <p>
-                            <span className="font-semibold text-slate-900">الموقع:</span> {violationDetails.location}
-                          </p>
-                          <p>
-                            <span className="font-semibold text-slate-900">المبلغ:</span> {referral.referred_by?.name || 'غير محدد'}
-                          </p>
-                        </div>
-                      </div>
-
-                      {targetProcedure && (
-                        <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
-                          <h3 className="text-sm font-semibold text-slate-700">الإجراء المطبق</h3>
-                          <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50/70 p-3">
-                            <div className="font-semibold text-slate-900">{targetProcedure.title}</div>
-                            <p className="mt-1 text-xs text-muted">{targetProcedure.description}</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    )}
                   </div>
-                )}
-              </div>
-
-              {/* أزرار التنقل */}
-              <div className="border-t border-slate-200 px-6 py-3 bg-white rounded-b-3xl">
-                <div className="flex items-center justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={handleViolationPrevStep}
-                    className="flex items-center gap-1 px-4 py-2 text-sm border border-slate-200 rounded-lg hover:bg-slate-50"
-                    disabled={violationRecordStep === 1}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                    السابق
-                  </button>
-
-                  {violationRecordStep < 4 ? (
-                    <button
-                      type="button"
-                      onClick={handleViolationNextStep}
-                      className="flex items-center gap-1 px-6 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700"
-                    >
-                      التالي
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleSubmitViolation}
-                      disabled={isCreatingViolation}
-                      className="flex items-center gap-2 px-6 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
-                    >
-                      {isCreatingViolation ? (
-                        <>
-                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                          جاري الحفظ...
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle className="h-4 w-4" />
-                          حفظ المخالفة
-                        </>
-                      )}
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Document Modal */}
-      {showDocumentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md bg-white rounded-xl p-6 m-4">
-            <h3 className="font-semibold text-lg text-slate-900 mb-4">إنشاء مستند</h3>
-
-            <select
-              value={selectedDocType}
-              onChange={(e) => setSelectedDocType(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-slate-900 focus:border-sky-500 focus:outline-none mb-4"
-            >
-              <option value="">اختر نوع المستند...</option>
-              {DOCUMENT_TYPES.map((type) => (
-                <option key={type.value} value={type.value}>{type.label}</option>
-              ))}
-            </select>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => { setShowDocumentModal(false); setSelectedDocType(''); }}
-                className="flex-1 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                إلغاء
-              </button>
-              <button
-                onClick={handleGenerateDocument}
-                disabled={!selectedDocType || documentMutation.isPending}
-                className="flex-1 rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50"
-              >
-                إنشاء
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md bg-white rounded-xl p-6 m-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
-                <Trash2 className="h-6 w-6 text-red-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-lg text-slate-900">تأكيد الحذف</h3>
-                <p className="text-sm text-slate-500">هل أنت متأكد من حذف هذه الإحالة؟</p>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-lg bg-amber-50 border border-amber-100 mb-4">
-              <p className="text-sm text-amber-800">
-                <i className="bi bi-exclamation-triangle ml-1" />
-                سيتم حذف الإحالة وجميع السجلات والمستندات المرتبطة بها. هذا الإجراء لا يمكن التراجع عنه.
-              </p>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                إلغاء
-              </button>
-              <button
-                onClick={handleDeleteReferral}
-                disabled={deleteMutation.isPending}
-                className="flex-1 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-              >
-                {deleteMutation.isPending ? 'جاري الحذف...' : 'تأكيد الحذف'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Parent Message Modal */}
-      {showParentMessageModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-bold text-slate-900 mb-4">إشعار ولي الأمر</h3>
-
-            {/* Message Preview */}
-            <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-              <div className="text-sm text-slate-700 whitespace-pre-wrap">
-                {buildCompleteMessage()}
-              </div>
-            </div>
-
-            {/* Editable Message Section */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                محتوى الرسالة
-              </label>
-              <textarea
-                value={parentMessageText}
-                onChange={(e) => setParentMessageText(e.target.value)}
-                className="w-full min-h-[120px] rounded-lg border border-slate-300 p-3 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200 resize-none"
-                placeholder="اكتب رسالتك هنا..."
-              />
-            </div>
-
-            {/* Meeting Date and Reply Options Section */}
-            <div className="mb-4 flex gap-2">
-              {!meetingDate ? (
-                <button
-                  onClick={() => setShowDatePicker(true)}
-                  className="flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-medium text-sky-700 hover:bg-sky-100"
-                >
-                  <i className="bi bi-calendar-plus" />
-                  إضافة موعد
-                </button>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="date"
-                    value={meetingDate}
-                    onChange={(e) => setMeetingDate(e.target.value)}
-                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
-                  />
-                  <button
-                    onClick={() => setMeetingDate(null)}
-                    className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100"
-                  >
-                    <i className="bi bi-x-lg" />
-                  </button>
-                </div>
+                </>
               )}
 
-              {/* Enable Reply Button */}
-              <button
-                onClick={() => setEnableReply(!enableReply)}
-                className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${enableReply
-                  ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'
-                  : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
-                  }`}
-              >
-                <i className={`bi ${enableReply ? 'bi-check-circle-fill' : 'bi-reply'}`} />
-                استقبال الرد
-              </button>
+              {/* الخطوة 4 */}
+              {violationRecordStep === 4 && (
+                <>
+                  <WsAlert tone="warn" boxed>
+                    راجع البيانات قبل الحفظ. ستُسجَّل المخالفة في سجل المخالفات وتُربط بهذه الإحالة، و<b>تُغلق الإحالة</b>.
+                  </WsAlert>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <div style={{ border: '1px solid var(--ws-border)', borderRadius: 10, padding: 10 }}>
+                      <p className="ws-label" style={{ marginBottom: 6 }}>بيانات الطالب</p>
+                      <WsFactsList>
+                        <WsFactRow label="الاسم">{referral.student?.name}</WsFactRow>
+                        <WsFactRow label="الفصل">{referral.student?.classroom?.name}</WsFactRow>
+                        <WsFactRow label="المخالفة رقم">{studentViolationOccurrence}</WsFactRow>
+                      </WsFactsList>
+                    </div>
+                    <div style={{ border: '1px solid var(--ws-border)', borderRadius: 10, padding: 10 }}>
+                      <p className="ws-label" style={{ marginBottom: 6 }}>تفاصيل المخالفة</p>
+                      <WsFactsList>
+                        <WsFactRow label="الدرجة">
+                          {selectedDegree && <ViolationBadge degree={selectedDegree} size="sm" />}
+                        </WsFactRow>
+                        <WsFactRow label="النوع">{selectedViolationType}</WsFactRow>
+                        <WsFactRow label="التاريخ">{violationDetails.date}</WsFactRow>
+                        <WsFactRow label="الوقت">{violationDetails.time}</WsFactRow>
+                        <WsFactRow label="الموقع">{violationDetails.location || '—'}</WsFactRow>
+                        <WsFactRow label="المبلغ">{referral.referred_by?.name || 'غير محدد'}</WsFactRow>
+                      </WsFactsList>
+                    </div>
+                  </div>
+
+                  <EscalationLadder
+                    procedures={availableProcedures}
+                    occurrence={studentViolationOccurrence}
+                    target={targetProcedure}
+                  />
+                </>
+              )}
             </div>
 
-            {/* Date Picker Modal */}
-            {showDatePicker && (
-              <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 p-4">
-                <div className="rounded-xl bg-white p-4 shadow-xl">
-                  <h4 className="text-sm font-semibold text-slate-900 mb-3">اختر تاريخ الموعد</h4>
-                  <input
-                    type="date"
-                    onChange={(e) => {
-                      setMeetingDate(e.target.value)
-                      setShowDatePicker(false)
+            <footer className="ws-modal__foot" style={{ justifyContent: 'space-between' }}>
+              <WsBtn icon={ChevronRight} onClick={handleViolationPrevStep} disabled={violationRecordStep === 1}>
+                السابق
+              </WsBtn>
+              {violationRecordStep < 4 ? (
+                <WsBtn variant="primary" icon={ChevronLeft} onClick={handleViolationNextStep}>التالي</WsBtn>
+              ) : (
+                <WsBtn
+                  variant="danger"
+                  icon={CheckCircle2}
+                  onClick={handleSubmitViolation}
+                  disabled={isCreatingViolation}
+                >
+                  {isCreatingViolation ? 'جاري الحفظ...' : 'حفظ المخالفة وإغلاق الإحالة'}
+                </WsBtn>
+              )}
+            </footer>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ تأكيد الحذف ═══ */}
+      {showDeleteConfirm && (
+        <div className="ws-modal" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="ws-modal__panel" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
+            <header className="ws-modal__head">
+              <h3 className="ws-modal__title">تأكيد الحذف</h3>
+              <p className="ws-modal__sub">هل أنت متأكد من حذف هذه الإحالة؟</p>
+            </header>
+            <div className="ws-modal__body">
+              <WsAlert tone="warn" boxed>
+                سيتم حذف الإحالة وجميع السجلات والمستندات المرتبطة بها. هذا الإجراء لا يمكن التراجع عنه.
+              </WsAlert>
+            </div>
+            <footer className="ws-modal__foot">
+              <WsBtn onClick={() => setShowDeleteConfirm(false)}>إلغاء</WsBtn>
+              <WsBtn variant="danger" icon={Trash2} onClick={handleDeleteReferral} disabled={deleteMutation.isPending}>
+                {deleteMutation.isPending ? 'جاري الحذف...' : 'تأكيد الحذف'}
+              </WsBtn>
+            </footer>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ إشعار ولي الأمر — فقاعة واتساب حيّة ═══ */}
+      {showParentMessageModal && (
+        <div className="ws-modal" onClick={() => setShowParentMessageModal(false)}>
+          <div className="ws-modal__panel" style={{ maxWidth: 720 }} onClick={(e) => e.stopPropagation()}>
+            <header className="ws-modal__head">
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                <div>
+                  <h3 className="ws-modal__title">إشعار ولي الأمر</h3>
+                  <p className="ws-modal__sub">تُرسل عبر واتساب إلى رقم ولي الأمر المسجَّل</p>
+                </div>
+                <WsIconBtn icon={X} label="إغلاق" onClick={() => setShowParentMessageModal(false)} />
+              </div>
+            </header>
+
+            <div className="ws-modal__body">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                {/* المحرر */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <WsField label="محتوى الرسالة">
+                    <WsTextarea
+                      value={parentMessageText}
+                      onChange={(e) => setParentMessageText(e.target.value)}
+                      rows={6}
+                      placeholder="اكتب رسالتك هنا..."
+                      autoFocus
+                    />
+                  </WsField>
+
+                  <WsField label="موعد الحضور (اختياري)">
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <WsInput
+                        type="date"
+                        value={meetingDate ?? ''}
+                        min={new Date().toISOString().split('T')[0]}
+                        onChange={(e) => setMeetingDate(e.target.value || null)}
+                        style={{ flex: 1 }}
+                      />
+                      {meetingDate && (
+                        <WsIconBtn icon={X} label="إزالة الموعد" onClick={() => setMeetingDate(null)} style={{ color: TONES.red.tx }} />
+                      )}
+                    </div>
+                  </WsField>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                      border: '1px solid var(--ws-border)',
+                      borderRadius: 10,
+                      padding: 10,
                     }}
-                    className="rounded-lg border border-slate-300 px-3 py-2 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
-                    min={new Date().toISOString().split('T')[0]}
-                  />
-                  <button
-                    onClick={() => setShowDatePicker(false)}
-                    className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
                   >
-                    إلغاء
-                  </button>
+                    <div>
+                      <p style={{ margin: 0, fontSize: 12, fontWeight: 700 }}>استقبال الرد</p>
+                      <p style={{ margin: '2px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                        يُلحق النظام رابط الرد بالرسالة
+                      </p>
+                    </div>
+                    <WsSwitch checked={enableReply} onChange={setEnableReply} />
+                  </div>
+                </div>
+
+                {/* الفقاعة الحيّة — كما تصل هاتف ولي الأمر فعلاً */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <p className="ws-label" style={{ margin: 0 }}>ما سيصل ولي الأمر</p>
+                  <div
+                    style={{
+                      flex: 1,
+                      background: 'var(--ws-surface-2)',
+                      border: '1px solid var(--ws-hairline)',
+                      borderRadius: 10,
+                      padding: 10,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 6,
+                    }}
+                  >
+                    {parentMessageText.trim() ? (
+                      <div
+                        style={{
+                          background: TONES.green.bg,
+                          border: `1px solid ${TONES.green.bd}`,
+                          borderRadius: '10px 10px 10px 2px',
+                          padding: '8px 10px',
+                          fontSize: 12,
+                          lineHeight: 1.8,
+                          whiteSpace: 'pre-wrap',
+                          color: 'var(--ws-text)',
+                        }}
+                      >
+                        {composedMessage}
+                        {enableReply && (
+                          <span style={{ display: 'block', marginTop: 6, fontSize: 10.5, color: 'var(--ws-text-2)', fontStyle: 'italic' }}>
+                            سيُلحق النظام رابط الرد هنا
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <WsEmpty icon={MessageCircle}>اكتب الرسالة لترى ما سيصل</WsEmpty>
+                    )}
+                  </div>
+                  {/* العدّاد يقيس الناتج المُركَّب لا المكتوب — الخادم يفرض الحد على المُركَّب */}
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: 10.5,
+                      textAlign: 'left',
+                      color: overLimit ? TONES.red.tx : 'var(--ws-text-2)',
+                      fontWeight: overLimit ? 700 : 400,
+                    }}
+                  >
+                    {messageLength}/{PARENT_MESSAGE_LIMIT}
+                    {overLimit && ' — تجاوزت الحد، سيرفضها الخادم'}
+                  </p>
                 </div>
               </div>
-            )}
-
-            <textarea
-              value={parentMessageText}
-              onChange={(e) => setParentMessageText(e.target.value)}
-              className="w-full min-h-[150px] rounded-lg border border-slate-200 p-3 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
-              placeholder="اكتب رسالة لولي أمر الطالب..."
-              style={{ display: 'none' }}
-            />
-
-            <div className="text-xs text-slate-500 mt-2">
-              سيتم إرسال الرسالة عبر WhatsApp إلى رقم ولي الأمر
             </div>
 
-            <div className="flex gap-3 mt-4">
-              <button
-                onClick={handleSendParentNotification}
-                disabled={parentNotifyMutation.isPending || !parentMessageText.trim()}
-                className="flex-1 rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50"
-              >
-                {parentNotifyMutation.isPending ? (
-                  <i className="bi bi-arrow-repeat animate-spin" />
-                ) : (
-                  'إرسال الإشعار'
-                )}
-              </button>
-              <button
+            <footer className="ws-modal__foot">
+              <WsBtn
                 onClick={() => {
                   setShowParentMessageModal(false)
                   setParentMessageText('')
                   setMeetingDate(null)
                 }}
-                className="flex-1 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
               >
                 إلغاء
-              </button>
-            </div>
+              </WsBtn>
+              <WsBtn
+                variant="primary"
+                icon={Send}
+                onClick={handleSendParentNotification}
+                disabled={parentNotifyMutation.isPending || !parentMessageText.trim()}
+              >
+                {parentNotifyMutation.isPending ? 'جارٍ الإرسال...' : 'إرسال الإشعار'}
+              </WsBtn>
+            </footer>
           </div>
         </div>
       )}
@@ -1660,6 +1529,94 @@ export function AdminReferralDetailPage() {
           }}
         />
       )}
+    </WsPage>
+  )
+}
+
+/**
+ * سلّم التصعيد — القلب التربوي للنموذج كان مدفوناً خلف سطر نصّي.
+ * targetProcedure يختار بالتكرار ثم **يسقط على آخر عنصر أي الأقسى** — تصعيد تلقائي
+ * يقرّر عقوبة الطالب وهو غير مرئي. السلّم يجيب: لماذا هذا الإجراء؟ وماذا لو تكرر؟
+ */
+function EscalationLadder({
+  procedures,
+  occurrence,
+  target,
+}: {
+  procedures: BehaviorProcedureDefinition[]
+  occurrence: number
+  target: BehaviorProcedureDefinition | null
+}) {
+  if (procedures.length === 0) return null
+
+  return (
+    <div>
+      <p className="ws-label" style={{ marginBottom: 6 }}>سلّم التصعيد</p>
+      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+        {procedures.map((procedure) => {
+          const isTarget = target?.step === procedure.step
+          const isPast = !isTarget && procedure.step < (target?.step ?? 0)
+          return (
+            <span
+              key={procedure.step}
+              title={procedure.description}
+              style={{
+                flex: '1 1 130px',
+                minWidth: 110,
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 6,
+                borderRadius: 8,
+                padding: '6px 8px',
+                background: isTarget ? TONES.red.bg : 'transparent',
+                border: `1px ${isTarget ? 'solid' : isPast ? 'solid' : 'dashed'} ${isTarget ? TONES.red.tx : 'var(--ws-border)'}`,
+                boxShadow: isTarget ? `0 0 0 1px ${TONES.red.tx}` : undefined,
+                opacity: isTarget ? 1 : isPast ? 0.6 : 0.45,
+              }}
+            >
+              <span
+                style={{
+                  width: 18,
+                  height: 18,
+                  borderRadius: '50%',
+                  flexShrink: 0,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 10,
+                  fontWeight: 800,
+                  background: isTarget ? TONES.red.tx : 'var(--ws-border)',
+                  color: isTarget ? '#fff' : 'var(--ws-text-2)',
+                }}
+              >
+                {procedure.step}
+              </span>
+              <span style={{ minWidth: 0 }}>
+                <span
+                  style={{
+                    display: 'block',
+                    fontSize: 10.5,
+                    fontWeight: isTarget ? 800 : 600,
+                    color: isTarget ? TONES.red.tx : 'var(--ws-text-2)',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {procedure.title}
+                </span>
+                <span style={{ display: 'block', fontSize: 9, color: 'var(--ws-text-2)' }}>
+                  {isTarget ? 'سيُطبَّق الآن' : isPast ? 'سبق تطبيقه' : 'إن تكررت'}
+                </span>
+              </span>
+            </span>
+          )
+        })}
+      </div>
+      <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--ws-text-2)' }}>
+        المخالفة رقم <b style={{ color: TONES.red.tx }}>{occurrence}</b> للطالب من نفس النوع والدرجة
+        {target && <> — لذلك <b>{target.title}</b></>}
+      </p>
     </div>
   )
 }
