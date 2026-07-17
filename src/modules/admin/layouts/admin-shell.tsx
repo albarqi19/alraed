@@ -49,6 +49,7 @@ const WORKSPACE_ROUTES = [
   '/admin/schedule-simulator',
   // عائلة الإحالات كاملة محوّلة (القائمة بمساراتها الثلاثة + التفاصيل)
   '/admin/referrals',
+  '/admin/theme',
 ]
 
 export function AdminShell() {
