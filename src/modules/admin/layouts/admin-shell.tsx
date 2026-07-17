@@ -59,6 +59,7 @@ const WORKSPACE_ROUTES = [
   '/admin/dashboard',
   '/admin/subjects',
   '/admin/barcode-print',
+  '/admin/barcode-settings',
 ]
 
 /**
