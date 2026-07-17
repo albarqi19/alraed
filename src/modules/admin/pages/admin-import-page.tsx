@@ -7,6 +7,7 @@ import {
   usePreviewImportStudentsMutation,
 } from '../hooks'
 import type { ImportStudentsPreview, ImportSummary, ImportTeachersSummary } from '../types'
+import { ImportCover } from './import-ui'
 import { useToast } from '@/shared/feedback/use-toast'
 import { TimeTableImportDialog } from '../components/timetable-import-dialog'
 import {
@@ -748,6 +749,9 @@ export function AdminImportPage() {
 
               {studentPreview && (
                 <section className="space-y-3">
+                  {/* «الغِطاء» — الملف غطاءٌ، ومن لم يغطّه سقط. يفضح لغم القالب
+                      بنفس الهندسة: ملف لا يُقرأ = غطاء صفر = السجل كله منكشف */}
+                  <ImportCover preview={studentPreview} armed={studentOptions.delete_missing} />
                   <StudentPreviewSummary preview={studentPreview} />
 
                   {/* Options */}

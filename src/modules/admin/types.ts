@@ -875,15 +875,20 @@ export interface ImportStudentsPreview {
   to_be_deleted_count: number
   errors_count: number
   total_students: number
+  /** عدد الأسماء في السجل — مقام «الغِطاء» الثابت */
+  total_in_database?: number
+  /** عدد الصفوف في الملف المرفوع */
+  total_in_file?: number
   new_students: StudentRecord[]
   existing_students: Array<{
     id: number
     current_data: StudentRecord
     new_data: StudentRecord
     changes: Record<string, ImportPreviewStudentChange>
+    has_changes?: boolean
     attendance_count?: number
   }>
-  to_be_deleted: StudentRecord[]
+  to_be_deleted: Array<StudentRecord & { attendance_count?: number; has_care_file?: boolean }>
   errors: string[]
 }
 
