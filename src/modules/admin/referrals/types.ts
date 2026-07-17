@@ -68,6 +68,8 @@ export interface StudentReferral {
   referral_type_label: string
   target_role: ReferralTargetRole
   target_role_label: string
+  /** عنوان الإحالة كما كتبه المحيل — في $fillable ويصل في الحمولة (كان ناقصاً من الإعلان) */
+  title?: string
   description: string
   status: ReferralStatus
   status_label: string
@@ -77,6 +79,8 @@ export interface StudentReferral {
   assigned_to?: User  // من الـ API (snake_case of assignedTo relation)
   assigned_to_user?: User  // للتوافق
   received_by?: User  // من الـ API
+  /** لحظة استلام الإحالة — في $casts كـ datetime ويصل في الحمولة (كان ناقصاً من الإعلان) */
+  received_at?: string
   parent_notified: boolean
   parent_notified_at?: string
   behavior_violation_id?: number

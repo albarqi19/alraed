@@ -47,6 +47,14 @@ const WORKSPACE_ROUTES = [
   '/admin/points-program',
   '/admin/e-store',
   '/admin/schedule-simulator',
+  '/admin/referrals/guidance',
+  '/admin/referrals/behavioral',
+]
+
+// مسارات تُطابَق تماماً بلا أبنائها — لأن الابن صفحة أخرى غير محوّلة
+// (`/admin/referrals` محوّلة بينما `/admin/referrals/:id` ما زالت بتمرير طبيعي)
+const WORKSPACE_ROUTES_EXACT = [
+  '/admin/referrals',
 ]
 
 export function AdminShell() {
@@ -202,9 +210,10 @@ export function AdminShell() {
     }))
   }
 
-  const isWorkspaceRoute = WORKSPACE_ROUTES.some((route) =>
-    location.pathname === route || location.pathname.startsWith(route + '/'),
-  )
+  const isWorkspaceRoute =
+    WORKSPACE_ROUTES.some((route) =>
+      location.pathname === route || location.pathname.startsWith(route + '/'),
+    ) || WORKSPACE_ROUTES_EXACT.includes(location.pathname)
 
   const isOnSubscriptionPage = location.pathname.includes('/admin/subscription')
   const subscriptionEndsAt = admin?.school?.subscription_ends_at ?? null
