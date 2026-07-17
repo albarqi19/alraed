@@ -284,3 +284,105 @@ export interface AdvancedReferralStats {
 export interface AdvancedReferralStatsResponse {
   data: AdvancedReferralStats
 }
+
+/* ═══════════════════════════════════════════════════════════
+   إحالات الغياب (تبويب «إحالات النظام»)
+   ═══════════════════════════════════════════════════════════ */
+
+export interface AbsenceReferral {
+  id: number
+  school_id: number
+  student_id: number
+  referral_id: number | null
+  absence_type: 'consecutive' | 'repeated'
+  total_absence_days: number
+  consecutive_days: number | null
+  absence_start_date: string
+  last_absence_date: string
+  action_level: '3days' | '5days' | '10days'
+  counselor_notified: boolean
+  counselor_notified_at: string | null
+  learning_plan_created: boolean
+  learning_plan_created_at: string | null
+  protection_center_notified: boolean
+  protection_center_notified_at: string | null
+  parent_summoned: boolean
+  parent_summoned_at: string | null
+  commitment_taken: boolean
+  commitment_taken_at: string | null
+  committee_referred: boolean
+  committee_referred_at: string | null
+  reported_to_1919: boolean
+  reported_to_1919_at: string | null
+  education_dept_notified: boolean
+  education_dept_notified_at: string | null
+  status: 'active' | 'resolved' | 'escalated'
+  notes: string | null
+  created_at: string
+  student?: {
+    id: number
+    name: string
+    grade?: string
+    class_name?: string
+  }
+  referral?: {
+    id: number
+    referral_number: string
+    status: string
+  }
+  absence_type_label?: string
+  action_level_label?: string
+  status_label?: string
+  /** ⚠️ الثلاثة التالية accessors بلا $appends — لا تصل قط. لا يُبنى عليها شيء (انظر absence-ladder.ts) */
+  requires_protection_center?: boolean
+  next_action_required?: string | null
+  actions_progress?: number
+}
+
+export interface AbsenceReferralStats {
+  consecutive: { total: number; '3days': number; '5days': number; '10days': number }
+  repeated: { total: number; '3days': number; '5days': number; '10days': number }
+  /** النوعان معاً — scopeRequiringAction لا يُقيَّد بنوع الغياب */
+  requiring_action: number
+}
+
+export interface ViolationStudent {
+  student_id: number
+  student_name: string
+  grade: string
+  class_name: string
+  violation_count: number
+  last_violation_date: string
+}
+
+export interface LateStudent {
+  student_id: number
+  student_name: string
+  grade: string
+  class_name: string
+  late_count: number
+  last_late_date: string
+  action_level: 'warning' | 'parent_summon' | 'committee'
+}
+
+/** per_page يصل في meta للنقطتين وإن لم يكن معلَناً — الرقم ١٥ السحري كان يُكتب بيداً */
+export interface WatchListMeta {
+  total: number
+  current_page: number
+  last_page: number
+  per_page: number
+}
+
+export interface AbsenceReferralFilters {
+  absence_type?: string
+  status?: string
+  action_level?: string
+  requiring_action?: boolean
+  page?: number
+  per_page?: number
+}
+
+export interface ProcessAbsencesResult {
+  consecutive_referrals?: number
+  repeated_referrals?: number
+}

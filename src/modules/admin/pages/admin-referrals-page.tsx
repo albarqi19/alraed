@@ -40,11 +40,12 @@ import {
   useAdminReferralsQuery,
   useAdminReferralStatsQuery,
   useReceiveReferralMutation,
+  useAbsenceReferralStatsQuery,
 } from '../referrals/hooks'
 import type { StudentReferral, ReferralFilters } from '../referrals/types'
 import { ReferralStatsModal } from '../referrals/components/ReferralStatsModal'
 import { ReferralSettingsModal } from '../referrals/components/ReferralSettingsModal'
-import { AbsenceReferralsPanel, useAbsenceReferralStatsQuery } from '../referrals/components/AbsenceReferralsPanel'
+import { AbsenceReferralsPanel } from '../referrals/components/AbsenceReferralsPanel'
 import { CustodyLine, StatusChip, TypeChip, PriorityMeter, sinceText, isStale } from './referrals-ui'
 
 // نوع التبويب
@@ -166,7 +167,10 @@ export function AdminReferralsPage() {
     return {}
   }, [isGuidancePage, isBehavioralPage])
 
-  const { data: referralsData, isLoading, error } = useAdminReferralsQuery(tabFilters)
+  // تبويب النظام لا يقرأ من هذين حرفاً — أحدهما بـper_page:1000
+  const { data: referralsData, isLoading, error } = useAdminReferralsQuery(tabFilters, {
+    enabled: activeTab !== 'system',
+  })
 
   // فلترة الإحالات محلياً بناءً على الصفوف المحددة
   const referrals = useMemo(() => {
@@ -203,7 +207,9 @@ export function AdminReferralsPage() {
     return base
   }, [isGuidancePage, isBehavioralPage, activeTab])
 
-  const { data: allReferrals } = useAdminReferralsQuery(allReferralsFilters)
+  const { data: allReferrals } = useAdminReferralsQuery(allReferralsFilters, {
+    enabled: activeTab !== 'system',
+  })
   const { data: stats } = useAdminReferralStatsQuery(statsFilters)
   const { data: absenceStats } = useAbsenceReferralStatsQuery()
   const receiveMutation = useReceiveReferralMutation()
@@ -584,12 +590,11 @@ export function AdminReferralsPage() {
           </WsSideCol>
         )}
 
-        <WsMain>
-          {activeTab === 'system' ? (
-            <WsBlock fill scroll title="إحالات النظام" icon={Bot}>
-              <AbsenceReferralsPanel />
-            </WsBlock>
-          ) : (
+        {activeTab === 'system' ? (
+          /* اللوحة تُخرج عمودها وWsMain بنفسها — صفر رفع حالة وصفر props */
+          <AbsenceReferralsPanel />
+        ) : (
+          <WsMain>
             <WsBlock
               fill
               title="الإحالات"
@@ -755,8 +760,8 @@ export function AdminReferralsPage() {
                 </WsEmpty>
               )}
             </WsBlock>
-          )}
-        </WsMain>
+          </WsMain>
+        )}
       </WsLayout>
 
       {/* النوافذ العائمة */}

@@ -13,6 +13,13 @@ import type {
   PaginatedReferralsResult,
   AdvancedReferralStats,
   AdvancedReferralStatsResponse,
+  AbsenceReferral,
+  AbsenceReferralStats,
+  AbsenceReferralFilters,
+  ViolationStudent,
+  LateStudent,
+  WatchListMeta,
+  ProcessAbsencesResult,
 } from './types'
 
 const REFERRAL_KEYS = {
@@ -25,7 +32,7 @@ const REFERRAL_KEYS = {
 }
 
 // جلب قائمة الإحالات مع Pagination
-export function useAdminReferralsQuery(filters?: ReferralFilters) {
+export function useAdminReferralsQuery(filters?: ReferralFilters, options?: { enabled?: boolean }) {
   return useQuery<PaginatedReferralsResult>({
     queryKey: REFERRAL_KEYS.list((filters ?? {}) as Record<string, unknown>),
     queryFn: async () => {
@@ -56,6 +63,7 @@ export function useAdminReferralsQuery(filters?: ReferralFilters) {
         },
       }
     },
+    enabled: options?.enabled ?? true,
   })
 }
 
@@ -541,6 +549,102 @@ export function useBulkUpdateTeachersMutation() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: SETTINGS_KEYS.all })
+    },
+  })
+}
+
+/* ═══════════════════════════════════════════════════════════
+   إحالات الغياب — كانت تسكن ملف المكوّن، فاضطُر الأب لاستيراد
+   هوك من مكوّن. الانحراف كان الموقع لا الأسلوب.
+   ═══════════════════════════════════════════════════════════ */
+
+const ABSENCE_KEYS = {
+  all: ['absence-referrals'] as const,
+  list: (filters: Record<string, unknown>) => [...ABSENCE_KEYS.all, 'list', filters] as const,
+  stats: () => ['absence-referral-stats'] as const,
+  violations: (page: number, min: number) => ['violation-students', page, min] as const,
+  late: (page: number, min: number) => ['late-students', page, min] as const,
+}
+
+export function useAbsenceReferralsQuery(filters: AbsenceReferralFilters, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ABSENCE_KEYS.list(filters as Record<string, unknown>),
+    queryFn: async () => {
+      const params = new URLSearchParams()
+      if (filters.absence_type) params.append('absence_type', filters.absence_type)
+      if (filters.status) params.append('status', filters.status)
+      if (filters.action_level) params.append('action_level', filters.action_level)
+      if (filters.requiring_action) params.append('requiring_action', '1')
+      if (filters.page) params.append('page', String(filters.page))
+      if (filters.per_page) params.append('per_page', String(filters.per_page))
+
+      const { data } = await apiClient.get<{ items: AbsenceReferral[]; meta: WatchListMeta }>(
+        `/admin/absence-referrals?${params.toString()}`,
+      )
+      return data
+    },
+    enabled: options?.enabled ?? true,
+  })
+}
+
+export function useAbsenceReferralStatsQuery() {
+  return useQuery({
+    queryKey: ABSENCE_KEYS.stats(),
+    queryFn: async () => {
+      const { data } = await apiClient.get<AbsenceReferralStats>('/admin/absence-referrals/stats')
+      return data
+    },
+  })
+}
+
+export function useViolationStudentsQuery(page: number = 1, minViolations: number = 3) {
+  return useQuery({
+    queryKey: ABSENCE_KEYS.violations(page, minViolations),
+    queryFn: async () => {
+      const { data } = await apiClient.get<{ items: ViolationStudent[]; meta: WatchListMeta }>(
+        `/admin/behavior/most-violated?min_violations=${minViolations}&page=${page}&per_page=15`,
+      )
+      return data
+    },
+  })
+}
+
+export function useLateStudentsQuery(page: number = 1, minLate: number = 5) {
+  return useQuery({
+    queryKey: ABSENCE_KEYS.late(page, minLate),
+    queryFn: async () => {
+      const { data } = await apiClient.get<{ items: LateStudent[]; meta: WatchListMeta }>(
+        `/admin/behavior/most-late?min_late=${minLate}&page=${page}&per_page=15`,
+      )
+      return data
+    },
+  })
+}
+
+export function useUpdateAbsenceActionMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, action, notes }: { id: number; action: string; notes?: string }) => {
+      const { data } = await apiClient.post(`/admin/absence-referrals/${id}/action`, { action, notes })
+      return data as { data?: AbsenceReferral }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ABSENCE_KEYS.all })
+      queryClient.invalidateQueries({ queryKey: ABSENCE_KEYS.stats() })
+    },
+  })
+}
+
+export function useProcessAbsencesMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await apiClient.post('/admin/absence-referrals/process')
+      return data as { data?: ProcessAbsencesResult }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ABSENCE_KEYS.all })
+      queryClient.invalidateQueries({ queryKey: ABSENCE_KEYS.stats() })
     },
   })
 }
