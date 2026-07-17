@@ -1,166 +1,94 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { CalendarClock, CalendarDays, Flag, Sparkles, Timer } from 'lucide-react'
-import { academicCalendarApi, type AcademicWeek } from '@/services/api/academic-calendar'
+import {
+  CalendarCheck,
+  CalendarClock,
+  CalendarDays,
+  CalendarOff,
+  CalendarRange,
+  Flag,
+  FileText,
+  GraduationCap,
+  Info,
+  MessageSquareOff,
+  Play,
+  RefreshCw,
+  Timer,
+  UserX,
+} from 'lucide-react'
+import { academicCalendarApi, type AcademicEvent, type AcademicWeek } from '@/services/api/academic-calendar'
+import {
+  WsPage,
+  WsHeader,
+  WsFact,
+  WsToolbar,
+  WsField,
+  WsSwitch,
+  WsLayout,
+  WsMain,
+  WsSideCol,
+  WsBlock,
+  WsTable,
+  WsAlert,
+  WsEmpty,
+  WsIconBtn,
+  WsBtn,
+  TONES,
+  ToneChip,
+} from '@/shared/workspace'
+import {
+  YearRuler,
+  RulerLegend,
+  useRulerModel,
+  dayTone,
+  eventTone,
+  EVENT_CATEGORY_LABEL,
+  hijriLabel,
+  formatWeekRange,
+  formatNumericDate,
+  formatShortDate,
+  formatCountdown,
+  differenceInDays,
+  getSemesterLabel,
+  startOfDay,
+  localIso,
+  toArabicNumerals,
+} from './academic-calendar-ui'
 
 type CalendarTab = 'first' | 'second' | 'all'
 
-const locale = 'ar-SA'
-const fullDateFormatter = new Intl.DateTimeFormat(locale, { day: '2-digit', month: 'long', year: 'numeric' })
-const shortDateFormatter = new Intl.DateTimeFormat(locale, { day: '2-digit', month: 'long' })
-const numericFormatter = new Intl.DateTimeFormat(locale, { day: '2-digit', month: '2-digit', year: 'numeric' })
-const monthYearFormatter = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' })
-
-// للتاريخ الميلادي بأرقام إنجليزية
-const gregorianNumericFormatter = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
-
-// دالة لتحويل الأرقام الإنجليزية إلى عربية
-const toArabicNumerals = (str: string) => {
-  const arabicNumerals = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩']
-  return str.replace(/\d/g, (digit) => arabicNumerals[parseInt(digit)])
-}
-
 const tabs: Array<{ id: CalendarTab; label: string }> = [
-  { id: 'first', label: 'الفصل الدراسي الأول' },
-  { id: 'second', label: 'الفصل الدراسي الثاني' },
-  { id: 'all', label: 'عرض العام كاملًا' },
+  { id: 'first', label: 'الفصل الأول' },
+  { id: 'second', label: 'الفصل الثاني' },
+  { id: 'all', label: 'العام كاملاً' },
 ]
 
-type MilestoneCategory = 'start' | 'holiday' | 'exam' | 'return' | 'deadline' | 'info'
-
-const categoryMeta: Record<MilestoneCategory, { label: string; badge: string; dot: string }> = {
-  start: {
-    label: 'بداية الفصل',
-    badge: 'border border-emerald-200 bg-emerald-50 text-emerald-700',
-    dot: 'bg-emerald-400',
-  },
-  holiday: {
-    label: 'إجازة / مناسبة',
-    badge: 'border border-amber-200 bg-amber-50 text-amber-700',
-    dot: 'bg-amber-400',
-  },
-  exam: {
-    label: 'اختبارات',
-    badge: 'border border-rose-200 bg-rose-50 text-rose-700',
-    dot: 'bg-rose-400',
-  },
-  return: {
-    label: 'عودة الدراسة',
-    badge: 'border border-sky-200 bg-sky-50 text-sky-700',
-    dot: 'bg-sky-400',
-  },
-  deadline: {
-    label: 'موعد ختامي',
-    badge: 'border border-slate-200 bg-slate-50 text-slate-700',
-    dot: 'bg-slate-400',
-  },
-  info: {
-    label: 'حدث',
-    badge: 'border border-indigo-200 bg-indigo-50 text-indigo-700',
-    dot: 'bg-indigo-400',
-  },
-}
-
-const toDate = (iso: string) => {
-  if (!iso) return new Date(NaN)
-  const date = new Date(`${iso}T00:00:00`)
-  return date
-}
-
-const startOfDay = (date: Date) => {
-  const copy = new Date(date)
-  copy.setHours(0, 0, 0, 0)
-  return copy
-}
-
-const differenceInDays = (iso: string, base: Date) => {
-  if (!iso) return 0
-  const target = startOfDay(toDate(iso))
-  const current = startOfDay(base)
-  const diff = Math.round((target.getTime() - current.getTime()) / 86_400_000)
-  return isNaN(diff) ? 0 : diff
-}
-
-const formatCountdown = (diff: number) => {
-  if (diff === 0) return 'اليوم'
-  if (diff === 1) return 'بعد يوم واحد'
-  if (diff === 2) return 'بعد يومين'
-  if (diff === -1) return 'منذ يوم'
-  if (diff === -2) return 'منذ يومين'
-  if (diff < 0) return `منذ ${Math.abs(diff)} أيام`
-  return `بعد ${diff} أيام`
-}
-
-const formatWeekRange = (startDate: string, endDate: string) => {
-  if (!startDate || !endDate) return ''
-  if (startDate === endDate) {
-    return fullDateFormatter.format(toDate(startDate))
-  }
-
-  const start = toDate(startDate)
-  const end = toDate(endDate)
-
-  if (isNaN(start.getTime()) || isNaN(end.getTime())) return ''
-
-  if (start.getMonth() === end.getMonth()) {
-    const startDay = shortDateFormatter.format(start)
-    const endDay = shortDateFormatter.format(end)
-    const monthLabel = monthYearFormatter.format(start)
-    return `${startDay} - ${endDay} • ${monthLabel}`
-  }
-
-  return `${fullDateFormatter.format(start)} - ${fullDateFormatter.format(end)}`
-}
-
-const formatDateLabel = (iso: string) => {
-  if (!iso) return ''
-  const date = toDate(iso)
-  if (isNaN(date.getTime())) return ''
-  return fullDateFormatter.format(date)
-}
-
-const formatNumericDate = (iso: string) => {
-  if (!iso) return ''
-  const date = toDate(iso)
-  if (isNaN(date.getTime())) return ''
-  return numericFormatter.format(date)
-}
-
-const formatGregorianDate = (iso: string) => {
-  if (!iso) return '—'
-  const date = toDate(iso)
-  if (isNaN(date.getTime())) return '—'
-  return gregorianNumericFormatter.format(date)
-}
-
-const detectNoteCategory = (note?: string | null, dayType?: string): MilestoneCategory => {
-  if (dayType === 'holiday') return 'holiday'
-  if (dayType === 'exam') return 'exam'
-  if (!note) return 'info'
-  if (note.includes('إجازة')) return 'holiday'
-  if (note.includes('اختبار')) return 'exam'
-  if (note.includes('اليوم الوطني')) return 'holiday'
-  if (note.includes('نهاية')) return 'deadline'
-  if (note.includes('عودة')) return 'return'
-  if (note.includes('بداية')) return 'start'
-  return 'info'
-}
-
-const getSemesterLabel = (semester?: 'first' | 'second') => {
-  if (!semester) return ''
-  return semester === 'first' ? 'الفصل الأول' : 'الفصل الثاني'
+const EVENT_ICON: Record<string, typeof Flag> = {
+  start: Play,
+  return: Play,
+  holiday: Flag,
+  exam: FileText,
+  deadline: CalendarClock,
+  info: Info,
 }
 
 export function AdminAcademicCalendarPage() {
   const [selectedTab, setSelectedTab] = useState<CalendarTab | null>(null)
   const [showPreviousWeeks, setShowPreviousWeeks] = useState(false)
+  const [hoveredEventId, setHoveredEventId] = useState<number | null>(null)
 
   const today = new Date()
   const todayTimestamp = startOfDay(today).getTime()
-  const todayIso = today.toISOString().slice(0, 10)
+  // من التوقيت المحلي لا UTC — كانا مصدرين متضاربين لـ«اليوم»
+  const todayIso = localIso(today)
 
   // جلب الفصول الدراسية
-  const { data: semestersData, isLoading: loadingSemesters } = useQuery({
+  const {
+    data: semestersData,
+    isLoading: loadingSemesters,
+    isError: semestersError,
+    refetch: refetchSemesters,
+  } = useQuery({
     queryKey: ['academic-calendar', 'semesters'],
     queryFn: academicCalendarApi.getSemesters,
     staleTime: 60 * 60 * 1000,
@@ -172,474 +100,492 @@ export function AdminAcademicCalendarPage() {
     const current = semestersData.find((s) => s.is_current)
     setSelectedTab((current?.code as CalendarTab) ?? 'first')
   }, [semestersData, selectedTab])
-  
-  // جلب الأسابيع
-  const { data: weeksData, isLoading: loadingWeeks } = useQuery({
-    queryKey: ['academic-calendar', 'weeks', selectedTab === 'all' ? undefined : selectedTab],
-    queryFn: () => academicCalendarApi.getWeeks(selectedTab === 'all' ? undefined : (selectedTab ?? undefined)),
+
+  const semesterParam = selectedTab === 'all' ? undefined : (selectedTab ?? undefined)
+
+  // جلب الأسابيع — enabled يمنع طلباً أولاً بلا فلترة يجلب كل أسابيع كل الأعوام ثم يُرمى
+  const {
+    data: weeksData,
+    isLoading: loadingWeeks,
+    isError: weeksError,
+    refetch: refetchWeeks,
+  } = useQuery({
+    queryKey: ['academic-calendar', 'weeks', semesterParam],
+    queryFn: () => academicCalendarApi.getWeeks(semesterParam),
     staleTime: 60 * 60 * 1000,
+    enabled: selectedTab !== null,
   })
 
-  // جلب الأحداث القادمة
+  // محطات الفصل كلها — المسطرة تحتاجها لتسمية الفجوات ووضع الأوتاد، لا أقرب أربع.
+  // limit صريح: الافتراضي على الخادم ١٠ والأحداث ١٢، فبدونه يُبتلع حدثان صامتاً.
   const { data: eventsData, isLoading: loadingEvents } = useQuery({
-    queryKey: ['academic-calendar', 'upcoming-events'],
-    queryFn: () => academicCalendarApi.getUpcomingEvents(4),
+    queryKey: ['academic-calendar', 'events', semesterParam, 200],
+    queryFn: () => academicCalendarApi.getEvents({ semester: semesterParam, limit: 200 }),
     staleTime: 30 * 60 * 1000,
+    enabled: selectedTab !== null,
   })
 
-  const semesters = semestersData || []
-  const weeks: AcademicWeek[] = weeksData?.data || []
+  const semesters = useMemo(() => semestersData ?? [], [semestersData])
+  const weeks: AcademicWeek[] = useMemo(() => weeksData?.data ?? [], [weeksData])
   const currentWeekFromApi = weeksData?.current_week
-  const upcomingEvents = eventsData || []
+  const events: AcademicEvent[] = useMemo(() => eventsData ?? [], [eventsData])
 
-  const isLoading = loadingSemesters || loadingWeeks || loadingEvents
-
-  // الأسبوع الحالي
-  const currentWeek = useMemo(() => {
-    if (!currentWeekFromApi) return null
-    return weeks.find(w => w.id === currentWeekFromApi.id) || null
-  }, [weeks, currentWeekFromApi])
-
-  // الحدث القادم
-  const nextMilestone = upcomingEvents[0]
-
-  // ملخص الفصول
-  const summaries = useMemo(() => {
-    if (selectedTab === 'all') {
-      const firstSem = semesters.find(s => s.code === 'first')
-      const secondSem = semesters.find(s => s.code === 'second')
-      if (firstSem && secondSem) {
-        return [{
-          id: 'all',
-          title: `العام الدراسي ${firstSem.academic_year}`,
-          startIso: firstSem.start_date,
-          endIso: secondSem.end_date,
-          startHijri: firstSem.start_hijri,
-          endHijri: secondSem.end_hijri,
-          totalWeeks: (firstSem.total_weeks || 0) + (secondSem.total_weeks || 0),
-          totalDays: (firstSem.total_days || 0) + (secondSem.total_days || 0),
-        }]
-      }
-      return []
-    }
-    const sem = semesters.find(s => s.code === selectedTab)
-    if (!sem) return []
-    return [{
-      id: sem.id,
-      title: sem.name,
-      startIso: sem.start_date,
-      endIso: sem.end_date,
-      startHijri: sem.start_hijri,
-      endHijri: sem.end_hijri,
-      totalWeeks: sem.total_weeks,
-      totalDays: sem.total_days,
-    }]
-  }, [selectedTab, semesters])
-
-  // تنظيم الأسابيع - إظهار الحالي والقادم فقط افتراضيًا
-  const { orderedWeeks, currentWeekData, previousWeeksCount } = useMemo((): { orderedWeeks: AcademicWeek[]; currentWeekData: AcademicWeek | null; previousWeeksCount: number } => {
-    const previous: AcademicWeek[] = []
-    const upcoming: AcademicWeek[] = []
+  // تنظيم الأسابيع — التصنيف الثلاثي محفوظ، لكنه يقود العتمة لا ترتيب المصفوفة
+  const { currentWeekData, previousWeeksCount, upcomingCount, pastWeekIds } = useMemo(() => {
+    const past = new Set<number>()
     let current: AcademicWeek | null = null
+    let previous = 0
+    let upcoming = 0
 
     weeks.forEach((week) => {
       const weekStartTimestamp = new Date(week.start_date + 'T00:00:00').getTime()
       const weekEndTimestamp = new Date(week.end_date + 'T23:59:59').getTime()
-      
-      // تحديد إذا كان هذا الأسبوع هو الحالي
+
       if (todayTimestamp >= weekStartTimestamp && todayTimestamp <= weekEndTimestamp) {
         current = week
       } else if (weekEndTimestamp < todayTimestamp) {
-        // الأسبوع انتهى
-        previous.push(week)
+        previous += 1
+        past.add(week.id)
       } else if (weekStartTimestamp > todayTimestamp) {
-        // الأسبوع قادم
-        upcoming.push(week)
+        upcoming += 1
       }
     })
 
-    // ترتيب الأسابيع السابقة من الأحدث للأقدم
-    previous.sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
-    // ترتيب الأسابيع القادمة من الأقرب للأبعد
-    upcoming.sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
+    return {
+      currentWeekData: current as AcademicWeek | null,
+      previousWeeksCount: previous,
+      upcomingCount: upcoming,
+      pastWeekIds: past,
+    }
+  }, [weeks, todayTimestamp])
 
-    const list: AcademicWeek[] = []
-    // الأسبوع الحالي أولاً
-    if (current) list.push(current)
-    // ثم الأسابيع القادمة
-    list.push(...upcoming)
-    // ثم الأسابيع السابقة (إذا تم تفعيل العرض)
-    if (showPreviousWeeks) list.push(...previous)
+  // انتهى العام: كل الأسابيع منقضية — الصفحة كانت تُخرج «لا توجد أسابيع متاحة» وتبيضّ
+  const seasonEnded = !currentWeekData && upcomingCount === 0 && weeks.length > 0
 
-    return { orderedWeeks: list, currentWeekData: current, previousWeeksCount: previous.length }
-  }, [weeks, todayTimestamp, showPreviousWeeks])
+  // الجدول: زمنياً دائماً. المنقضية تُخفى إلا بالمفتاح — أو حين انتهى العام فلا شيء غيرها
+  const tableWeeks = useMemo(() => {
+    const list = showPreviousWeeks || seasonEnded ? [...weeks] : weeks.filter((w) => !pastWeekIds.has(w.id))
+    return list.sort((a, b) => a.start_date.localeCompare(b.start_date))
+  }, [weeks, showPreviousWeeks, seasonEnded, pastWeekIds])
 
-  if (isLoading) {
-    return (
-      <section className="space-y-10" dir="rtl">
-        {/* Skeleton for header */}
-        <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white/80 p-10 shadow-sm backdrop-blur">
-          <div className="animate-pulse space-y-6">
-            <div className="space-y-3">
-              <div className="h-3 w-32 rounded bg-slate-200"></div>
-              <div className="h-8 w-64 rounded bg-slate-200"></div>
-              <div className="h-4 w-96 rounded bg-slate-200"></div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
-                  <div className="h-3 w-20 rounded bg-slate-200"></div>
-                  <div className="mt-3 h-5 w-32 rounded bg-slate-200"></div>
-                  <div className="mt-3 space-y-2">
-                    <div className="h-3 w-24 rounded bg-slate-200"></div>
-                    <div className="h-3 w-16 rounded bg-slate-200"></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-        
-        {/* Skeleton for tabs */}
-        <div className="flex flex-col gap-6">
-          <div className="flex animate-pulse gap-2">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-10 w-36 rounded-full bg-slate-200"></div>
-            ))}
-          </div>
-          
-          {/* Skeleton for weeks */}
-          <div className="space-y-4">
-            {[1, 2].map((i) => (
-              <div key={i} className="animate-pulse rounded-3xl border border-slate-200 bg-white/90 p-6">
-                <div className="flex justify-between">
-                  <div className="space-y-2">
-                    <div className="h-3 w-20 rounded bg-slate-200"></div>
-                    <div className="h-6 w-32 rounded bg-slate-200"></div>
-                    <div className="h-3 w-48 rounded bg-slate-200"></div>
-                  </div>
-                  <div className="h-6 w-16 rounded-full bg-slate-200"></div>
-                </div>
-                <div className="mt-4 space-y-2">
-                  {[1, 2, 3, 4, 5].map((j) => (
-                    <div key={j} className="h-10 rounded bg-slate-100"></div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+  const rulerWeeks = useMemo(
+    () => [...weeks].sort((a, b) => a.start_date.localeCompare(b.start_date)),
+    [weeks],
+  )
+  const model = useRulerModel(rulerWeeks, events)
+
+  // عدّ صادق: من is_working_day الواصل مع كل يوم — لا من رقم total_days المبذور
+  const dayCounts = useMemo(() => {
+    let working = 0
+    let remaining = 0
+    weeks.forEach((week) =>
+      (week.days ?? []).forEach((day) => {
+        if (!day.is_working_day) return
+        working += 1
+        if (day.date >= todayIso) remaining += 1
+      }),
     )
+    return { working, remaining }
+  }, [weeks, todayIso])
+
+  const nextMilestone = useMemo(
+    () =>
+      events
+        .filter((e) => e.event_date >= todayIso)
+        .sort((a, b) => a.event_date.localeCompare(b.event_date))[0] ?? null,
+    [events, todayIso],
+  )
+
+  const longestGap = useMemo(() => {
+    if (!model) return null
+    const upcomingGaps = model.gaps.filter((g) => g.endIso >= todayIso)
+    if (!upcomingGaps.length) return null
+    return upcomingGaps.reduce((max, gap) => (gap.days > max.days ? gap : max))
+  }, [model, todayIso])
+
+  const sortedEvents = useMemo(
+    () => [...events].sort((a, b) => a.event_date.localeCompare(b.event_date)),
+    [events],
+  )
+
+  const activeSemester = useMemo(
+    () => (selectedTab && selectedTab !== 'all' ? semesters.find((s) => s.code === selectedTab) : null),
+    [selectedTab, semesters],
+  )
+
+  const weeksPerTab = useMemo(() => {
+    const first = semesters.find((s) => s.code === 'first')?.total_weeks ?? 0
+    const second = semesters.find((s) => s.code === 'second')?.total_weeks ?? 0
+    return { first, second, all: first + second }
+  }, [semesters])
+
+  // أكثر من عام دراسي في الاستجابة: الـ endpoints لا تفلتر بالعام، والمسطرة تنهار نسبها
+  const multipleYears = useMemo(
+    () => new Set(semesters.map((s) => s.academic_year)).size > 1,
+    [semesters],
+  )
+
+  const pickWeek = (weekId: number) => {
+    const row = document.getElementById(`ws-week-${weekId}`)
+    if (!row) return
+    row.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    row.classList.remove('ws-soft-pulse')
+    void row.offsetWidth
+    row.classList.add('ws-soft-pulse')
   }
 
+  const todayPct = model ? model.pos(todayIso) : -1
+  const todayInRange = todayPct >= 0 && todayPct <= 100
+
   return (
-    <section className="space-y-10" dir="rtl">
-      <header className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white/80 p-10 shadow-sm backdrop-blur">
-        <div className="relative z-10 flex flex-col gap-6">
-          <div className="flex flex-col gap-2 text-right">
-            <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">لوحة التقويم المدرسي</p>
-            <h1 className="text-3xl font-bold text-slate-900">
-              التقويم الدراسي {semesters[0]?.academic_year || ''}
-            </h1>
-            <p className="max-w-2xl text-sm text-slate-600">
-              راقب مواعيد الدراسة والإجازات عبر تجربة تفاعلية منظمة. يمكنك استعراض الأسابيع، متابعة الأحداث المهمة،
-              ومعرفة العد التنازلي لأهم المحطات خلال العام الدراسي.
-            </p>
-          </div>
-
-          <div className="grid gap-4 text-sm text-slate-700 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-2xl border border-indigo-200 bg-indigo-50/80 p-4 shadow-sm">
-              <p className="text-xs font-medium text-indigo-600">الحدث القادم</p>
-              <div className="mt-3 flex items-center justify-between">
-                <p className="text-base font-semibold text-indigo-900">
-                  {nextMilestone ? nextMilestone.title : 'لا أحداث قريبة'}
-                </p>
-                <CalendarClock className="h-5 w-5 text-indigo-500" />
-              </div>
-              {nextMilestone ? (
-                <div className="mt-3 space-y-2 text-sm text-indigo-900/80">
-                  <p>{formatDateLabel(nextMilestone.event_date)}</p>
-                  <p className="text-xs font-medium text-indigo-600">
-                    {formatCountdown(differenceInDays(nextMilestone.event_date, today))}
-                  </p>
-                </div>
-              ) : (
-                <p className="mt-3 text-xs text-indigo-600">تم عرض آخر الأحداث المنتهية.</p>
-              )}
-            </div>
-
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 shadow-sm">
-              <p className="text-xs font-medium text-emerald-600">الأسبوع الحالي</p>
-              <div className="mt-3 flex items-center justify-between">
-                <p className="text-base font-semibold text-emerald-900">
-                  {currentWeek ? `الأسبوع ${currentWeek.week_number}` : 'خارج الموسم الدراسي'}
-                </p>
-                <Timer className="h-5 w-5 text-emerald-500" />
-              </div>
-              {currentWeek ? (
-                <div className="mt-3 space-y-1 text-xs text-emerald-700">
-                  <p>{getSemesterLabel(currentWeek.semester?.code as 'first' | 'second')}</p>
-                  <p>{formatWeekRange(currentWeek.start_date, currentWeek.end_date)}</p>
-                </div>
-              ) : (
-                <p className="mt-3 text-xs text-emerald-600">لا توجد أسابيع محددة حاليًا.</p>
-              )}
-            </div>
-
-            {summaries.map((summary) => (
-              <div key={summary.id} className="rounded-2xl border border-slate-200 bg-white/70 p-4 shadow-sm">
-                <p className="text-xs font-medium text-slate-500">نظرة عامة</p>
-                <div className="mt-3 space-y-2">
-                  <p className="text-base font-semibold text-slate-900">{summary.title}</p>
-                  <div className="grid grid-cols-2 gap-2 text-xs text-slate-600">
-                    <div>
-                      <p className="font-medium text-slate-700">البداية</p>
-                      <p>{formatNumericDate(summary.startIso)}</p>
-                      <p className="text-[11px] text-slate-500">{summary.startHijri}</p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-slate-700">النهاية</p>
-                      <p>{formatNumericDate(summary.endIso)}</p>
-                      <p className="text-[11px] text-slate-500">{summary.endHijri}</p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-slate-700">عدد الأسابيع</p>
-                      <p>{summary.totalWeeks} أسبوع</p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-slate-700">عدد الأيام</p>
-                      <p>{summary.totalDays} يوم دراسي</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 shadow-sm">
-              <p className="text-xs font-medium text-slate-500">الأحداث القادمة</p>
-              <div className="mt-3 space-y-3 text-xs text-slate-600">
-                {upcomingEvents.length === 0 ? (
-                  <p className="text-slate-400">لا توجد أحداث قادمة</p>
-                ) : (
-                  upcomingEvents.slice(0, 4).map((event) => {
-                    const eventDate = event.event_date
-                    if (!eventDate) return null
-                    const diff = differenceInDays(eventDate, today)
-                    const meta = categoryMeta[event.category as MilestoneCategory] || categoryMeta.info
-                    return (
-                      <div key={event.id} className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-slate-800 truncate">{event.title}</p>
-                          <p className="text-[11px] text-slate-500">{formatDateLabel(eventDate)}</p>
-                        </div>
-                        <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-1 text-[11px] font-semibold ${meta.badge}`}>
-                          {formatCountdown(diff)}
-                        </span>
-                      </div>
-                    )
-                  })
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <Sparkles className="absolute left-6 top-6 h-12 w-12 text-indigo-200" />
-        <Sparkles className="absolute right-16 bottom-6 h-16 w-16 text-indigo-100" />
-      </header>
-
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-          <div className="flex flex-wrap items-center gap-2">
-            {tabs.map((tab) => {
-              const isActive = tab.id === selectedTab
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setSelectedTab(tab.id)}
-                  className={`rounded-full border px-5 py-2 text-sm font-medium transition ${
-                    isActive
-                      ? 'border-indigo-500 bg-indigo-500 text-white shadow-indigo-200'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:text-indigo-600'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              )
-            })}
-          </div>
-
-          <div className="flex flex-wrap items-center justify-end gap-3 text-xs text-slate-600">
-            {(['holiday', 'exam', 'deadline', 'return', 'start'] as MilestoneCategory[]).map((key) => {
-              const meta = categoryMeta[key]
-              return (
-                <span key={key} className="flex items-center gap-2">
-                  <span className={`h-2.5 w-2.5 rounded-full ${meta.dot}`} />
-                  <span>{meta.label}</span>
+    <WsPage>
+      <WsHeader
+        title={`التقويم الدراسي ${semesters[0]?.academic_year ?? ''}`}
+        badge={seasonEnded ? 'انتهى العام الدراسي' : undefined}
+        actions={
+          <WsIconBtn
+            icon={RefreshCw}
+            label="إعادة الجلب"
+            onClick={() => {
+              void refetchSemesters()
+              void refetchWeeks()
+            }}
+          />
+        }
+        facts={
+          <>
+            <WsFact icon={CalendarRange} label="الفصل">
+              {activeSemester
+                ? `${activeSemester.name} · ${formatShortDate(activeSemester.start_date)} ← ${formatShortDate(activeSemester.end_date)}`
+                : selectedTab === 'all'
+                  ? 'العام كاملاً'
+                  : '—'}
+            </WsFact>
+            <WsFact icon={Timer} label="الأسبوع">
+              {/* من current_week الخام لا من القائمة المفلترة بالتبويب */}
+              {currentWeekFromApi ? (
+                <span style={{ color: TONES.sky.tx }}>
+                  {currentWeekFromApi.week_number}
+                  {selectedTab !== 'all' && activeSemester ? ` من ${activeSemester.total_weeks}` : ''}
                 </span>
-              )
-            })}
-          </div>
-        </div>
+              ) : (
+                'خارج الموسم'
+              )}
+            </WsFact>
+            <WsFact icon={GraduationCap} label="أيام دراسية">
+              <span style={{ color: TONES.green.tx }}>{dayCounts.remaining}</span>
+              <span style={{ color: 'var(--ws-text-2)' }}> متبقٍ من {dayCounts.working}</span>
+            </WsFact>
+            <WsFact icon={CalendarClock} label="المحطة التالية">
+              {nextMilestone
+                ? `${nextMilestone.title} · ${formatCountdown(differenceInDays(nextMilestone.event_date, today))}`
+                : '—'}
+            </WsFact>
+            <WsFact icon={CalendarOff} label="أطول توقف قادم">
+              {longestGap ? (
+                <span style={{ color: TONES.amber.tx }}>{longestGap.days} يوماً</span>
+              ) : (
+                '—'
+              )}
+            </WsFact>
+          </>
+        }
+      >
+        <ToneChip tone={TONES.gray}>تقويم موحّد — لا يُعدَّل من المدرسة</ToneChip>
+      </WsHeader>
 
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="text-sm font-semibold text-slate-600">عرض الأسابيع</div>
-            <div className="flex flex-wrap items-center gap-2">
+      <WsToolbar>
+        <WsField label="النطاق">
+          <div className="ws-seg">
+            {tabs.map((tab) => (
               <button
+                key={tab.id}
                 type="button"
-                className={`rounded-full border px-4 py-1.5 text-xs font-semibold transition ${
-                  showPreviousWeeks
-                    ? 'border-slate-300 bg-slate-100 text-slate-700 hover:border-slate-400'
-                    : 'border-slate-200 bg-white text-slate-500 hover:border-indigo-200 hover:text-indigo-600'
-                }`}
-                onClick={() => setShowPreviousWeeks((prev) => !prev)}
+                className={`ws-seg__btn ${tab.id === selectedTab ? 'is-active' : ''}`}
+                onClick={() => setSelectedTab(tab.id)}
               >
-                {showPreviousWeeks ? 'إخفاء الأسابيع السابقة' : `عرض الأسابيع السابقة (${previousWeeksCount})`}
+                {tab.label}
+                {weeksPerTab[tab.id] > 0 && <span className="ws-count">{weeksPerTab[tab.id]}</span>}
               </button>
-              {currentWeekData ? (
-                <span className="flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
-                  <CalendarClock className="h-3.5 w-3.5 text-indigo-500" />
-                  الأسبوع الحالي أولًا
-                </span>
-              ) : null}
-            </div>
+            ))}
           </div>
+        </WsField>
+        <WsField label={seasonEnded ? 'الأسابيع (الكل منتهٍ)' : `إظهار المنتهية (${previousWeeksCount})`}>
+          <WsSwitch
+            checked={showPreviousWeeks || seasonEnded}
+            onChange={setShowPreviousWeeks}
+            disabled={seasonEnded}
+          />
+        </WsField>
+        {multipleYears && (
+          <WsAlert tone="warn" boxed>
+            الاستجابة تحوي أكثر من عام دراسي — المسطرة تمتد عليها كلها
+          </WsAlert>
+        )}
+      </WsToolbar>
 
-          {orderedWeeks.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-slate-200 bg-white/60 p-10 text-center text-sm text-slate-500">
-              لا توجد أسابيع متاحة في هذا النطاق.
-            </div>
-          ) : (
-            orderedWeeks.map((week, index) => {
-              const isCurrentWeek = currentWeekData?.id === week.id
-              const weekLabel = getSemesterLabel(week.semester?.code as 'first' | 'second')
-              const weekStartTimestamp = new Date(week.start_date + 'T00:00:00').getTime()
-              const weekEndTimestamp = new Date(week.end_date + 'T23:59:59').getTime()
-              const isActiveWeek = todayTimestamp >= weekStartTimestamp && todayTimestamp <= weekEndTimestamp
-              const isPastWeek = weekEndTimestamp < todayTimestamp
-              
-              const statusLabel = isActiveWeek ? 'الأسبوع الحالي' : isPastWeek ? 'منتهي' : 'قادِم'
-              const statusStyle = isActiveWeek
-                ? 'border-indigo-500 bg-indigo-500 text-white'
-                : isPastWeek
-                  ? 'border-slate-200 bg-slate-100 text-slate-600'
-                  : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+      <WsLayout>
+        <WsMain>
+          {/* ★ مِسطرة العام — أطروحتها الفراغ: ما لا أسبوع له لا تدريس فيه */}
+          <WsBlock padded>
+            {loadingWeeks || !model ? (
+              <div style={{ height: 34, borderRadius: 8, background: 'var(--ws-surface-2)' }} />
+            ) : (
+              <>
+                <YearRuler
+                  model={model}
+                  weeks={rulerWeeks}
+                  events={sortedEvents}
+                  todayIso={todayIso}
+                  pastWeekIds={pastWeekIds}
+                  currentWeekId={currentWeekData?.id ?? null}
+                  hoveredEventId={hoveredEventId}
+                  onHoverEvent={setHoveredEventId}
+                  onPickWeek={pickWeek}
+                />
+                <RulerLegend
+                  weeks={rulerWeeks}
+                  hasGaps={model.gaps.some((g) => g.days > 2 && g.event)}
+                  hasBareGaps={model.gaps.some((g) => g.days > 2 && !g.event)}
+                  todayInRange={todayInRange}
+                />
+                <p style={{ margin: '6px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                  {model.totalDays} يوماً تقويمياً · {model.coveredDays} منها في أسابيع دراسية ·{' '}
+                  <b style={{ color: TONES.amber.tx }}>{model.totalDays - model.coveredDays}</b> بلا أي أسبوع
+                  {!todayInRange && ' · اليوم خارج نطاق التقويم'}
+                </p>
+              </>
+            )}
+          </WsBlock>
 
-              const days = week.days || []
-
-              return (
-                <div
-                  key={week.id}
-                  className={`rounded-3xl border bg-white/90 p-6 shadow-sm backdrop-blur transition ${
-                    isCurrentWeek
-                      ? 'border-indigo-400 shadow-indigo-100'
-                      : 'border-slate-200 hover:border-indigo-200/60'
-                  }`}
-                >
-                  {index === 0 && isCurrentWeek ? (
-                    <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-700">
-                      <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
-                      يتم عرض هذا الأسبوع أولًا
-                    </div>
-                  ) : null}
-
-                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                    <div className="space-y-2">
-                      <p className="text-xs font-semibold text-indigo-500">{weekLabel}</p>
-                      <h2 className="mt-1 text-xl font-bold text-slate-900">الأسبوع {week.week_number}</h2>
-                      <p className="text-xs text-slate-500">{formatWeekRange(week.start_date, week.end_date)}</p>
-                    </div>
-                    <div className="flex flex-col items-end gap-2 self-start md:items-center">
-                      <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold ${statusStyle}`}>
-                        {statusLabel}
-                      </span>
-                      <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] text-slate-500">
-                        <CalendarDays className="h-3.5 w-3.5 text-slate-400" />
-                        <span>{days.length} أيام</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200">
-                    <table className="w-full min-w-[800px] text-sm">
-                      <thead>
-                        <tr className="border-b border-slate-200 bg-slate-50">
-                          <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">اليوم</th>
-                          <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">التاريخ الهجري</th>
-                          <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">الشهر الهجري</th>
-                          <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">التاريخ الميلادي</th>
-                          <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">الشهر الميلادي</th>
-                          <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">الملاحظات</th>
+          {/* جدول واحد متصل — لا ١٩ جدولاً كلٌّ في صندوق انزلاق مستقل */}
+          <WsBlock
+            fill
+            scroll
+            title="الأيام"
+            icon={CalendarDays}
+            count={tableWeeks.reduce((sum, w) => sum + (w.days?.length ?? 0), 0)}
+          >
+            {weeksError ? (
+              <WsAlert tone="error" boxed>
+                تعذّر تحميل الأسابيع.
+                <WsBtn size="sm" icon={RefreshCw} onClick={() => void refetchWeeks()}>
+                  إعادة المحاولة
+                </WsBtn>
+              </WsAlert>
+            ) : loadingWeeks ? (
+              <WsEmpty loading>جارٍ تحميل الأسابيع...</WsEmpty>
+            ) : tableWeeks.length === 0 ? (
+              <WsEmpty icon={CalendarDays}>لا توجد أسابيع في هذا النطاق</WsEmpty>
+            ) : (
+              <WsTable>
+                <thead>
+                  <tr>
+                    <th style={{ width: 92 }}>اليوم</th>
+                    <th style={{ width: 130 }}>هجري</th>
+                    <th style={{ width: 110 }}>ميلادي</th>
+                    <th>الحالة والملاحظة</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tableWeeks.map((week) => {
+                    const days = week.days ?? []
+                    const workingCount = days.filter((d) => d.is_working_day).length
+                    const isPast = pastWeekIds.has(week.id)
+                    const isCurrent = currentWeekData?.id === week.id
+                    return (
+                      <Fragment key={week.id}>
+                        {/* صف مجموعة لاصق — الشهران يصعدان إليه بدل تكرارهما خمس مرات في كل أسبوع */}
+                        <tr id={`ws-week-${week.id}`}>
+                          <td
+                            colSpan={4}
+                            style={{
+                              position: 'sticky',
+                              top: 0,
+                              zIndex: 2,
+                              background: isCurrent ? TONES.sky.bg : 'var(--ws-surface-2)',
+                              borderBottom: '1px solid var(--ws-hairline)',
+                              fontSize: 11,
+                              fontWeight: 700,
+                              opacity: isPast ? 0.62 : 1,
+                            }}
+                          >
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+                              <span style={{ color: isCurrent ? TONES.sky.tx : undefined }}>
+                                الأسبوع {week.week_number}
+                              </span>
+                              <span style={{ color: 'var(--ws-text-2)', fontWeight: 400 }}>
+                                {formatWeekRange(week.start_date, week.end_date)}
+                              </span>
+                              {days[0] && (
+                                <span style={{ color: 'var(--ws-text-2)', fontWeight: 400 }}>
+                                  · {toArabicNumerals(`${days[0].hijri_month} ${days[0].hijri_year}`)}
+                                </span>
+                              )}
+                              <span style={{ color: 'var(--ws-text-2)', fontWeight: 400 }}>· {days.length} أيام</span>
+                              {workingCount === 0 ? (
+                                <ToneChip tone={TONES.amber}>صفر تدريس</ToneChip>
+                              ) : workingCount < days.length ? (
+                                <span style={{ color: 'var(--ws-text-2)', fontWeight: 400 }}>
+                                  · {workingCount} تدريس
+                                </span>
+                              ) : null}
+                              {isCurrent && <ToneChip tone={TONES.sky}>الأسبوع الحالي</ToneChip>}
+                              {week.semester?.code && selectedTab === 'all' && (
+                                <span style={{ color: 'var(--ws-text-2)', fontWeight: 400 }}>
+                                  · {getSemesterLabel(week.semester.code)}
+                                </span>
+                              )}
+                            </span>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
                         {days.map((day) => {
-                          const dayDate = day.date
-                          const isToday = dayDate === todayIso
-                          const noteCategory = detectNoteCategory(day.note, day.day_type)
-                          const meta = categoryMeta[noteCategory]
-
+                          const isToday = day.date === todayIso
+                          const tone = dayTone(day)
                           return (
                             <tr
                               key={day.id}
-                              className={`border-b border-slate-100 transition ${
-                                isToday
-                                  ? 'bg-indigo-50'
-                                  : 'hover:bg-slate-50'
-                              }`}
+                              style={{
+                                background: isToday ? TONES.sky.bg : undefined,
+                                opacity: isPast ? 0.62 : 1,
+                              }}
                             >
-                              <td className="px-3 py-2.5">
-                                <div className="flex items-center gap-2">
+                              <td>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                                   {isToday && (
-                                    <span className="h-2 w-2 rounded-full bg-indigo-500" title="اليوم" />
+                                    <span
+                                      title="اليوم"
+                                      style={{ width: 6, height: 6, borderRadius: '50%', background: TONES.sky.tx }}
+                                    />
                                   )}
-                                  <span className="font-medium text-slate-900">{day.day_name}</span>
-                                </div>
+                                  <span style={{ fontWeight: 600 }}>{day.day_name}</span>
+                                </span>
                               </td>
-                              <td className="px-3 py-2.5 font-mono text-slate-700">
-                                {toArabicNumerals(`${day.hijri_day}/${day.hijri_year}`)}
+                              <td style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ws-text-2)' }}>
+                                {hijriLabel(day)}
                               </td>
-                              <td className="px-3 py-2.5 text-slate-600">
-                                {day.hijri_month}
+                              <td style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ws-text-2)' }}>
+                                {formatNumericDate(day.date)}
                               </td>
-                              <td className="px-3 py-2.5 font-mono text-slate-700">
-                                {formatGregorianDate(day.date)}
-                              </td>
-                              <td className="px-3 py-2.5 text-slate-600">
-                                {day.gregorian_month}
-                              </td>
-                              <td className="px-3 py-2.5">
+                              <td>
+                                {/* اللون للاستثناء وحده — غياب الشارة = يوم دراسي */}
                                 {day.note ? (
-                                  <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.badge}`}>
-                                    <Flag className="h-3 w-3" />
-                                    {day.note}
-                                  </span>
-                                ) : day.day_type === 'holiday' ? (
-                                  <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${categoryMeta.holiday.badge}`}>
-                                    <Flag className="h-3 w-3" />
-                                    إجازة
-                                  </span>
+                                  <ToneChip tone={tone}>{day.note}</ToneChip>
+                                ) : !day.is_working_day ? (
+                                  <ToneChip tone={TONES.amber}>إجازة</ToneChip>
                                 ) : (
-                                  <span className="text-xs text-slate-400">
-                                    {isToday ? 'اليوم الدراسي' : '—'}
-                                  </span>
+                                  <span style={{ color: 'var(--ws-text-2)' }}>—</span>
                                 )}
                               </td>
                             </tr>
                           )
                         })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )
-            })
-          )}
-        </div>
-      </div>
-    </section>
+                      </Fragment>
+                    )
+                  })}
+                </tbody>
+              </WsTable>
+            )}
+          </WsBlock>
+        </WsMain>
+
+        {/* ═══ المحطات — end_date والأثر التشغيلي يخرجان للنور ═══ */}
+        <WsSideCol side="end" title="المحطات" icon={Flag} storageKey="ws:academic-calendar:sidecol" width={320}>
+          <WsBlock fill scroll>
+            {loadingEvents ? (
+              <WsEmpty loading>جارٍ تحميل المحطات...</WsEmpty>
+            ) : sortedEvents.length === 0 ? (
+              <WsEmpty icon={CalendarCheck}>
+                {seasonEnded ? 'انتهى العام الدراسي — لا محطات قادمة' : 'لا محطات في هذا النطاق'}
+              </WsEmpty>
+            ) : (
+              <div className="ws-timeline" style={{ padding: 10 }}>
+                {sortedEvents.map((event) => {
+                  const diff = differenceInDays(event.event_date, today)
+                  const tone = eventTone(event.category)
+                  const Icon = EVENT_ICON[event.category] ?? Info
+                  const isPast = event.event_date < todayIso
+                  const isNext = nextMilestone?.id === event.id
+                  const spanDays = event.end_date
+                    ? Math.round(
+                        (new Date(event.end_date).getTime() - new Date(event.event_date).getTime()) / 86_400_000,
+                      ) + 1
+                    : 0
+                  // التناقض الذي ترسمه المسطرة، معترَفاً به بالكلمات:
+                  // وتد «العودة» يقف فوق خلية يومه الكهرمانية — الباك إند يتبع اليوم لا الحدث
+                  const dayOfEvent = weeks
+                    .flatMap((w) => w.days ?? [])
+                    .find((d) => d.date === event.event_date)
+                  const contradicts =
+                    (event.category === 'return' || event.category === 'start') &&
+                    dayOfEvent != null &&
+                    !dayOfEvent.is_working_day
+
+                  return (
+                    <div
+                      key={event.id}
+                      className={`ws-timeline__item ${isPast ? 'is-past' : ''} ${isNext ? 'is-current' : ''}`}
+                      onMouseEnter={() => setHoveredEventId(event.id)}
+                      onMouseLeave={() => setHoveredEventId(null)}
+                      style={hoveredEventId === event.id ? { background: 'var(--ws-surface-2)', borderRadius: 7 } : undefined}
+                    >
+                      <span className="ws-timeline__node">
+                        <span className="ws-timeline__dot" style={{ background: tone.tx }}>
+                          <Icon style={{ width: 9, height: 9, color: '#fff' }} />
+                        </span>
+                      </span>
+                      <span className="ws-timeline__time">{formatCountdown(diff)}</span>
+                      {/* لا ws-timeline__card — يحمل حافة ملوّنة مخبوزة */}
+                      <div style={{ paddingBottom: 9 }}>
+                        <p style={{ margin: 0, fontSize: 12, fontWeight: 700 }}>{event.title}</p>
+                        {event.description && (
+                          <p style={{ margin: '2px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)', lineHeight: 1.65 }}>
+                            {event.description}
+                          </p>
+                        )}
+                        <p style={{ margin: '3px 0 0', fontSize: 10, color: 'var(--ws-text-2)' }}>
+                          {formatShortDate(event.event_date)}
+                          {event.hijri_date && ` · ${toArabicNumerals(event.hijri_date)}`}
+                        </p>
+                        <span style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 4 }}>
+                          <ToneChip tone={tone}>{EVENT_CATEGORY_LABEL[event.category] ?? event.category}</ToneChip>
+                          {/* إجازة ٢٤ يوماً كانت تظهر نقطة يوم واحد */}
+                          {spanDays > 1 && (
+                            <ToneChip tone={tone}>
+                              {formatShortDate(event.event_date)} ← {formatShortDate(event.end_date!)} · {spanDays} يوماً
+                            </ToneChip>
+                          )}
+                          {event.blocks_messages && (
+                            <span className="ws-chip" style={{ color: TONES.amber.tx, borderColor: TONES.amber.bd, background: TONES.amber.bg }}>
+                              <MessageSquareOff style={{ width: 10, height: 10 }} /> الرسائل محجوبة
+                            </span>
+                          )}
+                          {event.affects_attendance && (
+                            <span className="ws-chip" style={{ color: TONES.amber.tx, borderColor: TONES.amber.bd, background: TONES.amber.bg }}>
+                              <UserX style={{ width: 10, height: 10 }} /> لا يُحتسب غياب
+                            </span>
+                          )}
+                          {contradicts && <ToneChip tone={TONES.amber}>لكن يومه مسجَّل إجازة</ToneChip>}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </WsBlock>
+        </WsSideCol>
+      </WsLayout>
+
+      {semestersError && (
+        <WsAlert tone="error" boxed>
+          تعذّر تحميل الفصول الدراسية.
+          <WsBtn size="sm" icon={RefreshCw} onClick={() => void refetchSemesters()}>
+            إعادة المحاولة
+          </WsBtn>
+        </WsAlert>
+      )}
+      {loadingSemesters && !semesters.length && <WsEmpty loading>جارٍ تحميل التقويم...</WsEmpty>}
+    </WsPage>
   )
 }

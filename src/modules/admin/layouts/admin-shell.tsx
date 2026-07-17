@@ -55,6 +55,7 @@ const WORKSPACE_ROUTES = [
   '/admin/subscription',
   '/admin/chat',
   '/admin/app-notifications',
+  '/admin/school-tools/academic-calendar',
 ]
 
 export function AdminShell() {
