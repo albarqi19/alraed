@@ -46,6 +46,7 @@ const WORKSPACE_ROUTES = [
   '/admin/parent-meeting',
   '/admin/points-program',
   '/admin/e-store',
+  '/admin/schedule-simulator',
 ]
 
 export function AdminShell() {

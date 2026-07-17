@@ -1,11 +1,33 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   Users, BookOpen, GraduationCap, Play, AlertTriangle, CheckCircle,
-  ChevronLeft, ChevronRight, Loader2, Database, Sparkles, Brain, Zap,
-  BarChart3, Clock, Target, TrendingUp, Shield, Award, RefreshCw, Plus, X,
-  Hash,
+  Database, Sparkles, Brain, Zap,
+  BarChart3, Target, TrendingUp, Shield, Award, RefreshCw, Plus, X,
+  Hash, Scale, Settings2, Grid3x3, Printer,
 } from 'lucide-react'
 import { apiClient } from '@/services/api/client'
+import {
+  WsPage,
+  WsHeader,
+  WsFact,
+  WsToolbar,
+  WsField,
+  WsInput,
+  WsSwitch,
+  WsLayout,
+  WsMain,
+  WsSideCol,
+  WsBlock,
+  WsBtn,
+  WsIconBtn,
+  WsAlert,
+  WsEmpty,
+  WsFactsList,
+  WsFactRow,
+  TONES,
+  ToneChip,
+  type Tone,
+} from '@/shared/workspace'
 
 // ═══════════════════════════════════════════════════════
 // Types
@@ -45,8 +67,6 @@ interface QualityReport {
   consecutive_score: number; load_balance_score: number; time_preference_score: number
   details: { total_sessions_placed: number; total_requirements: number; teachers_used: number; classes_scheduled: number; avg_daily_load: number; max_daily_load: number; gap_count: number }
   metrics?: Record<string, { score: number; details: any }>
-  warnings?: Array<{ type: string; message: string }>
-  suggestions?: string[]
 }
 interface ConflictInfo { type: string; message: string; severity: string; suggestion?: string }
 interface SimulationResult {
@@ -72,18 +92,37 @@ interface SubjectGradePeriods {
   periods_per_week: number
 }
 
+/** معوّق واحد في الميزان — يشخّص ويُنقّل */
+interface Blocker {
+  kind: 'grade-over' | 'teacher-over' | 'unassigned'
+  text: string
+  tone: Tone
+  fatal: boolean
+  surface: Surface
+}
+
+type Surface = 'quota' | 'assign' | 'result'
+
 // ═══════════════════════════════════════════════════════
 // Constants
 // ═══════════════════════════════════════════════════════
 
 const WORKING_DAYS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس']
-const STEPS = [
-  { id: 1, title: 'البيانات والإعدادات', icon: Database },
-  { id: 2, title: 'المواد ونصابها', icon: BookOpen },
-  { id: 3, title: 'المعلمون وتوزيعهم', icon: Users },
-  { id: 4, title: 'التوليد', icon: Play },
-]
 const API_BASE = '/admin/schedule-simulator'
+
+const SURFACES: Array<{ key: Surface; label: string; icon: typeof BookOpen }> = [
+  { key: 'quota', label: 'النصاب', icon: BookOpen },
+  { key: 'assign', label: 'الإسناد', icon: Users },
+  { key: 'result', label: 'النتيجة', icon: Grid3x3 },
+]
+
+/** ألوان المواد — نفس لوحة جداول المعلمين والفصول */
+const SUBJECT_TONES: Tone[] = [
+  TONES.green, TONES.sky, TONES.purple, TONES.amber, TONES.red,
+  { bg: '#E7F6F4', bd: '#B9E3DD', tx: '#1F7A6C' },
+  { bg: '#F0F0FB', bd: '#D0D0EE', tx: '#4B4BA8' },
+  { bg: '#FBEEF6', bd: '#EFC8E0', tx: '#A83A79' },
+]
 
 // ═══════════════════════════════════════════════════════
 // Component
@@ -91,13 +130,16 @@ const API_BASE = '/admin/schedule-simulator'
 
 export function AdminScheduleSimulatorPage() {
   // ── State ──
-  const [currentStep, setCurrentStep] = useState(1)
+  /* الخطوات ماتت: ثلاثة أسطح تُنقر بحرية في الاتجاهين، والنتيجة تبقى للمقارنة */
+  const [surface, setSurface] = useState<Surface>('quota')
   const [dataSource, setDataSource] = useState<'existing' | 'custom'>('existing')
   const [isLoading, setIsLoading] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<SimulationResult | null>(null)
   const [viewMode, setViewMode] = useState<'class' | 'teacher'>('class')
+  const [teacherSearch, setTeacherSearch] = useState('')
+  const [onlyIncomplete, setOnlyIncomplete] = useState(false)
 
   const [config, setConfig] = useState<SimulationConfig>({
     name: 'جدول جديد',
@@ -112,21 +154,20 @@ export function AdminScheduleSimulatorPage() {
   const [teachers, setTeachers] = useState<Teacher[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [classes, setClasses] = useState<ClassGroup[]>([])
-  // @ts-expect-error reserved for future use
-  const [requirements, setRequirements] = useState<ClassRequirement[]>([])
   const [teacherPreferences, setTeacherPreferences] = useState<TeacherPreference[]>([])
   const [subjectConstraints, setSubjectConstraints] = useState<SubjectConstraint[]>([])
 
-  // Step 2: Subject periods per grade
+  // Subject periods per grade
   const [subjectGradePeriods, setSubjectGradePeriods] = useState<SubjectGradePeriods[]>([])
 
-  // Step 3: Teacher assignments (teacher → subjects + classes)
+  // Teacher assignments (teacher → subjects + classes)
   const [teacherAssignments, setTeacherAssignments] = useState<Record<number, TeacherAssignment[]>>({})
 
   // AI loading
   const [aiPhase, setAiPhase] = useState(0)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const phaseTimeoutsRef = useRef<Array<ReturnType<typeof setTimeout>>>([])
 
   const AI_PHASES = [
     { message: 'جاري تحليل البيانات وفحص القيود...', icon: Brain },
@@ -143,10 +184,23 @@ export function AdminScheduleSimulatorPage() {
       setAiPhase(0); setElapsedSeconds(0)
       timerRef.current = setInterval(() => setElapsedSeconds(p => p + 1), 1000)
       let idx = 0
-      const advance = () => { if (idx < AI_PHASES.length - 1) { idx++; setAiPhase(idx); setTimeout(advance, AI_PHASES[idx].message.length * 80) } }
-      setTimeout(advance, 3000)
-    } else { if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null } }
-    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+      const advance = () => {
+        if (idx < AI_PHASES.length - 1) {
+          idx++
+          setAiPhase(idx)
+          phaseTimeoutsRef.current.push(setTimeout(advance, AI_PHASES[idx].message.length * 80))
+        }
+      }
+      phaseTimeoutsRef.current.push(setTimeout(advance, 3000))
+    } else {
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+    }
+    // التنظيف يلغي سلسلة المؤقتات أيضاً — كانت تبقى حيّة وتستدعي setAiPhase بعد الـunmount
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+      phaseTimeoutsRef.current.forEach(clearTimeout)
+      phaseTimeoutsRef.current = []
+    }
   }, [isRunning])
 
   // ── Computed ──
@@ -183,9 +237,11 @@ export function AdminScheduleSimulatorPage() {
     return total
   }, [teacherAssignments, getSubjectGradePpw])
 
-  // Unassigned periods: for each subject+grade, how many class slots are not assigned to any teacher
-  const unassignedPeriods = useMemo(() => {
+  /* نفس حلقة unassignedPeriods حرفياً — لكن الناتج الوسيط لا يُرمى:
+     يُحتفظ ببنود النقص لتشخيصها في الميزان بدل رقم صمّاء */
+  const unassignedBreakdown = useMemo(() => {
     let total = 0
+    const items: Array<{ subject: string; grade: string; classes: number; periods: number }> = []
     for (const grade of uniqueGrades) {
       const gradeClasses = classesByGrade[grade] || []
       for (const sub of subjects) {
@@ -202,10 +258,13 @@ export function AdminScheduleSimulatorPage() {
         }
         const unassigned = gradeClasses.filter(c => !assignedClassIds.has(c.id)).length
         total += unassigned * ppw
+        if (unassigned > 0) items.push({ subject: sub.name, grade, classes: unassigned, periods: unassigned * ppw })
       }
     }
-    return total
+    return { total, items }
   }, [uniqueGrades, classesByGrade, subjects, getSubjectGradePpw, teacherAssignments])
+
+  const unassignedPeriods = unassignedBreakdown.total
 
   const totalAssigned = useMemo(() => {
     let t = 0
@@ -221,6 +280,12 @@ export function AdminScheduleSimulatorPage() {
     }
     return t
   }, [uniqueGrades, classesByGrade, gradeTotal])
+
+  /* السعة: مجموع أنصبة المعلمين — رقم في يد الصفحة ولم تحسبه قط */
+  const totalCapacity = useMemo(
+    () => teachers.reduce((sum, t) => sum + (t.weekly_quota || 24), 0),
+    [teachers],
+  )
 
   // Which classes are already taken for a subject+grade (by other teachers)
   const takenClasses = useMemo(() => {
@@ -268,24 +333,19 @@ export function AdminScheduleSimulatorPage() {
     return g
   }, [result?.by_teacher, buildGrid])
 
-  const COLORS = [
-    { bg: 'bg-teal-50', text: 'text-teal-800', sub: 'text-teal-600', border: 'border-teal-200' },
-    { bg: 'bg-blue-50', text: 'text-blue-800', sub: 'text-blue-600', border: 'border-blue-200' },
-    { bg: 'bg-violet-50', text: 'text-violet-800', sub: 'text-violet-600', border: 'border-violet-200' },
-    { bg: 'bg-amber-50', text: 'text-amber-800', sub: 'text-amber-600', border: 'border-amber-200' },
-    { bg: 'bg-rose-50', text: 'text-rose-800', sub: 'text-rose-600', border: 'border-rose-200' },
-    { bg: 'bg-emerald-50', text: 'text-emerald-800', sub: 'text-emerald-600', border: 'border-emerald-200' },
-    { bg: 'bg-sky-50', text: 'text-sky-800', sub: 'text-sky-600', border: 'border-sky-200' },
-    { bg: 'bg-orange-50', text: 'text-orange-800', sub: 'text-orange-600', border: 'border-orange-200' },
-    { bg: 'bg-indigo-50', text: 'text-indigo-800', sub: 'text-indigo-600', border: 'border-indigo-200' },
-    { bg: 'bg-pink-50', text: 'text-pink-800', sub: 'text-pink-600', border: 'border-pink-200' },
-  ]
   const subjectColors = useMemo(() => {
     if (!result?.schedule) return {}
-    const map: Record<string, typeof COLORS[0]> = {}
-    ;[...new Set(result.schedule.map(s => s.subject_name))].forEach((n, i) => { map[n] = COLORS[i % COLORS.length] })
+    const map: Record<string, Tone> = {}
+    ;[...new Set(result.schedule.map(s => s.subject_name))].forEach((n, i) => { map[n] = SUBJECT_TONES[i % SUBJECT_TONES.length] })
     return map
   }, [result?.schedule])
+
+  /* أقصى عدد حصص عبر أيام العمل — الشبكات كانت تبني صفوفها من default_periods_per_day
+     فأي يوم أطول تُقتطع حصصه الأخيرة من العرض: تُجدول ولا تُرى */
+  const maxPeriodsInAnyDay = useMemo(
+    () => Math.max(1, ...config.working_days.map(d => config.periods_per_day[d] || config.default_periods_per_day)),
+    [config],
+  )
 
   // ── API ──
   const loadExistingData = async () => {
@@ -307,7 +367,7 @@ export function AdminScheduleSimulatorPage() {
       if (r.data.success && r.data.data) {
         const d = r.data.data
         setTeachers(d.teachers || []); setSubjects(d.subjects || []); setClasses(d.classes || [])
-        setRequirements(d.requirements || []); setTeacherPreferences(d.teacher_preferences || [])
+        setTeacherPreferences(d.teacher_preferences || [])
         setSubjectConstraints(d.subject_constraints || []); if (d.config) setConfig(p => ({ ...p, ...d.config }))
       }
     } catch (e: any) { setError(e.response?.data?.message || 'فشل الاتصال') } finally { setIsLoading(false) }
@@ -351,664 +411,993 @@ export function AdminScheduleSimulatorPage() {
       const simId = cr.data.data.id
       const rr = await apiClient.post(`${API_BASE}/simulations/${simId}/run`)
       if (rr.data.success) {
-        setResult({ status: 'optimal', solving_time_ms: rr.data.data.solving_time_ms || 0, schedule: rr.data.data.result?.schedule || [], by_teacher: rr.data.data.result?.by_teacher || {}, by_class: rr.data.data.result?.by_class || {}, quality_report: rr.data.data.quality_report, conflicts: [] })
-        setCurrentStep(5)
+        setResult({
+          // الحالة الحقيقية من المحرّك إن وصلت — «حل مثالي» كانت مثبّتة حتى لو انتهت المهلة
+          status: rr.data.data.result?.status ?? rr.data.data.status ?? 'optimal',
+          solving_time_ms: rr.data.data.solving_time_ms || 0,
+          schedule: rr.data.data.result?.schedule || [],
+          by_teacher: rr.data.data.result?.by_teacher || {},
+          by_class: rr.data.data.result?.by_class || {},
+          quality_report: rr.data.data.quality_report,
+          conflicts: [],
+        })
+        setSurface('result')
       } else {
         setResult({ status: 'infeasible', solving_time_ms: 0, schedule: [], by_teacher: {}, by_class: {}, quality_report: null, conflicts: rr.data.conflicts || [], conflict_heatmap: rr.data.conflict_heatmap, error_message: rr.data.message })
-        setCurrentStep(5)
+        setSurface('result')
       }
     } catch (e: any) { setError(e.response?.data?.message || e.message || 'حدث خطأ') } finally { setIsRunning(false) }
   }
 
-  // ── Step 1: Data Source + Settings ──
-  const renderStep1 = () => (
-    <div className="space-y-5">
-      <div className="text-center">
-        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-bl from-teal-500 to-emerald-600 shadow-lg shadow-teal-200">
-          <Brain className="h-6 w-6 text-white" />
-        </div>
-        <h2 className="text-xl font-bold text-slate-900">إعداد الجدول</h2>
-        <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">اختر مصدر البيانات وحدد الإعدادات الأساسية</p>
-      </div>
+  // ── الإسناد: العمليات ──
+  const addAssignment = (tid: number) => {
+    setTeacherAssignments(prev => ({
+      ...prev,
+      [tid]: [...(prev[tid] || []), { subject_id: subjects[0]?.id || 0, subject_name: subjects[0]?.name || '', grade: uniqueGrades[0] || '', class_ids: [] }],
+    }))
+  }
 
-      {/* Data source */}
-      <div className="grid grid-cols-2 gap-3">
-        {[
-          { key: 'existing' as const, label: 'بيانات المدرسة', desc: 'المعلمون والمواد من النظام', icon: Database, color: 'teal' },
-          { key: 'custom' as const, label: 'بيانات تجريبية', desc: 'توليد بيانات للتجربة', icon: Sparkles, color: 'violet' },
-        ].map(opt => (
-          <button key={opt.key} onClick={() => { setDataSource(opt.key); if (opt.key === 'custom') { setTeachers([]); setSubjects([]); setClasses([]); setRequirements([]); setSubjectGradePeriods([]); setTeacherAssignments({}) } }}
-            className={`relative rounded-xl border-2 p-4 text-right transition-all ${dataSource === opt.key ? `border-${opt.color}-500 bg-${opt.color}-50/50 shadow-md` : 'border-slate-200 hover:border-slate-300'}`}>
-            {dataSource === opt.key && <CheckCircle className={`absolute left-2 top-2 h-4 w-4 text-${opt.color}-600`} />}
-            <opt.icon className={`h-6 w-6 ${dataSource === opt.key ? `text-${opt.color}-600` : 'text-slate-400'}`} />
-            <div className="mt-2 text-sm font-bold text-slate-900">{opt.label}</div>
-            <div className="mt-0.5 text-xs text-slate-500">{opt.desc}</div>
-          </button>
-        ))}
-      </div>
+  const updateAssignment = (tid: number, idx: number, updates: Partial<TeacherAssignment>) => {
+    setTeacherAssignments(prev => ({
+      ...prev,
+      [tid]: (prev[tid] || []).map((a, i) => i === idx ? { ...a, ...updates } : a),
+    }))
+  }
 
-      {isLoading && <div className="flex items-center justify-center rounded-xl bg-slate-50 py-8"><Loader2 className="h-6 w-6 animate-spin text-teal-600" /><span className="mr-2 text-sm text-slate-500">جاري التحميل...</span></div>}
+  const removeAssignment = (tid: number, idx: number) => {
+    setTeacherAssignments(prev => ({
+      ...prev,
+      [tid]: (prev[tid] || []).filter((_, i) => i !== idx),
+    }))
+  }
 
-      {dataSource === 'custom' && !isLoading && teachers.length === 0 && (
-        <button onClick={generateMockData} className="flex w-full items-center gap-3 rounded-xl border border-violet-200 bg-violet-50 p-4 text-right transition hover:bg-violet-100">
-          <Sparkles className="h-5 w-5 text-violet-600" />
-          <div className="flex-1"><div className="text-sm font-bold text-violet-900">توليد بيانات تجريبية</div><div className="text-xs text-violet-600">10 معلمين + 8 مواد + 9 فصول</div></div>
-        </button>
-      )}
+  const toggleClass = (tid: number, idx: number, classId: number) => {
+    setTeacherAssignments(prev => {
+      const assignments = [...(prev[tid] || [])]
+      const a = { ...assignments[idx] }
+      a.class_ids = a.class_ids.includes(classId) ? a.class_ids.filter(id => id !== classId) : [...a.class_ids, classId]
+      assignments[idx] = a
+      return { ...prev, [tid]: assignments }
+    })
+  }
 
-      {teachers.length > 0 && (
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            { label: 'المعلمون', count: teachers.length, icon: Users, c: 'blue' },
-            { label: 'المواد', count: subjects.length, icon: BookOpen, c: 'violet' },
-            { label: 'الفصول', count: classes.length, icon: GraduationCap, c: 'teal' },
-          ].map(s => (
-            <div key={s.label} className={`flex items-center gap-2 rounded-lg bg-${s.c}-50 p-3`}>
-              <s.icon className={`h-4 w-4 text-${s.c}-600`} />
-              <div><div className={`text-lg font-bold text-${s.c}-700`}>{s.count}</div><div className="text-[10px] text-slate-500">{s.label}</div></div>
-            </div>
-          ))}
-        </div>
-      )}
+  /* ── الميزان: الحكم والمعوّقات ── */
+  const blockers = useMemo<Blocker[]>(() => {
+    const list: Blocker[] = []
+    for (const grade of uniqueGrades) {
+      const total = gradeTotal(grade)
+      if (total > maxPerClass) {
+        list.push({
+          kind: 'grade-over',
+          text: `${grade} — ${total}/${maxPerClass} حصة فوق السقف`,
+          tone: TONES.red,
+          fatal: true,
+          surface: 'quota',
+        })
+      }
+    }
+    for (const teacher of teachers) {
+      const load = teacherLoad(teacher.id)
+      const quota = teacher.weekly_quota || 24
+      if (load > quota) {
+        list.push({
+          kind: 'teacher-over',
+          text: `${teacher.name} — ${load}/${quota} فوق النصاب`,
+          tone: TONES.red,
+          fatal: true,
+          surface: 'assign',
+        })
+      }
+    }
+    for (const item of unassignedBreakdown.items) {
+      list.push({
+        kind: 'unassigned',
+        text: `${item.subject}/${item.grade} — ${item.classes} فصل بلا معلم (${item.periods} حصة)`,
+        tone: TONES.amber,
+        fatal: false,
+        surface: 'assign',
+      })
+    }
+    return list
+  }, [uniqueGrades, gradeTotal, maxPerClass, teachers, teacherLoad, unassignedBreakdown])
 
-      {/* Settings */}
-      {teachers.length > 0 && (
-        <>
-          <div className="rounded-xl border border-slate-200 p-4">
-            <label className="mb-2 block text-xs font-bold text-slate-600">اسم الجدول</label>
-            <input type="text" value={config.name} onChange={e => setConfig({ ...config, name: e.target.value })} className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-teal-500" />
-          </div>
+  const fatalCount = blockers.filter(b => b.fatal).length
+  const verdict = useMemo(() => {
+    if (totalRequired === 0) return { label: 'لم يُحدد نصاب بعد', tone: TONES.gray }
+    if (fatalCount > 0) return { label: 'مستحيل رياضياً', tone: TONES.red }
+    if (unassignedPeriods > 0) return { label: 'ناقص', tone: TONES.amber }
+    return { label: 'جاهز', tone: TONES.green }
+  }, [totalRequired, fatalCount, unassignedPeriods])
 
-          <div className="rounded-xl border border-slate-200 p-4">
-            <label className="mb-2 block text-xs font-bold text-slate-600">أيام العمل وعدد الحصص</label>
-            <div className="grid grid-cols-5 gap-2">
-              {WORKING_DAYS.map(day => {
-                const active = config.working_days.includes(day)
-                return (
-                  <div key={day} className={`overflow-hidden rounded-lg border ${active ? 'border-teal-400' : 'border-slate-200 opacity-50'}`}>
-                    <button onClick={() => setConfig({ ...config, working_days: active ? config.working_days.filter(d => d !== day) : [...config.working_days, day] })}
-                      className={`flex w-full items-center justify-center gap-1 py-1.5 text-xs font-bold ${active ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                      {active && <CheckCircle className="h-3 w-3" />}{day}
-                    </button>
-                    {active && (
-                      <input type="number" min={1} max={10} value={config.periods_per_day[day] || 7}
-                        onChange={e => setConfig({ ...config, periods_per_day: { ...config.periods_per_day, [day]: parseInt(e.target.value) || 7 } })}
-                        className="w-full border-t border-slate-200 p-1 text-center text-sm font-bold text-teal-700 focus:outline-none" />
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
+  const reqs = useMemo(() => buildRequirements(), [buildRequirements])
+  const totalSessions = useMemo(() => reqs.reduce((s, r) => s + r.periods_per_week, 0), [reqs])
 
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: 'أقصى حصص/يوم', value: config.max_teacher_periods_per_day, key: 'max_teacher_periods_per_day', icon: Target },
-              { label: 'أقصى متتالية', value: config.max_consecutive_periods, key: 'max_consecutive_periods', icon: RefreshCw },
-              { label: 'وقت الحل (ث)', value: config.time_limit_seconds, key: 'time_limit_seconds', icon: Clock },
-            ].map(f => (
-              <div key={f.key} className="rounded-lg border border-slate-200 p-3">
-                <div className="flex items-center gap-1 text-[10px] text-slate-500"><f.icon className="h-3 w-3" />{f.label}</div>
-                <input type="number" min={1} max={f.key === 'time_limit_seconds' ? 300 : 10} value={f.value}
-                  onChange={e => setConfig({ ...config, [f.key]: parseInt(e.target.value) || f.value })}
-                  className="mt-1 w-full rounded border border-slate-200 p-1 text-center text-lg font-bold text-slate-800 focus:border-teal-500 focus:outline-none" />
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  )
+  const visibleTeachers = useMemo(() => {
+    const q = teacherSearch.trim().toLowerCase()
+    return teachers.filter(t => {
+      if (q && !t.name.toLowerCase().includes(q)) return false
+      if (onlyIncomplete) {
+        const load = teacherLoad(t.id)
+        const quota = t.weekly_quota || 24
+        if (load >= quota) return false
+      }
+      return true
+    })
+  }, [teachers, teacherSearch, onlyIncomplete, teacherLoad])
 
-  // ── Step 2: Subjects + periods per grade + constraints ──
-  const renderStep2 = () => (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-bold text-slate-900">المواد ونصابها</h2>
-          <p className="text-xs text-slate-500">حدد عدد حصص كل مادة لكل مرحلة</p>
-        </div>
-        <div className="text-xs text-slate-500">المتاح/فصل: <span className="font-bold text-teal-700">{maxPerClass}</span> حصة</div>
-      </div>
+  const teacherNameById = useMemo(() => {
+    const map: Record<number, string> = {}
+    teachers.forEach(t => { map[t.id] = t.name })
+    return map
+  }, [teachers])
 
-      {uniqueGrades.length === 0 ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-center">
-          <AlertTriangle className="mx-auto h-8 w-8 text-amber-500" />
-          <p className="mt-2 text-sm text-amber-800">لا توجد فصول. ارجع للخطوة السابقة.</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {uniqueGrades.map(grade => {
-            const total = gradeTotal(grade)
-            const overLimit = total > maxPerClass
+  const score = result?.quality_report?.overall_score ?? 0
+
+  return (
+    <WsPage>
+      <WsHeader
+        title="محاكي الجداول الذكي"
+        badge={
+          isRunning ? (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: TONES.purple.tx }}>
+              <span className="ws-pulse" style={{ background: TONES.purple.tx }} />
+              جارٍ التوليد
+            </span>
+          ) : (
+            <span style={{ color: dataSource === 'custom' ? TONES.purple.tx : TONES.sky.tx }}>
+              {dataSource === 'custom' ? 'بيانات تجريبية' : 'بيانات المدرسة'}
+            </span>
+          )
+        }
+        actions={
+          <>
+            <WsField label="اسم الجدول">
+              <WsInput
+                type="text"
+                value={config.name}
+                onChange={e => setConfig({ ...config, name: e.target.value })}
+                style={{ width: 150 }}
+              />
+            </WsField>
+            {surface === 'result' && result && result.status !== 'infeasible' && (
+              <WsBtn icon={Printer} onClick={() => window.print()}>طباعة</WsBtn>
+            )}
+          </>
+        }
+        facts={
+          <>
+            <WsFact icon={Users} label="معلمون">{teachers.length}</WsFact>
+            <WsFact icon={BookOpen} label="مواد">{subjects.length}</WsFact>
+            <WsFact icon={GraduationCap} label="فصول">{classes.length}</WsFact>
+            <WsFact icon={Shield} label="السعة">{totalCapacity}</WsFact>
+            <WsFact icon={Hash} label="مطلوب">{totalRequired}</WsFact>
+            <WsFact icon={CheckCircle} label="مُسند">
+              <span style={{ color: TONES.green.tx }}>{totalAssigned}</span>
+            </WsFact>
+            <WsFact icon={AlertTriangle} label="متبقي">
+              <span style={{ color: unassignedPeriods > 0 ? TONES.red.tx : TONES.green.tx }}>{unassignedPeriods}</span>
+            </WsFact>
+          </>
+        }
+      />
+
+      <WsToolbar>
+        <div className="ws-seg">
+          {SURFACES.map(({ key, label, icon: Icon }) => {
+            if (key === 'result' && !result) return null
+            const count = key === 'quota' ? totalRequired : key === 'assign' ? unassignedPeriods : result?.schedule.length
             return (
-              <div key={grade} className="rounded-xl border border-slate-200 overflow-hidden">
-                <div className={`flex items-center justify-between px-4 py-2 ${overLimit ? 'bg-red-50' : 'bg-slate-50'}`}>
-                  <span className="text-sm font-bold text-slate-800">{grade}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-500">{(classesByGrade[grade] || []).length} فصول</span>
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${overLimit ? 'bg-red-100 text-red-700' : 'bg-teal-100 text-teal-700'}`}>
-                      {total}/{maxPerClass}
-                    </span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-1 p-2 sm:grid-cols-3 md:grid-cols-4">
-                  {subjects.map(sub => {
-                    const ppw = getSubjectGradePpw(sub.id, grade)
+              <button
+                key={key}
+                type="button"
+                className={`ws-seg__btn ${surface === key ? 'is-active' : ''}`}
+                onClick={() => setSurface(key)}
+              >
+                <Icon style={{ width: 13, height: 13 }} />
+                {label}
+                {count != null && count > 0 && <span className="ws-count">{count}</span>}
+              </button>
+            )
+          })}
+        </div>
+
+        {surface === 'assign' && (
+          <>
+            <WsField label="بحث" grow>
+              <WsInput
+                type="search"
+                value={teacherSearch}
+                onChange={e => setTeacherSearch(e.target.value)}
+                placeholder="ابحث عن معلم..."
+                style={{ width: '100%' }}
+              />
+            </WsField>
+            <WsField label="الناقص فقط">
+              <WsSwitch checked={onlyIncomplete} onChange={setOnlyIncomplete} />
+            </WsField>
+          </>
+        )}
+
+        {surface === 'result' && result && result.status !== 'infeasible' && (
+          <WsField label="العرض">
+            <div className="ws-seg">
+              {([['class', 'حسب الفصل', GraduationCap], ['teacher', 'حسب المعلم', Users]] as const).map(([m, l, I]) => (
+                <button
+                  key={m}
+                  type="button"
+                  className={`ws-seg__btn ${viewMode === m ? 'is-active' : ''}`}
+                  onClick={() => setViewMode(m)}
+                >
+                  <I style={{ width: 13, height: 13 }} />{l}
+                </button>
+              ))}
+            </div>
+          </WsField>
+        )}
+      </WsToolbar>
+
+      <WsLayout>
+        {/* ═══ الإعدادات — عمود مطوي افتراضياً ═══ */}
+        <WsSideCol
+          side="start"
+          title="الإعدادات"
+          icon={Settings2}
+          storageKey="ws:schedule-simulator:config"
+          width={280}
+          defaultCollapsed
+        >
+          <WsBlock fill scroll>
+            <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <p className="ws-label" style={{ marginBottom: 6 }}>مصدر البيانات</p>
+                <div className="ws-choice-grid">
+                  {[
+                    { key: 'existing' as const, label: 'بيانات المدرسة', icon: Database, tone: TONES.sky },
+                    { key: 'custom' as const, label: 'بيانات تجريبية', icon: Sparkles, tone: TONES.purple },
+                  ].map(opt => {
+                    const isSelected = dataSource === opt.key
+                    const Icon = opt.icon
                     return (
-                      <div key={sub.id} className="flex items-center gap-2 rounded-lg border border-slate-100 bg-white px-2 py-1.5">
-                        <span className="flex-1 truncate text-xs text-slate-700">{sub.name}</span>
-                        <input type="number" min={0} max={8} value={ppw || ''}
-                          onFocus={e => e.target.select()}
-                          onChange={e => {
-                            const v = e.target.value === '' ? 0 : Math.min(8, Math.max(0, parseInt(e.target.value) || 0))
-                            setSubjectGradePeriods(prev => {
-                              const filtered = prev.filter(s => !(s.subject_id === sub.id && s.grade === grade))
-                              return v > 0 ? [...filtered, { subject_id: sub.id, grade, periods_per_week: v }] : filtered
-                            })
-                          }}
-                          className="w-12 rounded border border-slate-200 p-1 text-center text-sm font-bold text-slate-800 focus:border-teal-500 focus:outline-none" />
-                      </div>
+                      <button
+                        key={opt.key}
+                        type="button"
+                        className={`ws-choice ${isSelected ? 'is-selected' : ''}`}
+                        style={isSelected
+                          ? { background: opt.tone.bg, borderColor: opt.tone.tx, color: opt.tone.tx, boxShadow: `0 0 0 1px ${opt.tone.tx}` }
+                          : undefined}
+                        onClick={() => {
+                          setDataSource(opt.key)
+                          if (opt.key === 'custom') {
+                            setTeachers([]); setSubjects([]); setClasses([]); setSubjectGradePeriods([]); setTeacherAssignments({})
+                          }
+                        }}
+                      >
+                        <Icon />
+                        {opt.label}
+                      </button>
                     )
                   })}
                 </div>
               </div>
-            )
-          })}
 
-          {/* Subject constraints */}
-          <details className="rounded-xl border border-slate-200">
-            <summary className="cursor-pointer px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50">قيود المواد (اختياري)</summary>
-            <div className="space-y-1 p-2">
-              {subjects.map(sub => {
-                const c = subjectConstraints.find(sc => sc.subject_id === sub.id)
-                const update = (u: Partial<SubjectConstraint>) => {
-                  setSubjectConstraints(prev => {
-                    const existing = prev.find(sc => sc.subject_id === sub.id)
-                    if (existing) return prev.map(sc => sc.subject_id === sub.id ? { ...sc, ...u } : sc)
-                    return [...prev, { subject_id: sub.id, requires_consecutive: false, consecutive_count: 2, avoid_first_period: false, avoid_last_period: false, no_consecutive_days: false, max_per_day: 2, is_heavy: false, ...u }]
-                  })
-                }
-                return (
-                  <div key={sub.id} className="flex flex-wrap items-center gap-3 rounded-lg bg-slate-50 px-3 py-2 text-xs">
-                    <span className="w-20 font-bold text-slate-700">{sub.name}</span>
-                    {[
-                      { label: 'ثقيلة', key: 'is_heavy', val: c?.is_heavy },
-                      { label: 'تجنب الأولى', key: 'avoid_first_period', val: c?.avoid_first_period },
-                      { label: 'تجنب الأخيرة', key: 'avoid_last_period', val: c?.avoid_last_period },
-                    ].map(f => (
-                      <label key={f.key} className="flex items-center gap-1 text-slate-600">
-                        <input type="checkbox" checked={!!f.val} onChange={e => update({ [f.key]: e.target.checked })} className="h-3 w-3 rounded border-slate-300 text-teal-600" />{f.label}
-                      </label>
-                    ))}
-                    <label className="flex items-center gap-1 text-slate-600">
-                      أقصى/يوم <input type="number" min={1} max={5} value={c?.max_per_day || 2} onChange={e => update({ max_per_day: parseInt(e.target.value) || 2 })} className="w-10 rounded border border-slate-200 px-1 text-center" />
-                    </label>
-                  </div>
-                )
-              })}
-            </div>
-          </details>
-        </div>
-      )}
-    </div>
-  )
+              {isLoading && <WsEmpty loading>جاري التحميل...</WsEmpty>}
 
-  // ── Step 3: Teachers + assignments ──
-  const renderStep3 = () => {
-    const addAssignment = (tid: number) => {
-      setTeacherAssignments(prev => ({
-        ...prev,
-        [tid]: [...(prev[tid] || []), { subject_id: subjects[0]?.id || 0, subject_name: subjects[0]?.name || '', grade: uniqueGrades[0] || '', class_ids: [] }],
-      }))
-    }
+              {dataSource === 'custom' && !isLoading && teachers.length === 0 && (
+                <WsBtn variant="primary" icon={Sparkles} onClick={generateMockData} style={{ justifyContent: 'center' }}>
+                  توليد بيانات تجريبية
+                </WsBtn>
+              )}
 
-    const updateAssignment = (tid: number, idx: number, updates: Partial<TeacherAssignment>) => {
-      setTeacherAssignments(prev => ({
-        ...prev,
-        [tid]: (prev[tid] || []).map((a, i) => i === idx ? { ...a, ...updates } : a),
-      }))
-    }
-
-    const removeAssignment = (tid: number, idx: number) => {
-      setTeacherAssignments(prev => ({
-        ...prev,
-        [tid]: (prev[tid] || []).filter((_, i) => i !== idx),
-      }))
-    }
-
-    const toggleClass = (tid: number, idx: number, classId: number) => {
-      setTeacherAssignments(prev => {
-        const assignments = [...(prev[tid] || [])]
-        const a = { ...assignments[idx] }
-        a.class_ids = a.class_ids.includes(classId) ? a.class_ids.filter(id => id !== classId) : [...a.class_ids, classId]
-        assignments[idx] = a
-        return { ...prev, [tid]: assignments }
-      })
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    // @ts-expect-error reserved for future use
-    const selectAllClasses = (tid: number, idx: number, grade: string) => {
-      const allIds = (classesByGrade[grade] || []).map(c => c.id)
-      setTeacherAssignments(prev => {
-        const assignments = [...(prev[tid] || [])]
-        const a = { ...assignments[idx] }
-        a.class_ids = a.class_ids.length === allIds.length ? [] : [...allIds]
-        assignments[idx] = a
-        return { ...prev, [tid]: assignments }
-      })
-    }
-
-    return (
-      <div className="flex flex-col" style={{ height: 'calc(100vh - 320px)', minHeight: '400px' }}>
-        {/* Header ثابت */}
-        <div className="flex items-center justify-between pb-3">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900">المعلمون وتوزيعهم</h2>
-            <p className="text-xs text-slate-500">حدد مواد وفصول كل معلم</p>
-          </div>
-          <div className="flex items-center gap-3 text-xs">
-            <span className="rounded-full bg-teal-100 px-2 py-1 font-bold text-teal-700">مُسند: {totalAssigned}</span>
-            <span className={`rounded-full px-2 py-1 font-bold ${unassignedPeriods > 0 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
-              متبقي: {unassignedPeriods}
-            </span>
-            <span className="rounded-full bg-slate-100 px-2 py-1 font-bold text-slate-600">مطلوب: {totalRequired}</span>
-          </div>
-        </div>
-
-        {/* قائمة قابلة للتمرير */}
-        <div className="flex-1 space-y-2 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/50 p-2">
-          {teachers.map(teacher => {
-            const load = teacherLoad(teacher.id)
-            const quota = teacher.weekly_quota || 24
-            // @ts-expect-error reserved for future use
-            const pref = teacherPreferences.find(p => p.teacher_id === teacher.id)
-            const assignments = teacherAssignments[teacher.id] || []
-            const overQuota = load > quota
-            const pct = Math.min(100, Math.round((load / quota) * 100))
-
-            return (
-              <div key={teacher.id} className={`rounded-xl border overflow-hidden ${overQuota ? 'border-red-300' : 'border-slate-200'}`}>
-                {/* Teacher header */}
-                <div className={`flex items-center gap-3 px-3 py-2 ${overQuota ? 'bg-red-50' : 'bg-slate-50'}`}>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-xs font-bold text-slate-600 shadow-sm">
-                    {teacher.name.charAt(0)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="truncate text-sm font-bold text-slate-900">{teacher.name}</div>
-                    <div className="flex items-center gap-2">
-                      <div className="h-1.5 w-24 overflow-hidden rounded-full bg-slate-200">
-                        <div className={`h-full rounded-full transition-all ${overQuota ? 'bg-red-500' : pct > 80 ? 'bg-amber-500' : 'bg-teal-500'}`} style={{ width: `${pct}%` }} />
-                      </div>
-                      <span className={`text-[10px] font-bold ${overQuota ? 'text-red-600' : 'text-slate-500'}`}>{load}/{quota}</span>
-                    </div>
-                  </div>
-                  <button onClick={() => addAssignment(teacher.id)} className="flex items-center gap-1 rounded-lg bg-teal-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-teal-700">
-                    <Plus className="h-3 w-3" />مادة
-                  </button>
-                </div>
-
-                {/* Assignments */}
-                {assignments.length > 0 && (
-                  <div className="divide-y divide-slate-100 bg-white">
-                    {assignments.map((a, idx) => {
-                      const ppw = getSubjectGradePpw(a.subject_id, a.grade)
-                      const availableClasses = getAvailableClasses(teacher.id, a.subject_id, a.grade)
-                      const sessionCount = ppw * a.class_ids.length
-
-                      return (
-                        <div key={idx} className="flex items-start gap-2 px-3 py-2">
-                          <div className="flex flex-1 flex-wrap items-center gap-2">
-                            {/* Subject */}
-                            <select value={a.subject_id} onChange={e => {
-                              const sid = parseInt(e.target.value); const sub = subjects.find(s => s.id === sid)
-                              updateAssignment(teacher.id, idx, { subject_id: sid, subject_name: sub?.name || '', class_ids: [] })
-                            }} className="rounded border border-slate-200 px-2 py-1 text-xs font-medium focus:border-teal-500 focus:outline-none">
-                              {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                            </select>
-
-                            {/* Grade */}
-                            <select value={a.grade} onChange={e => updateAssignment(teacher.id, idx, { grade: e.target.value, class_ids: [] })}
-                              className="rounded border border-slate-200 px-2 py-1 text-xs font-medium focus:border-teal-500 focus:outline-none">
-                              {uniqueGrades.map(g => <option key={g} value={g}>{g}</option>)}
-                            </select>
-
-                            {/* Classes - only show available (not taken by other teachers) */}
-                            <div className="flex items-center gap-1">
-                              {availableClasses.length > 1 && (
-                                <button onClick={() => {
-                                  const allIds = availableClasses.map(c => c.id)
-                                  const allSelected = allIds.every(id => a.class_ids.includes(id))
-                                  updateAssignment(teacher.id, idx, { class_ids: allSelected ? a.class_ids.filter(id => !allIds.includes(id)) : [...new Set([...a.class_ids, ...allIds])] })
-                                }}
-                                  className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${availableClasses.every(c => a.class_ids.includes(c.id)) ? 'bg-teal-100 text-teal-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
-                                  الكل
-                                </button>
-                              )}
-                              {availableClasses.map(c => (
-                                <button key={c.id} onClick={() => toggleClass(teacher.id, idx, c.id)}
-                                  className={`h-6 w-6 rounded text-[10px] font-bold ${a.class_ids.includes(c.id) ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
-                                  {c.class_name}
-                                </button>
-                              ))}
-                              {availableClasses.length === 0 && (
-                                <span className="text-[10px] text-red-500">كل الفصول مأخوذة</span>
-                              )}
-                            </div>
-
-                            {/* Count */}
-                            {sessionCount > 0 && (
-                              <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-700">{sessionCount} حصة</span>
+              {teachers.length > 0 && (
+                <>
+                  <div>
+                    <p className="ws-label" style={{ marginBottom: 6 }}>أيام العمل وعدد الحصص</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {WORKING_DAYS.map(day => {
+                        const active = config.working_days.includes(day)
+                        return (
+                          <div key={day} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <button
+                              type="button"
+                              className={`ws-choice ${active ? 'is-selected' : ''}`}
+                              style={{ flex: 1, justifyContent: 'flex-start', opacity: active ? 1 : 0.55 }}
+                              onClick={() => setConfig({ ...config, working_days: active ? config.working_days.filter(d => d !== day) : [...config.working_days, day] })}
+                            >
+                              {active && <CheckCircle />}
+                              {day}
+                            </button>
+                            {active && (
+                              <WsInput
+                                type="number"
+                                min={1}
+                                max={10}
+                                value={config.periods_per_day[day] || 7}
+                                onChange={e => setConfig({ ...config, periods_per_day: { ...config.periods_per_day, [day]: parseInt(e.target.value) || 7 } })}
+                                style={{ width: 52, textAlign: 'center' }}
+                              />
                             )}
                           </div>
+                        )
+                      })}
+                    </div>
+                    <p style={{ margin: '6px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                      السقف المتاح لكل فصل: <b style={{ color: 'var(--ws-accent)' }}>{maxPerClass}</b> حصة أسبوعياً
+                    </p>
+                  </div>
 
-                          <button onClick={() => removeAssignment(teacher.id, idx)} className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-500">
-                            <X className="h-3 w-3" />
-                          </button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {[
+                      { label: 'أقصى حصص للمعلم/يوم', value: config.max_teacher_periods_per_day, key: 'max_teacher_periods_per_day', max: 10 },
+                      { label: 'أقصى حصص متتالية', value: config.max_consecutive_periods, key: 'max_consecutive_periods', max: 10 },
+                      { label: 'وقت الحل (ثانية)', value: config.time_limit_seconds, key: 'time_limit_seconds', max: 300 },
+                    ].map(f => (
+                      <WsField key={f.key} label={f.label}>
+                        <WsInput
+                          type="number"
+                          min={1}
+                          max={f.max}
+                          value={f.value}
+                          onChange={e => setConfig({ ...config, [f.key]: parseInt(e.target.value) || f.value })}
+                        />
+                      </WsField>
+                    ))}
+                  </div>
+
+                  <div>
+                    <p className="ws-label" style={{ marginBottom: 6 }}>قيود المواد (اختياري)</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {subjects.map(sub => {
+                        const c = subjectConstraints.find(sc => sc.subject_id === sub.id)
+                        const update = (u: Partial<SubjectConstraint>) => {
+                          setSubjectConstraints(prev => {
+                            const existing = prev.find(sc => sc.subject_id === sub.id)
+                            if (existing) return prev.map(sc => sc.subject_id === sub.id ? { ...sc, ...u } : sc)
+                            return [...prev, { subject_id: sub.id, requires_consecutive: false, consecutive_count: 2, avoid_first_period: false, avoid_last_period: false, no_consecutive_days: false, max_per_day: 2, is_heavy: false, ...u }]
+                          })
+                        }
+                        return (
+                          <div key={sub.id} style={{ border: '1px solid var(--ws-border)', borderRadius: 8, padding: 7 }}>
+                            <p style={{ margin: '0 0 5px', fontSize: 11.5, fontWeight: 700 }}>{sub.name}</p>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                              {[
+                                { label: 'ثقيلة', key: 'is_heavy' as const, val: c?.is_heavy },
+                                { label: 'تجنب الأولى', key: 'avoid_first_period' as const, val: c?.avoid_first_period },
+                                { label: 'تجنب الأخيرة', key: 'avoid_last_period' as const, val: c?.avoid_last_period },
+                              ].map(f => (
+                                <button
+                                  key={f.key}
+                                  type="button"
+                                  className="ws-chip"
+                                  onClick={() => update({ [f.key]: !f.val })}
+                                  style={f.val
+                                    ? { background: TONES.sky.bg, borderColor: TONES.sky.tx, color: TONES.sky.tx }
+                                    : undefined}
+                                >
+                                  {f.label}
+                                </button>
+                              ))}
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                                أقصى/يوم
+                                <WsInput
+                                  type="number"
+                                  min={1}
+                                  max={5}
+                                  value={c?.max_per_day || 2}
+                                  onChange={e => update({ max_per_day: parseInt(e.target.value) || 2 })}
+                                  style={{ width: 42, textAlign: 'center' }}
+                                />
+                              </span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </WsBlock>
+        </WsSideCol>
+
+        <WsMain>
+          {error && (
+            <div style={{ padding: 10 }}>
+              <WsAlert tone="error" boxed>{error}</WsAlert>
+            </div>
+          )}
+
+          {/* ═══ سطح النصاب — مصفوفة واحدة: المواد × المراحل ═══ */}
+          {surface === 'quota' && (
+            <WsBlock fill title="نصاب المواد" icon={BookOpen} count={`${totalRequired} حصة`}>
+              {uniqueGrades.length === 0 ? (
+                <WsEmpty icon={AlertTriangle}>
+                  <p style={{ margin: 0 }}>لا توجد فصول</p>
+                  <p style={{ margin: '4px 0 0', fontSize: 11 }}>افتح عمود «الإعدادات» واختر مصدر البيانات</p>
+                </WsEmpty>
+              ) : (
+                <div className="ws-tablewrap">
+                  <table className="ws-table ws-matrix">
+                    <thead>
+                      <tr>
+                        <th className="ws-matrix__stick" style={{ minWidth: 130, textAlign: 'right' }}>المادة</th>
+                        {uniqueGrades.map(grade => (
+                          <th key={grade} style={{ minWidth: 84 }}>
+                            {grade}
+                            <span className="ws-count" style={{ marginInlineStart: 4 }}>{(classesByGrade[grade] || []).length}</span>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {subjects.map(sub => (
+                        <tr key={sub.id}>
+                          <td className="ws-matrix__stick" style={{ textAlign: 'right', fontWeight: 600 }}>{sub.name}</td>
+                          {uniqueGrades.map(grade => {
+                            const ppw = getSubjectGradePpw(sub.id, grade)
+                            /* خريطة حرارة سماوية: تتدرّج مع القيمة، والصفر بلا غسلة فتُقرأ الثقوب فوراً */
+                            const heat = ppw > 0 ? Math.min(1, ppw / 6) : 0
+                            return (
+                              <td key={grade} style={{ padding: 3, background: ppw > 0 ? `rgba(33, 104, 158, ${0.05 + heat * 0.14})` : undefined }}>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={8}
+                                  value={ppw || ''}
+                                  onFocus={e => e.target.select()}
+                                  onChange={e => {
+                                    const v = e.target.value === '' ? 0 : Math.min(8, Math.max(0, parseInt(e.target.value) || 0))
+                                    setSubjectGradePeriods(prev => {
+                                      const filtered = prev.filter(s => !(s.subject_id === sub.id && s.grade === grade))
+                                      return v > 0 ? [...filtered, { subject_id: sub.id, grade, periods_per_week: v }] : filtered
+                                    })
+                                  }}
+                                  className="ws-input"
+                                  style={{ width: '100%', textAlign: 'center', fontWeight: 700, padding: '3px 2px' }}
+                                />
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      ))}
+                      {/* صف المجموع اللاصق — السقف تحت العين وأنت تكتب */}
+                      <tr style={{ position: 'sticky', bottom: 0, background: 'var(--ws-surface-2)', boxShadow: '0 -1px 0 var(--ws-border)' }}>
+                        <td className="ws-matrix__stick" style={{ textAlign: 'right', fontWeight: 800, background: 'var(--ws-surface-2)' }}>
+                          المجموع / {maxPerClass}
+                        </td>
+                        {uniqueGrades.map(grade => {
+                          const total = gradeTotal(grade)
+                          const over = total > maxPerClass
+                          return (
+                            <td
+                              key={grade}
+                              style={{
+                                fontWeight: 800,
+                                color: over ? TONES.red.tx : total === maxPerClass ? TONES.green.tx : 'var(--ws-text-2)',
+                                background: over ? TONES.red.bg : undefined,
+                              }}
+                            >
+                              {total}
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </WsBlock>
+          )}
+
+          {/* ═══ سطح الإسناد ═══ */}
+          {surface === 'assign' && (
+            <WsBlock fill title="إسناد المعلمين" icon={Users} count={`${totalAssigned}/${totalRequired}`}>
+              {teachers.length === 0 ? (
+                <WsEmpty icon={Users}>لا يوجد معلمون — افتح عمود «الإعدادات» أولاً</WsEmpty>
+              ) : visibleTeachers.length === 0 ? (
+                <WsEmpty icon={Users}>لا معلمين مطابقين</WsEmpty>
+              ) : (
+                <div className="ws-block__scroll">
+                  {visibleTeachers.map(teacher => {
+                    const load = teacherLoad(teacher.id)
+                    const quota = teacher.weekly_quota || 24
+                    const assignments = teacherAssignments[teacher.id] || []
+                    const overQuota = load > quota
+                    const pct = Math.min(100, Math.round((load / quota) * 100))
+                    const barTone = overQuota ? TONES.red : pct > 80 ? TONES.amber : TONES.green
+
+                    return (
+                      <div key={teacher.id} style={{ borderBottom: '1px solid var(--ws-hairline)' }}>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            padding: '7px 12px',
+                            background: overQuota ? TONES.red.bg : 'var(--ws-surface-2)',
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: 24,
+                              height: 24,
+                              borderRadius: 6,
+                              flexShrink: 0,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 11,
+                              fontWeight: 800,
+                              background: 'var(--ws-surface)',
+                              border: '1px solid var(--ws-border)',
+                            }}
+                          >
+                            {teacher.name.charAt(0)}
+                          </span>
+                          <span style={{ flex: 1, minWidth: 0 }}>
+                            <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {teacher.name}
+                            </span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                              <span style={{ display: 'block', width: 90, height: 5, borderRadius: 3, background: 'var(--ws-border)', overflow: 'hidden' }}>
+                                <span style={{ display: 'block', height: '100%', width: `${pct}%`, background: barTone.tx, borderRadius: 3 }} />
+                              </span>
+                              <span style={{ fontSize: 10, fontWeight: 700, color: overQuota ? TONES.red.tx : 'var(--ws-text-2)' }}>
+                                {load}/{quota}
+                              </span>
+                            </span>
+                          </span>
+                          <WsBtn size="sm" icon={Plus} onClick={() => addAssignment(teacher.id)}>مادة</WsBtn>
+                        </div>
+
+                        {assignments.length > 0 && (
+                          <div>
+                            {assignments.map((a, idx) => {
+                              const ppw = getSubjectGradePpw(a.subject_id, a.grade)
+                              const allGradeClasses = classesByGrade[a.grade] || []
+                              const availableClasses = getAvailableClasses(teacher.id, a.subject_id, a.grade)
+                              const availableIds = new Set(availableClasses.map(c => c.id))
+                              const takenMap = takenClasses[`${a.subject_id}-${a.grade}`] || {}
+                              const sessionCount = ppw * a.class_ids.length
+
+                              return (
+                                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderTop: '1px solid var(--ws-hairline)', flexWrap: 'wrap' }}>
+                                  <select
+                                    value={a.subject_id}
+                                    onChange={e => {
+                                      const sid = parseInt(e.target.value); const sub = subjects.find(s => s.id === sid)
+                                      updateAssignment(teacher.id, idx, { subject_id: sid, subject_name: sub?.name || '', class_ids: [] })
+                                    }}
+                                    className="ws-select"
+                                    style={{ width: 110 }}
+                                  >
+                                    {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                  </select>
+
+                                  <select
+                                    value={a.grade}
+                                    onChange={e => updateAssignment(teacher.id, idx, { grade: e.target.value, class_ids: [] })}
+                                    className="ws-select"
+                                    style={{ width: 100 }}
+                                  >
+                                    {uniqueGrades.map(g => <option key={g} value={g}>{g}</option>)}
+                                  </select>
+
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                                    {availableClasses.length > 1 && (
+                                      <button
+                                        type="button"
+                                        className="ws-chip"
+                                        onClick={() => {
+                                          const allIds = availableClasses.map(c => c.id)
+                                          const allSelected = allIds.every(id => a.class_ids.includes(id))
+                                          updateAssignment(teacher.id, idx, { class_ids: allSelected ? a.class_ids.filter(id => !allIds.includes(id)) : [...new Set([...a.class_ids, ...allIds])] })
+                                        }}
+                                        style={availableClasses.every(c => a.class_ids.includes(c.id))
+                                          ? { background: TONES.green.bg, borderColor: TONES.green.tx, color: TONES.green.tx }
+                                          : undefined}
+                                      >
+                                        الكل
+                                      </button>
+                                    )}
+                                    {/* الفصل المحجوز لا يختفي: يظهر بحرف مالكه — البيانات في الحالة أصلاً وتُهدر */}
+                                    {allGradeClasses.map(c => {
+                                      const isMine = a.class_ids.includes(c.id)
+                                      const isAvailable = availableIds.has(c.id)
+                                      const ownerId = takenMap[c.id]
+                                      const ownerName = ownerId != null ? teacherNameById[ownerId] : undefined
+                                      return (
+                                        <button
+                                          key={c.id}
+                                          type="button"
+                                          disabled={!isAvailable}
+                                          onClick={() => isAvailable && toggleClass(teacher.id, idx, c.id)}
+                                          title={isAvailable ? c.class_name : `محجوز لـ ${ownerName ?? 'معلم آخر'}`}
+                                          style={{
+                                            width: 24,
+                                            height: 24,
+                                            borderRadius: 6,
+                                            fontSize: 10,
+                                            fontWeight: 800,
+                                            fontFamily: 'inherit',
+                                            cursor: isAvailable ? 'pointer' : 'not-allowed',
+                                            border: `1px solid ${isMine ? TONES.green.tx : 'var(--ws-border)'}`,
+                                            background: isMine ? TONES.green.tx : isAvailable ? 'var(--ws-surface)' : TONES.gray.bg,
+                                            color: isMine ? '#fff' : isAvailable ? 'var(--ws-text-2)' : TONES.gray.tx,
+                                            opacity: isAvailable ? 1 : 0.6,
+                                          }}
+                                        >
+                                          {isAvailable ? c.class_name : (ownerName?.charAt(0) ?? '·')}
+                                        </button>
+                                      )
+                                    })}
+                                  </span>
+
+                                  {sessionCount > 0 && <ToneChip tone={TONES.sky}>{sessionCount} حصة</ToneChip>}
+
+                                  <WsIconBtn
+                                    icon={X}
+                                    label="حذف الإسناد"
+                                    onClick={() => removeAssignment(teacher.id, idx)}
+                                    style={{ marginInlineStart: 'auto', color: TONES.red.tx }}
+                                  />
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </WsBlock>
+          )}
+
+          {/* ═══ سطح النتيجة ═══ */}
+          {surface === 'result' && result && (
+            result.status === 'infeasible' ? (
+              <WsBlock fill scroll>
+                <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <WsAlert tone="error" boxed>
+                    <span>
+                      <b>لا يمكن إنشاء جدول</b>
+                      {result.error_message && <span style={{ display: 'block', marginTop: 3 }}>{result.error_message}</span>}
+                    </span>
+                  </WsAlert>
+                  {result.conflicts.map((c, i) => {
+                    const tone = c.severity === 'high' || c.severity === 'critical' ? TONES.red : TONES.amber
+                    return (
+                      <div key={i} style={{ background: tone.bg, border: `1px solid ${tone.bd}`, borderRadius: 8, padding: 9 }}>
+                        <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: tone.tx }}>{c.message}</p>
+                        {/* suggestion كان يصل ولا يُعرض — c.message وحدها كانت تُرسم */}
+                        {c.suggestion && (
+                          <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--ws-text-2)' }}>{c.suggestion}</p>
+                        )}
+                      </div>
+                    )
+                  })}
+                  <WsBtn icon={Users} onClick={() => setSurface('assign')} style={{ justifyContent: 'center' }}>
+                    عدّل الإسناد
+                  </WsBtn>
+                </div>
+              </WsBlock>
+            ) : (
+              <WsBlock
+                fill
+                scroll
+                title={viewMode === 'class' ? 'جداول الفصول' : 'جداول المعلمين'}
+                icon={Grid3x3}
+                count={result.schedule.length}
+              >
+                <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {(viewMode === 'class'
+                    ? Object.entries(result.by_class).map(([k, d]: [string, any]) => ({
+                      key: k, title: `${d.grade} - ${d.class_name}`, count: (d.sessions || []).length, grid: classGrids[k] || {},
+                    }))
+                    : Object.entries(result.by_teacher).map(([k, d]: [string, any]) => ({
+                      key: k, title: d.teacher_name, count: (d.sessions || []).length, grid: teacherGrids[k] || {},
+                    }))
+                  ).map(({ key, title, count, grid }) => (
+                    <div key={key} style={{ border: '1px solid var(--ws-border)', borderRadius: 10, overflow: 'hidden' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'var(--ws-surface-2)', borderBottom: '1px solid var(--ws-hairline)' }}>
+                        <span style={{ fontSize: 12.5, fontWeight: 700 }}>{title}</span>
+                        <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>{count} حصة</span>
+                      </div>
+                      <div className="ws-tablewrap">
+                        <table className="ws-table ws-matrix">
+                          <thead>
+                            <tr>
+                              <th className="ws-matrix__stick" style={{ width: 34 }}>ح</th>
+                              {config.working_days.map(day => <th key={day} style={{ minWidth: 96 }}>{day}</th>)}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {/* الصفوف = أقصى حصص عبر الأيام لا الافتراضي — وإلا اقتُطعت حصص الأيام الأطول */}
+                            {Array.from({ length: maxPeriodsInAnyDay }, (_, i) => i + 1).map(p => (
+                              <tr key={p}>
+                                <td className="ws-matrix__stick" style={{ fontWeight: 700, color: 'var(--ws-text-2)' }}>{p}</td>
+                                {config.working_days.map(day => {
+                                  const dayPeriods = config.periods_per_day[day] || config.default_periods_per_day
+                                  if (p > dayPeriods) {
+                                    return (
+                                      <td key={day} style={{ background: 'var(--ws-surface-2)', opacity: 0.5 }} title="اليوم انتهى">
+                                        <span style={{ fontSize: 10, color: 'var(--ws-text-2)' }}>—</span>
+                                      </td>
+                                    )
+                                  }
+                                  const s = grid[day]?.[p]
+                                  const tone = s ? subjectColors[s.subject_name] : null
+                                  return (
+                                    <td key={day} style={{ padding: 2 }}>
+                                      {s ? (
+                                        <div
+                                          style={{
+                                            borderRadius: 6,
+                                            padding: '3px 4px',
+                                            background: tone?.bg,
+                                            border: `1px solid ${tone?.bd}`,
+                                          }}
+                                        >
+                                          <div style={{ fontSize: 10.5, fontWeight: 800, color: tone?.tx }}>{s.subject_name}</div>
+                                          <div style={{ fontSize: 9, color: 'var(--ws-text-2)' }}>
+                                            {viewMode === 'class' ? s.teacher_name : `${s.grade} - ${s.class_name}`}
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <span style={{ fontSize: 10, color: 'var(--ws-border)' }}>·</span>
+                                      )}
+                                    </td>
+                                  )
+                                })}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </WsBlock>
+            )
+          )}
+        </WsMain>
+
+        {/* ═══ ★ الميزان — عمود الحكم ثلاثي الأطوار ═══ */}
+        <WsSideCol side="end" title="الميزان" icon={Scale} storageKey="ws:schedule-simulator:balance" width={320}>
+          <WsBlock fill scroll>
+            <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {/* ── الطور 2: أثناء التوليد ── */}
+              {isRunning ? (
+                <>
+                  <ToneChip tone={TONES.purple}>
+                    <span className="ws-pulse" style={{ background: TONES.purple.tx }} />
+                    المحرّك يعمل
+                  </ToneChip>
+
+                  <div className="ws-timeline" style={{ padding: '6px 0 0' }}>
+                    {AI_PHASES.map((phase, index) => {
+                      const Icon = phase.icon
+                      const isPast = index < aiPhase
+                      const isCurrent = index === aiPhase
+                      return (
+                        <div
+                          key={index}
+                          className={`ws-timeline__item ${isPast ? 'is-past' : ''} ${isCurrent ? 'is-current' : ''}`}
+                          style={{ paddingInlineStart: 44, marginBottom: 8 }}
+                        >
+                          <span className="ws-timeline__node" style={{ width: 40 }}>
+                            <span
+                              className="ws-timeline__dot"
+                              style={{
+                                width: 24,
+                                height: 24,
+                                background: isCurrent ? TONES.purple.bg : isPast ? TONES.green.bg : 'var(--ws-surface-2)',
+                                color: isCurrent ? TONES.purple.tx : isPast ? TONES.green.tx : 'var(--ws-text-2)',
+                              }}
+                            >
+                              <Icon style={{ width: 12, height: 12 }} />
+                            </span>
+                          </span>
+                          {/* بطاقة عادية لا ws-timeline__card — الكلاس يحمل حداً جانبياً ملوّناً ممنوعاً */}
+                          <p style={{ margin: 0, paddingTop: 4, fontSize: 11.5, fontWeight: isCurrent ? 700 : 400, color: isCurrent ? 'var(--ws-text)' : 'var(--ws-text-2)' }}>
+                            {phase.message}
+                          </p>
                         </div>
                       )
                     })}
                   </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </div>
-    )
-  }
 
-  // ── Step 4: Generate ──
-  const renderStep4 = () => {
-    const reqs = buildRequirements()
-    const totalSessions = reqs.reduce((s, r) => s + r.periods_per_week, 0)
+                  {/* شريط زمن صادق: يقيس المهلة الحقيقية لا طول النص العربي */}
+                  <div style={{ borderTop: '1px solid var(--ws-hairline)', paddingTop: 10 }}>
+                    <span style={{ display: 'block', height: 6, borderRadius: 3, background: 'var(--ws-border)', overflow: 'hidden' }}>
+                      <span
+                        style={{
+                          display: 'block',
+                          height: '100%',
+                          width: `${Math.min(100, (elapsedSeconds / Math.max(1, config.time_limit_seconds)) * 100)}%`,
+                          background: TONES.purple.tx,
+                          borderRadius: 3,
+                          transition: 'width 1s linear',
+                        }}
+                      />
+                    </span>
+                    <p style={{ margin: '5px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                      {elapsedSeconds}ث من {config.time_limit_seconds}ث · تنتهي المهلة بعد {Math.max(0, config.time_limit_seconds - elapsedSeconds)}ث
+                    </p>
+                  </div>
+                </>
+              ) : result && result.status !== 'infeasible' ? (
+                /* ── الطور 3: تقرير الجودة ── */
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ position: 'relative', width: 72, height: 72, flexShrink: 0 }}>
+                      <svg width="72" height="72" viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)' }}>
+                        <circle cx="50" cy="50" r="42" fill="none" stroke="var(--ws-border)" strokeWidth="8" />
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="42"
+                          fill="none"
+                          stroke={score >= 90 ? TONES.green.tx : score >= 70 ? TONES.amber.tx : TONES.red.tx}
+                          strokeWidth="8"
+                          strokeLinecap="round"
+                          strokeDasharray={`${score * 2.64} 264`}
+                        />
+                      </svg>
+                      <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 900 }}>
+                        {Math.round(score)}
+                      </span>
+                    </span>
+                    <div>
+                      <ToneChip tone={result.status === 'optimal' ? TONES.green : result.status === 'timeout' ? TONES.amber : TONES.sky}>
+                        {result.status === 'optimal' ? 'حل مثالي' : result.status === 'timeout' ? 'انتهت المهلة — حل جزئي' : 'حل مقبول'}
+                      </ToneChip>
+                      <p style={{ margin: '5px 0 0', fontSize: 11, color: 'var(--ws-text-2)' }}>
+                        {(result.solving_time_ms / 1000).toFixed(1)}ث · {result.schedule.length} حصة · {Object.keys(result.by_teacher).length} معلم
+                      </p>
+                    </div>
+                  </div>
 
-    return (
-      <div className="space-y-5">
-        {!isRunning && !result && (
-          <>
-            <div className="text-center">
-              <h2 className="text-lg font-bold text-slate-900">مراجعة وتوليد</h2>
-              <p className="text-xs text-slate-500">راجع البيانات ثم ابدأ التوليد</p>
+                  {result.quality_report && (
+                    <>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                        {([
+                          ['الفراغات', result.quality_report.gap_score ?? 0],
+                          ['توزيع المواد', result.quality_report.distribution_score ?? 0],
+                          ['توازن الحمل', result.quality_report.load_balance_score ?? 0],
+                          ['المتتالية', result.quality_report.consecutive_score ?? 0],
+                          ['رضا المعلمين', result.quality_report.teacher_satisfaction ?? 0],
+                        ] as Array<[string, number]>).map(([label, value]) => {
+                          const tone = value >= 90 ? TONES.green : value >= 70 ? TONES.amber : TONES.red
+                          return (
+                            <div key={label}>
+                              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11 }}>
+                                <span style={{ color: 'var(--ws-text-2)' }}>{label}</span>
+                                <b style={{ color: tone.tx }}>{Math.round(value)}%</b>
+                              </span>
+                              <span style={{ display: 'block', height: 4, borderRadius: 2, background: 'var(--ws-border)', overflow: 'hidden', marginTop: 3 }}>
+                                <span style={{ display: 'block', height: '100%', width: `${value}%`, background: tone.tx, borderRadius: 2 }} />
+                              </span>
+                            </div>
+                          )
+                        })}
+                      </div>
+
+                      {/* حقول تصل من المحرّك ولم يعرضها العرض قط */}
+                      <WsFactsList>
+                        <WsFactRow label="القيود الصارمة">{Math.round(result.quality_report.hard_constraints_met ?? 0)}%</WsFactRow>
+                        <WsFactRow label="الدرجة المرنة">{Math.round(result.quality_report.soft_score ?? 0)}%</WsFactRow>
+                        <WsFactRow label="الحصص الموضوعة">
+                          {result.quality_report.details?.total_sessions_placed ?? 0} / {result.quality_report.details?.total_requirements ?? 0}
+                        </WsFactRow>
+                        <WsFactRow label="الفراغات">{result.quality_report.details?.gap_count ?? 0}</WsFactRow>
+                        <WsFactRow label="متوسط الحمل اليومي">{result.quality_report.details?.avg_daily_load ?? 0}</WsFactRow>
+                        <WsFactRow label="أقصى حمل يومي">{result.quality_report.details?.max_daily_load ?? 0}</WsFactRow>
+                        <WsFactRow label="المعلمون المستخدمون">{result.quality_report.details?.teachers_used ?? 0}</WsFactRow>
+                      </WsFactsList>
+                    </>
+                  )}
+
+                  <div style={{ display: 'flex', gap: 6, borderTop: '1px solid var(--ws-hairline)', paddingTop: 10 }}>
+                    <WsBtn icon={Play} onClick={runSimulation} style={{ flex: 1, justifyContent: 'center' }}>إعادة التوليد</WsBtn>
+                    <WsBtn icon={RefreshCw} onClick={() => { setResult(null); setSurface('quota') }} style={{ flex: 1, justifyContent: 'center' }}>
+                      جديد
+                    </WsBtn>
+                  </div>
+                </>
+              ) : (
+                /* ── الطور 1: ميزان الجدوى ── */
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                    <ToneChip tone={verdict.tone}>{verdict.label}</ToneChip>
+                    <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>{totalSessions} حصة</span>
+                  </div>
+
+                  {/* شريط السعة المكدّس: مُسند + متبقي على خلفية مطلوب */}
+                  {totalRequired > 0 && (
+                    <div>
+                      <span style={{ display: 'flex', height: 8, borderRadius: 4, background: 'var(--ws-border)', overflow: 'hidden' }}>
+                        <span style={{ height: '100%', width: `${Math.min(100, (totalAssigned / totalRequired) * 100)}%`, background: TONES.green.tx }} />
+                        <span style={{ height: '100%', width: `${Math.min(100, (unassignedPeriods / totalRequired) * 100)}%`, background: TONES.red.tx }} />
+                      </span>
+                      <span style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 10.5 }}>
+                        <span style={{ color: TONES.green.tx }}>مُسند {totalAssigned}</span>
+                        <span style={{ color: 'var(--ws-text-2)' }}>مطلوب {totalRequired}</span>
+                        <span style={{ color: unassignedPeriods > 0 ? TONES.red.tx : 'var(--ws-text-2)' }}>متبقي {unassignedPeriods}</span>
+                      </span>
+                    </div>
+                  )}
+
+                  {/* معوّقات قابلة للنقر: كل معوّق يشخّص ويُنقّل */}
+                  {blockers.length > 0 ? (
+                    <div>
+                      <p className="ws-label" style={{ marginBottom: 5 }}>ما يمنع الحل ({blockers.length})</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {blockers.map((blocker, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() => setSurface(blocker.surface)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              textAlign: 'right',
+                              background: blocker.tone.bg,
+                              border: `1px solid ${blocker.tone.bd}`,
+                              borderRadius: 8,
+                              padding: '6px 8px',
+                              cursor: 'pointer',
+                              fontFamily: 'inherit',
+                              fontSize: 11,
+                              color: blocker.tone.tx,
+                            }}
+                          >
+                            <AlertTriangle style={{ width: 12, height: 12, flexShrink: 0 }} />
+                            <span style={{ flex: 1 }}>{blocker.text}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : totalRequired > 0 ? (
+                    <WsAlert tone="success" boxed>لا معوّقات — المواصفة متّسقة وجاهزة للتوليد</WsAlert>
+                  ) : (
+                    <p style={{ margin: 0, fontSize: 11.5, color: 'var(--ws-text-2)', lineHeight: 1.8 }}>
+                      ابدأ بضبط نصاب المواد لكل مرحلة في سطح «النصاب»، ثم أسند الفصول للمعلمين.
+                    </p>
+                  )}
+
+                  <div style={{ marginTop: 'auto', borderTop: '1px solid var(--ws-hairline)', paddingTop: 10 }}>
+                    <WsBtn
+                      variant="primary"
+                      icon={Brain}
+                      onClick={runSimulation}
+                      disabled={totalSessions === 0 || fatalCount > 0}
+                      style={{ width: '100%', justifyContent: 'center', padding: '10px 14px' }}
+                    >
+                      بدء التوليد الذكي
+                    </WsBtn>
+                    {/* الزر يعرف سبب تعطّله بدل disabled أعمى */}
+                    {fatalCount > 0 ? (
+                      <p style={{ margin: '5px 0 0', fontSize: 10.5, color: TONES.red.tx, textAlign: 'center' }}>
+                        عالج {fatalCount} معوّقاً مانعاً أولاً — المواصفة مستحيلة رياضياً
+                      </p>
+                    ) : totalSessions === 0 ? (
+                      <p style={{ margin: '5px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)', textAlign: 'center' }}>
+                        لا حصص لجدولتها — اضبط النصاب وأسند الفصول
+                      </p>
+                    ) : (
+                      <p style={{ margin: '5px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)', textAlign: 'center' }}>
+                        {totalSessions} حصة سيتم جدولتها · مهلة {config.time_limit_seconds}ث
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
-
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-              {[
-                { label: 'المعلمون', value: teachers.length, icon: Users },
-                { label: 'المواد', value: subjects.length, icon: BookOpen },
-                { label: 'الفصول', value: classes.length, icon: GraduationCap },
-                { label: 'الحصص', value: totalSessions, icon: Hash },
-              ].map(s => (
-                <div key={s.label} className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center">
-                  <s.icon className="mx-auto h-4 w-4 text-teal-600" />
-                  <div className="mt-1 text-xl font-bold text-slate-900">{s.value}</div>
-                  <div className="text-[10px] text-slate-500">{s.label}</div>
-                </div>
-              ))}
-            </div>
-
-            {unassignedPeriods > 0 && (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                <AlertTriangle className="mb-1 inline h-4 w-4" /> يوجد <span className="font-bold">{unassignedPeriods}</span> حصة لم تُسند لمعلمين. ارجع للخطوة السابقة.
-              </div>
-            )}
-
-            <button onClick={runSimulation} disabled={totalSessions === 0}
-              className="group w-full rounded-xl bg-gradient-to-l from-teal-600 to-emerald-600 px-6 py-4 font-bold text-white shadow-lg transition-all hover:shadow-xl disabled:opacity-40">
-              <span className="flex items-center justify-center gap-2">
-                <Brain className="h-5 w-5 transition-transform group-hover:scale-110" />
-                <span>بدء التوليد الذكي</span>
-              </span>
-              <span className="mt-1 block text-xs font-normal text-teal-200">{totalSessions} حصة سيتم جدولتها</span>
-            </button>
-          </>
-        )}
-
-        {isRunning && (
-          <div className="relative overflow-hidden rounded-2xl border-2 border-teal-200 bg-gradient-to-br from-slate-900 via-teal-950 to-slate-900 p-8 text-center">
-            <div className="relative mx-auto mb-4 flex h-16 w-16 items-center justify-center">
-              <div className="absolute inset-0 animate-ping rounded-full bg-teal-500/20" />
-              {(() => { const I = AI_PHASES[aiPhase]?.icon || Brain; return <I className="relative h-8 w-8 text-teal-400" /> })()}
-            </div>
-            <h3 className="text-lg font-bold text-white">الذكاء الاصطناعي يبني الجدول</h3>
-            <p className="mt-2 text-sm text-teal-300">{AI_PHASES[aiPhase]?.message}</p>
-            <div className="mx-auto mt-4 h-2 w-48 overflow-hidden rounded-full bg-slate-700">
-              <div className="h-full rounded-full bg-gradient-to-l from-teal-400 to-emerald-500 transition-all duration-1000" style={{ width: `${Math.min(95, ((aiPhase + 1) / AI_PHASES.length) * 100)}%` }} />
-            </div>
-            <div className="mt-3 flex items-center justify-center gap-4 text-xs text-slate-400">
-              <span><Clock className="inline h-3 w-3" /> {elapsedSeconds}ث</span>
-              <span><Hash className="inline h-3 w-3" /> {totalSessions} حصة</span>
-            </div>
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  // ── Step 5: Results ──
-  const renderResults = () => {
-    if (!result) return null
-
-    if (result.status === 'infeasible') {
-      return (
-        <div className="space-y-4">
-          <div className="rounded-xl border border-red-200 bg-red-50 p-5">
-            <AlertTriangle className="mb-2 h-6 w-6 text-red-600" />
-            <h2 className="text-lg font-bold text-red-900">لا يمكن إنشاء جدول</h2>
-            <p className="mt-1 text-sm text-red-700">{result.error_message}</p>
-          </div>
-          {result.conflicts.length > 0 && (
-            <div className="space-y-2">{result.conflicts.map((c, i) => (
-              <div key={i} className="rounded-lg border border-red-100 bg-red-50/50 p-3 text-sm text-red-800">{c.message}</div>
-            ))}</div>
-          )}
-          <button onClick={() => { setResult(null); setCurrentStep(3) }} className="w-full rounded-xl border border-slate-300 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">تعديل الإعدادات</button>
-        </div>
-      )
-    }
-
-    const qr = result.quality_report
-    const score = qr?.overall_score ?? 0
-
-    const ScoreBar = ({ label, value, icon: Icon }: { label: string; value: number; icon: any }) => (
-      <div className="space-y-1">
-        <div className="flex items-center justify-between text-xs">
-          <span className="flex items-center gap-1 text-slate-600"><Icon className="h-3 w-3" />{label}</span>
-          <span className={`font-bold ${value >= 90 ? 'text-emerald-600' : value >= 70 ? 'text-amber-600' : 'text-red-600'}`}>{Math.round(value)}%</span>
-        </div>
-        <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
-          <div className={`h-full rounded-full ${value >= 90 ? 'bg-emerald-500' : value >= 70 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${value}%` }} />
-        </div>
-      </div>
-    )
-
-    return (
-      <div className="space-y-4">
-        {/* Header */}
-        <div className="overflow-hidden rounded-2xl bg-gradient-to-l from-slate-900 via-teal-950 to-slate-900 p-5 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-1 text-xs text-teal-300"><CheckCircle className="h-3 w-3" />{result.status === 'optimal' ? 'حل مثالي' : 'حل مقبول'}</div>
-              <h2 className="mt-1 text-xl font-bold">تم بناء الجدول</h2>
-              <p className="mt-0.5 text-xs text-slate-300">{(result.solving_time_ms / 1000).toFixed(1)}ث | {result.schedule.length} حصة | {Object.keys(result.by_teacher).length} معلم</p>
-            </div>
-            <div className="relative h-20 w-20">
-              <svg className="h-20 w-20 -rotate-90" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="8" />
-                <circle cx="50" cy="50" r="42" fill="none" stroke={score >= 90 ? '#34d399' : score >= 70 ? '#fbbf24' : '#f87171'} strokeWidth="8" strokeLinecap="round" strokeDasharray={`${score * 2.64} 264`} />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center"><span className="text-xl font-bold">{Math.round(score)}</span></div>
-            </div>
-          </div>
-        </div>
-
-        {/* Quality */}
-        {qr && (
-          <div className="grid gap-3 md:grid-cols-2">
-            <ScoreBar label="الفراغات" value={qr.gap_score ?? 0} icon={Zap} />
-            <ScoreBar label="توزيع المواد" value={qr.distribution_score ?? 0} icon={BarChart3} />
-            <ScoreBar label="توازن الحمل" value={qr.load_balance_score ?? 0} icon={TrendingUp} />
-            <ScoreBar label="المتتالية" value={qr.consecutive_score ?? 0} icon={RefreshCw} />
-          </div>
-        )}
-
-        {/* View tabs */}
-        <div className="flex gap-2">
-          {([['class', 'حسب الفصل', GraduationCap], ['teacher', 'حسب المعلم', Users]] as const).map(([m, l, I]) => (
-            <button key={m} onClick={() => setViewMode(m)}
-              className={`flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold ${viewMode === m ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
-              <I className="h-3 w-3" />{l}
-            </button>
-          ))}
-        </div>
-
-        {/* Grids */}
-        {viewMode === 'class' && Object.entries(result.by_class).map(([k, d]: [string, any]) => {
-          const grid = classGrids[k] || {}
-          return (
-            <div key={k} className="overflow-hidden rounded-xl border border-slate-200">
-              <div className="flex items-center justify-between bg-slate-50 px-3 py-2">
-                <span className="text-sm font-bold text-slate-800">{d.grade} - {d.class_name}</span>
-                <span className="text-[10px] text-teal-600 font-bold">{(d.sessions||[]).length} حصة</span>
-              </div>
-              <div className="overflow-x-auto p-2">
-                <table className="min-w-full">
-                  <thead><tr><th className="w-10 px-1 py-1 text-[10px] text-slate-400">ح</th>{config.working_days.map(d => <th key={d} className="px-1 py-1 text-center text-[10px] text-slate-400">{d}</th>)}</tr></thead>
-                  <tbody>{Array.from({ length: config.default_periods_per_day }, (_, i) => i + 1).map(p => (
-                    <tr key={p} className="border-t border-slate-50">
-                      <td className="px-1 py-1 text-center text-[10px] font-bold text-slate-300">{p}</td>
-                      {config.working_days.map(day => { const s = grid[day]?.[p]; const c = s ? subjectColors[s.subject_name] : null; return (
-                        <td key={day} className="px-0.5 py-0.5">{s ? (
-                          <div className={`rounded border ${c?.border||''} ${c?.bg||''} px-1 py-1 text-center`}>
-                            <div className={`text-[10px] font-bold ${c?.text||''}`}>{s.subject_name}</div>
-                            <div className={`text-[8px] ${c?.sub||''}`}>{s.teacher_name}</div>
-                          </div>
-                        ) : <div className="py-2 text-center text-[10px] text-slate-200">-</div>}</td>
-                      )})}
-                    </tr>
-                  ))}</tbody>
-                </table>
-              </div>
-            </div>
-          )
-        })}
-
-        {viewMode === 'teacher' && Object.entries(result.by_teacher).map(([k, d]: [string, any]) => {
-          const grid = teacherGrids[k] || {}
-          return (
-            <div key={k} className="overflow-hidden rounded-xl border border-slate-200">
-              <div className="flex items-center justify-between bg-blue-50 px-3 py-2">
-                <span className="text-sm font-bold text-slate-800">{d.teacher_name}</span>
-                <span className="text-[10px] text-blue-600 font-bold">{(d.sessions||[]).length} حصة</span>
-              </div>
-              <div className="overflow-x-auto p-2">
-                <table className="min-w-full">
-                  <thead><tr><th className="w-10 px-1 py-1 text-[10px] text-slate-400">ح</th>{config.working_days.map(d => <th key={d} className="px-1 py-1 text-center text-[10px] text-slate-400">{d}</th>)}</tr></thead>
-                  <tbody>{Array.from({ length: config.default_periods_per_day }, (_, i) => i + 1).map(p => (
-                    <tr key={p} className="border-t border-slate-50">
-                      <td className="px-1 py-1 text-center text-[10px] font-bold text-slate-300">{p}</td>
-                      {config.working_days.map(day => { const s = grid[day]?.[p]; const c = s ? subjectColors[s.subject_name] : null; return (
-                        <td key={day} className="px-0.5 py-0.5">{s ? (
-                          <div className={`rounded border ${c?.border||''} ${c?.bg||''} px-1 py-1 text-center`}>
-                            <div className={`text-[10px] font-bold ${c?.text||''}`}>{s.subject_name}</div>
-                            <div className={`text-[8px] ${c?.sub||''}`}>{s.grade} - {s.class_name}</div>
-                          </div>
-                        ) : <div className="py-2 text-center text-[10px] text-slate-200">-</div>}</td>
-                      )})}
-                    </tr>
-                  ))}</tbody>
-                </table>
-              </div>
-            </div>
-          )
-        })}
-
-        {/* Actions */}
-        <div className="flex gap-2">
-          <button onClick={() => { setResult(null); setCurrentStep(1) }} className="flex-1 rounded-xl border border-slate-300 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
-            <RefreshCw className="mr-1 inline h-3 w-3" />جديد
-          </button>
-          <button onClick={() => { setResult(null); setCurrentStep(4) }} className="rounded-xl border border-teal-300 px-4 py-2 text-sm font-medium text-teal-700 hover:bg-teal-50">
-            <Play className="mr-1 inline h-3 w-3" />إعادة
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  // ── Step Indicator ──
-  const renderSteps = () => (
-    <div className="mb-6 flex items-center justify-between">
-      {STEPS.map((step, i) => {
-        const active = currentStep === step.id; const done = currentStep > step.id
-        return (
-          <div key={step.id} className="flex flex-1 items-center">
-            <button onClick={() => done && setCurrentStep(step.id)} className={done ? 'cursor-pointer' : 'cursor-default'}>
-              <div className={`mx-auto flex h-9 w-9 items-center justify-center rounded-xl border-2 transition-all ${active ? 'border-teal-500 bg-teal-600 text-white shadow-lg shadow-teal-200' : done ? 'border-teal-400 bg-teal-50 text-teal-600' : 'border-slate-200 bg-slate-50 text-slate-400'}`}>
-                {done ? <CheckCircle className="h-4 w-4" /> : <step.icon className="h-4 w-4" />}
-              </div>
-              <div className={`mt-1 text-center text-[10px] font-bold ${active ? 'text-teal-700' : done ? 'text-teal-600' : 'text-slate-400'}`}>{step.title}</div>
-            </button>
-            {i < STEPS.length - 1 && <div className={`mx-1 mt-[-14px] h-0.5 flex-1 rounded-full ${done ? 'bg-teal-400' : 'bg-slate-200'}`} />}
-          </div>
-        )
-      })}
-    </div>
-  )
-
-  // ── Navigation ──
-  const canNext = currentStep === 1 ? teachers.length > 0 : currentStep === 2 ? subjects.length > 0 : currentStep === 3 ? true : false
-
-  return (
-    <section className="space-y-4">
-      <header className="overflow-hidden rounded-2xl bg-gradient-to-l from-slate-900 via-teal-950 to-slate-900 p-4 text-white shadow-xl">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10"><Brain className="h-6 w-6 text-teal-300" /></div>
-          <div>
-            <h1 className="text-lg font-bold">محاكي الجداول الذكي</h1>
-            <p className="text-xs text-slate-300">بناء جداول مدرسية بالذكاء الاصطناعي + Google OR-Tools</p>
-          </div>
-        </div>
-      </header>
-
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        {currentStep <= 4 && renderSteps()}
-
-        {error && (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            <AlertTriangle className="mr-1 inline h-4 w-4" />{error}
-          </div>
-        )}
-
-        {currentStep === 1 && renderStep1()}
-        {currentStep === 2 && renderStep2()}
-        {currentStep === 3 && renderStep3()}
-        {currentStep === 4 && renderStep4()}
-        {currentStep === 5 && renderResults()}
-
-        {currentStep <= 3 && (
-          <div className="sticky bottom-0 mt-4 flex items-center justify-between rounded-xl border border-slate-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur-sm">
-            <button onClick={() => setCurrentStep(p => Math.max(1, p - 1))} disabled={currentStep === 1}
-              className="flex items-center gap-1 rounded-lg border border-slate-200 px-4 py-2 text-xs font-medium text-slate-600 disabled:opacity-40">
-              <ChevronRight className="h-3 w-3" />السابق
-            </button>
-            {currentStep === 3 && (
-              <div className="flex items-center gap-2 text-xs">
-                <span className="rounded-full bg-teal-100 px-2 py-0.5 font-bold text-teal-700">مُسند: {totalAssigned}</span>
-                <span className={`rounded-full px-2 py-0.5 font-bold ${unassignedPeriods > 0 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                  متبقي: {unassignedPeriods}
-                </span>
-              </div>
-            )}
-            {currentStep !== 3 && <span className="text-[10px] text-slate-400">الخطوة {currentStep} من 4</span>}
-            <button onClick={() => setCurrentStep(p => Math.min(4, p + 1))} disabled={!canNext}
-              className="flex items-center gap-1 rounded-lg bg-teal-600 px-4 py-2 text-xs font-bold text-white disabled:opacity-40">
-              التالي<ChevronLeft className="h-3 w-3" />
-            </button>
-          </div>
-        )}
-      </div>
-    </section>
+          </WsBlock>
+        </WsSideCol>
+      </WsLayout>
+    </WsPage>
   )
 }
