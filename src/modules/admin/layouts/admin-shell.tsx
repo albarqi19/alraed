@@ -54,6 +54,7 @@ const WORKSPACE_ROUTES = [
   '/admin/permissions',
   '/admin/subscription',
   '/admin/chat',
+  '/admin/app-notifications',
 ]
 
 export function AdminShell() {
