@@ -8,12 +8,42 @@ import {
   Plus,
   Edit2,
   Trash2,
-  Loader2,
   CheckCircle2,
   XCircle,
   ClipboardList,
+  Receipt,
+  Tags,
+  FileText,
+  Save,
+  Search,
+  X,
+  Ban,
 } from 'lucide-react'
 import { useToast } from '@/shared/feedback/use-toast'
+import {
+  WsPage,
+  WsHeader,
+  WsFact,
+  WsToolbar,
+  WsField,
+  WsInput,
+  WsSelect,
+  WsTextarea,
+  WsSwitch,
+  WsLayout,
+  WsMain,
+  WsSideCol,
+  WsBlock,
+  WsTable,
+  WsBtn,
+  WsIconBtn,
+  WsAlert,
+  WsEmpty,
+  WsSpinner,
+  TONES,
+  ToneChip,
+  InitialAvatar,
+} from '@/shared/workspace'
 import {
   useStoreStatsQuery,
   useStoreSettingsQuery,
@@ -32,6 +62,16 @@ import {
   useRejectStoreOrderMutation,
   useUpdateStoreSettingsMutation,
 } from '@/modules/admin/hooks'
+import {
+  STORE_STATUS_TONES,
+  stockState,
+  StorePager,
+  ItemThumb,
+  PopularityBar,
+  timeAgo,
+  WaitingChip,
+  OrderStatusChip,
+} from './e-store-ui'
 import type {
   StoreItemFilters,
   StoreItemRecord,
@@ -63,18 +103,10 @@ const ORDER_STATUS_LABELS: Record<StoreOrderStatus, string> = {
   rejected: 'مرفوض',
 }
 
-const ORDER_STATUS_STYLES: Record<StoreOrderStatus, string> = {
-  pending: 'bg-amber-100 text-amber-800 border border-amber-200',
-  approved: 'bg-blue-100 text-blue-800 border border-blue-200',
-  fulfilled: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
-  cancelled: 'bg-slate-100 text-slate-700 border border-slate-200',
-  rejected: 'bg-rose-100 text-rose-800 border border-rose-200',
-}
-
-const TABS: Array<{ key: 'catalog' | 'orders' | 'settings'; label: string }> = [
-  { key: 'catalog', label: 'المنتجات' },
-  { key: 'orders', label: 'الطلبات' },
-  { key: 'settings', label: 'إعدادات المتجر' },
+const TABS: Array<{ key: 'catalog' | 'orders' | 'settings'; label: string; icon: typeof Package }> = [
+  { key: 'catalog', label: 'المنتجات', icon: Package },
+  { key: 'orders', label: 'الطلبات', icon: ClipboardList },
+  { key: 'settings', label: 'إعدادات المتجر', icon: FileText },
 ]
 
 const STORE_STATUS_OPTIONS: Array<{
@@ -123,6 +155,9 @@ const WEEKDAY_OPTIONS: Array<{ value: number; label: string }> = [
   { value: 5, label: 'الجمعة' },
   { value: 6, label: 'السبت' },
 ]
+
+/** أسباب جاهزة تملأ حقل السبب بنقرة — بدل window.prompt الأعمى */
+const QUICK_REASONS = ['المخزون نفد', 'رصيد غير كافٍ', 'مخالفة سلوكية', 'طلب مكرر']
 
 type OrderActionType = 'approve' | 'fulfill' | 'cancel' | 'reject'
 
@@ -285,6 +320,12 @@ export function AdminEStorePage() {
   const [activeOrderAction, setActiveOrderAction] = useState<{ id: number; action: OrderActionType } | null>(null)
   const [settingsForm, setSettingsForm] = useState<StoreSettingsFormState>(() => createDefaultSettingsForm())
 
+  /* حالات عرض للقسيمة والمودالات — لا أعمال */
+  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null)
+  const [orderReason, setOrderReason] = useState('')
+  const [deleteItemTarget, setDeleteItemTarget] = useState<StoreItemRecord | null>(null)
+  const [deleteCategoryTarget, setDeleteCategoryTarget] = useState<StoreCategoryRecord | null>(null)
+
   const statsQuery = useStoreStatsQuery()
   const storeSettingsQuery = useStoreSettingsQuery()
   const categoriesQuery = useStoreCategoriesQuery()
@@ -310,36 +351,6 @@ export function AdminEStorePage() {
   )
   const settingsErrorMessage =
     storeSettingsQuery.error instanceof Error ? storeSettingsQuery.error.message : null
-
-  const statsCards = useMemo(() => {
-    const stats = statsQuery.data
-    return [
-      {
-        title: 'إجمالي المنتجات',
-        value: numberFormatter.format(stats?.total_items ?? 0),
-        accent: 'bg-blue-500/15 text-blue-700 border-blue-200',
-        icon: Package,
-      },
-      {
-        title: 'الهدايا المتاحة',
-        value: numberFormatter.format(stats?.active_items ?? 0),
-        accent: 'bg-purple-500/15 text-purple-700 border-purple-200',
-        icon: Gift,
-      },
-      {
-        title: 'عمليات الشراء',
-        value: numberFormatter.format(stats?.total_orders ?? 0),
-        accent: 'bg-emerald-500/15 text-emerald-700 border-emerald-200',
-        icon: ShoppingCart,
-      },
-      {
-        title: 'نقاط مستبدلة',
-        value: numberFormatter.format(stats?.points_redeemed ?? 0),
-        accent: 'bg-amber-500/15 text-amber-700 border-amber-200',
-        icon: TrendingUp,
-      },
-    ]
-  }, [statsQuery.data])
 
   const categories = categoriesQuery.data ?? []
   const items = itemsQuery.data?.items ?? []
@@ -390,6 +401,11 @@ export function AdminEStorePage() {
     }
   }, [storeSettingsQuery.data])
 
+  // تبديل الطلب يمسح مسودة السبب حتى لا تُلصق على طلب آخر
+  useEffect(() => {
+    setOrderReason('')
+  }, [selectedOrderId])
+
   const handleItemFormSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const trimmedName = itemForm.name.trim()
@@ -418,12 +434,12 @@ export function AdminEStorePage() {
       stockQuantity = Math.trunc(parsedStock)
     }
 
-  const payload: StoreItemPayload = {
+    const payload: StoreItemPayload = {
       name: trimmedName,
       points_cost: Math.trunc(parsedPoints),
       store_category_id: itemForm.store_category_id ? Number(itemForm.store_category_id) : undefined,
       unlimited_stock: itemForm.unlimited_stock,
-    stock_quantity: stockQuantity,
+      stock_quantity: stockQuantity,
       max_per_student: itemForm.max_per_student ? Math.trunc(Number(itemForm.max_per_student)) : undefined,
       is_active: itemForm.is_active,
       description: itemForm.description.trim() || undefined,
@@ -492,16 +508,10 @@ export function AdminEStorePage() {
   }
 
   const handleDeleteItem = (item: StoreItemRecord) => {
-    if (!window.confirm(`هل أنت متأكد من حذف المنتج "${item.name}"؟`)) {
-      return
-    }
     deleteItemMutation.mutate(item.id)
   }
 
   const handleDeleteCategory = (category: StoreCategoryRecord) => {
-    if (!window.confirm(`سيتم حذف التصنيف "${category.name}". هل ترغب بالمتابعة؟`)) {
-      return
-    }
     deleteCategoryMutation.mutate(category.id)
   }
 
@@ -510,29 +520,17 @@ export function AdminEStorePage() {
     approveOrderMutation.mutate({ id: order.id }, { onSettled: () => setActiveOrderAction(null) })
   }
 
-  const handleFulfillOrder = (order: StoreOrderRecord) => {
-    const reason = window.prompt('ملاحظة (اختياري):')
-    if (reason === null) {
-      return
-    }
+  const handleFulfillOrder = (order: StoreOrderRecord, reason: string) => {
     setActiveOrderAction({ id: order.id, action: 'fulfill' })
     fulfillOrderMutation.mutate({ id: order.id, reason: reason || undefined }, { onSettled: () => setActiveOrderAction(null) })
   }
 
-  const handleCancelOrder = (order: StoreOrderRecord) => {
-    const reason = window.prompt('سبب الإلغاء (اختياري):')
-    if (reason === null) {
-      return
-    }
+  const handleCancelOrder = (order: StoreOrderRecord, reason: string) => {
     setActiveOrderAction({ id: order.id, action: 'cancel' })
     cancelOrderMutation.mutate({ id: order.id, reason: reason || undefined }, { onSettled: () => setActiveOrderAction(null) })
   }
 
-  const handleRejectOrder = (order: StoreOrderRecord) => {
-    const reason = window.prompt('سبب الرفض (اختياري):')
-    if (reason === null) {
-      return
-    }
+  const handleRejectOrder = (order: StoreOrderRecord, reason: string) => {
     setActiveOrderAction({ id: order.id, action: 'reject' })
     rejectOrderMutation.mutate({ id: order.id, reason: reason || undefined }, { onSettled: () => setActiveOrderAction(null) })
   }
@@ -681,96 +679,167 @@ export function AdminEStorePage() {
     { value: 'rejected', label: ORDER_STATUS_LABELS.rejected },
   ]
 
+  /* ── مشتقات العرض ── */
+  const stats = statsQuery.data
+  const lowStockThresholdValue = Number(settingsForm.low_stock_threshold) || 5
+  const maxRedeemed = useMemo(
+    () => items.reduce((max, item) => Math.max(max, item.times_redeemed ?? 0), 0),
+    [items],
+  )
+  const selectedOrder = useMemo(
+    () => orders.find((order) => order.id === selectedOrderId) ?? null,
+    [orders, selectedOrderId],
+  )
+  const isActionActive = (order: StoreOrderRecord, action: OrderActionType) =>
+    activeOrderAction?.id === order.id && activeOrderAction.action === action
+
+  /* شريحة حالة المتجر الحية: قد تكون «متاح» والطلاب عاجزون لأن اليوم/الساعة خارج النافذة */
+  const storeStatusChip = useMemo(() => {
+    const tone = STORE_STATUS_TONES[settingsForm.store_status] ?? TONES.gray
+    if (settingsForm.store_status !== 'open') {
+      return { label: selectedStoreStatus.label, tone, live: false }
+    }
+    const now = new Date()
+    const weekdays = settingsForm.allowed_redemption_weekdays
+    const dayBlocked = weekdays.length > 0 && !weekdays.includes(now.getDay())
+    const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+    const start = settingsForm.allow_redemption_start_time
+    const end = settingsForm.allow_redemption_end_time
+    const timeBlocked = Boolean(start && end) && (hhmm < start || hhmm > end)
+    if (dayBlocked || timeBlocked) {
+      return { label: 'متاح — خارج وقت الاستبدال الآن', tone: TONES.amber, live: false }
+    }
+    return { label: selectedStoreStatus.label, tone, live: true }
+  }, [settingsForm, selectedStoreStatus])
+
+  /* تغييرات غير محفوظة في الإعدادات */
+  const settingsDirty = useMemo(() => {
+    if (!storeSettingsQuery.data) return false
+    return JSON.stringify(settingsForm) !== JSON.stringify(mapSettingsToForm(storeSettingsQuery.data))
+  }, [settingsForm, storeSettingsQuery.data])
+
+  const timeConflict = Boolean(
+    settingsForm.allow_redemption_start_time &&
+    settingsForm.allow_redemption_end_time &&
+    settingsForm.allow_redemption_start_time > settingsForm.allow_redemption_end_time,
+  )
+
+  const hasItemFilters = Boolean(itemFilters.search || itemFilters.category_id || (itemFilters.status && itemFilters.status !== 'all'))
+  const hasOrderFilters = Boolean(orderFilters.search || (orderFilters.status && orderFilters.status !== 'all'))
+
   return (
-    <section className="space-y-6">
-      <header className="space-y-2">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">متجر النقاط</h1>
-            <p className="text-sm text-slate-600">
-              إدارة المنتجات والطلبيات وربطها برصيد نقاط الطلاب
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
+    <WsPage>
+      <WsHeader
+        title="المتجر الإلكتروني"
+        badge={
+          <button
+            type="button"
+            className="ws-chip"
+            onClick={() => setActiveTab('settings')}
+            title="حالة المتجر — اضغط للإعدادات"
+            style={{ background: storeStatusChip.tone.bg, borderColor: storeStatusChip.tone.bd, color: storeStatusChip.tone.tx, gap: 5 }}
+          >
+            {storeStatusChip.live && <span className="ws-pulse" />}
+            {storeStatusChip.label}
+          </button>
+        }
+        actions={
+          <>
             {activeTab === 'catalog' && (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsItemFormOpen(true)
-                  setEditingItem(null)
-                  setItemForm(createDefaultItemForm())
-                }}
-                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
-              >
-                <Plus className="h-4 w-4" />
-                منتج جديد
-              </button>
+              <>
+                <WsBtn icon={Tags} onClick={() => { setEditingCategory(null); setCategoryForm(createDefaultCategoryForm()); setIsCategoryFormOpen(true) }}>
+                  تصنيف جديد
+                </WsBtn>
+                <WsBtn
+                  variant="primary"
+                  icon={Plus}
+                  onClick={() => { setIsItemFormOpen(true); setEditingItem(null); setItemForm(createDefaultItemForm()) }}
+                >
+                  منتج جديد
+                </WsBtn>
+              </>
             )}
-          </div>
-        </div>
-      </header>
-
-      <div className="grid grid-cols-2 gap-4">
-        {statsCards.map((stat) => {
-          const Icon = stat.icon
-          return (
-            <article key={stat.title} className={`rounded-2xl border bg-white/90 p-5 shadow-sm ${stat.accent}`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-slate-600">{stat.title}</p>
-                  <p className="mt-3 text-2xl font-bold">
-                    {statsQuery.isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : stat.value}
-                  </p>
-                </div>
-                <Icon className="h-8 w-8 opacity-50" />
-              </div>
-            </article>
-          )
-        })}
-      </div>
-
-      <div className="glass-card space-y-6">
-        <div className="border-b border-slate-200">
-          <div className="flex gap-4">
-            {TABS.map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => setActiveTab(tab.key)}
-                className={`px-4 py-3 text-sm font-semibold transition-colors ${
-                  activeTab === tab.key
-                    ? 'border-b-2 border-blue-600 text-blue-600'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+            {activeTab === 'settings' && (
+              <WsBtn
+                variant="primary"
+                icon={Save}
+                type="submit"
+                form="store-settings-form"
+                disabled={isSavingSettings || storeSettingsQuery.isLoading}
               >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+                {isSavingSettings ? 'جارٍ الحفظ...' : 'حفظ الإعدادات'}
+                {settingsDirty && <span style={{ width: 6, height: 6, borderRadius: '50%', background: TONES.amber.tx }} />}
+              </WsBtn>
+            )}
+          </>
+        }
+        facts={
+          <>
+            <WsFact icon={Package} label="المنتجات">{numberFormatter.format(stats?.total_items ?? 0)}</WsFact>
+            <WsFact icon={Gift} label="معروضة">
+              <span style={{ color: TONES.green.tx }}>{numberFormatter.format(stats?.active_items ?? 0)}</span>
+            </WsFact>
+            {/* الرقم التشغيلي الأول والسبب الوحيد لفتح الصفحة صباحاً — كان يصل ولا يُعرض */}
+            <button
+              type="button"
+              onClick={() => { setActiveTab('orders'); setOrderFilters({ status: 'pending', page: 1, per_page: 10 }) }}
+              className={(stats?.pending_orders ?? 0) > 0 ? 'ws-fact ws-soft-pulse' : 'ws-fact'}
+              style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'inherit' }}
+              title="اعرض الطلبات المعلقة"
+            >
+              <ClipboardList />
+              <span>قيد المراجعة</span>
+              <b style={{ color: (stats?.pending_orders ?? 0) > 0 ? TONES.amber.tx : undefined }}>
+                {numberFormatter.format(stats?.pending_orders ?? 0)}
+              </b>
+              {(stats?.pending_orders ?? 0) > 0 && <span className="ws-pulse" style={{ background: TONES.amber.tx }} />}
+            </button>
+            <WsFact icon={CheckCircle2} label="مكتملة">
+              <span style={{ color: TONES.green.tx }}>{numberFormatter.format(stats?.fulfilled_orders ?? 0)}</span>
+            </WsFact>
+            <WsFact icon={ShoppingCart} label="إجمالي الطلبات">{numberFormatter.format(stats?.total_orders ?? 0)}</WsFact>
+            <WsFact icon={TrendingUp} label="نقاط مستبدلة">
+              <span style={{ color: TONES.purple.tx }}>{numberFormatter.format(stats?.points_redeemed ?? 0)}</span>
+            </WsFact>
+          </>
+        }
+      />
+
+      <WsToolbar>
+        <div className="ws-seg">
+          {TABS.map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              type="button"
+              className={`ws-seg__btn ${activeTab === key ? 'is-active' : ''}`}
+              onClick={() => setActiveTab(key)}
+            >
+              <Icon style={{ width: 13, height: 13 }} />
+              {label}
+              {key === 'catalog' && itemsMeta?.total != null && <span className="ws-count">{itemsMeta.total}</span>}
+              {key === 'orders' && (stats?.pending_orders ?? 0) > 0 && <span className="ws-count">{stats?.pending_orders}</span>}
+            </button>
+          ))}
         </div>
 
         {activeTab === 'catalog' && (
-          <div className="space-y-5">
-            <div className="flex flex-wrap items-center gap-3">
-              <select
-                value={itemFilters.status}
-                onChange={(event) =>
-                  setItemFilters((current) => ({
-                    ...current,
-                    status: event.target.value as 'all' | 'active' | 'inactive',
-                    page: 1,
-                  }))
-                }
-                className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              >
+          <>
+            <WsField label="الحالة">
+              <div className="ws-seg">
                 {itemsStatusOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`ws-seg__btn ${itemFilters.status === option.value ? 'is-active' : ''}`}
+                    onClick={() => setItemFilters((current) => ({ ...current, status: option.value, page: 1 }))}
+                  >
                     {option.label}
-                  </option>
+                  </button>
                 ))}
-              </select>
-
-              <select
+              </div>
+            </WsField>
+            <WsField label="التصنيف">
+              <WsSelect
                 value={itemFilters.category_id ? String(itemFilters.category_id) : 'all'}
                 onChange={(event) =>
                   setItemFilters((current) => ({
@@ -779,1081 +848,1236 @@ export function AdminEStorePage() {
                     page: 1,
                   }))
                 }
-                className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
               >
                 <option value="all">جميع التصنيفات</option>
                 {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
+                  <option key={category.id} value={category.id}>{category.name}</option>
                 ))}
-              </select>
-
+              </WsSelect>
+            </WsField>
+            <WsField label="بحث" grow>
               <form
                 onSubmit={(event) => {
                   event.preventDefault()
-                  setItemFilters((current) => ({
-                    ...current,
-                    search: itemSearch.trim() || undefined,
-                    page: 1,
-                  }))
+                  setItemFilters((current) => ({ ...current, search: itemSearch.trim() || undefined, page: 1 }))
                 }}
-                className="flex w-full max-w-xs items-center gap-2"
+                style={{ display: 'flex', gap: 5 }}
               >
-                <input
-                  value={itemSearch}
-                  onChange={(event) => setItemSearch(event.target.value)}
-                  placeholder="بحث عن منتج"
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                />
-                <button type="submit" className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-white">
-                  بحث
-                </button>
+                <div style={{ position: 'relative', flex: 1 }}>
+                  <WsInput
+                    type="search"
+                    placeholder="بحث عن منتج"
+                    value={itemSearch}
+                    onChange={(event) => setItemSearch(event.target.value)}
+                    style={{ width: '100%', paddingInlineStart: 26 }}
+                  />
+                  <Search style={{ width: 13, height: 13, position: 'absolute', insetInlineStart: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--ws-text-2)', pointerEvents: 'none' }} />
+                </div>
+                <WsBtn type="submit" size="sm">بحث</WsBtn>
+                {itemFilters.search && (
+                  <WsIconBtn
+                    icon={X}
+                    label="مسح البحث"
+                    onClick={() => { setItemSearch(''); setItemFilters((current) => ({ ...current, search: undefined, page: 1 })) }}
+                  />
+                )}
               </form>
-            </div>
-
-            {isItemFormOpen && (
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 className="mb-4 text-lg font-semibold text-slate-900">
-                  {editingItem ? 'تعديل منتج' : 'إضافة منتج جديد'}
-                </h3>
-                <form className="grid gap-4 md:grid-cols-2" onSubmit={handleItemFormSubmit}>
-                  <label className="space-y-2 text-sm">
-                    <span className="font-medium text-slate-700">اسم المنتج</span>
-                    <input
-                      required
-                      value={itemForm.name}
-                      onChange={(event) => setItemForm((current) => ({ ...current, name: event.target.value }))}
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                    />
-                  </label>
-
-                  <label className="space-y-2 text-sm">
-                    <span className="font-medium text-slate-700">السعر بالنقاط</span>
-                    <input
-                      required
-                      type="number"
-                      min={1}
-                      value={itemForm.points_cost}
-                      onChange={(event) => setItemForm((current) => ({ ...current, points_cost: event.target.value }))}
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                    />
-                  </label>
-
-                  <label className="space-y-2 text-sm">
-                    <span className="font-medium text-slate-700">التصنيف</span>
-                    <select
-                      value={itemForm.store_category_id}
-                      onChange={(event) =>
-                        setItemForm((current) => ({ ...current, store_category_id: event.target.value }))
-                      }
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                    >
-                      <option value="">بدون تصنيف</option>
-                      {categories.map((category) => (
-                        <option key={category.id} value={category.id}>
-                          {category.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={itemForm.unlimited_stock}
-                      onChange={(event) =>
-                        setItemForm((current) => ({ ...current, unlimited_stock: event.target.checked }))
-                      }
-                    />
-                    مخزون غير محدود
-                  </label>
-
-                  {!itemForm.unlimited_stock && (
-                    <label className="space-y-2 text-sm">
-                      <span className="font-medium text-slate-700">الكمية المتاحة</span>
-                      <input
-                        type="number"
-                        min={0}
-                        value={itemForm.stock_quantity}
-                        onChange={(event) =>
-                          setItemForm((current) => ({ ...current, stock_quantity: event.target.value }))
-                        }
-                        className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                      />
-                    </label>
-                  )}
-
-                  <label className="space-y-2 text-sm">
-                    <span className="font-medium text-slate-700">حد الشراء لكل طالب (اختياري)</span>
-                    <input
-                      type="number"
-                      min={1}
-                      value={itemForm.max_per_student}
-                      onChange={(event) =>
-                        setItemForm((current) => ({ ...current, max_per_student: event.target.value }))
-                      }
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                    />
-                  </label>
-
-                  <label className="space-y-2 text-sm">
-                    <span className="font-medium text-slate-700">رابط صورة (اختياري)</span>
-                    <input
-                      value={itemForm.image_url}
-                      onChange={(event) => setItemForm((current) => ({ ...current, image_url: event.target.value }))}
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                    />
-                  </label>
-
-                  <label className="space-y-2 text-sm">
-                    <span className="font-medium text-slate-700">الرمز التعريفي SKU (اختياري)</span>
-                    <input
-                      value={itemForm.sku}
-                      onChange={(event) => setItemForm((current) => ({ ...current, sku: event.target.value }))}
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                    />
-                  </label>
-
-                  <label className="space-y-2 text-sm">
-                    <span className="font-medium text-slate-700">ترتيب العرض (اختياري)</span>
-                    <input
-                      type="number"
-                      value={itemForm.display_order}
-                      onChange={(event) =>
-                        setItemForm((current) => ({ ...current, display_order: event.target.value }))
-                      }
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                    />
-                  </label>
-
-                  <label className="md:col-span-2 space-y-2 text-sm">
-                    <span className="font-medium text-slate-700">الوصف</span>
-                    <textarea
-                      rows={3}
-                      value={itemForm.description}
-                      onChange={(event) =>
-                        setItemForm((current) => ({ ...current, description: event.target.value }))
-                      }
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                    />
-                  </label>
-
-                  <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={itemForm.is_active}
-                      onChange={(event) =>
-                        setItemForm((current) => ({ ...current, is_active: event.target.checked }))
-                      }
-                    />
-                    عرض المنتج للطلاب
-                  </label>
-
-                  <div className="md:col-span-2 flex items-center justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsItemFormOpen(false)
-                        setEditingItem(null)
-                        setItemForm(createDefaultItemForm())
-                      }}
-                      className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
-                    >
-                      إلغاء
-                    </button>
-                    <button
-                      type="submit"
-                      className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
-                      disabled={createItemMutation.isPending || updateItemMutation.isPending}
-                    >
-                      {(createItemMutation.isPending || updateItemMutation.isPending) && (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      )}
-                      {editingItem ? 'حفظ التعديلات' : 'إضافة المنتج'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            )}
-
-            <div className="space-y-3">
-              {itemsQuery.isLoading ? (
-                <div className="flex items-center justify-center rounded-2xl border border-dashed border-slate-200 p-10 text-slate-500">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span className="ml-2">جارٍ تحميل المنتجات...</span>
-                </div>
-              ) : items.length === 0 ? (
-                <div className="rounded-2xl border-2 border-dashed border-slate-300 p-12 text-center">
-                  <Gift className="mx-auto h-12 w-12 text-slate-400" />
-                  <h3 className="mt-4 text-lg font-semibold text-slate-900">لا توجد منتجات مطابقة</h3>
-                  <p className="mt-2 text-sm text-slate-600">يمكنك إضافة منتج جديد أو تعديل مرشحات البحث الحالية</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {items.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between"
-                    >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-lg font-semibold text-slate-900">{item.name}</h4>
-                          {!item.is_active && (
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                              مخفي
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm text-slate-600">{item.description || 'بدون وصف'}</p>
-                        <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
-                          <span className="font-semibold text-blue-600">{numberFormatter.format(item.points_cost)} نقطة</span>
-                          <span>
-                            المخزون:{' '}
-                            {item.unlimited_stock
-                              ? 'غير محدود'
-                              : numberFormatter.format(item.stock_quantity ?? 0)}
-                          </span>
-                          {item.max_per_student && <span>حد الطالب: {item.max_per_student}</span>}
-                          {item.store_category_id && (
-                            <span>
-                              التصنيف:{' '}
-                              {categories.find((category) => category.id === item.store_category_id)?.name ?? '—'}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setEditingItem(item)}
-                          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                          تعديل
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteItem(item)}
-                          className="inline-flex items-center gap-2 rounded-lg border border-rose-200 px-3 py-2 text-sm text-rose-600 transition hover:bg-rose-50"
-                          disabled={deleteItemMutation.isPending}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          حذف
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-
-                  {itemsMeta && itemsMeta.last_page > 1 && (
-                    <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                      <div>
-                        صفحة {itemsMeta.current_page} من {itemsMeta.last_page} — إجمالي{' '}
-                        {numberFormatter.format(itemsMeta.total)} منتج
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          className="rounded-lg border border-slate-200 px-3 py-1 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
-                          onClick={() =>
-                            setItemFilters((current) => ({
-                              ...current,
-                              page: Math.max(1, (itemsMeta.current_page ?? 1) - 1),
-                            }))
-                          }
-                          disabled={itemsMeta.current_page <= 1}
-                        >
-                          السابق
-                        </button>
-                        <button
-                          type="button"
-                          className="rounded-lg border border-slate-200 px-3 py-1 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
-                          onClick={() =>
-                            setItemFilters((current) => ({
-                              ...current,
-                              page: Math.min(itemsMeta.last_page, (itemsMeta.current_page ?? 1) + 1),
-                            }))
-                          }
-                          disabled={itemsMeta.current_page >= itemsMeta.last_page}
-                        >
-                          التالي
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+            </WsField>
+            <WsField label="لكل صفحة">
+              <WsSelect
+                value={String(itemFilters.per_page ?? 10)}
+                onChange={(event) => setItemFilters((current) => ({ ...current, per_page: Number(event.target.value), page: 1 }))}
+              >
+                {[10, 25, 50].map((n) => (<option key={n} value={n}>{n}</option>))}
+              </WsSelect>
+            </WsField>
+          </>
         )}
 
         {activeTab === 'orders' && (
-          <div className="space-y-5">
-            <div className="flex flex-wrap items-center gap-3">
-              <select
-                value={orderFilters.status}
-                onChange={(event) =>
-                  setOrderFilters((current) => ({
-                    ...current,
-                    status: event.target.value as 'all' | StoreOrderStatus,
-                    page: 1,
-                  }))
-                }
-                className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              >
+          <>
+            <WsField label="الحالة">
+              <div className="ws-seg">
                 {orderStatusOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`ws-seg__btn ${orderFilters.status === option.value ? 'is-active' : ''}`}
+                    onClick={() => setOrderFilters((current) => ({ ...current, status: option.value, page: 1 }))}
+                  >
                     {option.label}
-                  </option>
+                  </button>
                 ))}
-              </select>
-
+              </div>
+            </WsField>
+            <WsField label="بحث" grow>
               <form
                 onSubmit={(event) => {
                   event.preventDefault()
-                  setOrderFilters((current) => ({
-                    ...current,
-                    search: orderSearch.trim() || undefined,
-                    page: 1,
-                  }))
+                  setOrderFilters((current) => ({ ...current, search: orderSearch.trim() || undefined, page: 1 }))
                 }}
-                className="flex w-full max-w-sm items-center gap-2"
+                style={{ display: 'flex', gap: 5 }}
               >
-                <input
-                  value={orderSearch}
-                  onChange={(event) => setOrderSearch(event.target.value)}
-                  placeholder="رقم الطلب أو اسم الطالب"
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                />
-                <button type="submit" className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-white">
-                  بحث
-                </button>
-              </form>
-            </div>
-
-            {ordersQuery.isLoading ? (
-              <div className="flex items-center justify-center rounded-2xl border border-dashed border-slate-200 p-10 text-slate-500">
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span className="ml-2">جارٍ تحميل الطلبيات...</span>
-              </div>
-            ) : orders.length === 0 ? (
-              <div className="rounded-2xl border-2 border-dashed border-slate-300 p-12 text-center">
-                <ClipboardList className="mx-auto h-12 w-12 text-slate-400" />
-                <h3 className="mt-4 text-lg font-semibold text-slate-900">لا توجد طلبيات مطابقة</h3>
-                <p className="mt-2 text-sm text-slate-600">جرب تعديل المرشحات أو انتظار طلبيات جديدة</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {orders.map((order) => {
-                  const isActionActive = (action: OrderActionType) =>
-                    activeOrderAction?.id === order.id && activeOrderAction.action === action
-
-                  return (
-                    <div
-                      key={order.id}
-                      className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-                    >
-                      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                        <div className="space-y-1">
-                          <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
-                            <span className="font-semibold text-slate-900">
-                              رقم الطلب: {order.reference_number || `#${order.id}`}
-                            </span>
-                            <span>الطالب: {order.student?.name ?? 'غير معروف'}</span>
-                            <span>إجمالي النقاط: {numberFormatter.format(order.total_points ?? 0)}</span>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
-                            <span>تاريخ الطلب: {order.created_at ? dateFormatter.format(new Date(order.created_at)) : '—'}</span>
-                            {order.approved_at && (
-                              <span>
-                                تم الاعتماد: {dateFormatter.format(new Date(order.approved_at))}
-                              </span>
-                            )}
-                            {order.fulfilled_at && (
-                              <span>
-                                التسليم: {dateFormatter.format(new Date(order.fulfilled_at))}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <span
-                          className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium ${ORDER_STATUS_STYLES[order.status]}`}
-                        >
-                          {ORDER_STATUS_LABELS[order.status]}
-                        </span>
-                      </div>
-
-                      <div className="mt-3 space-y-2 text-sm text-slate-600">
-                        <div className="font-medium text-slate-900">محتوى الطلب:</div>
-                        <ul className="list-inside list-disc space-y-1">
-                          {order.items.map((item) => (
-                            <li key={item.id}>
-                              {item.name} — {item.quantity} × {numberFormatter.format(item.unit_points)} نقطة
-                            </li>
-                          ))}
-                        </ul>
-                        {order.student_notes && (
-                          <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                            ملاحظات الطالب: {order.student_notes}
-                          </p>
-                        )}
-                        {order.admin_notes && (
-                          <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
-                            ملاحظات الإدارة: {order.admin_notes}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="mt-4 flex flex-wrap items-center gap-2">
-                        {order.status === 'pending' && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleApproveOrder(order)}
-                              disabled={approveOrderMutation.isPending && isActionActive('approve')}
-                              className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 px-3 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-50"
-                            >
-                              {isActionActive('approve') && approveOrderMutation.isPending ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <CheckCircle2 className="h-4 w-4" />
-                              )}
-                              اعتماد
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleRejectOrder(order)}
-                              disabled={rejectOrderMutation.isPending && isActionActive('reject')}
-                              className="inline-flex items-center gap-2 rounded-lg border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-50"
-                            >
-                              {isActionActive('reject') && rejectOrderMutation.isPending ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <XCircle className="h-4 w-4" />
-                              )}
-                              رفض
-                            </button>
-                          </>
-                        )}
-
-                        {order.status === 'approved' && (
-                          <button
-                            type="button"
-                            onClick={() => handleFulfillOrder(order)}
-                            disabled={fulfillOrderMutation.isPending && isActionActive('fulfill')}
-                            className="inline-flex items-center gap-2 rounded-lg border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 disabled:opacity-50"
-                          >
-                            {isActionActive('fulfill') && fulfillOrderMutation.isPending ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <CheckCircle2 className="h-4 w-4" />
-                            )}
-                            تأكيد التسليم
-                          </button>
-                        )}
-
-                        {['pending', 'approved'].includes(order.status) && (
-                          <button
-                            type="button"
-                            onClick={() => handleCancelOrder(order)}
-                            disabled={cancelOrderMutation.isPending && isActionActive('cancel')}
-                            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
-                          >
-                            {isActionActive('cancel') && cancelOrderMutation.isPending ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <XCircle className="h-4 w-4" />
-                            )}
-                            إلغاء الطلب
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-
-                {ordersMeta && ordersMeta.last_page > 1 && (
-                  <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                    <div>
-                      صفحة {ordersMeta.current_page} من {ordersMeta.last_page} — إجمالي{' '}
-                      {numberFormatter.format(ordersMeta.total)} طلب
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        className="rounded-lg border border-slate-200 px-3 py-1 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
-                        onClick={() =>
-                          setOrderFilters((current) => ({
-                            ...current,
-                            page: Math.max(1, (ordersMeta.current_page ?? 1) - 1),
-                          }))
-                        }
-                        disabled={ordersMeta.current_page <= 1}
-                      >
-                        السابق
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-lg border border-slate-200 px-3 py-1 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
-                        onClick={() =>
-                          setOrderFilters((current) => ({
-                            ...current,
-                            page: Math.min(ordersMeta.last_page, (ordersMeta.current_page ?? 1) + 1),
-                          }))
-                        }
-                        disabled={ordersMeta.current_page >= ordersMeta.last_page}
-                      >
-                        التالي
-                      </button>
-                    </div>
-                  </div>
+                <div style={{ position: 'relative', flex: 1 }}>
+                  <WsInput
+                    type="search"
+                    placeholder="رقم الطلب أو اسم الطالب"
+                    value={orderSearch}
+                    onChange={(event) => setOrderSearch(event.target.value)}
+                    style={{ width: '100%', paddingInlineStart: 26 }}
+                  />
+                  <Search style={{ width: 13, height: 13, position: 'absolute', insetInlineStart: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--ws-text-2)', pointerEvents: 'none' }} />
+                </div>
+                <WsBtn type="submit" size="sm">بحث</WsBtn>
+                {orderFilters.search && (
+                  <WsIconBtn
+                    icon={X}
+                    label="مسح البحث"
+                    onClick={() => { setOrderSearch(''); setOrderFilters((current) => ({ ...current, search: undefined, page: 1 })) }}
+                  />
                 )}
-              </div>
-            )}
-          </div>
+              </form>
+            </WsField>
+            <WsField label="لكل صفحة">
+              <WsSelect
+                value={String(orderFilters.per_page ?? 10)}
+                onChange={(event) => setOrderFilters((current) => ({ ...current, per_page: Number(event.target.value), page: 1 }))}
+              >
+                {[10, 25, 50].map((n) => (<option key={n} value={n}>{n}</option>))}
+              </WsSelect>
+            </WsField>
+          </>
         )}
+      </WsToolbar>
 
-        {activeTab === 'settings' && (
-          <div className="space-y-5">
-            <form
-              onSubmit={handleSettingsSubmit}
-              className="space-y-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+      <WsLayout>
+        <WsMain>
+          {/* ═══ رفّ الجوائز ═══ */}
+          {activeTab === 'catalog' && (
+            <WsBlock
+              fill
+              title="رفّ الجوائز"
+              icon={Gift}
+              count={itemsMeta?.total ?? items.length}
+              tools={
+                <StorePager
+                  page={itemsMeta?.current_page ?? 1}
+                  lastPage={itemsMeta?.last_page ?? 1}
+                  total={itemsMeta?.total}
+                  unit="منتجاً"
+                  onChange={(page) => setItemFilters((current) => ({ ...current, page }))}
+                />
+              }
             >
-              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900">إعدادات المتجر</h3>
-                  <p className="text-sm text-slate-600">
-                    تحكم بحالة المتجر، أوقات الاستبدال، والحدود والتنبيهات الخاصة بالطلبات
-                  </p>
+              {itemsQuery.isError ? (
+                <div style={{ padding: 14 }}>
+                  <WsAlert tone="error" boxed>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      تعذر تحميل المنتجات — تحقق من الاتصال ثم أعد المحاولة
+                      <WsBtn size="sm" onClick={() => itemsQuery.refetch()}>إعادة المحاولة</WsBtn>
+                    </span>
+                  </WsAlert>
                 </div>
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                  disabled={isSavingSettings || storeSettingsQuery.isLoading}
-                >
-                  {isSavingSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                  حفظ الإعدادات
-                </button>
-              </div>
+              ) : itemsQuery.isLoading ? (
+                <WsEmpty loading>جارٍ تحميل المنتجات...</WsEmpty>
+              ) : items.length === 0 ? (
+                <WsEmpty icon={Gift}>
+                  <p style={{ margin: 0 }}>لا توجد منتجات مطابقة</p>
+                  {hasItemFilters && (
+                    <WsBtn
+                      size="sm"
+                      icon={X}
+                      style={{ marginTop: 8 }}
+                      onClick={() => { setItemSearch(''); setItemFilters({ status: 'all', page: 1, per_page: itemFilters.per_page ?? 10 }) }}
+                    >
+                      مسح المرشحات
+                    </WsBtn>
+                  )}
+                </WsEmpty>
+              ) : (
+                <WsTable>
+                  <thead>
+                    <tr>
+                      <th style={{ width: 44 }}></th>
+                      <th>المنتج</th>
+                      <th>السعر</th>
+                      <th>المخزون</th>
+                      <th>حد الطالب</th>
+                      <th>الرواج</th>
+                      <th>الحالة</th>
+                      <th>أدوات</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((item) => {
+                      const stock = stockState(item, lowStockThresholdValue)
+                      const needsAttention = stock.kind === 'out' || stock.kind === 'low'
+                      return (
+                        <tr
+                          key={item.id}
+                          style={needsAttention ? { background: stock.tone.bg } : undefined}
+                        >
+                          <td><ItemThumb url={item.image_url} name={item.name} /></td>
+                          <td>
+                            <span style={{ display: 'block', fontWeight: 600 }}>{item.name}</span>
+                            <span className="ws-cell-sub">
+                              {item.sku ? `${item.sku} · ` : ''}{item.category?.name ?? 'بلا تصنيف'}
+                            </span>
+                          </td>
+                          <td style={{ fontWeight: 800, color: TONES.purple.tx, whiteSpace: 'nowrap' }}>
+                            {numberFormatter.format(item.points_cost)} نقطة
+                          </td>
+                          <td>
+                            {stock.kind === 'unlimited' ? (
+                              <span style={{ color: 'var(--ws-text-2)', fontSize: 13 }}>∞ غير محدود</span>
+                            ) : (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                                <b style={{ color: stock.tone.tx }}>{numberFormatter.format(stock.qty ?? 0)}</b>
+                                {stock.kind === 'out' && <ToneChip tone={TONES.red}>نفد</ToneChip>}
+                                {stock.kind === 'low' && <ToneChip tone={TONES.amber}>قارب على النفاد</ToneChip>}
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ color: 'var(--ws-text-2)' }}>{item.max_per_student ?? '—'}</td>
+                          <td><PopularityBar value={item.times_redeemed ?? 0} max={maxRedeemed} /></td>
+                          <td>
+                            {item.is_active
+                              ? <span style={{ fontSize: 11.5, color: 'var(--ws-text-2)' }}>معروض</span>
+                              : <ToneChip tone={TONES.gray}>مخفي</ToneChip>}
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', gap: 4 }}>
+                              <WsIconBtn icon={Edit2} label="تعديل المنتج" onClick={() => setEditingItem(item)} />
+                              <WsIconBtn
+                                icon={Trash2}
+                                label="حذف المنتج"
+                                onClick={() => setDeleteItemTarget(item)}
+                                disabled={deleteItemMutation.isPending}
+                                style={{ color: TONES.red.tx }}
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </WsTable>
+              )}
+            </WsBlock>
+          )}
 
-              {storeSettingsQuery.isLoading ? (
-                <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 p-8 text-slate-500">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>جارٍ تحميل إعدادات المتجر...</span>
+          {/* ═══ طابور الطلبات ═══ */}
+          {activeTab === 'orders' && (
+            <WsBlock
+              fill
+              title="طابور الطلبات"
+              icon={ClipboardList}
+              count={ordersMeta?.total ?? orders.length}
+              tools={
+                <StorePager
+                  page={ordersMeta?.current_page ?? 1}
+                  lastPage={ordersMeta?.last_page ?? 1}
+                  total={ordersMeta?.total}
+                  unit="طلباً"
+                  onChange={(page) => setOrderFilters((current) => ({ ...current, page }))}
+                />
+              }
+            >
+              {ordersQuery.isError ? (
+                <div style={{ padding: 14 }}>
+                  <WsAlert tone="error" boxed>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      تعذر تحميل الطلبيات — تحقق من الاتصال ثم أعد المحاولة
+                      <WsBtn size="sm" onClick={() => ordersQuery.refetch()}>إعادة المحاولة</WsBtn>
+                    </span>
+                  </WsAlert>
                 </div>
+              ) : ordersQuery.isLoading ? (
+                <WsEmpty loading>جارٍ تحميل الطلبيات...</WsEmpty>
+              ) : orders.length === 0 ? (
+                <WsEmpty icon={ClipboardList}>
+                  <p style={{ margin: 0 }}>لا توجد طلبيات مطابقة</p>
+                  {hasOrderFilters && (
+                    <WsBtn
+                      size="sm"
+                      icon={X}
+                      style={{ marginTop: 8 }}
+                      onClick={() => { setOrderSearch(''); setOrderFilters({ status: 'all', page: 1, per_page: orderFilters.per_page ?? 10 }) }}
+                    >
+                      مسح المرشحات
+                    </WsBtn>
+                  )}
+                </WsEmpty>
+              ) : (
+                <WsTable>
+                  <thead>
+                    <tr>
+                      <th>رقم الطلب</th>
+                      <th>الطالب</th>
+                      <th>المنتجات</th>
+                      <th>النقاط</th>
+                      <th>الحالة</th>
+                      <th>منذ</th>
+                      <th>اعتماد سريع</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders.map((order) => {
+                      const isSelected = order.id === selectedOrderId
+                      const isPending = order.status === 'pending'
+                      return (
+                        <tr
+                          key={order.id}
+                          className={`is-clickable ${isSelected ? 'is-selected' : ''}`}
+                          onClick={() => setSelectedOrderId(order.id)}
+                          style={!isSelected && isPending ? { background: TONES.amber.bg } : undefined}
+                        >
+                          <td style={{ fontWeight: 700, direction: 'ltr', textAlign: 'right', fontFamily: 'monospace', fontSize: 11.5 }}>
+                            {order.reference_number || `#${order.id}`}
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                              <InitialAvatar name={order.student?.name ?? '؟'} tone={TONES.sky} size={24} />
+                              <span>
+                                <span style={{ display: 'block', fontWeight: 600 }}>{order.student?.name ?? 'غير معروف'}</span>
+                                <span className="ws-cell-sub">
+                                  {[order.student?.grade, order.student?.class_name].filter(Boolean).join(' · ') || '—'}
+                                </span>
+                              </span>
+                            </div>
+                          </td>
+                          <td style={{ color: 'var(--ws-text-2)' }}>
+                            {order.items?.[0]?.name ?? '—'}
+                            {(order.items_count ?? order.items?.length ?? 0) > 1 && (
+                              <span className="ws-count" style={{ marginInlineStart: 4 }}>{order.items_count ?? order.items.length}</span>
+                            )}
+                          </td>
+                          <td style={{ fontWeight: 800, color: TONES.purple.tx, whiteSpace: 'nowrap' }}>
+                            {numberFormatter.format(order.total_points ?? 0)}
+                          </td>
+                          <td><OrderStatusChip status={order.status} /></td>
+                          <td><WaitingChip createdAt={order.created_at} status={order.status} /></td>
+                          <td onClick={(e) => e.stopPropagation()}>
+                            {isPending && (
+                              <WsBtn
+                                size="sm"
+                                icon={CheckCircle2}
+                                onClick={() => handleApproveOrder(order)}
+                                disabled={isActionActive(order, 'approve') && approveOrderMutation.isPending}
+                                style={{ color: TONES.green.tx, borderColor: TONES.green.bd, background: TONES.green.bg }}
+                              >
+                                {isActionActive(order, 'approve') && approveOrderMutation.isPending ? <WsSpinner /> : 'اعتماد'}
+                              </WsBtn>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </WsTable>
+              )}
+            </WsBlock>
+          )}
+
+          {/* ═══ إعدادات المتجر ═══ */}
+          {activeTab === 'settings' && (
+            <WsBlock fill scroll>
+              {storeSettingsQuery.isLoading ? (
+                <WsEmpty loading>جارٍ تحميل إعدادات المتجر...</WsEmpty>
               ) : storeSettingsQuery.isError ? (
-                <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-                  تعذر تحميل إعدادات المتجر: {settingsErrorMessage ?? 'حدث خطأ غير متوقع أثناء التحميل'}
+                <div style={{ padding: 14 }}>
+                  <WsAlert tone="error" boxed>
+                    تعذر تحميل إعدادات المتجر: {settingsErrorMessage ?? 'حدث خطأ غير متوقع أثناء التحميل'}
+                  </WsAlert>
                 </div>
               ) : (
-                <div className="space-y-6">
-                  <section className="grid gap-4 md:grid-cols-2">
-                    <label className="space-y-2 text-sm">
-                      <span className="font-medium text-slate-700">حالة المتجر</span>
-                      <select
-                        value={settingsForm.store_status}
-                        onChange={(event) =>
-                          setSettingsForm((current) => ({
-                            ...current,
-                            store_status: event.target.value as StoreStatus,
-                          }))
-                        }
-                        className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                      >
-                        {STORE_STATUS_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                      <p className="font-semibold text-slate-700">{selectedStoreStatus.label}</p>
-                      <p className="mt-1 text-slate-600">{selectedStoreStatus.description}</p>
-                    </div>
-                    <label className="md:col-span-2 space-y-2 text-sm">
-                      <span className="font-medium text-slate-700">رسالة تظهر للمستخدمين (اختياري)</span>
-                      <textarea
-                        rows={2}
-                        value={settingsForm.store_status_message}
-                        onChange={(event) =>
-                          setSettingsForm((current) => ({ ...current, store_status_message: event.target.value }))
-                        }
-                        className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                      />
-                    </label>
-                    <div className="grid gap-3 md:col-span-2 md:grid-cols-2">
-                      <label className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={settingsForm.allow_waitlist_when_closed}
-                          onChange={(event) =>
-                            setSettingsForm((current) => ({
-                              ...current,
-                              allow_waitlist_when_closed: event.target.checked,
-                            }))
-                          }
-                        />
-                        السماح بإضافة الطلبات إلى قائمة الانتظار عند الإغلاق
-                      </label>
-                      <label className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={settingsForm.prevent_redemption_when_inventory_empty}
-                          onChange={(event) =>
-                            setSettingsForm((current) => ({
-                              ...current,
-                              prevent_redemption_when_inventory_empty: event.target.checked,
-                            }))
-                          }
-                        />
-                        إيقاف الاستبدال تلقائياً عند نفاد المخزون
-                      </label>
-                    </div>
-                  </section>
-
-                  <section className="rounded-xl border border-slate-200 p-4">
-                    <h4 className="text-sm font-semibold text-slate-800">إدارة الطلبات</h4>
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                      <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={settingsForm.auto_approve_orders}
-                          onChange={(event) =>
-                            setSettingsForm((current) => ({
-                              ...current,
-                              auto_approve_orders: event.target.checked,
-                            }))
-                          }
-                        />
-                        اعتماد الطلبات تلقائياً
-                      </label>
-                      <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={settingsForm.auto_fulfill_orders}
-                          onChange={(event) =>
-                            setSettingsForm((current) => ({
-                              ...current,
-                              auto_fulfill_orders: event.target.checked,
-                            }))
-                          }
-                        />
-                        إنهاء الطلبات تلقائياً بعد الاعتماد
-                      </label>
-                      <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={settingsForm.allow_student_cancellations}
-                          onChange={(event) =>
-                            setSettingsForm((current) => ({
-                              ...current,
-                              allow_student_cancellations: event.target.checked,
-                            }))
-                          }
-                        />
-                        السماح للطالب بإلغاء الطلب قبل الاعتماد
-                      </label>
-                      <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={settingsForm.allow_student_notes}
-                          onChange={(event) =>
-                            setSettingsForm((current) => ({
-                              ...current,
-                              allow_student_notes: event.target.checked,
-                            }))
-                          }
-                        />
-                        تمكين ملاحظات الطالب أثناء إنشاء الطلب
-                      </label>
-                      <label className="flex items-center gap-2 text-sm font-medium text-slate-700 sm:col-span-2">
-                        <input
-                          type="checkbox"
-                          checked={settingsForm.require_admin_reason_on_reject}
-                          onChange={(event) =>
-                            setSettingsForm((current) => ({
-                              ...current,
-                              require_admin_reason_on_reject: event.target.checked,
-                            }))
-                          }
-                        />
-                        إلزام الإدارة بكتابة سبب عند رفض الطلب
-                      </label>
-                    </div>
-                  </section>
-
-                  <section className="rounded-xl border border-slate-200 p-4">
-                    <h4 className="text-sm font-semibold text-slate-800">الحدود والتنبيهات</h4>
-                    <div className="mt-3 grid gap-4 md:grid-cols-2">
-                      <label className="space-y-2 text-sm">
-                        <span className="font-medium text-slate-700">تنبيه المخزون عند الوصول إلى</span>
-                        <input
-                          type="number"
-                          min={1}
-                          value={settingsForm.low_stock_threshold}
-                          onChange={(event) =>
-                            setSettingsForm((current) => ({ ...current, low_stock_threshold: event.target.value }))
-                          }
-                          className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                        />
-                      </label>
-                      <label className="space-y-2 text-sm">
-                        <span className="font-medium text-slate-700">الحد الأقصى للمنتجات في الطلب</span>
-                        <input
-                          type="number"
-                          min={1}
-                          value={settingsForm.max_items_per_order}
-                          onChange={(event) =>
-                            setSettingsForm((current) => ({ ...current, max_items_per_order: event.target.value }))
-                          }
-                          className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                        />
-                      </label>
-                      <label className="space-y-2 text-sm">
-                        <span className="font-medium text-slate-700">الحد الأقصى للنقاط لكل طلب (اختياري)</span>
-                        <input
-                          type="number"
-                          min={1}
-                          value={settingsForm.max_points_per_order}
-                          onChange={(event) =>
-                            setSettingsForm((current) => ({ ...current, max_points_per_order: event.target.value }))
-                          }
-                          className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                        />
-                      </label>
-                      <label className="space-y-2 text-sm">
-                        <span className="font-medium text-slate-700">حد الطلبات المعلقة لكل طالب (اختياري)</span>
-                        <input
-                          type="number"
-                          min={1}
-                          value={settingsForm.max_pending_orders_per_student}
-                          onChange={(event) =>
-                            setSettingsForm((current) => ({
-                              ...current,
-                              max_pending_orders_per_student: event.target.value,
-                            }))
-                          }
-                          className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                        />
-                      </label>
-                      <label className="md:col-span-2 space-y-2 text-sm">
-                        <span className="font-medium text-slate-700">بادئة رقم الطلب (اختياري)</span>
-                        <input
-                          value={settingsForm.reference_prefix}
-                          onChange={(event) =>
-                            setSettingsForm((current) => ({ ...current, reference_prefix: event.target.value }))
-                          }
-                          className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                        />
-                      </label>
-                      <label className="md:col-span-2 space-y-2 text-sm">
-                        <span className="font-medium text-slate-700">إشعار عبر البريد (بحد أقصى 10 عناوين)</span>
-                        <textarea
-                          rows={2}
-                          value={settingsForm.notification_recipients}
-                          onChange={(event) =>
-                            setSettingsForm((current) => ({
-                              ...current,
-                              notification_recipients: event.target.value,
-                            }))
-                          }
-                          className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                          placeholder="example@school.sa\nadmin@school.sa"
-                        />
-                        <p className="text-xs text-slate-500">
-                          افصل بين كل بريد بفاصلة أو سطر جديد لإرسال تنبيهات المخزون المنخفض.
-                        </p>
-                      </label>
-                      <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={settingsForm.notify_low_stock}
-                          onChange={(event) =>
-                            setSettingsForm((current) => ({ ...current, notify_low_stock: event.target.checked }))
-                          }
-                        />
-                        تفعيل تنبيه البريد عند انخفاض المخزون
-                      </label>
-                    </div>
-                  </section>
-
-                  <section className="rounded-xl border border-slate-200 p-4">
-                    <h4 className="text-sm font-semibold text-slate-800">مواعيد الاستبدال</h4>
-                    <div className="mt-3 grid gap-4 md:grid-cols-2">
-                      <label className="space-y-2 text-sm">
-                        <span className="font-medium text-slate-700">بداية وقت الاستبدال (اختياري)</span>
-                        <input
-                          type="time"
-                          value={settingsForm.allow_redemption_start_time}
-                          onChange={(event) =>
-                            setSettingsForm((current) => ({
-                              ...current,
-                              allow_redemption_start_time: event.target.value,
-                            }))
-                          }
-                          className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                        />
-                      </label>
-                      <label className="space-y-2 text-sm">
-                        <span className="font-medium text-slate-700">نهاية وقت الاستبدال (اختياري)</span>
-                        <input
-                          type="time"
-                          value={settingsForm.allow_redemption_end_time}
-                          onChange={(event) =>
-                            setSettingsForm((current) => ({
-                              ...current,
-                              allow_redemption_end_time: event.target.value,
-                            }))
-                          }
-                          className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                        />
-                      </label>
-                      <div className="md:col-span-2 space-y-2 text-sm">
-                        <span className="font-medium text-slate-700">الأيام المسموح بها للاستبدال</span>
-                        <div className="flex flex-wrap gap-2">
-                          {WEEKDAY_OPTIONS.map((day) => (
-                            <label
-                              key={day.value}
-                              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
-                                settingsForm.allowed_redemption_weekdays.includes(day.value)
-                                  ? 'border-blue-300 bg-blue-50 text-blue-700'
-                                  : 'border-slate-200 text-slate-700'
-                              }`}
+                <form id="store-settings-form" onSubmit={handleSettingsSubmit}>
+                  <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 780 }}>
+                    {/* حالة المتجر */}
+                    <section>
+                      <p className="ws-label" style={{ marginBottom: 8 }}>حالة المتجر</p>
+                      <div className="ws-choice-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', marginBottom: 8 }}>
+                        {STORE_STATUS_OPTIONS.map((option) => {
+                          const tone = STORE_STATUS_TONES[option.value] ?? TONES.gray
+                          const isSelected = settingsForm.store_status === option.value
+                          return (
+                            <button
+                              key={option.value}
+                              type="button"
+                              className={`ws-choice ${isSelected ? 'is-selected' : ''}`}
+                              onClick={() => setSettingsForm((current) => ({ ...current, store_status: option.value }))}
+                              style={isSelected
+                                ? { background: tone.bg, borderColor: tone.tx, color: tone.tx, boxShadow: `0 0 0 1px ${tone.tx}` }
+                                : undefined}
                             >
-                              <input
-                                type="checkbox"
-                                checked={settingsForm.allowed_redemption_weekdays.includes(day.value)}
-                                onChange={() => handleWeekdayToggle(day.value)}
-                              />
-                              {day.label}
-                            </label>
-                          ))}
-                        </div>
-                        <p className="text-xs text-slate-500">
-                          اترك كل الأيام غير محددة للسماح بالاستبدال طوال الأسبوع.
-                        </p>
+                              {option.label}
+                            </button>
+                          )
+                        })}
                       </div>
-                    </div>
-                  </section>
+                      <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--ws-text-2)' }}>{selectedStoreStatus.description}</p>
+                      <WsField label="رسالة تظهر للمستخدمين (اختياري)">
+                        <WsTextarea
+                          rows={2}
+                          value={settingsForm.store_status_message}
+                          onChange={(event) => setSettingsForm((current) => ({ ...current, store_status_message: event.target.value }))}
+                        />
+                      </WsField>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 8, marginTop: 8 }}>
+                        <SettingSwitch
+                          label="السماح بإضافة الطلبات إلى قائمة الانتظار عند الإغلاق"
+                          checked={settingsForm.allow_waitlist_when_closed}
+                          onChange={(checked) => setSettingsForm((current) => ({ ...current, allow_waitlist_when_closed: checked }))}
+                        />
+                        <SettingSwitch
+                          label="إيقاف الاستبدال تلقائياً عند نفاد المخزون"
+                          checked={settingsForm.prevent_redemption_when_inventory_empty}
+                          onChange={(checked) => setSettingsForm((current) => ({ ...current, prevent_redemption_when_inventory_empty: checked }))}
+                        />
+                      </div>
+                    </section>
 
-                  <section className="rounded-xl border border-slate-200 p-4">
-                    <h4 className="text-sm font-semibold text-slate-800">قيود المخالفات</h4>
-                    <div className="mt-3 grid gap-4 md:grid-cols-2">
-                      <label className="md:col-span-2 flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={settingsForm.enforce_violation_limit}
-                          onChange={(event) =>
-                            setSettingsForm((current) => ({
-                              ...current,
-                              enforce_violation_limit: event.target.checked,
-                            }))
-                          }
+                    {/* إدارة الطلبات */}
+                    <section>
+                      <p className="ws-label" style={{ marginBottom: 8 }}>إدارة الطلبات</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 8 }}>
+                        <SettingSwitch
+                          label="اعتماد الطلبات تلقائياً"
+                          checked={settingsForm.auto_approve_orders}
+                          onChange={(checked) => setSettingsForm((current) => ({ ...current, auto_approve_orders: checked }))}
                         />
-                        منع الطلاب الذين تجاوزوا حد المخالفات من الاستبدال
-                      </label>
-                      <label className="space-y-2 text-sm">
-                        <span className="font-medium text-slate-700">الحد الأقصى للمخالفات</span>
-                        <input
-                          type="number"
-                          min={1}
-                          value={settingsForm.max_behavior_violations}
-                          onChange={(event) =>
-                            setSettingsForm((current) => ({
-                              ...current,
-                              max_behavior_violations: event.target.value,
-                            }))
-                          }
-                          disabled={!settingsForm.enforce_violation_limit}
-                          className="w-full rounded-lg border border-slate-200 px-3 py-2 disabled:bg-slate-100"
+                        <SettingSwitch
+                          label="إنهاء الطلبات تلقائياً بعد الاعتماد"
+                          checked={settingsForm.auto_fulfill_orders}
+                          onChange={(checked) => setSettingsForm((current) => ({ ...current, auto_fulfill_orders: checked }))}
                         />
-                      </label>
-                      <label className="space-y-2 text-sm">
-                        <span className="font-medium text-slate-700">عدد الأيام للمراجعة (اختياري)</span>
-                        <input
-                          type="number"
-                          min={1}
-                          value={settingsForm.violation_lookback_days}
-                          onChange={(event) =>
-                            setSettingsForm((current) => ({
-                              ...current,
-                              violation_lookback_days: event.target.value,
-                            }))
-                          }
-                          disabled={!settingsForm.enforce_violation_limit}
-                          className="w-full rounded-lg border border-slate-200 px-3 py-2 disabled:bg-slate-100"
+                        <SettingSwitch
+                          label="السماح للطالب بإلغاء الطلب قبل الاعتماد"
+                          checked={settingsForm.allow_student_cancellations}
+                          onChange={(checked) => setSettingsForm((current) => ({ ...current, allow_student_cancellations: checked }))}
                         />
-                      </label>
-                    </div>
-                  </section>
-                </div>
-              )}
-            </form>
+                        <SettingSwitch
+                          label="تمكين ملاحظات الطالب أثناء إنشاء الطلب"
+                          checked={settingsForm.allow_student_notes}
+                          onChange={(checked) => setSettingsForm((current) => ({ ...current, allow_student_notes: checked }))}
+                        />
+                        <SettingSwitch
+                          label="إلزام الإدارة بكتابة سبب عند رفض الطلب"
+                          checked={settingsForm.require_admin_reason_on_reject}
+                          onChange={(checked) => setSettingsForm((current) => ({ ...current, require_admin_reason_on_reject: checked }))}
+                        />
+                      </div>
+                    </section>
 
-            {isCategoryFormOpen && (
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 className="mb-4 text-lg font-semibold text-slate-900">
-                  {editingCategory ? 'تعديل تصنيف' : 'إضافة تصنيف جديد'}
-                </h3>
-                <form className="grid gap-4 md:grid-cols-2" onSubmit={handleCategoryFormSubmit}>
-                  <label className="space-y-2 text-sm">
-                    <span className="font-medium text-slate-700">اسم التصنيف</span>
-                    <input
-                      required
-                      value={categoryForm.name}
-                      onChange={(event) => setCategoryForm((current) => ({ ...current, name: event.target.value }))}
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                    />
-                  </label>
-                  <label className="space-y-2 text-sm">
-                    <span className="font-medium text-slate-700">الاسم المختصر (Slug)</span>
-                    <input
-                      value={categoryForm.slug}
-                      onChange={(event) => setCategoryForm((current) => ({ ...current, slug: event.target.value }))}
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                    />
-                  </label>
-                  <label className="space-y-2 text-sm">
-                    <span className="font-medium text-slate-700">الأيقونة</span>
-                    <input
-                      value={categoryForm.icon}
-                      onChange={(event) => setCategoryForm((current) => ({ ...current, icon: event.target.value }))}
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                    />
-                  </label>
-                  <label className="space-y-2 text-sm">
-                    <span className="font-medium text-slate-700">ترتيب العرض</span>
-                    <input
-                      type="number"
-                      value={categoryForm.display_order}
-                      onChange={(event) =>
-                        setCategoryForm((current) => ({ ...current, display_order: event.target.value }))
-                      }
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                    />
-                  </label>
-                  <label className="md:col-span-2 space-y-2 text-sm">
-                    <span className="font-medium text-slate-700">الوصف</span>
-                    <textarea
-                      rows={3}
-                      value={categoryForm.description}
-                      onChange={(event) =>
-                        setCategoryForm((current) => ({ ...current, description: event.target.value }))
-                      }
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                    />
-                  </label>
-                  <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={categoryForm.is_active}
-                      onChange={(event) =>
-                        setCategoryForm((current) => ({ ...current, is_active: event.target.checked }))
-                      }
-                    />
-                    تفعيل التصنيف
-                  </label>
-                  <div className="md:col-span-2 flex items-center justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsCategoryFormOpen(false)
-                        setEditingCategory(null)
-                        setCategoryForm(createDefaultCategoryForm())
-                      }}
-                      className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
-                    >
-                      إلغاء
-                    </button>
-                    <button
-                      type="submit"
-                      className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
-                      disabled={createCategoryMutation.isPending || updateCategoryMutation.isPending}
-                    >
-                      {(createCategoryMutation.isPending || updateCategoryMutation.isPending) && (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      )}
-                      {editingCategory ? 'حفظ التعديلات' : 'إضافة التصنيف'}
-                    </button>
+                    {/* الحدود والتنبيهات */}
+                    <section>
+                      <p className="ws-label" style={{ marginBottom: 8 }}>الحدود والتنبيهات</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+                        <WsField label="تنبيه المخزون عند الوصول إلى">
+                          <WsInput
+                            type="number"
+                            min={1}
+                            value={settingsForm.low_stock_threshold}
+                            onChange={(event) => setSettingsForm((current) => ({ ...current, low_stock_threshold: event.target.value }))}
+                          />
+                        </WsField>
+                        <WsField label="الحد الأقصى للمنتجات في الطلب">
+                          <WsInput
+                            type="number"
+                            min={1}
+                            value={settingsForm.max_items_per_order}
+                            onChange={(event) => setSettingsForm((current) => ({ ...current, max_items_per_order: event.target.value }))}
+                          />
+                        </WsField>
+                        <WsField label="الحد الأقصى للنقاط لكل طلب (اختياري)">
+                          <WsInput
+                            type="number"
+                            min={1}
+                            value={settingsForm.max_points_per_order}
+                            onChange={(event) => setSettingsForm((current) => ({ ...current, max_points_per_order: event.target.value }))}
+                          />
+                        </WsField>
+                        <WsField label="حد الطلبات المعلقة لكل طالب (اختياري)">
+                          <WsInput
+                            type="number"
+                            min={1}
+                            value={settingsForm.max_pending_orders_per_student}
+                            onChange={(event) => setSettingsForm((current) => ({ ...current, max_pending_orders_per_student: event.target.value }))}
+                          />
+                        </WsField>
+                        <WsField label="بادئة رقم الطلب (اختياري)">
+                          <WsInput
+                            type="text"
+                            value={settingsForm.reference_prefix}
+                            onChange={(event) => setSettingsForm((current) => ({ ...current, reference_prefix: event.target.value }))}
+                          />
+                        </WsField>
+                      </div>
+                      <div style={{ marginTop: 10 }}>
+                        <WsField label="إشعار عبر البريد (بحد أقصى 10 عناوين)">
+                          <WsTextarea
+                            rows={2}
+                            value={settingsForm.notification_recipients}
+                            onChange={(event) => setSettingsForm((current) => ({ ...current, notification_recipients: event.target.value }))}
+                            placeholder={'example@school.sa\nadmin@school.sa'}
+                          />
+                          <p style={{ margin: '4px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                            افصل بين كل بريد بفاصلة أو سطر جديد لإرسال تنبيهات المخزون المنخفض.
+                          </p>
+                        </WsField>
+                        <div style={{ marginTop: 8 }}>
+                          <SettingSwitch
+                            label="تفعيل تنبيه البريد عند انخفاض المخزون"
+                            checked={settingsForm.notify_low_stock}
+                            onChange={(checked) => setSettingsForm((current) => ({ ...current, notify_low_stock: checked }))}
+                          />
+                        </div>
+                      </div>
+                    </section>
+
+                    {/* مواعيد الاستبدال */}
+                    <section>
+                      <p className="ws-label" style={{ marginBottom: 8 }}>مواعيد الاستبدال</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
+                        <WsField label="بداية وقت الاستبدال (اختياري)">
+                          <WsInput
+                            type="time"
+                            value={settingsForm.allow_redemption_start_time}
+                            onChange={(event) => setSettingsForm((current) => ({ ...current, allow_redemption_start_time: event.target.value }))}
+                          />
+                        </WsField>
+                        <WsField label="نهاية وقت الاستبدال (اختياري)">
+                          <WsInput
+                            type="time"
+                            value={settingsForm.allow_redemption_end_time}
+                            onChange={(event) => setSettingsForm((current) => ({ ...current, allow_redemption_end_time: event.target.value }))}
+                          />
+                        </WsField>
+                      </div>
+                      <p className="ws-label" style={{ margin: '10px 0 6px' }}>الأيام المسموح بها للاستبدال</p>
+                      <div className="ws-choice-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))' }}>
+                        {WEEKDAY_OPTIONS.map((day) => {
+                          const isSelected = settingsForm.allowed_redemption_weekdays.includes(day.value)
+                          return (
+                            <button
+                              key={day.value}
+                              type="button"
+                              className={`ws-choice ${isSelected ? 'is-selected' : ''}`}
+                              onClick={() => handleWeekdayToggle(day.value)}
+                              style={isSelected
+                                ? { background: TONES.sky.bg, borderColor: TONES.sky.tx, color: TONES.sky.tx, boxShadow: `0 0 0 1px ${TONES.sky.tx}` }
+                                : undefined}
+                            >
+                              {day.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      <p style={{ margin: '6px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                        اترك كل الأيام غير محددة للسماح بالاستبدال طوال الأسبوع.
+                      </p>
+                    </section>
+
+                    {/* قيود المخالفات */}
+                    <section>
+                      <p className="ws-label" style={{ marginBottom: 8 }}>قيود المخالفات</p>
+                      <SettingSwitch
+                        label="منع الطلاب الذين تجاوزوا حد المخالفات من الاستبدال"
+                        checked={settingsForm.enforce_violation_limit}
+                        onChange={(checked) => setSettingsForm((current) => ({ ...current, enforce_violation_limit: checked }))}
+                      />
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, marginTop: 8 }}>
+                        <WsField label="الحد الأقصى للمخالفات">
+                          <WsInput
+                            type="number"
+                            min={1}
+                            value={settingsForm.max_behavior_violations}
+                            disabled={!settingsForm.enforce_violation_limit}
+                            onChange={(event) => setSettingsForm((current) => ({ ...current, max_behavior_violations: event.target.value }))}
+                          />
+                        </WsField>
+                        <WsField label="عدد الأيام للمراجعة (اختياري)">
+                          <WsInput
+                            type="number"
+                            min={1}
+                            value={settingsForm.violation_lookback_days}
+                            disabled={!settingsForm.enforce_violation_limit}
+                            onChange={(event) => setSettingsForm((current) => ({ ...current, violation_lookback_days: event.target.value }))}
+                          />
+                        </WsField>
+                      </div>
+                    </section>
                   </div>
                 </form>
-              </div>
-            )}
+              )}
+            </WsBlock>
+          )}
+        </WsMain>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900">تصنيفات المتجر</h3>
-                  <p className="text-sm text-slate-600">نظم المنتجات في مجموعات مرنة لسهولة التصفح</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsCategoryFormOpen(true)
-                    setEditingCategory(null)
-                    setCategoryForm(createDefaultCategoryForm())
-                  }}
-                  className="inline-flex items-center gap-2 rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-900"
-                >
-                  <Plus className="h-4 w-4" />
-                  تصنيف جديد
-                </button>
-              </div>
-
+        {/* ═══ التصنيفات — كتالوج لا إعدادات ═══ */}
+        {activeTab === 'catalog' && (
+          <WsSideCol
+            side="end"
+            title="التصنيفات"
+            icon={Tags}
+            storageKey="ws:e-store:catalog:sidecol"
+            width={300}
+            tools={
+              <WsIconBtn
+                icon={Plus}
+                label="تصنيف جديد"
+                onClick={() => { setEditingCategory(null); setCategoryForm(createDefaultCategoryForm()); setIsCategoryFormOpen(true) }}
+              />
+            }
+          >
+            <WsBlock fill scroll>
               {categoriesQuery.isLoading ? (
-                <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 p-10 text-slate-500">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>جارٍ تحميل التصنيفات...</span>
-                </div>
+                <WsEmpty loading>جارٍ تحميل التصنيفات...</WsEmpty>
               ) : categories.length === 0 ? (
-                <div className="rounded-2xl border-2 border-dashed border-slate-300 p-12 text-center">
-                  <Package className="mx-auto h-12 w-12 text-slate-400" />
-                  <h3 className="mt-4 text-lg font-semibold text-slate-900">لا توجد تصنيفات بعد</h3>
-                  <p className="mt-2 text-sm text-slate-600">ابدأ بإنشاء تصنيفات لتنظيم منتجات المتجر</p>
-                </div>
+                <WsEmpty icon={Package}>لا توجد تصنيفات بعد</WsEmpty>
               ) : (
-                <div className="grid gap-3 md:grid-cols-2">
-                  {categories.map((category) => (
-                    <div key={category.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="text-lg font-semibold text-slate-900">{category.name}</h4>
-                          <p className="text-sm text-slate-500">
-                            ترتيب العرض: {category.display_order ?? 0} — الحالة: {category.is_active ? 'مفعل' : 'مخفي'}
-                          </p>
-                          {category.description && (
-                            <p className="mt-2 text-sm text-slate-600">{category.description}</p>
-                          )}
+                categories.map((category) => {
+                  const isFiltered = itemFilters.category_id === category.id
+                  return (
+                    <div
+                      key={category.id}
+                      onClick={() => setItemFilters((current) => ({
+                        ...current,
+                        category_id: isFiltered ? undefined : category.id,
+                        page: 1,
+                      }))}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 7,
+                        padding: '8px 12px',
+                        borderBottom: '1px solid var(--ws-hairline)',
+                        cursor: 'pointer',
+                        background: isFiltered ? 'var(--ws-accent-soft)' : 'transparent',
+                        boxShadow: isFiltered ? 'inset 0 0 0 1px var(--ws-accent)' : undefined,
+                      }}
+                    >
+                      {category.icon && <span style={{ fontSize: 14, flexShrink: 0 }}>{category.icon}</span>}
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: 'block', fontSize: 12, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {category.name}
+                        </span>
+                        {!category.is_active && <ToneChip tone={TONES.gray}>مخفي</ToneChip>}
+                      </span>
+                      <span style={{ display: 'inline-flex', gap: 2, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                        <WsIconBtn icon={Edit2} label="تعديل التصنيف" onClick={() => setEditingCategory(category)} />
+                        <WsIconBtn
+                          icon={Trash2}
+                          label="حذف التصنيف"
+                          onClick={() => setDeleteCategoryTarget(category)}
+                          disabled={deleteCategoryMutation.isPending}
+                          style={{ color: TONES.red.tx }}
+                        />
+                      </span>
+                    </div>
+                  )
+                })
+              )}
+            </WsBlock>
+          </WsSideCol>
+        )}
+
+        {/* ═══ ★ قسيمة الاستبدال — التحويل يُرى قبل أن يقع ═══ */}
+        {activeTab === 'orders' && (
+          <WsSideCol side="end" title="قسيمة الاستبدال" icon={Receipt} storageKey="ws:e-store:orders:sidecol" width={360}>
+            <WsBlock fill scroll>
+              {!selectedOrder ? (
+                <WsEmpty icon={Receipt}>اختر طلباً لعرض قسيمته</WsEmpty>
+              ) : (
+                <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {/* رأس القسيمة */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, flexWrap: 'wrap' }}>
+                    <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 800, direction: 'ltr' }}>
+                      {selectedOrder.reference_number || `#${selectedOrder.id}`}
+                    </span>
+                    <OrderStatusChip status={selectedOrder.status} />
+                  </div>
+                  {selectedOrder.submitted_via && (
+                    <ToneChip tone={TONES.gray}>عبر: {selectedOrder.submitted_via}</ToneChip>
+                  )}
+
+                  {/* هوية الطالب — بلا الصف والفصل لا يُنادى الطالب أصلاً */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--ws-border)', borderRadius: 10, padding: 9 }}>
+                    <InitialAvatar name={selectedOrder.student?.name ?? '؟'} tone={TONES.sky} size={34} />
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ margin: 0, fontWeight: 800, fontSize: 12.5 }}>{selectedOrder.student?.name ?? 'غير معروف'}</p>
+                      <p style={{ margin: '2px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                        {[selectedOrder.student?.grade, selectedOrder.student?.class_name].filter(Boolean).join(' · ') || '—'}
+                      </p>
+                      {selectedOrder.student?.national_id && (
+                        <p style={{ margin: '2px 0 0', fontSize: 10, fontFamily: 'monospace', color: 'var(--ws-text-2)', direction: 'ltr', textAlign: 'right' }}>
+                          {selectedOrder.student.national_id}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* المطلوب */}
+                  <div>
+                    <p className="ws-label" style={{ marginBottom: 5 }}>المطلوب</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      {selectedOrder.items?.map((line) => (
+                        <div key={line.id} style={{ display: 'flex', alignItems: 'center', gap: 7, border: '1px solid var(--ws-border)', borderRadius: 8, padding: 7 }}>
+                          <ItemThumb url={line.image_url} name={line.name} size={28} />
+                          <span style={{ flex: 1, minWidth: 0 }}>
+                            <span style={{ display: 'block', fontSize: 11.5, fontWeight: 700 }}>{line.name}</span>
+                            <span style={{ display: 'block', fontSize: 10, color: 'var(--ws-text-2)' }}>
+                              {line.quantity} × {numberFormatter.format(line.unit_points)} نقطة
+                            </span>
+                          </span>
+                          <b style={{ fontSize: 11.5, color: TONES.purple.tx, flexShrink: 0 }}>
+                            {numberFormatter.format(line.total_points)}
+                          </b>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setEditingCategory(category)}
-                            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-50"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                            تعديل
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteCategory(category)}
-                            disabled={deleteCategoryMutation.isPending}
-                            className="inline-flex items-center gap-2 rounded-lg border border-rose-200 px-3 py-2 text-sm text-rose-600 transition hover:bg-rose-50"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            حذف
-                          </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* أثر الاعتماد — دفتر النقاط */}
+                  {selectedOrder.status === 'pending' && (
+                    <div style={{ background: TONES.purple.bg, border: `1px solid ${TONES.purple.bd}`, borderRadius: 10, padding: 10 }}>
+                      <p className="ws-label" style={{ marginBottom: 5, color: TONES.purple.tx }}>أثر الاعتماد</p>
+                      <p style={{ margin: 0, fontSize: 12, color: TONES.purple.tx, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span>رصيد الطالب</span>
+                        <b style={{ fontSize: 14 }}>− {numberFormatter.format(selectedOrder.total_points ?? 0)} نقطة</b>
+                      </p>
+                    </div>
+                  )}
+
+                  {/* دفتر واقعي بعد التنفيذ */}
+                  {selectedOrder.status !== 'pending' && (selectedOrder.points_charged ?? 0) > 0 && (
+                    <div style={{ background: 'var(--ws-surface-2)', border: '1px solid var(--ws-hairline)', borderRadius: 10, padding: 10, fontSize: 11.5 }}>
+                      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--ws-text-2)' }}>المخصوم فعلياً</span>
+                        <b style={{ color: TONES.purple.tx }}>{numberFormatter.format(selectedOrder.points_charged)} نقطة</b>
+                      </span>
+                      {selectedOrder.refund_transaction_id && (
+                        <div style={{ marginTop: 6 }}>
+                          <ToneChip tone={TONES.green}>أُعيدت النقاط</ToneChip>
                         </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* مسار الطلب */}
+                  <div>
+                    <p className="ws-label" style={{ marginBottom: 5 }}>مسار الطلب</p>
+                    <div className="ws-timeline" style={{ padding: '4px 0 0' }}>
+                      <OrderStep
+                        label="طُلب"
+                        at={selectedOrder.created_at}
+                        tone={TONES.gray}
+                        done
+                        note={selectedOrder.status === 'pending' ? waitingNote(selectedOrder.created_at) : null}
+                      />
+                      {selectedOrder.approved_at && (
+                        <OrderStep label="اعتُمد" at={selectedOrder.approved_at} tone={TONES.sky} done />
+                      )}
+                      {selectedOrder.fulfilled_at && (
+                        <OrderStep label="سُلّم" at={selectedOrder.fulfilled_at} tone={TONES.green} done />
+                      )}
+                      {selectedOrder.status === 'rejected' && (
+                        <OrderStep label="رُفض" at={selectedOrder.cancelled_at ?? selectedOrder.updated_at} tone={TONES.red} done />
+                      )}
+                      {selectedOrder.status === 'cancelled' && (
+                        <OrderStep label="أُلغي" at={selectedOrder.cancelled_at ?? selectedOrder.updated_at} tone={TONES.gray} done />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* الملاحظات */}
+                  {selectedOrder.student_notes && (
+                    <div style={{ background: TONES.sky.bg, border: `1px solid ${TONES.sky.bd}`, borderRadius: 8, padding: 8, fontSize: 11.5, color: TONES.sky.tx }}>
+                      <b>ملاحظات الطالب: </b>{selectedOrder.student_notes}
+                    </div>
+                  )}
+                  {selectedOrder.admin_notes && (
+                    <div style={{ background: TONES.amber.bg, border: `1px solid ${TONES.amber.bd}`, borderRadius: 8, padding: 8, fontSize: 11.5, color: TONES.amber.tx }}>
+                      <b>ملاحظات الإدارة: </b>{selectedOrder.admin_notes}
+                    </div>
+                  )}
+
+                  {/* القرار */}
+                  {['pending', 'approved'].includes(selectedOrder.status) && (
+                    <div style={{ borderTop: '1px solid var(--ws-hairline)', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <WsField label="السبب / الملاحظة (اختياري)">
+                        <WsTextarea
+                          rows={2}
+                          value={orderReason}
+                          onChange={(event) => setOrderReason(event.target.value)}
+                          placeholder="اكتب سبباً أو اختر من الأسباب الجاهزة..."
+                        />
+                      </WsField>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {QUICK_REASONS.map((reason) => (
+                          <button key={reason} type="button" className="ws-chip" onClick={() => setOrderReason(reason)}>
+                            {reason}
+                          </button>
+                        ))}
+                      </div>
+
+                      {selectedOrder.status === 'pending' && settingsForm.require_admin_reason_on_reject && !orderReason.trim() && (
+                        <WsAlert tone="warn" boxed>
+                          الإعدادات تُلزم بكتابة سبب عند رفض الطلب
+                        </WsAlert>
+                      )}
+
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        {selectedOrder.status === 'pending' && (
+                          <>
+                            <WsBtn
+                              icon={CheckCircle2}
+                              onClick={() => handleApproveOrder(selectedOrder)}
+                              disabled={isActionActive(selectedOrder, 'approve') && approveOrderMutation.isPending}
+                              style={{ flex: 1, justifyContent: 'center', color: TONES.green.tx, borderColor: TONES.green.bd, background: TONES.green.bg }}
+                            >
+                              {isActionActive(selectedOrder, 'approve') && approveOrderMutation.isPending ? <WsSpinner /> : 'اعتماد'}
+                            </WsBtn>
+                            <WsBtn
+                              icon={XCircle}
+                              onClick={() => handleRejectOrder(selectedOrder, orderReason)}
+                              disabled={isActionActive(selectedOrder, 'reject') && rejectOrderMutation.isPending}
+                              style={{ flex: 1, justifyContent: 'center', color: TONES.red.tx, borderColor: TONES.red.bd, background: TONES.red.bg }}
+                            >
+                              {isActionActive(selectedOrder, 'reject') && rejectOrderMutation.isPending ? <WsSpinner /> : 'رفض'}
+                            </WsBtn>
+                          </>
+                        )}
+                        {selectedOrder.status === 'approved' && (
+                          <WsBtn
+                            icon={CheckCircle2}
+                            onClick={() => handleFulfillOrder(selectedOrder, orderReason)}
+                            disabled={isActionActive(selectedOrder, 'fulfill') && fulfillOrderMutation.isPending}
+                            style={{ flex: 1, justifyContent: 'center', color: TONES.sky.tx, borderColor: TONES.sky.bd, background: TONES.sky.bg }}
+                          >
+                            {isActionActive(selectedOrder, 'fulfill') && fulfillOrderMutation.isPending ? <WsSpinner /> : 'تأكيد التسليم'}
+                          </WsBtn>
+                        )}
+                        <WsBtn
+                          icon={Ban}
+                          onClick={() => handleCancelOrder(selectedOrder, orderReason)}
+                          disabled={isActionActive(selectedOrder, 'cancel') && cancelOrderMutation.isPending}
+                          style={{ flex: 1, justifyContent: 'center' }}
+                        >
+                          {isActionActive(selectedOrder, 'cancel') && cancelOrderMutation.isPending ? <WsSpinner /> : 'إلغاء الطلب'}
+                        </WsBtn>
                       </div>
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
-            </div>
-          </div>
+            </WsBlock>
+          </WsSideCol>
         )}
-      </div>
-    </section>
+
+        {/* ═══ ملخص السياسة الحي ═══ */}
+        {activeTab === 'settings' && (
+          <WsSideCol side="end" title="ملخص السياسة" icon={FileText} storageKey="ws:e-store:settings:sidecol" width={320}>
+            <WsBlock fill scroll>
+              <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {settingsDirty && <ToneChip tone={TONES.amber}>تغييرات غير محفوظة</ToneChip>}
+                {timeConflict && <WsAlert tone="warn" boxed>وقت البداية بعد وقت النهاية</WsAlert>}
+
+                <p style={{ margin: 0, fontSize: 11.5, lineHeight: 2.1 }}>
+                  {policySentences(settingsForm).map((sentence, index) => (
+                    <span key={index} style={{ display: 'block' }}>• {sentence}</span>
+                  ))}
+                </p>
+
+                <p style={{ margin: '6px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)', lineHeight: 1.8, borderTop: '1px solid var(--ws-hairline)', paddingTop: 8 }}>
+                  يتحدث الملخص مع كل تبديل — وهو ما سيراه الطالب فعلياً، لا ما تقوله المفاتيح.
+                </p>
+              </div>
+            </WsBlock>
+          </WsSideCol>
+        )}
+      </WsLayout>
+
+      {/* ═══ مودال المنتج ═══ */}
+      {isItemFormOpen && (
+        <div className="ws-modal" onClick={() => { setIsItemFormOpen(false); setEditingItem(null); setItemForm(createDefaultItemForm()) }}>
+          <div className="ws-modal__panel" style={{ maxWidth: 640 }} onClick={(e) => e.stopPropagation()}>
+            <header className="ws-modal__head">
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                <div>
+                  <h3 className="ws-modal__title">{editingItem ? 'تعديل منتج' : 'إضافة منتج جديد'}</h3>
+                  <p className="ws-modal__sub">المنتج يظهر للطلاب في متجر النقاط حسب حالته وتصنيفه</p>
+                </div>
+                <WsIconBtn icon={X} label="إغلاق" onClick={() => { setIsItemFormOpen(false); setEditingItem(null); setItemForm(createDefaultItemForm()) }} />
+              </div>
+            </header>
+            <form onSubmit={handleItemFormSubmit}>
+              <div className="ws-modal__body" style={{ maxHeight: '62vh', overflowY: 'auto' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <WsField label="اسم المنتج *">
+                    <WsInput
+                      type="text"
+                      required
+                      value={itemForm.name}
+                      onChange={(event) => setItemForm((current) => ({ ...current, name: event.target.value }))}
+                    />
+                  </WsField>
+                  <WsField label="السعر بالنقاط *">
+                    <WsInput
+                      type="number"
+                      required
+                      min={1}
+                      value={itemForm.points_cost}
+                      onChange={(event) => setItemForm((current) => ({ ...current, points_cost: event.target.value }))}
+                    />
+                  </WsField>
+                  <WsField label="التصنيف">
+                    <WsSelect
+                      value={itemForm.store_category_id}
+                      onChange={(event) => setItemForm((current) => ({ ...current, store_category_id: event.target.value }))}
+                    >
+                      <option value="">بدون تصنيف</option>
+                      {categories.map((category) => (
+                        <option key={category.id} value={category.id}>{category.name}</option>
+                      ))}
+                    </WsSelect>
+                  </WsField>
+                  <WsField label="حد الشراء لكل طالب (اختياري)">
+                    <WsInput
+                      type="number"
+                      min={1}
+                      value={itemForm.max_per_student}
+                      onChange={(event) => setItemForm((current) => ({ ...current, max_per_student: event.target.value }))}
+                    />
+                  </WsField>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, border: '1px solid var(--ws-border)', borderRadius: 10, padding: 10 }}>
+                  <p style={{ margin: 0, fontSize: 12, fontWeight: 700 }}>مخزون غير محدود</p>
+                  <WsSwitch
+                    checked={itemForm.unlimited_stock}
+                    onChange={(checked) => setItemForm((current) => ({ ...current, unlimited_stock: checked }))}
+                  />
+                </div>
+                {!itemForm.unlimited_stock && (
+                  <WsField label="الكمية المتاحة">
+                    <WsInput
+                      type="number"
+                      min={0}
+                      value={itemForm.stock_quantity}
+                      onChange={(event) => setItemForm((current) => ({ ...current, stock_quantity: event.target.value }))}
+                    />
+                  </WsField>
+                )}
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <WsField label="رابط صورة (اختياري)">
+                    <WsInput
+                      type="text"
+                      value={itemForm.image_url}
+                      onChange={(event) => setItemForm((current) => ({ ...current, image_url: event.target.value }))}
+                    />
+                  </WsField>
+                  <WsField label="الرمز التعريفي SKU (اختياري)">
+                    <WsInput
+                      type="text"
+                      value={itemForm.sku}
+                      onChange={(event) => setItemForm((current) => ({ ...current, sku: event.target.value }))}
+                    />
+                  </WsField>
+                </div>
+
+                <WsField label="ترتيب العرض (اختياري)">
+                  <WsInput
+                    type="number"
+                    value={itemForm.display_order}
+                    onChange={(event) => setItemForm((current) => ({ ...current, display_order: event.target.value }))}
+                  />
+                </WsField>
+
+                <WsField label="الوصف">
+                  <WsTextarea
+                    rows={3}
+                    value={itemForm.description}
+                    onChange={(event) => setItemForm((current) => ({ ...current, description: event.target.value }))}
+                  />
+                </WsField>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, border: '1px solid var(--ws-border)', borderRadius: 10, padding: 10 }}>
+                  <p style={{ margin: 0, fontSize: 12, fontWeight: 700 }}>عرض المنتج للطلاب</p>
+                  <WsSwitch
+                    checked={itemForm.is_active}
+                    onChange={(checked) => setItemForm((current) => ({ ...current, is_active: checked }))}
+                  />
+                </div>
+              </div>
+              <footer className="ws-modal__foot">
+                <WsBtn onClick={() => { setIsItemFormOpen(false); setEditingItem(null); setItemForm(createDefaultItemForm()) }}>إلغاء</WsBtn>
+                <WsBtn
+                  type="submit"
+                  variant="primary"
+                  icon={Save}
+                  disabled={createItemMutation.isPending || updateItemMutation.isPending}
+                >
+                  {createItemMutation.isPending || updateItemMutation.isPending
+                    ? 'جارٍ الحفظ...'
+                    : editingItem ? 'حفظ التعديلات' : 'إضافة المنتج'}
+                </WsBtn>
+              </footer>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ مودال التصنيف ═══ */}
+      {isCategoryFormOpen && (
+        <div className="ws-modal" onClick={() => { setIsCategoryFormOpen(false); setEditingCategory(null); setCategoryForm(createDefaultCategoryForm()) }}>
+          <div className="ws-modal__panel" style={{ maxWidth: 460 }} onClick={(e) => e.stopPropagation()}>
+            <header className="ws-modal__head">
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                <div>
+                  <h3 className="ws-modal__title">{editingCategory ? 'تعديل تصنيف' : 'إضافة تصنيف جديد'}</h3>
+                  <p className="ws-modal__sub">نظم المنتجات في مجموعات مرنة لسهولة التصفح</p>
+                </div>
+                <WsIconBtn icon={X} label="إغلاق" onClick={() => { setIsCategoryFormOpen(false); setEditingCategory(null); setCategoryForm(createDefaultCategoryForm()) }} />
+              </div>
+            </header>
+            <form onSubmit={handleCategoryFormSubmit}>
+              <div className="ws-modal__body">
+                <WsField label="اسم التصنيف *">
+                  <WsInput
+                    type="text"
+                    required
+                    value={categoryForm.name}
+                    onChange={(event) => setCategoryForm((current) => ({ ...current, name: event.target.value }))}
+                  />
+                </WsField>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <WsField label="الاسم المختصر (Slug)">
+                    <WsInput
+                      type="text"
+                      value={categoryForm.slug}
+                      onChange={(event) => setCategoryForm((current) => ({ ...current, slug: event.target.value }))}
+                    />
+                  </WsField>
+                  <WsField label="الأيقونة">
+                    <WsInput
+                      type="text"
+                      value={categoryForm.icon}
+                      onChange={(event) => setCategoryForm((current) => ({ ...current, icon: event.target.value }))}
+                    />
+                  </WsField>
+                </div>
+                <WsField label="ترتيب العرض">
+                  <WsInput
+                    type="number"
+                    value={categoryForm.display_order}
+                    onChange={(event) => setCategoryForm((current) => ({ ...current, display_order: event.target.value }))}
+                  />
+                </WsField>
+                <WsField label="الوصف">
+                  <WsTextarea
+                    rows={3}
+                    value={categoryForm.description}
+                    onChange={(event) => setCategoryForm((current) => ({ ...current, description: event.target.value }))}
+                  />
+                </WsField>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, border: '1px solid var(--ws-border)', borderRadius: 10, padding: 10 }}>
+                  <p style={{ margin: 0, fontSize: 12, fontWeight: 700 }}>تفعيل التصنيف</p>
+                  <WsSwitch
+                    checked={categoryForm.is_active}
+                    onChange={(checked) => setCategoryForm((current) => ({ ...current, is_active: checked }))}
+                  />
+                </div>
+              </div>
+              <footer className="ws-modal__foot">
+                <WsBtn onClick={() => { setIsCategoryFormOpen(false); setEditingCategory(null); setCategoryForm(createDefaultCategoryForm()) }}>إلغاء</WsBtn>
+                <WsBtn
+                  type="submit"
+                  variant="primary"
+                  icon={Save}
+                  disabled={createCategoryMutation.isPending || updateCategoryMutation.isPending}
+                >
+                  {createCategoryMutation.isPending || updateCategoryMutation.isPending
+                    ? 'جارٍ الحفظ...'
+                    : editingCategory ? 'حفظ التعديلات' : 'إضافة التصنيف'}
+                </WsBtn>
+              </footer>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ تأكيد حذف منتج — واعٍ بالسياق ═══ */}
+      {deleteItemTarget && (
+        <div className="ws-modal" onClick={() => setDeleteItemTarget(null)}>
+          <div className="ws-modal__panel" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
+            <header className="ws-modal__head">
+              <h3 className="ws-modal__title">حذف المنتج</h3>
+              <p className="ws-modal__sub">هل أنت متأكد من حذف المنتج "{deleteItemTarget.name}"؟</p>
+            </header>
+            <div className="ws-modal__body">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--ws-border)', borderRadius: 10, padding: 9 }}>
+                <ItemThumb url={deleteItemTarget.image_url} name={deleteItemTarget.name} size={36} />
+                <span>
+                  <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700 }}>{deleteItemTarget.name}</span>
+                  <span style={{ display: 'block', fontSize: 11, color: TONES.purple.tx, fontWeight: 700 }}>
+                    {numberFormatter.format(deleteItemTarget.points_cost)} نقطة
+                  </span>
+                </span>
+              </div>
+              {(deleteItemTarget.times_redeemed ?? 0) > 0 && (
+                <WsAlert tone="warn" boxed>
+                  استُبدل هذا المنتج {deleteItemTarget.times_redeemed} مرة — حذفه يزيله من الرفّ نهائياً.
+                </WsAlert>
+              )}
+            </div>
+            <footer className="ws-modal__foot">
+              <WsBtn onClick={() => setDeleteItemTarget(null)}>إلغاء</WsBtn>
+              <WsBtn
+                variant="danger"
+                icon={Trash2}
+                disabled={deleteItemMutation.isPending}
+                onClick={() => { handleDeleteItem(deleteItemTarget); setDeleteItemTarget(null) }}
+              >
+                {deleteItemMutation.isPending ? 'جارٍ الحذف...' : 'حذف المنتج'}
+              </WsBtn>
+            </footer>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ تأكيد حذف تصنيف ═══ */}
+      {deleteCategoryTarget && (
+        <div className="ws-modal" onClick={() => setDeleteCategoryTarget(null)}>
+          <div className="ws-modal__panel" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
+            <header className="ws-modal__head">
+              <h3 className="ws-modal__title">حذف التصنيف</h3>
+              <p className="ws-modal__sub">سيتم حذف التصنيف "{deleteCategoryTarget.name}". هل ترغب بالمتابعة؟</p>
+            </header>
+            <div className="ws-modal__body">
+              <WsAlert tone="warn" boxed>
+                المنتجات المرتبطة بهذا التصنيف تبقى، لكنها تصير بلا تصنيف.
+              </WsAlert>
+            </div>
+            <footer className="ws-modal__foot">
+              <WsBtn onClick={() => setDeleteCategoryTarget(null)}>إلغاء</WsBtn>
+              <WsBtn
+                variant="danger"
+                icon={Trash2}
+                disabled={deleteCategoryMutation.isPending}
+                onClick={() => { handleDeleteCategory(deleteCategoryTarget); setDeleteCategoryTarget(null) }}
+              >
+                {deleteCategoryMutation.isPending ? 'جارٍ الحذف...' : 'حذف التصنيف'}
+              </WsBtn>
+            </footer>
+          </div>
+        </div>
+      )}
+    </WsPage>
   )
+}
+
+/** مفتاح إعداد بسطر واحد */
+function SettingSwitch({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 8,
+        border: '1px solid var(--ws-border)',
+        borderRadius: 10,
+        padding: '8px 10px',
+      }}
+    >
+      <p style={{ margin: 0, fontSize: 11.5, fontWeight: 600 }}>{label}</p>
+      <WsSwitch checked={checked} onChange={onChange} />
+    </div>
+  )
+}
+
+/** خطوة في مسار الطلب */
+function OrderStep({
+  label,
+  at,
+  tone,
+  done,
+  note,
+}: {
+  label: string
+  at?: string | null
+  tone: { bg: string; bd: string; tx: string }
+  done?: boolean
+  note?: string | null
+}) {
+  return (
+    <div className={`ws-timeline__item ${done ? 'is-past' : ''}`} style={{ paddingInlineStart: 44, marginBottom: 8 }}>
+      <span className="ws-timeline__node" style={{ width: 40 }}>
+        <span className="ws-timeline__dot" style={{ width: 24, height: 24, background: tone.bg, color: tone.tx }}>
+          <CheckCircle2 style={{ width: 12, height: 12 }} />
+        </span>
+      </span>
+      <div style={{ paddingTop: 2 }}>
+        <span style={{ fontSize: 11.5, fontWeight: 700 }}>{label}</span>
+        <span style={{ display: 'block', fontSize: 10, color: 'var(--ws-text-2)' }}>
+          {at ? dateFormatter.format(new Date(at)) : '—'}
+        </span>
+        {note && <span style={{ display: 'block', fontSize: 10, fontWeight: 700, color: TONES.red.tx }}>{note}</span>}
+      </div>
+    </div>
+  )
+}
+
+/** «ينتظر منذ N يوم» — يظهر بالأحمر بعد ثلاثة أيام */
+function waitingNote(createdAt?: string | null): string | null {
+  const { days } = timeAgo(createdAt)
+  return days >= 3 ? `ينتظر منذ ${days} يوم` : null
+}
+
+/** ترجمة الإعدادات إلى جمل يفهمها المدير — ما سيراه الطالب لا ما تقوله المفاتيح */
+function policySentences(form: StoreSettingsFormState): string[] {
+  const out: string[] = []
+  const statusLabel = STORE_STATUS_OPTIONS.find((o) => o.value === form.store_status)?.label ?? 'المتجر متاح'
+  out.push(`${statusLabel}.`)
+
+  const days = form.allowed_redemption_weekdays
+  const dayText = days.length === 0
+    ? 'طوال الأسبوع'
+    : days.map((d) => WEEKDAY_OPTIONS.find((w) => w.value === d)?.label ?? d).join('، ')
+  const timeText = form.allow_redemption_start_time && form.allow_redemption_end_time
+    ? `بين ${form.allow_redemption_start_time} و${form.allow_redemption_end_time}`
+    : 'طوال اليوم'
+  out.push(`يُسمح بالاستبدال ${dayText} ${timeText}.`)
+
+  if (form.auto_approve_orders && form.auto_fulfill_orders) {
+    out.push('الطلبات تُعتمد وتُسلَّم تلقائياً بلا تدخل.')
+  } else if (form.auto_approve_orders) {
+    out.push('الطلبات تُعتمد تلقائياً، والتسليم يدوي.')
+  } else {
+    out.push('كل طلب يحتاج اعتماداً يدوياً' + (form.auto_fulfill_orders ? ' ثم يُسلَّم تلقائياً.' : ' ثم تسليماً يدوياً.'))
+  }
+
+  const limits: string[] = [`${form.max_items_per_order || '—'} منتجات للطلب`]
+  if (form.max_points_per_order) limits.push(`${form.max_points_per_order} نقطة كحد أقصى`)
+  if (form.max_pending_orders_per_student) limits.push(`${form.max_pending_orders_per_student} طلبات معلقة للطالب`)
+  out.push(`الحد: ${limits.join('، ')}.`)
+
+  if (form.enforce_violation_limit && form.max_behavior_violations) {
+    out.push(
+      `يُمنع من تجاوز ${form.max_behavior_violations} مخالفات` +
+      (form.violation_lookback_days ? ` خلال ${form.violation_lookback_days} يوماً.` : '.'),
+    )
+  }
+
+  if (form.notify_low_stock) {
+    const count = form.notification_recipients.split(/\s*(?:\n|,|;|؛|،)\s*/).filter((v) => v.trim()).length
+    out.push(`تنبيه بريدي${count > 0 ? ` لـ${count} عنوان` : ''} عند نزول المخزون إلى ${form.low_stock_threshold}.`)
+  }
+
+  if (form.allow_student_cancellations) out.push('الطالب يستطيع إلغاء طلبه قبل الاعتماد.')
+  if (form.prevent_redemption_when_inventory_empty) out.push('الاستبدال يتوقف تلقائياً عند نفاد المخزون.')
+
+  return out
 }
