@@ -36,6 +36,9 @@ export function findToday(days: WeekDay[]): WeekDay | null {
 export function chronicSilence(days: WeekDay[]): number {
   const completed = days.filter((d) => d.date !== todayIso())
   if (completed.length < 3) return 0
+  // أسبوع بلا أي رصد (صيف/عطلة) = لا إشارة، لا «صمت عنيد» —
+  // وإلا تهشّر الطابور كله في الإجازة
+  if (completed.every((d) => d.recorded_students === 0)) return 0
   return Math.min(...completed.map((d) => d.unrecorded_students))
 }
 
@@ -299,8 +302,11 @@ interface DayCardProps {
 }
 
 export function DayCard({ icon: Icon, label, value, tone, hero, context, zeroContext, spark, extra, to }: DayCardProps) {
+  // البطاقة تلبس لونها دائماً (قرار المالك ج٥) — الصفر يبدّل نص السياق
+  // للخبر السعيد، لا لون البطاقة: قاعدة «الصفر يلبس الرمادي» كانت تجعل
+  // الصفحة كلها رصاصية في الصيف وقبل بدء الرصد كل صباح.
   const isZero = value === 0
-  const t = isZero ? TONES.gray : tone
+  const t = tone
   const ctx = isZero ? (zeroContext ?? context) : context
 
   const body = (
