@@ -756,7 +756,9 @@ export function AdminShell() {
                   «نظرة عامة» التي يهبط عليها كل مدير كل صباح. المكوّن يُرجع null
                   حين لا خطر، فوضعه هنا بلا ثمن. */}
               {!isOnSubscriptionPage && subscriptionEndsAt && (
-                <div className="shrink-0 px-4 pt-3 lg:px-5">
+                {/* empty:hidden إلزامي: SubscriptionExpiryAlert يُرجع null حين لا خطر،
+                    وبدونه يبقى غلافٌ فارغ بحشوة pt-3 = شريط فراغ غريب تحت الهيدر */}
+                <div className="shrink-0 px-4 pt-3 empty:hidden lg:px-5">
                   <SubscriptionExpiryAlert
                     endsAt={subscriptionEndsAt}
                     status={subscriptionStatus ?? undefined}
