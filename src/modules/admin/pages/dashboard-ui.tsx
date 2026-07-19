@@ -64,7 +64,7 @@ export const arNum = (n: number) => n.toLocaleString('ar-SA')
    على الأخضر يصطدم بالكروم. الطابور لا يرث شيئاً: ألوانه صريحة في
    <rect fill> فينجو تحت المظاهر الستة كلها. */
 
-const SQ = 6
+const SQ = 8
 const GAP = 3
 const PITCH = SQ + GAP
 const MAX_NODES = 2400
@@ -143,7 +143,7 @@ export function MorningQueue({ total, recorded, chronic }: MorningQueueProps) {
         {/* رُصد — رمادي مصمت: نطق، أياً كانت حالته */}
         {cells(0, recU, TONES.gray.bd)}
         {/* لم يُرصد بعد — الصمت القابل للإصلاح، يذوب مع الصباح */}
-        {cells(recU, silU, TONES.amber.bg)}
+        {cells(recU, silU, TONES.amber.bd)}
         {/* صامت طوال الأسبوع — الصمت العنيد، لا يذوب. تهشير لا لون ثانٍ */}
         {cells(recU + silU, chrU, 'url(#ws-mq-hatch)', TONES.gray.bd)}
       </svg>
@@ -158,8 +158,8 @@ export function QueueLegend({ recorded, silent, chronic, total }: {
   total: number
 }) {
   const items = [
-    { key: 'rec', label: 'رُصد', count: recorded, swatch: <span style={{ width: 9, height: 9, borderRadius: 2, background: TONES.gray.bd, display: 'inline-block' }} /> },
-    { key: 'sil', label: 'لم يُرصد بعد', count: silent, swatch: <span style={{ width: 9, height: 9, borderRadius: 2, background: TONES.amber.bg, border: `1px solid ${TONES.amber.bd}`, display: 'inline-block' }} /> },
+    { key: 'rec', label: 'رُصد', count: recorded, swatch: <span style={{ width: 11, height: 11, borderRadius: 2, background: TONES.gray.bd, display: 'inline-block' }} /> },
+    { key: 'sil', label: 'لم يُرصد بعد', count: silent, swatch: <span style={{ width: 11, height: 11, borderRadius: 2, background: TONES.amber.bd, display: 'inline-block' }} /> },
   ]
   if (chronic > 0) {
     items.push({
@@ -169,8 +169,8 @@ export function QueueLegend({ recorded, silent, chronic, total }: {
       swatch: (
         <span
           style={{
-            width: 9,
-            height: 9,
+            width: 11,
+            height: 11,
             borderRadius: 2,
             border: `1px solid ${TONES.gray.bd}`,
             background: `repeating-linear-gradient(45deg, ${TONES.gray.bd} 0 1px, transparent 1px 3px)`,
@@ -182,15 +182,15 @@ export function QueueLegend({ recorded, silent, chronic, total }: {
   }
 
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginTop: 9 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 10 }}>
       {items.map((it) => (
-        <span key={it.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+        <span key={it.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--ws-text-2)' }}>
           {it.swatch}
           {it.label}
           <b style={{ color: it.key === 'sil' && it.count > 0 ? TONES.amber.tx : 'var(--ws-text)' }}>{arNum(it.count)}</b>
         </span>
       ))}
-      <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)', marginInlineStart: 'auto' }}>
+      <span style={{ fontSize: 12, color: 'var(--ws-text-2)', marginInlineStart: 'auto' }}>
         من {arNum(total)} طالباً نشطاً
       </span>
     </div>
@@ -200,6 +200,9 @@ export function QueueLegend({ recorded, silent, chronic, total }: {
 /* ═══ إغناء «حصيلة اليوم» — بطاقات ملوّنة بأوزان متفاوتة ═══
    قاعدة الصفر: القيمة 0 تلبس الرمادي ويقول السياق الخبر السعيد نصاً —
    الصفر لا يلبس أحمر. كل الأرقام أعداد مطلقة ليوم واحد؛ لا نسبة في أي بطاقة. */
+
+/** رقاقة الأيقونة الموحدة — تينت-60: اللون حبرٌ ورقاقة، لا مساحة */
+export const chip = (t: Tone) => `color-mix(in srgb, ${t.bd} 60%, #FFFFFF)`
 
 export function todayGreetingLine(): { greeting: string; hijri: string; greg: string } {
   const now = new Date()
@@ -220,7 +223,7 @@ interface DayCardProps {
   label: string
   value: number
   tone: Tone
-  /** البطل: رقم 30px بدل 24 */
+  /** البطل: رقم 40px بدل 32 */
   hero?: boolean
   context?: string
   /** نص الصفر السعيد — عند value===0 تلبس البطاقة الرمادي ويُعرض هذا */
@@ -238,23 +241,36 @@ export function DayCard({ icon: Icon, label, value, tone, hero, context, zeroCon
   const body = (
     <div
       style={{
-        padding: '12px 14px',
+        padding: '14px 16px',
         borderRadius: 10,
         border: `1px solid ${t.bd}`,
-        background: t.bg,
+        background: 'var(--ws-surface)',
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
       }}
     >
-      <span style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
-        <Icon style={{ width: 14, height: 14, color: t.tx }} />
-        <span style={{ fontSize: 11, fontWeight: 700, color: t.tx }}>{label}</span>
+      <span style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <span
+          style={{
+            width: 30,
+            height: 30,
+            borderRadius: 8,
+            background: chip(t),
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <Icon style={{ width: 16, height: 16, color: t.tx }} />
+        </span>
+        <span style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.3, color: 'var(--ws-text)' }}>{label}</span>
       </span>
       <span style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8 }}>
         <span
           style={{
-            fontSize: hero ? 30 : 24,
+            fontSize: hero ? 40 : 32,
             fontWeight: 800,
             lineHeight: 1,
             color: t.tx,
@@ -266,7 +282,7 @@ export function DayCard({ icon: Icon, label, value, tone, hero, context, zeroCon
         {spark}
       </span>
       {ctx && (
-        <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)', marginTop: 6, lineHeight: 1.5 }}>{ctx}</span>
+        <span style={{ fontSize: 12, color: 'var(--ws-text-2)', marginTop: 7, lineHeight: 1.45 }}>{ctx}</span>
       )}
       {extra}
     </div>
@@ -294,16 +310,16 @@ export function WeekSpark({ days, field, tone }: { days: WeekDay[]; field: 'abse
   return (
     <span
       title="آخر ٧ أيام دراسية"
-      style={{ display: 'inline-flex', gap: 3, alignItems: 'flex-end', height: 22, direction: 'ltr', flexShrink: 0 }}
+      style={{ display: 'inline-flex', gap: 4, alignItems: 'flex-end', height: 28, direction: 'ltr', flexShrink: 0 }}
     >
       {chrono.map((d) => (
         <span
           key={d.date}
           title={`${d.day} · ${arNum(d[field])}`}
           style={{
-            width: 6,
+            width: 8,
             borderRadius: 2,
-            height: Math.max(2, Math.round((22 * d[field]) / max)),
+            height: Math.max(3, Math.round((28 * d[field]) / max)),
             background: d.date === iso ? tone.tx : tone.bd,
           }}
         />
@@ -326,32 +342,32 @@ export function weekPulse(days: WeekDay[], todayAbsent: number): { delta: number
  * (مقامها كشف اليوم النشط بعد إصلاح الفلتر). ممنوع رسمه لأي يوم ماضٍ.
  */
 export function CoverageArc({ rate }: { rate: number }) {
-  const r = 18
+  const r = 24
   const c = 2 * Math.PI * r
   const clamped = Math.min(100, Math.max(0, rate))
   const done = clamped >= 100
   const stroke = done ? TONES.green.tx : TONES.amber.tx
   return (
-    <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 2, flexShrink: 0 }}>
-      <svg width={44} height={44} role="img" aria-label={`تغطية اليوم ${Math.round(clamped)}٪`}>
-        <circle cx={22} cy={22} r={r} fill="none" stroke={TONES.gray.bd} strokeWidth={5} />
+    <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+      <svg width={56} height={56} role="img" aria-label={`تغطية اليوم ${Math.round(clamped)}٪`}>
+        <circle cx={28} cy={28} r={r} fill="none" stroke={TONES.gray.bd} strokeWidth={6} />
         <circle
-          cx={22}
-          cy={22}
+          cx={28}
+          cy={28}
           r={r}
           fill="none"
           stroke={stroke}
-          strokeWidth={5}
+          strokeWidth={6}
           strokeLinecap="round"
           strokeDasharray={c}
           strokeDashoffset={c * (1 - clamped / 100)}
-          transform="rotate(-90 22 22)"
+          transform="rotate(-90 28 28)"
         />
-        <text x={22} y={26} textAnchor="middle" fontSize={11} fontWeight={800} fill={stroke}>
+        <text x={28} y={32} textAnchor="middle" fontSize={13} fontWeight={800} fill={stroke}>
           {arNum(Math.round(clamped))}٪
         </text>
       </svg>
-      <span style={{ fontSize: 10, color: done ? TONES.green.tx : 'var(--ws-text-2)', whiteSpace: 'nowrap' }}>
+      <span style={{ fontSize: 11.5, color: done ? TONES.green.tx : 'var(--ws-text-2)', whiteSpace: 'nowrap' }}>
         {done ? 'اكتمل رصد اليوم' : 'تغطية اليوم'}
       </span>
     </span>

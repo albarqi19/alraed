@@ -39,6 +39,7 @@ import {
   MorningQueue,
   QueueLegend,
   DayCard,
+  chip,
   WeekSpark,
   CoverageArc,
   weekPulse,
@@ -86,7 +87,7 @@ export function AdminDashboardPage() {
 
   if (isError) {
     return (
-      <WsPage>
+      <WsPage className="ws-overview">
         <WsHeader title="نظرة عامة" />
         <WsLayout>
           <WsMain>
@@ -152,7 +153,7 @@ export function AdminDashboardPage() {
   const weekMax = Math.max(0, ...days.map((d) => d.absent))
 
   return (
-    <WsPage>
+    <WsPage className="ws-overview">
       <WsHeader
         title="نظرة عامة"
         badge={
@@ -183,8 +184,8 @@ export function AdminDashboardPage() {
         }
       >
         {/* التحية — سطر إنساني: ساعة المتصفح، لا كذب ممكن */}
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, color: 'var(--ws-text-2)' }}>
-          <Sun style={{ width: 13, height: 13, color: TONES.amber.tx }} />
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ws-text-2)' }}>
+          <Sun style={{ width: 15, height: 15, color: TONES.amber.tx }} />
           <b style={{ color: 'var(--ws-text)', fontWeight: 700 }}>{line.greeting}</b>
           {line.hijri} ({line.greg})
         </span>
@@ -197,16 +198,16 @@ export function AdminDashboardPage() {
             {isLoading ? (
               <div className="ws-dashboard-cards">
                 {[0, 1, 2, 3].map((i) => (
-                  <div key={i} style={{ height: 92, borderRadius: 10, background: 'var(--ws-surface-2)' }} />
+                  <div key={i} style={{ height: 120, borderRadius: 10, background: 'var(--ws-surface-2)' }} />
                 ))}
               </div>
             ) : !today ? (
               <div
                 style={{
-                  padding: '10px 14px',
+                  padding: '12px 14px',
                   borderRadius: 8,
                   background: 'var(--ws-surface-2)',
-                  fontSize: 11.5,
+                  fontSize: 12.5,
                   color: 'var(--ws-text-2)',
                 }}
               >
@@ -240,15 +241,15 @@ export function AdminDashboardPage() {
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: 3,
-                          fontSize: 10.5,
-                          marginTop: 4,
+                          gap: 4,
+                          fontSize: 11.5,
+                          marginTop: 5,
                           color:
                             pulse.delta > 0 ? TONES.red.tx : pulse.delta < 0 ? TONES.green.tx : 'var(--ws-text-2)',
                         }}
                       >
-                        {pulse.delta > 0 && <ArrowUp style={{ width: 11, height: 11 }} />}
-                        {pulse.delta < 0 && <ArrowDown style={{ width: 11, height: 11 }} />}
+                        {pulse.delta > 0 && <ArrowUp style={{ width: 12, height: 12 }} />}
+                        {pulse.delta < 0 && <ArrowDown style={{ width: 12, height: 12 }} />}
                         {pulse.delta > 0
                           ? `فوق متوسط الأسبوع بـ${arNum(pulse.delta)}`
                           : pulse.delta < 0
@@ -283,7 +284,7 @@ export function AdminDashboardPage() {
           {/* ٢ — طابور الصباح: اللمسة، ومعه قوس التغطية */}
           <WsBlock padded title="طابور الصباح" icon={Users}>
             {isLoading ? (
-              <div style={{ height: 48, borderRadius: 6, background: 'var(--ws-surface-2)' }} />
+              <div style={{ height: 72, borderRadius: 6, background: 'var(--ws-surface-2)' }} />
             ) : !today ? (
               <WsEmpty icon={CalendarDays}>لا يوم دراسي اليوم</WsEmpty>
             ) : total === 0 ? (
@@ -291,7 +292,7 @@ export function AdminDashboardPage() {
             ) : (
               <>
                 <MorningQueue total={total} recorded={recorded} chronic={chronic} />
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <QueueLegend recorded={recorded} silent={silentNow} chronic={chronic} total={total} />
                   </div>
@@ -303,7 +304,7 @@ export function AdminDashboardPage() {
 
           {/* ٣ — لوحة النداء: الصفوف تنطق بألوانها */}
           <WsBlock fill scroll title="لوحة النداء" icon={ListChecks}>
-            <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
               {callRows.map((row) => {
                 const Icon = row.icon
                 const hot = (row.count ?? 0) > 0 && row.tone
@@ -314,29 +315,50 @@ export function AdminDashboardPage() {
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 9,
-                      padding: '9px 10px',
+                      gap: 10,
+                      padding: '11px 12px',
                       borderRadius: 8,
                       border: '1px solid var(--ws-hairline)',
                       textDecoration: 'none',
                       color: 'var(--ws-text)',
-                      background: hot ? row.tone!.bg : undefined,
+                      background: 'var(--ws-surface)',
                     }}
                   >
-                    <Icon
+                    {/* اللون حبرٌ ورقاقة: الصف أبيض والرقاقة تحمل النغمة */}
+                    <span
                       style={{
-                        width: 15,
-                        height: 15,
+                        width: 30,
+                        height: 30,
+                        borderRadius: 8,
+                        background: chip(hot ? row.tone! : TONES.gray),
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                         flexShrink: 0,
-                        color: hot ? row.tone!.tx : 'var(--ws-text-2)',
                       }}
-                    />
+                    >
+                      <Icon
+                        style={{
+                          width: 16,
+                          height: 16,
+                          color: hot ? row.tone!.tx : 'var(--ws-text-2)',
+                        }}
+                      />
+                    </span>
                     <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700 }}>{row.label}</span>
-                      <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ws-text-2)' }}>{row.sub}</span>
+                      <span style={{ display: 'block', fontSize: 14, fontWeight: 700, lineHeight: 1.35 }}>{row.label}</span>
+                      <span style={{ display: 'block', fontSize: 12, color: 'var(--ws-text-2)', lineHeight: 1.4 }}>{row.sub}</span>
                     </span>
                     {row.count != null && row.count > 0 && (
-                      <b style={{ flexShrink: 0, color: hot ? row.tone!.tx : 'var(--ws-text-2)' }}>
+                      <b
+                        style={{
+                          flexShrink: 0,
+                          fontSize: 15,
+                          fontWeight: 700,
+                          fontVariantNumeric: 'tabular-nums',
+                          color: hot ? row.tone!.tx : 'var(--ws-text-2)',
+                        }}
+                      >
                         {arNum(row.count)}
                       </b>
                     )}
@@ -359,9 +381,9 @@ export function AdminDashboardPage() {
                 <thead>
                   <tr>
                     <th>اليوم</th>
-                    <th style={{ width: 40 }}>حاضر</th>
-                    <th style={{ width: 40 }}>غائب</th>
-                    <th style={{ width: 40 }}>متأخر</th>
+                    <th style={{ width: 44 }}>حاضر</th>
+                    <th style={{ width: 44 }}>غائب</th>
+                    <th style={{ width: 44 }}>متأخر</th>
                     <th style={{ width: 40 }} title="معلمون غائبون">معلمون</th>
                   </tr>
                 </thead>
@@ -377,7 +399,7 @@ export function AdminDashboardPage() {
                       <tr key={d.date} style={d.date === today?.date ? { background: 'var(--ws-accent-soft)' } : undefined}>
                         <td style={{ whiteSpace: 'nowrap' }}>{d.day}</td>
                         <td>{arNum(d.present)}</td>
-                        <td style={wash ? { background: wash.bg, color: wash.tx, fontWeight: 700 } : undefined}>
+                        <td style={wash ? { background: chip(wash), color: wash.tx, fontWeight: 700 } : undefined}>
                           {arNum(d.absent)}
                         </td>
                         <td>{arNum(d.late)}</td>
@@ -390,8 +412,8 @@ export function AdminDashboardPage() {
                 </tbody>
               </WsTable>
             )}
-            <div style={{ padding: '8px 10px' }}>
-              <p style={{ margin: 0, fontSize: 10, color: 'var(--ws-text-2)', lineHeight: 1.7 }}>
+            <div style={{ padding: '10px 12px' }}>
+              <p style={{ margin: 0, fontSize: 11, color: 'var(--ws-text-2)', lineHeight: 1.65 }}>
                 أعداد مطلقة رُصدت في يومها — لا نِسَب؛ مقام الأيام الماضية متحرك.
               </p>
             </div>
