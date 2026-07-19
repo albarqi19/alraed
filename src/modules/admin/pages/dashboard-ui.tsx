@@ -56,26 +56,32 @@ export function freshnessLabel(generatedAt?: string): string | null {
 export const arNum = (n: number) => n.toLocaleString('ar-SA')
 
 /* ═══ ★ لمسة التوقيع: طابور الصباح ═══
-   انقلاب الحبر — الحبر لا يُصرف إلا على ما لم يُرصد.
-   المرصود رمادي صامت، واليوم المكتمل شبكةٌ بلا لون.
-
-   ولماذا لا أخضر لـ«حاضر»: --ws-accent-2 يتبع أساس المظهر النشط
-   (ست قيم، منها برتقالي #E8953B في مظهر warm) — فبناء محور دلالي
-   على الأخضر يصطدم بالكروم. الطابور لا يرث شيئاً: ألوانه صريحة في
-   <rect fill> فينجو تحت المظاهر الستة كلها. */
+   شبكة مربّعها طالب. بقرار المالك (ج٤): المربعات تلبس حالاتها —
+   حاضر أخضر فاتح، متأخر كهرماني، مستأذن بنفسجي، غائب أحمر فاتح؛
+   و«لم يُرصد بعد» مجوّفٌ (مقعد ينتظر)، والصامت أسبوعياً مهشّر.
+   الألوان صريحة في <rect fill> فلا ترث أكسنت الثيم. */
 
 const SQ = 8
 const GAP = 3
 const PITCH = SQ + GAP
 const MAX_NODES = 2400
 
-interface MorningQueueProps {
-  total: number
-  recorded: number
-  chronic: number
+export interface QueueSegments {
+  present: number
+  late: number
+  excused: number
+  absent: number
 }
 
-export function MorningQueue({ total, recorded, chronic }: MorningQueueProps) {
+export function MorningQueue({
+  total,
+  segments,
+  chronic,
+}: {
+  total: number
+  segments: QueueSegments
+  chronic: number
+}) {
   const hostRef = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
 
@@ -96,14 +102,22 @@ export function MorningQueue({ total, recorded, chronic }: MorningQueueProps) {
   const rows = Math.ceil(units / cols)
   const height = Math.max(PITCH, rows * PITCH - GAP)
 
-  // التوزيع يحفظ المجموع بلا انجراف تقريب
-  const recU = Math.min(Math.round(recorded / per), units)
-  const chrU = Math.min(Math.round(chronic / per), Math.max(units - recU, 0))
-  const silU = Math.max(units - recU - chrU, 0)
+  // وحدات كل حالة — تُقصّ تراكمياً فلا يتجاوز المجموع عدد الخانات
+  const order = [
+    { count: segments.present, fill: TONES.green.bd },
+    { count: segments.late, fill: TONES.amber.bd },
+    { count: segments.excused, fill: TONES.purple.bd },
+    { count: segments.absent, fill: TONES.red.bd },
+  ]
+  let used = 0
+  const drawn = order.map((o) => {
+    const u = Math.min(Math.round(o.count / per), Math.max(units - used, 0))
+    used += u
+    return { fill: o.fill, u }
+  })
+  const chrU = Math.min(Math.round(chronic / per), Math.max(units - used, 0))
+  const silU = Math.max(units - used - chrU, 0)
 
-  // الترتيب من اليمين: [رُصد] ثم [لم يُرصد بعد] ثم [صامت الأسبوع] في الذيل.
-  // الذيل مقصود: المهشّر يستقرّ في النهاية ولا يتحرّك، فتذوب الصفرة أمامه
-  // ويبقى وحده — الحركة تُنتج الاكتشاف بلا شرح.
   const pos = (i: number) => ({
     x: (width || 900) - SQ - (i % cols) * PITCH,
     y: Math.floor(i / cols) * PITCH,
@@ -130,37 +144,88 @@ export function MorningQueue({ total, recorded, chronic }: MorningQueueProps) {
     return out
   }
 
+  const unrecordedTotal = Math.max(
+    total - (segments.present + segments.late + segments.excused + segments.absent),
+    0,
+  )
+
+  let cursor = 0
+  const groups: ReactNode[] = []
+  for (const g of drawn) {
+    if (g.u > 0) groups.push(<g key={cursor}>{cells(cursor, g.u, g.fill)}</g>)
+    cursor += g.u
+  }
+
   return (
     <div ref={hostRef} style={{ width: '100%' }}>
-      <svg width={width || '100%'} height={height} shapeRendering="crispEdges" role="img"
-        aria-label={`${arNum(recorded)} من ${arNum(total)} رُصدوا · ${arNum(total - recorded)} لم يُرصدوا بعد`}>
+      <svg
+        width={width || '100%'}
+        height={height}
+        shapeRendering="crispEdges"
+        role="img"
+        aria-label={
+          arNum(segments.present) + ' حاضر · ' + arNum(segments.late) + ' متأخر · ' +
+          arNum(segments.absent) + ' غائب · ' + arNum(unrecordedTotal) + ' لم يُرصد بعد'
+        }
+      >
         <defs>
           <pattern id="ws-mq-hatch" width={4} height={4} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
             <rect width={4} height={4} fill="transparent" />
             <line x1={0} y1={0} x2={0} y2={4} stroke={TONES.gray.tx} strokeWidth={1} opacity={0.55} />
           </pattern>
         </defs>
-        {/* رُصد — رمادي مصمت: نطق، أياً كانت حالته */}
-        {cells(0, recU, TONES.gray.bd)}
-        {/* لم يُرصد بعد — الصمت القابل للإصلاح، يذوب مع الصباح */}
-        {cells(recU, silU, TONES.amber.bd)}
-        {/* صامت طوال الأسبوع — الصمت العنيد، لا يذوب. تهشير لا لون ثانٍ */}
-        {cells(recU + silU, chrU, 'url(#ws-mq-hatch)', TONES.gray.bd)}
+        {/* الحالات الملبَّسة: حاضر ← متأخر ← مستأذن ← غائب */}
+        {groups}
+        {/* لم يُرصد بعد — مقعد مجوّف ينتظر */}
+        {cells(cursor, silU, 'var(--ws-surface)', TONES.gray.bd)}
+        {/* صامت طوال الأسبوع — الذيل المهشّر، لا يذوب */}
+        {cells(cursor + silU, chrU, 'url(#ws-mq-hatch)', TONES.gray.bd)}
       </svg>
     </div>
   )
 }
 
-export function QueueLegend({ recorded, silent, chronic, total }: {
-  recorded: number
+export function QueueLegend({
+  segments,
+  silent,
+  chronic,
+  total,
+}: {
+  segments: QueueSegments
   silent: number
   chronic: number
   total: number
 }) {
-  const items = [
-    { key: 'rec', label: 'رُصد', count: recorded, swatch: <span style={{ width: 11, height: 11, borderRadius: 2, background: TONES.gray.bd, display: 'inline-block' }} /> },
-    { key: 'sil', label: 'لم يُرصد بعد', count: silent, swatch: <span style={{ width: 11, height: 11, borderRadius: 2, background: TONES.amber.bd, display: 'inline-block' }} /> },
+  const solid = (bg: string) => (
+    <span style={{ width: 11, height: 11, borderRadius: 2, background: bg, display: 'inline-block' }} />
+  )
+
+  const items: Array<{ key: string; label: string; count: number; swatch: ReactNode; hotColor?: string }> = [
+    { key: 'p', label: 'حاضر', count: segments.present, swatch: solid(TONES.green.bd) },
+    { key: 'l', label: 'متأخر', count: segments.late, swatch: solid(TONES.amber.bd) },
   ]
+  if (segments.excused > 0) {
+    items.push({ key: 'e', label: 'مستأذن', count: segments.excused, swatch: solid(TONES.purple.bd) })
+  }
+  items.push({ key: 'a', label: 'غائب', count: segments.absent, swatch: solid(TONES.red.bd) })
+  items.push({
+    key: 'sil',
+    label: 'لم يُرصد بعد',
+    count: silent,
+    hotColor: silent > 0 ? TONES.amber.tx : undefined,
+    swatch: (
+      <span
+        style={{
+          width: 11,
+          height: 11,
+          borderRadius: 2,
+          background: 'var(--ws-surface)',
+          border: `1px solid ${TONES.gray.bd}`,
+          display: 'inline-block',
+        }}
+      />
+    ),
+  })
   if (chronic > 0) {
     items.push({
       key: 'chr',
@@ -187,7 +252,7 @@ export function QueueLegend({ recorded, silent, chronic, total }: {
         <span key={it.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--ws-text-2)' }}>
           {it.swatch}
           {it.label}
-          <b style={{ color: it.key === 'sil' && it.count > 0 ? TONES.amber.tx : 'var(--ws-text)' }}>{arNum(it.count)}</b>
+          <b style={{ color: it.hotColor ?? 'var(--ws-text)' }}>{arNum(it.count)}</b>
         </span>
       ))}
       <span style={{ fontSize: 12, color: 'var(--ws-text-2)', marginInlineStart: 'auto' }}>
@@ -241,6 +306,8 @@ export function DayCard({ icon: Icon, label, value, tone, hero, context, zeroCon
   const body = (
     <div
       style={{
+        position: 'relative',
+        overflow: 'hidden',
         padding: '14px 16px',
         borderRadius: 10,
         border: `1px solid ${t.bd}`,
@@ -250,6 +317,20 @@ export function DayCard({ icon: Icon, label, value, tone, hero, context, zeroCon
         flexDirection: 'column',
       }}
     >
+      {/* الرمز الخلفي المكبَّر — علامة مائية بطلب المالك */}
+      <Icon
+        aria-hidden
+        style={{
+          position: 'absolute',
+          insetInlineEnd: -10,
+          bottom: -12,
+          width: 76,
+          height: 76,
+          color: t.tx,
+          opacity: 0.1,
+          pointerEvents: 'none',
+        }}
+      />
       <span style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         <span
           style={{

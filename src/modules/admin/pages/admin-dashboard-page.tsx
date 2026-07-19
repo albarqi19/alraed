@@ -291,10 +291,29 @@ export function AdminDashboardPage() {
               <WsEmpty icon={Users}>لا طلاب مسجّلون</WsEmpty>
             ) : (
               <>
-                <MorningQueue total={total} recorded={recorded} chronic={chronic} />
+                <MorningQueue
+                  total={total}
+                  segments={{
+                    present: data?.present_today ?? 0,
+                    late: data?.late_today ?? 0,
+                    excused: today.excused ?? 0,
+                    absent: data?.absent_today ?? 0,
+                  }}
+                  chronic={chronic}
+                />
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <QueueLegend recorded={recorded} silent={silentNow} chronic={chronic} total={total} />
+                    <QueueLegend
+                      segments={{
+                        present: data?.present_today ?? 0,
+                        late: data?.late_today ?? 0,
+                        excused: today.excused ?? 0,
+                        absent: data?.absent_today ?? 0,
+                      }}
+                      silent={silentNow}
+                      chronic={chronic}
+                      total={total}
+                    />
                   </div>
                   {today.coverage_rate != null && <CoverageArc rate={today.coverage_rate} />}
                 </div>
