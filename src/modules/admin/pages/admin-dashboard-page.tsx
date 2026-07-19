@@ -302,8 +302,59 @@ export function AdminDashboardPage() {
             )}
           </WsBlock>
 
-          {/* ٣ — لوحة النداء: الصفوف تنطق بألوانها */}
-          <WsBlock fill scroll title="لوحة النداء" icon={ListChecks}>
+          {/* ٣ — الأسبوع: أعداد لا نِسَب، وخلية الغياب تُغسل بثلاث درجات */}
+          <WsBlock fill scroll title="الأسبوع" icon={CalendarDays}>
+            {isLoading ? (
+              <WsEmpty loading>جارٍ التحميل...</WsEmpty>
+            ) : days.length === 0 ? (
+              <WsEmpty icon={CalendarDays}>لا أيام دراسية</WsEmpty>
+            ) : (
+              <WsTable>
+                <thead>
+                  <tr>
+                    <th>اليوم</th>
+                    <th style={{ width: 70 }}>حاضر</th>
+                    <th style={{ width: 70 }}>غائب</th>
+                    <th style={{ width: 70 }}>متأخر</th>
+                    <th style={{ width: 110 }}>معلمون غائبون</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {days.map((d) => {
+                    const wash =
+                      weekMax > 0 && d.absent >= 0.66 * weekMax
+                        ? TONES.red
+                        : weekMax > 0 && d.absent > 0 && d.absent >= 0.33 * weekMax
+                          ? TONES.amber
+                          : null
+                    return (
+                      <tr key={d.date} style={d.date === today?.date ? { background: chip(TONES.sky) } : undefined}>
+                        <td style={{ whiteSpace: 'nowrap' }}>{d.day}</td>
+                        <td>{arNum(d.present)}</td>
+                        <td style={wash ? { background: chip(wash), color: wash.tx, fontWeight: 700 } : undefined}>
+                          {arNum(d.absent)}
+                        </td>
+                        <td>{arNum(d.late)}</td>
+                        <td style={{ color: d.absent_teachers > 0 ? TONES.amber.tx : 'var(--ws-text-2)' }}>
+                          {arNum(d.absent_teachers)}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </WsTable>
+            )}
+            <div style={{ padding: '10px 12px' }}>
+              <p style={{ margin: 0, fontSize: 11, color: 'var(--ws-text-2)', lineHeight: 1.65 }}>
+                أعداد مطلقة رُصدت في يومها — لا نِسَب؛ مقام الأيام الماضية متحرك.
+              </p>
+            </div>
+          </WsBlock>
+        </WsMain>
+
+        {/* لوحة النداء — أدوات اليوم في متناول اليد، بقرار المالك في العمود */}
+        <WsSideCol side="end" title="لوحة النداء" icon={ListChecks} storageKey="ws:dashboard:sidecol" width={300}>
+          <WsBlock fill scroll>
             <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
               {callRows.map((row) => {
                 const Icon = row.icon
@@ -318,10 +369,10 @@ export function AdminDashboardPage() {
                       gap: 10,
                       padding: '11px 12px',
                       borderRadius: 8,
-                      border: '1px solid var(--ws-hairline)',
+                      border: hot ? `1px solid ${row.tone!.bd}` : '1px solid var(--ws-hairline)',
                       textDecoration: 'none',
                       color: 'var(--ws-text)',
-                      background: 'var(--ws-surface)',
+                      background: hot ? chip(row.tone!) : 'var(--ws-surface)',
                     }}
                   >
                     {/* اللون حبرٌ ورقاقة: الصف أبيض والرقاقة تحمل النغمة */}
@@ -330,7 +381,7 @@ export function AdminDashboardPage() {
                         width: 30,
                         height: 30,
                         borderRadius: 8,
-                        background: chip(hot ? row.tone! : TONES.gray),
+                        background: hot ? 'var(--ws-surface)' : chip(TONES.gray),
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -365,57 +416,6 @@ export function AdminDashboardPage() {
                   </Link>
                 )
               })}
-            </div>
-          </WsBlock>
-        </WsMain>
-
-        {/* الأسبوع — أعداد لا نِسَب، وخلية الغياب تُغسل بثلاث درجات */}
-        <WsSideCol side="end" title="الأسبوع" icon={CalendarDays} storageKey="ws:dashboard:sidecol" width={300}>
-          <WsBlock fill scroll>
-            {isLoading ? (
-              <WsEmpty loading>جارٍ التحميل...</WsEmpty>
-            ) : days.length === 0 ? (
-              <WsEmpty icon={CalendarDays}>لا أيام دراسية</WsEmpty>
-            ) : (
-              <WsTable>
-                <thead>
-                  <tr>
-                    <th>اليوم</th>
-                    <th style={{ width: 44 }}>حاضر</th>
-                    <th style={{ width: 44 }}>غائب</th>
-                    <th style={{ width: 44 }}>متأخر</th>
-                    <th style={{ width: 40 }} title="معلمون غائبون">معلمون</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {days.map((d) => {
-                    const wash =
-                      weekMax > 0 && d.absent >= 0.66 * weekMax
-                        ? TONES.red
-                        : weekMax > 0 && d.absent > 0 && d.absent >= 0.33 * weekMax
-                          ? TONES.amber
-                          : null
-                    return (
-                      <tr key={d.date} style={d.date === today?.date ? { background: 'var(--ws-accent-soft)' } : undefined}>
-                        <td style={{ whiteSpace: 'nowrap' }}>{d.day}</td>
-                        <td>{arNum(d.present)}</td>
-                        <td style={wash ? { background: chip(wash), color: wash.tx, fontWeight: 700 } : undefined}>
-                          {arNum(d.absent)}
-                        </td>
-                        <td>{arNum(d.late)}</td>
-                        <td style={{ color: d.absent_teachers > 0 ? TONES.amber.tx : 'var(--ws-text-2)' }}>
-                          {arNum(d.absent_teachers)}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </WsTable>
-            )}
-            <div style={{ padding: '10px 12px' }}>
-              <p style={{ margin: 0, fontSize: 11, color: 'var(--ws-text-2)', lineHeight: 1.65 }}>
-                أعداد مطلقة رُصدت في يومها — لا نِسَب؛ مقام الأيام الماضية متحرك.
-              </p>
             </div>
             <OnboardingProgressCard />
           </WsBlock>
