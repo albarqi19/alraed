@@ -1,18 +1,24 @@
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import {
-  CalendarDays,
+  ArrowDown,
+  ArrowUp,
   CalendarCheck,
+  CalendarDays,
   ClipboardCheck,
+  Clock,
   GraduationCap,
   ListChecks,
   RefreshCw,
-  UserX,
-  Users,
+  Sun,
+  UserCheck,
   UserRoundX,
-  Clock,
-  EyeOff,
+  Users,
+  UserX,
 } from 'lucide-react'
-import { useAdminDashboardStatsQuery } from '@/modules/admin/hooks'
+import { useAdminDashboardStatsQuery, useMissingSessionsQuery } from '@/modules/admin/hooks'
+import { fetchAbsenceMessagesStats } from '@/modules/admin/api'
 import { OnboardingProgressCard } from '../components/onboarding-progress-card'
 import {
   WsPage,
@@ -27,25 +33,31 @@ import {
   WsAlert,
   WsEmpty,
   TONES,
+  type Tone,
 } from '@/shared/workspace'
 import {
   MorningQueue,
   QueueLegend,
+  DayCard,
+  WeekSpark,
+  CoverageArc,
+  weekPulse,
+  todayGreetingLine,
   findToday,
   chronicSilence,
   freshnessLabel,
+  todayIso,
   arNum,
   type WeekDay,
 } from './dashboard-ui'
 
-/** لا صفَّ بلا وجهة — والوجهة تُملأ من رقم يعرفه المدير */
 interface CallRow {
   to: string
   label: string
   sub: string
   icon: typeof Users
   count?: number
-  hot?: boolean
+  tone?: Tone
 }
 
 export function AdminDashboardPage() {
@@ -55,8 +67,23 @@ export function AdminDashboardPage() {
   const today = findToday(days)
   const chronic = chronicSilence(days)
   const fresh = freshnessLabel(data?.generated_at)
+  const line = useMemo(() => todayGreetingLine(), [])
 
-  // الفشل يُقال ولا يُرسم أصفاراً واثقة: انتهاء الاشتراك يردّ 402 برسالة حقيقية
+  // إغناءان اختياريان — هوكان جاهزان بكاش مشترك، ولا يكسر فشلُهما شيئاً
+  const missing = useMissingSessionsQuery({ enabled: !!today })
+  const msgStats = useQuery({
+    queryKey: ['admin', 'absence-messages-stats', todayIso()],
+    queryFn: () => fetchAbsenceMessagesStats(todayIso()),
+    enabled: !!today,
+    staleTime: 60_000,
+  })
+
+  // المعلَّق يُحسب من مصفوفة الطلاب لا من messages_pending (قد يكون سالباً — طرح صفوف من طلاب)
+  const pendingMsgs = useMemo(() => {
+    const students = msgStats.data?.students ?? []
+    return students.filter((s) => s.message_status !== 'sent' && s.message_status !== 'delivered').length
+  }, [msgStats.data])
+
   if (isError) {
     return (
       <WsPage>
@@ -81,6 +108,8 @@ export function AdminDashboardPage() {
   const recorded = today?.recorded_students ?? 0
   const unrecorded = today?.unrecorded_students ?? 0
   const silentNow = Math.max(unrecorded - chronic, 0)
+  const pulse = today ? weekPulse(days, today.absent) : null
+  const missingData = missing.data?.data
 
   const callRows: CallRow[] = [
     {
@@ -89,12 +118,38 @@ export function AdminDashboardPage() {
       sub: 'أسماء الغائبين اليوم',
       icon: UserX,
       count: data?.absent_today,
-      hot: (data?.absent_today ?? 0) > 0,
+      tone: TONES.red,
     },
-    { to: '/admin/approval', label: 'اعتماد التحضير', sub: 'مراجعة ما سلّمه المعلمون', icon: ClipboardCheck },
-    { to: '/admin/late-arrivals', label: 'المتأخرون', sub: 'تأخّر الصباح', icon: Clock, count: data?.late_today },
-    { to: '/admin/whatsapp', label: 'مركز الواتساب', sub: 'إرسال ومتابعة الرسائل', icon: ListChecks },
+    {
+      to: '/admin/approval',
+      label: 'اعتماد التحضير',
+      sub:
+        missingData && missingData.total_classes > 0
+          ? `سلّم ${arNum(missingData.submitted)} من ${arNum(missingData.total_classes)} فصلاً حتى الآن`
+          : 'مراجعة ما سلّمه المعلمون',
+      icon: ClipboardCheck,
+      count: data?.pending_approvals,
+      tone: TONES.purple,
+    },
+    {
+      to: '/admin/late-arrivals',
+      label: 'المتأخرون',
+      sub: 'تأخّر الصباح',
+      icon: Clock,
+      count: data?.late_today,
+      tone: TONES.amber,
+    },
+    {
+      to: '/admin/absence-messages',
+      label: 'رسائل الغياب',
+      sub: pendingMsgs > 0 ? `${arNum(pendingMsgs)} رسالة غياب لم تصل البيت بعد` : 'إبلاغ أولياء الأمور',
+      icon: ListChecks,
+      count: pendingMsgs,
+      tone: TONES.red,
+    },
   ]
+
+  const weekMax = Math.max(0, ...days.map((d) => d.absent))
 
   return (
     <WsPage>
@@ -114,26 +169,118 @@ export function AdminDashboardPage() {
         }
         facts={
           <>
-            {/* الرقم الذي لم يكن أحد يقوله: كم رأساً لم يُرصد بعد */}
             {today && (
-              <WsFact icon={EyeOff} label="لم يُرصد بعد">
-                <span style={{ color: unrecorded > 0 ? TONES.amber.tx : undefined }}>{arNum(unrecorded)}</span>
+              <WsFact icon={UserRoundX} label="معلمون غائبون">
+                <span style={{ color: today.absent_teachers > 0 ? TONES.amber.tx : undefined }}>
+                  {arNum(today.absent_teachers)}
+                </span>
+                <span style={{ color: 'var(--ws-text-2)' }}> من {arNum(data?.total_teachers ?? 0)}</span>
               </WsFact>
-            )}
-            <WsFact icon={UserX} label="غائب">{arNum(data?.absent_today ?? 0)}</WsFact>
-            <WsFact icon={Clock} label="متأخر">{arNum(data?.late_today ?? 0)}</WsFact>
-            {today && (
-              <WsFact icon={UserRoundX} label="معلمون غائبون">{arNum(today.absent_teachers)}</WsFact>
             )}
             <WsFact icon={CalendarCheck} label="حصص اليوم">{arNum(data?.today_classes ?? 0)}</WsFact>
             <WsFact icon={GraduationCap} label="طلاب نشطون">{arNum(data?.total_students ?? 0)}</WsFact>
           </>
         }
-      />
+      >
+        {/* التحية — سطر إنساني: ساعة المتصفح، لا كذب ممكن */}
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, color: 'var(--ws-text-2)' }}>
+          <Sun style={{ width: 13, height: 13, color: TONES.amber.tx }} />
+          <b style={{ color: 'var(--ws-text)', fontWeight: 700 }}>{line.greeting}</b>
+          {line.hijri} ({line.greg})
+        </span>
+      </WsHeader>
 
       <WsLayout>
         <WsMain>
-          {/* ★ طابور الصباح — سؤال السابعة والنصف: من لم ينطق بعد؟ */}
+          {/* ١ — حصيلة اليوم: الضربة الملوّنة الأولى */}
+          <WsBlock padded>
+            {isLoading ? (
+              <div className="ws-dashboard-cards">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} style={{ height: 92, borderRadius: 10, background: 'var(--ws-surface-2)' }} />
+                ))}
+              </div>
+            ) : !today ? (
+              <div
+                style={{
+                  padding: '10px 14px',
+                  borderRadius: 8,
+                  background: 'var(--ws-surface-2)',
+                  fontSize: 11.5,
+                  color: 'var(--ws-text-2)',
+                }}
+              >
+                لا يوم دراسي اليوم — آخر يوم دراسي: {days[0]?.day ?? '—'}
+              </div>
+            ) : (
+              <div className="ws-dashboard-cards">
+                <DayCard
+                  icon={UserCheck}
+                  label="حاضر"
+                  value={data?.present_today ?? 0}
+                  tone={TONES.green}
+                  hero
+                  context={`من ${arNum(recorded)} مرصوداً حتى الآن`}
+                  zeroContext="لم يبدأ الرصد بعد"
+                />
+                <DayCard
+                  icon={UserX}
+                  label="غائب"
+                  value={data?.absent_today ?? 0}
+                  tone={TONES.red}
+                  to="/admin/attendance-report"
+                  context={
+                    (today.excused ?? 0) > 0 ? `و${arNum(today.excused)} مستأذن بعذر موثّق` : undefined
+                  }
+                  zeroContext="لا غياب حتى الآن"
+                  spark={<WeekSpark days={days} field="absent" tone={TONES.red} />}
+                  extra={
+                    pulse && (data?.absent_today ?? 0) > 0 ? (
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 3,
+                          fontSize: 10.5,
+                          marginTop: 4,
+                          color:
+                            pulse.delta > 0 ? TONES.red.tx : pulse.delta < 0 ? TONES.green.tx : 'var(--ws-text-2)',
+                        }}
+                      >
+                        {pulse.delta > 0 && <ArrowUp style={{ width: 11, height: 11 }} />}
+                        {pulse.delta < 0 && <ArrowDown style={{ width: 11, height: 11 }} />}
+                        {pulse.delta > 0
+                          ? `فوق متوسط الأسبوع بـ${arNum(pulse.delta)}`
+                          : pulse.delta < 0
+                            ? `دون متوسط الأسبوع بـ${arNum(-pulse.delta)}`
+                            : 'على متوسط الأسبوع'}
+                      </span>
+                    ) : undefined
+                  }
+                />
+                <DayCard
+                  icon={Clock}
+                  label="متأخر"
+                  value={data?.late_today ?? 0}
+                  tone={TONES.amber}
+                  to="/admin/late-arrivals"
+                  zeroContext="لا تأخّر اليوم"
+                  spark={<WeekSpark days={days} field="late" tone={TONES.amber} />}
+                />
+                <DayCard
+                  icon={ClipboardCheck}
+                  label="بانتظار الاعتماد"
+                  value={data?.pending_approvals ?? 0}
+                  tone={TONES.purple}
+                  to="/admin/approval"
+                  context="كشوف سلّمها المعلمون خلال ٧ أيام"
+                  zeroContext="لا كشوف معلّقة"
+                />
+              </div>
+            )}
+          </WsBlock>
+
+          {/* ٢ — طابور الصباح: اللمسة، ومعه قوس التغطية */}
           <WsBlock padded title="طابور الصباح" icon={Users}>
             {isLoading ? (
               <div style={{ height: 48, borderRadius: 6, background: 'var(--ws-surface-2)' }} />
@@ -144,16 +291,22 @@ export function AdminDashboardPage() {
             ) : (
               <>
                 <MorningQueue total={total} recorded={recorded} chronic={chronic} />
-                <QueueLegend recorded={recorded} silent={silentNow} chronic={chronic} total={total} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <QueueLegend recorded={recorded} silent={silentNow} chronic={chronic} total={total} />
+                  </div>
+                  {today.coverage_rate != null && <CoverageArc rate={today.coverage_rate} />}
+                </div>
               </>
             )}
           </WsBlock>
 
-          {/* لوحة النداء — لا صفَّ بلا وجهة */}
+          {/* ٣ — لوحة النداء: الصفوف تنطق بألوانها */}
           <WsBlock fill scroll title="لوحة النداء" icon={ListChecks}>
             <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 5 }}>
               {callRows.map((row) => {
                 const Icon = row.icon
+                const hot = (row.count ?? 0) > 0 && row.tone
                 return (
                   <Link
                     key={row.to}
@@ -167,18 +320,23 @@ export function AdminDashboardPage() {
                       border: '1px solid var(--ws-hairline)',
                       textDecoration: 'none',
                       color: 'var(--ws-text)',
-                      background: row.hot ? TONES.amber.bg : undefined,
+                      background: hot ? row.tone!.bg : undefined,
                     }}
                   >
                     <Icon
-                      style={{ width: 15, height: 15, flexShrink: 0, color: row.hot ? TONES.amber.tx : 'var(--ws-text-2)' }}
+                      style={{
+                        width: 15,
+                        height: 15,
+                        flexShrink: 0,
+                        color: hot ? row.tone!.tx : 'var(--ws-text-2)',
+                      }}
                     />
                     <span style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700 }}>{row.label}</span>
                       <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ws-text-2)' }}>{row.sub}</span>
                     </span>
                     {row.count != null && row.count > 0 && (
-                      <b style={{ flexShrink: 0, color: row.hot ? TONES.amber.tx : 'var(--ws-text-2)' }}>
+                      <b style={{ flexShrink: 0, color: hot ? row.tone!.tx : 'var(--ws-text-2)' }}>
                         {arNum(row.count)}
                       </b>
                     )}
@@ -189,7 +347,7 @@ export function AdminDashboardPage() {
           </WsBlock>
         </WsMain>
 
-        {/* الأسبوع — أعداد لا نِسَب: الكميات المطلقة الماضية صادقة، والنِسَب الماضية كاذبة */}
+        {/* الأسبوع — أعداد لا نِسَب، وخلية الغياب تُغسل بثلاث درجات */}
         <WsSideCol side="end" title="الأسبوع" icon={CalendarDays} storageKey="ws:dashboard:sidecol" width={300}>
           <WsBlock fill scroll>
             {isLoading ? (
@@ -208,24 +366,33 @@ export function AdminDashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {days.map((d) => (
-                    <tr key={d.date} style={d.date === today?.date ? { background: 'var(--ws-accent-soft)' } : undefined}>
-                      <td style={{ whiteSpace: 'nowrap' }}>{d.day}</td>
-                      <td>{arNum(d.present)}</td>
-                      <td>{arNum(d.absent)}</td>
-                      <td>{arNum(d.late)}</td>
-                      <td style={{ color: d.absent_teachers > 0 ? TONES.amber.tx : 'var(--ws-text-2)' }}>
-                        {arNum(d.absent_teachers)}
-                      </td>
-                    </tr>
-                  ))}
+                  {days.map((d) => {
+                    const wash =
+                      weekMax > 0 && d.absent >= 0.66 * weekMax
+                        ? TONES.red
+                        : weekMax > 0 && d.absent > 0 && d.absent >= 0.33 * weekMax
+                          ? TONES.amber
+                          : null
+                    return (
+                      <tr key={d.date} style={d.date === today?.date ? { background: 'var(--ws-accent-soft)' } : undefined}>
+                        <td style={{ whiteSpace: 'nowrap' }}>{d.day}</td>
+                        <td>{arNum(d.present)}</td>
+                        <td style={wash ? { background: wash.bg, color: wash.tx, fontWeight: 700 } : undefined}>
+                          {arNum(d.absent)}
+                        </td>
+                        <td>{arNum(d.late)}</td>
+                        <td style={{ color: d.absent_teachers > 0 ? TONES.amber.tx : 'var(--ws-text-2)' }}>
+                          {arNum(d.absent_teachers)}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </WsTable>
             )}
             <div style={{ padding: '8px 10px' }}>
               <p style={{ margin: 0, fontSize: 10, color: 'var(--ws-text-2)', lineHeight: 1.7 }}>
-                أعداد مطلقة رُصدت في يومها — لا نِسَب. مقام الأيام الماضية هو كشف اليوم،
-                فأي نسبة تاريخية تتحرك كلما تغيّر الكشف.
+                أعداد مطلقة رُصدت في يومها — لا نِسَب؛ مقام الأيام الماضية متحرك.
               </p>
             </div>
             <OnboardingProgressCard />

@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
-import { TONES } from '@/shared/workspace'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
+import type { LucideIcon } from 'lucide-react'
+import { TONES, type Tone } from '@/shared/workspace'
 import type { AdminDashboardStats } from '@/modules/admin/types'
 
 /* ═══════════════════════════════════════════════════════════
@@ -192,5 +194,166 @@ export function QueueLegend({ recorded, silent, chronic, total }: {
         من {arNum(total)} طالباً نشطاً
       </span>
     </div>
+  )
+}
+
+/* ═══ إغناء «حصيلة اليوم» — بطاقات ملوّنة بأوزان متفاوتة ═══
+   قاعدة الصفر: القيمة 0 تلبس الرمادي ويقول السياق الخبر السعيد نصاً —
+   الصفر لا يلبس أحمر. كل الأرقام أعداد مطلقة ليوم واحد؛ لا نسبة في أي بطاقة. */
+
+export function todayGreetingLine(): { greeting: string; hijri: string; greg: string } {
+  const now = new Date()
+  return {
+    greeting: now.getHours() < 12 ? 'صباح الخير' : 'مساء الخير',
+    hijri: new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(now),
+    greg: new Intl.DateTimeFormat('ar-SA', { day: 'numeric', month: 'long' }).format(now),
+  }
+}
+
+interface DayCardProps {
+  icon: LucideIcon
+  label: string
+  value: number
+  tone: Tone
+  /** البطل: رقم 30px بدل 24 */
+  hero?: boolean
+  context?: string
+  /** نص الصفر السعيد — عند value===0 تلبس البطاقة الرمادي ويُعرض هذا */
+  zeroContext?: string
+  spark?: ReactNode
+  extra?: ReactNode
+  to?: string
+}
+
+export function DayCard({ icon: Icon, label, value, tone, hero, context, zeroContext, spark, extra, to }: DayCardProps) {
+  const isZero = value === 0
+  const t = isZero ? TONES.gray : tone
+  const ctx = isZero ? (zeroContext ?? context) : context
+
+  const body = (
+    <div
+      style={{
+        padding: '12px 14px',
+        borderRadius: 10,
+        border: `1px solid ${t.bd}`,
+        background: t.bg,
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      <span style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
+        <Icon style={{ width: 14, height: 14, color: t.tx }} />
+        <span style={{ fontSize: 11, fontWeight: 700, color: t.tx }}>{label}</span>
+      </span>
+      <span style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8 }}>
+        <span
+          style={{
+            fontSize: hero ? 30 : 24,
+            fontWeight: 800,
+            lineHeight: 1,
+            color: t.tx,
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {arNum(value)}
+        </span>
+        {spark}
+      </span>
+      {ctx && (
+        <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)', marginTop: 6, lineHeight: 1.5 }}>{ctx}</span>
+      )}
+      {extra}
+    </div>
+  )
+
+  if (to) {
+    return (
+      <Link to={to} style={{ textDecoration: 'none', color: 'inherit', display: 'block', height: '100%' }}>
+        {body}
+      </Link>
+    )
+  }
+  return body
+}
+
+/**
+ * شرارة أسبوعية — 7 أعمدة بأعداد مطلقة تُقارن بأقصى الأسبوع.
+ * لا نِسَب تاريخية أبداً: مقامها الكشفُ الحالي مُسقَطاً على الماضي، وهو مكذوب.
+ * الخادم يرسل الأحدث أولاً — فتُعكس زمنياً، واليوم يُطابَق بـdate لا بالفهرس.
+ */
+export function WeekSpark({ days, field, tone }: { days: WeekDay[]; field: 'absent' | 'late'; tone: Tone }) {
+  const chrono = [...days].reverse()
+  const max = Math.max(1, ...days.map((d) => d[field]))
+  const iso = todayIso()
+  return (
+    <span
+      title="آخر ٧ أيام دراسية"
+      style={{ display: 'inline-flex', gap: 3, alignItems: 'flex-end', height: 22, direction: 'ltr', flexShrink: 0 }}
+    >
+      {chrono.map((d) => (
+        <span
+          key={d.date}
+          title={`${d.day} · ${arNum(d[field])}`}
+          style={{
+            width: 6,
+            borderRadius: 2,
+            height: Math.max(2, Math.round((22 * d[field]) / max)),
+            background: d.date === iso ? tone.tx : tone.bd,
+          }}
+        />
+      ))}
+    </span>
+  )
+}
+
+/** نبض الأسبوع — فرق مطلق بين اليوم ومتوسط الأيام المكتملة. لا نسبة، لا مقام متحرك */
+export function weekPulse(days: WeekDay[], todayAbsent: number): { delta: number } | null {
+  const iso = todayIso()
+  const completed = days.filter((d) => d.date !== iso)
+  if (completed.length < 3) return null
+  const avg = Math.round(completed.reduce((s, d) => s + d.absent, 0) / completed.length)
+  return { delta: todayAbsent - avg }
+}
+
+/**
+ * قوس تغطية اليوم — coverage_rate اليومي حصراً: النسبة الصادقة الوحيدة
+ * (مقامها كشف اليوم النشط بعد إصلاح الفلتر). ممنوع رسمه لأي يوم ماضٍ.
+ */
+export function CoverageArc({ rate }: { rate: number }) {
+  const r = 18
+  const c = 2 * Math.PI * r
+  const clamped = Math.min(100, Math.max(0, rate))
+  const done = clamped >= 100
+  const stroke = done ? TONES.green.tx : TONES.amber.tx
+  return (
+    <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+      <svg width={44} height={44} role="img" aria-label={`تغطية اليوم ${Math.round(clamped)}٪`}>
+        <circle cx={22} cy={22} r={r} fill="none" stroke={TONES.gray.bd} strokeWidth={5} />
+        <circle
+          cx={22}
+          cy={22}
+          r={r}
+          fill="none"
+          stroke={stroke}
+          strokeWidth={5}
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={c * (1 - clamped / 100)}
+          transform="rotate(-90 22 22)"
+        />
+        <text x={22} y={26} textAnchor="middle" fontSize={11} fontWeight={800} fill={stroke}>
+          {arNum(Math.round(clamped))}٪
+        </text>
+      </svg>
+      <span style={{ fontSize: 10, color: done ? TONES.green.tx : 'var(--ws-text-2)', whiteSpace: 'nowrap' }}>
+        {done ? 'اكتمل رصد اليوم' : 'تغطية اليوم'}
+      </span>
+    </span>
   )
 }

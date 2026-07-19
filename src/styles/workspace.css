@@ -1365,3 +1365,18 @@ button.ws-chip:disabled {
         overflow: visible;
     }
 }
+
+/* ── نظرة عامة: شبكة بطاقات اليوم (البطل 1.4fr، وعمودان تحت 900px) ── */
+.ws-dashboard-cards {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr 1fr;
+    gap: 8px;
+}
+@media (max-width: 900px) {
+    .ws-dashboard-cards {
+        grid-template-columns: 1fr 1fr;
+    }
+    .ws-dashboard-cards > :first-child {
+        grid-column: span 2;
+    }
+}
