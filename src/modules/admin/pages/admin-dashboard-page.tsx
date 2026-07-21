@@ -184,8 +184,8 @@ export function AdminDashboardPage() {
         }
       >
         {/* التحية — سطر إنساني: ساعة المتصفح، لا كذب ممكن */}
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ws-text-2)' }}>
-          <Sun style={{ width: 15, height: 15, color: TONES.amber.tx }} />
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'var(--ws-text-2)' }}>
+          <Sun style={{ width: 16, height: 16, color: TONES.amber.tx }} />
           <b style={{ color: 'var(--ws-text)', fontWeight: 700 }}>{line.greeting}</b>
           {line.hijri} ({line.greg})
         </span>
@@ -207,7 +207,7 @@ export function AdminDashboardPage() {
                   padding: '12px 14px',
                   borderRadius: 8,
                   background: 'var(--ws-surface-2)',
-                  fontSize: 12.5,
+                  fontSize: 13.5,
                   color: 'var(--ws-text-2)',
                 }}
               >
@@ -242,7 +242,7 @@ export function AdminDashboardPage() {
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: 4,
-                          fontSize: 11.5,
+                          fontSize: 12.5,
                           marginTop: 5,
                           color:
                             pulse.delta > 0 ? TONES.red.tx : pulse.delta < 0 ? TONES.green.tx : 'var(--ws-text-2)',
@@ -364,7 +364,7 @@ export function AdminDashboardPage() {
               </WsTable>
             )}
             <div style={{ padding: '10px 12px' }}>
-              <p style={{ margin: 0, fontSize: 11, color: 'var(--ws-text-2)', lineHeight: 1.65 }}>
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--ws-text-2)', lineHeight: 1.65 }}>
                 أعداد مطلقة رُصدت في يومها — لا نِسَب؛ مقام الأيام الماضية متحرك.
               </p>
             </div>
@@ -416,14 +416,14 @@ export function AdminDashboardPage() {
                       />
                     </span>
                     <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ display: 'block', fontSize: 14, fontWeight: 700, lineHeight: 1.35 }}>{row.label}</span>
-                      <span style={{ display: 'block', fontSize: 12, color: 'var(--ws-text-2)', lineHeight: 1.4 }}>{row.sub}</span>
+                      <span style={{ display: 'block', fontSize: 15, fontWeight: 700, lineHeight: 1.35 }}>{row.label}</span>
+                      <span style={{ display: 'block', fontSize: 13, color: 'var(--ws-text-2)', lineHeight: 1.4 }}>{row.sub}</span>
                     </span>
                     {row.count != null && row.count > 0 && (
                       <b
                         style={{
                           flexShrink: 0,
-                          fontSize: 15,
+                          fontSize: 16,
                           fontWeight: 700,
                           fontVariantNumeric: 'tabular-nums',
                           color: hot ? row.tone!.tx : 'var(--ws-text-2)',

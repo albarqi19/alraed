@@ -252,13 +252,13 @@ export function QueueLegend({
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 10 }}>
       {items.map((it) => (
-        <span key={it.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--ws-text-2)' }}>
+        <span key={it.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--ws-text-2)' }}>
           {it.swatch}
           {it.label}
           <b style={{ color: it.hotColor ?? 'var(--ws-text)' }}>{arNum(it.count)}</b>
         </span>
       ))}
-      <span style={{ fontSize: 12, color: 'var(--ws-text-2)', marginInlineStart: 'auto' }}>
+      <span style={{ fontSize: 13, color: 'var(--ws-text-2)', marginInlineStart: 'auto' }}>
         من {arNum(total)} طالباً نشطاً
       </span>
     </div>
@@ -352,7 +352,7 @@ export function DayCard({ icon: Icon, label, value, tone, hero, context, zeroCon
         >
           <Icon style={{ width: 16, height: 16, color: t.tx }} />
         </span>
-        <span style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.3, color: 'var(--ws-text)' }}>{label}</span>
+        <span style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.3, color: 'var(--ws-text)' }}>{label}</span>
       </span>
       <span style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8 }}>
         <span
@@ -369,7 +369,7 @@ export function DayCard({ icon: Icon, label, value, tone, hero, context, zeroCon
         {spark}
       </span>
       {ctx && (
-        <span style={{ fontSize: 12, color: 'var(--ws-text-2)', marginTop: 7, lineHeight: 1.45 }}>{ctx}</span>
+        <span style={{ fontSize: 13, color: 'var(--ws-text-2)', marginTop: 7, lineHeight: 1.45 }}>{ctx}</span>
       )}
       {extra}
     </div>
@@ -450,11 +450,11 @@ export function CoverageArc({ rate }: { rate: number }) {
           strokeDashoffset={c * (1 - clamped / 100)}
           transform="rotate(-90 28 28)"
         />
-        <text x={28} y={32} textAnchor="middle" fontSize={13} fontWeight={800} fill={stroke}>
+        <text x={28} y={32} textAnchor="middle" fontSize={14} fontWeight={800} fill={stroke}>
           {arNum(Math.round(clamped))}٪
         </text>
       </svg>
-      <span style={{ fontSize: 11.5, color: done ? TONES.green.tx : 'var(--ws-text-2)', whiteSpace: 'nowrap' }}>
+      <span style={{ fontSize: 12.5, color: done ? TONES.green.tx : 'var(--ws-text-2)', whiteSpace: 'nowrap' }}>
         {done ? 'اكتمل رصد اليوم' : 'تغطية اليوم'}
       </span>
     </span>
