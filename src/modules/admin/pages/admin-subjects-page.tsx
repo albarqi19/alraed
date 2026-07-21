@@ -3,6 +3,8 @@ import {
   AlertTriangle,
   BookOpen,
   CalendarOff,
+  Layers,
+  ListChecks,
   Pen,
   Plus,
   RefreshCw,
@@ -20,7 +22,6 @@ import type { SubjectRecord } from '../types'
 import {
   WsPage,
   WsHeader,
-  WsFact,
   WsToolbar,
   WsField,
   WsInput,
@@ -28,6 +29,7 @@ import {
   WsTextarea,
   WsLayout,
   WsMain,
+  WsSideCol,
   WsBlock,
   WsTable,
   WsBtn,
@@ -38,6 +40,7 @@ import {
   ToneChip,
 } from '@/shared/workspace'
 import { SubjectComb, combSummary } from './subjects-ui'
+import { DayCard, chip } from './dashboard-ui'
 
 type SubjectStatus = SubjectRecord['status']
 type StatusFilter = 'all' | SubjectStatus
@@ -99,6 +102,55 @@ export function AdminSubjectsPage() {
     [subjects],
   )
 
+  const totalSlots = useMemo(
+    () => subjects.reduce((sum, s) => sum + (s.weight?.total_slots ?? 0), 0),
+    [subjects],
+  )
+  const activeCount = useMemo(() => subjects.filter((s) => s.status === 'active').length, [subjects])
+
+  /**
+   * نداء المواد — القسم الثاني: يسمّي المحتاجة بدل أن يَعُدّها فقط.
+   * غير النشطة لا تُنادى على «بلا حصص» — غيابها عن الجدول مقصود.
+   */
+  const callRows = useMemo(() => {
+    const rows: Array<{
+      key: string
+      label: string
+      sub: string
+      icon: typeof Unplug
+      count?: number
+      tone: (typeof TONES)['amber']
+    }> = []
+    if (!curriculumBlind) {
+      for (const s of subjects) {
+        const grades = s.weight?.grades ?? []
+        const gaps = grades.filter((g) => !g.has_curriculum).length
+        if (gaps > 0) {
+          rows.push({
+            key: `gap-${s.id}`,
+            label: s.name,
+            sub: `بلا توزيع منهج في ${gaps} من ${grades.length} صفوف`,
+            icon: Unplug,
+            count: gaps,
+            tone: TONES.amber,
+          })
+        }
+      }
+    }
+    for (const s of subjects) {
+      if (s.status === 'active' && (s.weight?.grades.length ?? 0) === 0) {
+        rows.push({
+          key: `nos-${s.id}`,
+          label: s.name,
+          sub: 'نشطة لكنها ليست في جدول الحصص',
+          icon: CalendarOff,
+          tone: TONES.purple,
+        })
+      }
+    }
+    return rows
+  }, [subjects, curriculumBlind])
+
   const filteredSubjects = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
     return subjects.filter((subject) => {
@@ -151,7 +203,7 @@ export function AdminSubjectsPage() {
   const isSaving = createSubjectMutation.isPending || updateSubjectMutation.isPending
 
   return (
-    <WsPage>
+    <WsPage className="ws-rich">
       <WsHeader
         title="إدارة المواد"
         badge={meta?.semester_label ?? undefined}
@@ -159,24 +211,6 @@ export function AdminSubjectsPage() {
           <WsBtn variant="primary" icon={Plus} onClick={openAdd}>
             مادة جديدة
           </WsBtn>
-        }
-        facts={
-          <>
-            <WsFact icon={BookOpen} label="مادة">{subjects.length}</WsFact>
-            <WsFact icon={Unplug} label="صفوف بلا توزيع">
-              {gapTeeth == null ? (
-                <span style={{ color: 'var(--ws-text-2)' }} title="لا توزيع محمَّل — لا يمكن القياس">
-                  —
-                </span>
-              ) : (
-                <>
-                  <span style={{ color: gapTeeth > 0 ? TONES.amber.tx : undefined }}>{gapTeeth}</span>
-                  <span style={{ color: 'var(--ws-text-2)' }}> من {totalTeeth}</span>
-                </>
-              )}
-            </WsFact>
-            <WsFact icon={CalendarOff} label="بلا حصص">{noSessions}</WsFact>
-          </>
         }
       />
 
@@ -229,6 +263,49 @@ export function AdminSubjectsPage() {
 
       <WsLayout>
         <WsMain>
+          {/* حصيلة المواد — لغة «نظرة عامة»: باستيل + رقاقة بيضاء + علامة مائية */}
+          <WsBlock padded>
+            <div className="ws-dashboard-cards">
+              <DayCard
+                icon={BookOpen}
+                label="المواد"
+                value={subjects.length}
+                tone={TONES.sky}
+                hero
+                context={`${activeCount} نشطة${subjects.length - activeCount > 0 ? ` · ${subjects.length - activeCount} غير نشطة` : ''}`}
+                zeroContext="لم تُسجَّل مواد بعد"
+              />
+              <DayCard
+                icon={Layers}
+                label="حصص في الجدول"
+                value={totalSlots}
+                tone={TONES.green}
+                context={`عبر ${totalTeeth} صفاً مُدرَّساً`}
+                zeroContext="الجدول فارغ"
+              />
+              <DayCard
+                icon={Unplug}
+                label="صفوف بلا توزيع"
+                value={gapTeeth ?? 0}
+                tone={TONES.amber}
+                context={
+                  curriculumBlind
+                    ? 'لا توزيع منهج محمَّل — لا يمكن القياس'
+                    : `من ${totalTeeth} — معلموها يفتحون الخطة فارغة`
+                }
+                zeroContext={curriculumBlind ? 'لا توزيع منهج محمَّل — لا يمكن القياس' : 'كل الصفوف مرتبطة بالمنهج'}
+              />
+              <DayCard
+                icon={CalendarOff}
+                label="مواد بلا حصص"
+                value={noSessions}
+                tone={TONES.purple}
+                context="ليست في جدول الحصص"
+                zeroContext="كل المواد مجدولة"
+              />
+            </div>
+          </WsBlock>
+
           <WsBlock fill scroll title="المواد" icon={BookOpen} count={filteredSubjects.length}>
             {isError ? (
               <div style={{ padding: 14 }}>
@@ -259,8 +336,9 @@ export function AdminSubjectsPage() {
                 <tbody>
                   {filteredSubjects.map((subject) => {
                     const grades = subject.weight?.grades ?? []
+                    const hasGap = !curriculumBlind && grades.some((g) => !g.has_curriculum)
                     return (
-                      <tr key={subject.id}>
+                      <tr key={subject.id} style={hasGap ? { background: chip(TONES.amber) } : undefined}>
                         <td>
                           <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <span style={{ fontWeight: 600 }}>{subject.name}</span>
@@ -309,6 +387,80 @@ export function AdminSubjectsPage() {
             )}
           </WsBlock>
         </WsMain>
+
+        {/* نداء المواد — القسم الثاني بطلب المالك: من يحتاج يدك الآن */}
+        <WsSideCol side="end" title="نداء المواد" icon={ListChecks} storageKey="ws:subjects:sidecol" width={300}>
+          <WsBlock fill scroll>
+            {isLoading ? (
+              <WsEmpty loading>جارٍ التحميل...</WsEmpty>
+            ) : callRows.length === 0 ? (
+              <WsEmpty icon={ListChecks}>لا نداءات — كل المواد مرتبطة ومجدولة</WsEmpty>
+            ) : (
+              <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {callRows.map((row) => {
+                  const Icon = row.icon
+                  return (
+                    <button
+                      key={row.key}
+                      type="button"
+                      title="حصر الجدول على هذه المادة"
+                      onClick={() => {
+                        setSearchTerm(row.label)
+                        setStatusFilter('all')
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        padding: '11px 12px',
+                        borderRadius: 8,
+                        border: `1px solid ${row.tone.bd}`,
+                        background: chip(row.tone),
+                        color: 'var(--ws-text)',
+                        textAlign: 'start',
+                        cursor: 'pointer',
+                        font: 'inherit',
+                      }}
+                    >
+                      {/* اللون حبرٌ ورقاقة: الرقاقة بيضاء والصف يلبس الباستيل */}
+                      <span
+                        style={{
+                          width: 30,
+                          height: 30,
+                          borderRadius: 8,
+                          background: 'var(--ws-surface)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Icon style={{ width: 16, height: 16, color: row.tone.tx }} />
+                      </span>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: 'block', fontSize: 15, fontWeight: 700, lineHeight: 1.35 }}>{row.label}</span>
+                        <span style={{ display: 'block', fontSize: 13, color: 'var(--ws-text-2)', lineHeight: 1.4 }}>{row.sub}</span>
+                      </span>
+                      {row.count != null && (
+                        <b
+                          style={{
+                            flexShrink: 0,
+                            fontSize: 16,
+                            fontWeight: 700,
+                            fontVariantNumeric: 'tabular-nums',
+                            color: row.tone.tx,
+                          }}
+                        >
+                          {row.count}
+                        </b>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </WsBlock>
+        </WsSideCol>
       </WsLayout>
 
       {/* نموذج الإضافة/التعديل */}

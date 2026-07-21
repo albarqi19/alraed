@@ -87,7 +87,7 @@ export function AdminDashboardPage() {
 
   if (isError) {
     return (
-      <WsPage className="ws-overview">
+      <WsPage className="ws-rich">
         <WsHeader title="نظرة عامة" />
         <WsLayout>
           <WsMain>
@@ -153,7 +153,7 @@ export function AdminDashboardPage() {
   const weekMax = Math.max(0, ...days.map((d) => d.absent))
 
   return (
-    <WsPage className="ws-overview">
+    <WsPage className="ws-rich">
       <WsHeader
         title="نظرة عامة"
         badge={

@@ -1381,35 +1381,38 @@ button.ws-chip:disabled {
     }
 }
 
-/* ── نظرة عامة: سلّم عرضي أكبر + أسطح كريمية — نطاق الصفحة فقط ── */
-.ws-overview {
+/* ── نطاق «الإغناء» ws-rich: أسطح كريمية + سلّم عرضي أكبر — يُطبَّق صفحةً صفحة ── */
+.ws-rich {
     /* تجربة المالك: الأبيض → كريمي (الكنفا الدافئة كانت موجودة أصلاً #F8F5F0) */
     --ws-bg: #F4F2ED;
     --ws-surface: #FCFBF8;
     --ws-surface-2: #EFEDE6;
 }
-.ws-overview .ws-header__title {
+.ws-rich .ws-header__title {
     font-size: 18px;
 }
-.ws-overview .ws-fact {
+.ws-rich .ws-fact {
     font-size: 13.5px;
 }
-.ws-overview .ws-block__title {
+.ws-rich .ws-block__title {
     font-size: 15px;
 }
-.ws-overview .ws-block__title svg {
+.ws-rich .ws-block__title svg {
     width: 15px;
     height: 15px;
 }
-.ws-overview .ws-block__head {
+.ws-rich .ws-block__head {
     padding: 8px 14px;
 }
-.ws-overview .ws-block__body {
+.ws-rich .ws-block__body {
     padding: 12px 16px;
 }
-.ws-overview .ws-table tbody td {
+.ws-rich .ws-table tbody td {
     font-size: 13.5px;
 }
-.ws-overview .ws-table thead th {
+.ws-rich .ws-table thead th {
     font-size: 11.5px;
+}
+.ws-rich .ws-cell-sub {
+    font-size: 12px;
 }
