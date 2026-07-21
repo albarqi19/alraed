@@ -388,13 +388,13 @@ export function AdminSubjectsPage() {
           </WsBlock>
         </WsMain>
 
-        {/* نداء المواد — القسم الثاني بطلب المالك: من يحتاج يدك الآن */}
-        <WsSideCol side="end" title="نداء المواد" icon={ListChecks} storageKey="ws:subjects:sidecol" width={300}>
+        {/* القسم الثاني: مواد تحتاج متابعة — يسمّيها بالاسم بدل عدّها */}
+        <WsSideCol side="end" title="مواد تحتاج متابعة" icon={ListChecks} storageKey="ws:subjects:sidecol" width={300}>
           <WsBlock fill scroll>
             {isLoading ? (
               <WsEmpty loading>جارٍ التحميل...</WsEmpty>
             ) : callRows.length === 0 ? (
-              <WsEmpty icon={ListChecks}>لا نداءات — كل المواد مرتبطة ومجدولة</WsEmpty>
+              <WsEmpty icon={ListChecks}>لا شيء معلّق — كل المواد مرتبطة ومجدولة</WsEmpty>
             ) : (
               <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {callRows.map((row) => {
