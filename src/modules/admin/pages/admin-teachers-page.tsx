@@ -27,11 +27,11 @@ import type { TeacherCredentials, TeacherRecord, TeacherStatus, StaffRole } from
 import { useToast } from '@/shared/feedback/use-toast'
 import { ROLE_OPTIONS, getRoleLabel } from '@/modules/auth/constants/roles'
 import {
+  TONES,
   WsBlock,
   WsBtn,
   WsChip,
   WsEmpty,
-  WsFact,
   WsFactRow,
   WsFactsList,
   WsField,
@@ -47,6 +47,7 @@ import {
   WsToolbar,
   type WsChipTone,
 } from '@/shared/workspace'
+import { DayCard, chip } from './dashboard-ui'
 
 // ألوان الأدوار بدرجات النظام (theme-safe)
 const ROLE_TONES: Record<string, WsChipTone | undefined> = {
@@ -349,7 +350,9 @@ export function AdminTeachersPage() {
   const stats = useMemo(() => {
     const total = teachers.length
     const active = teachers.filter((teacher) => teacher.status === 'active').length
-    return { total, active, inactive: total - active }
+    const dual = teachers.filter((teacher) => teacher.secondary_role).length
+    const needsPassword = teachers.filter((teacher) => teacher.needs_password_change).length
+    return { total, active, inactive: total - active, dual, needsPassword }
   }, [teachers])
 
   const filteredTeachers = useMemo(() => {
@@ -476,7 +479,7 @@ export function AdminTeachersPage() {
   const isFormSubmitting = createTeacherMutation.isPending || updateTeacherMutation.isPending
 
   return (
-    <WsPage>
+    <WsPage className="ws-rich">
       <WsHeader
         title="إدارة المعلمين"
         badge="الحسابات والصلاحيات"
@@ -484,19 +487,6 @@ export function AdminTeachersPage() {
           <WsBtn variant="primary" icon={Plus} onClick={handleAdd}>
             إضافة معلم
           </WsBtn>
-        }
-        facts={
-          <>
-            <WsFact icon={Users} label="الإجمالي:">
-              {stats.total.toLocaleString('ar-SA')}
-            </WsFact>
-            <WsFact icon={UserCheck} label="نشطون:">
-              {stats.active.toLocaleString('ar-SA')}
-            </WsFact>
-            <WsFact icon={UserX} label="موقوفون:">
-              {stats.inactive.toLocaleString('ar-SA')}
-            </WsFact>
-          </>
         }
       />
 
@@ -528,6 +518,45 @@ export function AdminTeachersPage() {
 
       <WsLayout>
         <WsMain>
+          {/* حصيلة الكادر — لغة الإغناء: باستيل + رقاقة بيضاء + علامة مائية */}
+          <WsBlock padded>
+            <div className="ws-dashboard-cards">
+              <DayCard
+                icon={Users}
+                label="المعلمون"
+                value={stats.total}
+                tone={TONES.sky}
+                hero
+                context={stats.dual > 0 ? `منهم ${stats.dual} بدور مزدوج` : 'كادر المدرسة كاملاً'}
+                zeroContext="لم يُسجَّل معلمون بعد"
+              />
+              <DayCard
+                icon={UserCheck}
+                label="نشطون"
+                value={stats.active}
+                tone={TONES.green}
+                context="يستطيعون الدخول الآن"
+                zeroContext="لا حسابات نشطة"
+              />
+              <DayCard
+                icon={UserX}
+                label="موقوفون"
+                value={stats.inactive}
+                tone={TONES.red}
+                context="حساباتهم معلّقة عن الدخول"
+                zeroContext="لا حسابات موقوفة"
+              />
+              <DayCard
+                icon={KeyRound}
+                label="لم يغيّروا كلمة المرور"
+                value={stats.needsPassword}
+                tone={TONES.amber}
+                context="ما زالوا على الكلمة المولَّدة"
+                zeroContext="الكل غيّر كلمته"
+              />
+            </div>
+          </WsBlock>
+
           <WsBlock title="المعلمون" icon={Users} count={filteredTeachers.length.toLocaleString('ar-SA')} fill>
             {isLoading ? (
               <WsEmpty loading>جاري تحميل قائمة المعلمين...</WsEmpty>
@@ -573,7 +602,7 @@ export function AdminTeachersPage() {
                         key={teacher.id}
                         onClick={() => setSelectedTeacher(teacher)}
                         className={`is-clickable ${isSelected ? 'is-selected' : ''}`}
-                        style={!isSelected && teacher.secondary_role ? { background: 'var(--ws-amber-bg)' } : undefined}
+                        style={!isSelected && teacher.secondary_role ? { background: chip(TONES.amber) } : undefined}
                       >
                         <td>
                           <span style={{ fontWeight: 600 }}>{teacher.name}</span>
@@ -657,7 +686,7 @@ export function AdminTeachersPage() {
             <>
               <WsBlock padded>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-                  <span style={{ fontSize: 13.5, fontWeight: 700 }}>{selectedTeacher.name}</span>
+                  <span style={{ fontSize: 15, fontWeight: 700 }}>{selectedTeacher.name}</span>
                   <TeacherStatusChip status={selectedTeacher.status} />
                 </div>
                 <WsFactsList>
@@ -700,7 +729,7 @@ export function AdminTeachersPage() {
               </WsBlock>
 
               <WsBlock title="الفصول والمواد" padded>
-                <p style={{ margin: 0, fontSize: 11.5, color: 'var(--ws-text-2)' }}>
+                <p style={{ margin: 0, fontSize: 12.5, color: 'var(--ws-text-2)' }}>
                   سيتم عرض الفصول والمواد التي يدرسها المعلم هنا قريباً.
                 </p>
               </WsBlock>
@@ -737,12 +766,12 @@ export function AdminTeachersPage() {
                 {credentialsLog.map((entry) => (
                   <div key={entry.id} style={{ padding: '7px 12px', borderBottom: '1px solid var(--ws-hairline)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, minWidth: 0 }}>{entry.teacherName}</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, minWidth: 0 }}>{entry.teacherName}</span>
                       <WsBtn size="sm" onClick={() => handleCopyCredentials(entry)}>
                         نسخ
                       </WsBtn>
                     </div>
-                    <p style={{ margin: '2px 0 4px', fontSize: 10, color: 'var(--ws-text-2)' }}>
+                    <p style={{ margin: '2px 0 4px', fontSize: 11.5, color: 'var(--ws-text-2)' }}>
                       {formatDate(entry.issuedAt)}
                     </p>
                     <div
@@ -751,7 +780,7 @@ export function AdminTeachersPage() {
                         flexDirection: 'column',
                         gap: 3,
                         fontFamily: 'monospace',
-                        fontSize: 11,
+                        fontSize: 12.5,
                         background: 'var(--ws-surface-2)',
                         border: '1px solid var(--ws-hairline)',
                         borderRadius: 7,
