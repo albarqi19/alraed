@@ -26,12 +26,12 @@ import {
 } from '../hooks'
 import type { ScheduleRecord, ScheduleTemplate, ScheduleType, ClassScheduleSummary, SchedulePeriod } from '../types'
 import {
+  TONES,
   WsAlert,
   WsBlock,
   WsBtn,
   WsChip,
   WsEmpty,
-  WsFact,
   WsField,
   WsHeader,
   WsInput,
@@ -43,6 +43,7 @@ import {
   WsTable,
   WsTextarea,
 } from '@/shared/workspace'
+import { DayCard, chip } from './dashboard-ui'
 
 type ScheduleStatusFilter = 'all' | 'active' | 'inactive'
 
@@ -711,10 +712,10 @@ function DayRuler({ segments }: { segments: RulerSegment[] }) {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ws-text-2)', fontVariantNumeric: 'tabular-nums' }} dir="ltr">
+        <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--ws-text-2)', fontVariantNumeric: 'tabular-nums' }} dir="ltr">
           {segments[0].startTime}
         </span>
-        <span style={{ display: 'inline-flex', gap: 10, fontSize: 9.5 }}>
+        <span style={{ display: 'inline-flex', gap: 10, fontSize: 11 }}>
           {(['class', 'break', 'prayer'] as QuickScheduleEntryType[]).map((type) => (
             <span key={type} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: 'var(--ws-text-2)' }}>
               <span style={{ width: 8, height: 8, borderRadius: 2, background: ENTRY_TONES[type].tx }} />
@@ -722,14 +723,14 @@ function DayRuler({ segments }: { segments: RulerSegment[] }) {
             </span>
           ))}
         </span>
-        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ws-text-2)', fontVariantNumeric: 'tabular-nums' }} dir="ltr">
+        <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--ws-text-2)', fontVariantNumeric: 'tabular-nums' }} dir="ltr">
           {segments[segments.length - 1].endTime}
         </span>
       </div>
       <div
         style={{
           display: 'flex',
-          height: 34,
+          height: 40,
           borderRadius: 8,
           overflow: 'hidden',
           border: '1px solid var(--ws-hairline)',
@@ -756,7 +757,7 @@ function DayRuler({ segments }: { segments: RulerSegment[] }) {
               {widthPercent > 7 ? (
                 <span
                   style={{
-                    fontSize: 9,
+                    fontSize: 10.5,
                     fontWeight: 700,
                     color: tone.tx,
                     whiteSpace: 'nowrap',
@@ -1837,7 +1838,7 @@ export function AdminSchedulesPage() {
     createScheduleMutation.isPending || updateScheduleMutation.isPending || activateScheduleMutation.isPending || deactivateScheduleMutation.isPending
 
   return (
-    <WsPage>
+    <WsPage className="ws-rich">
       <WsHeader
         title="الخطط الزمنية"
         badge="توقيت اليوم الدراسي"
@@ -1849,18 +1850,6 @@ export function AdminSchedulesPage() {
             <WsBtn variant="primary" icon={Zap} onClick={() => setIsQuickAddOpen(true)} disabled={createScheduleMutation.isPending}>
               إضافة توقيت سريع
             </WsBtn>
-          </>
-        }
-        facts={
-          <>
-            <WsFact icon={CalendarClock} label="إجمالي الجداول:">
-              {stats.total.toLocaleString('ar-SA')}
-            </WsFact>
-            <WsFact label="مفعلة:">{stats.active.toLocaleString('ar-SA')}</WsFact>
-            <WsFact label="غير مفعلة:">{stats.archived.toLocaleString('ar-SA')}</WsFact>
-            <WsFact icon={Clock3} label="الفترات المسجلة:">
-              {stats.totalPeriods.toLocaleString('ar-SA')}
-            </WsFact>
           </>
         }
       >
@@ -1935,7 +1924,7 @@ export function AdminSchedulesPage() {
                         padding: '8px 12px',
                         border: 'none',
                         borderBottom: '1px solid var(--ws-hairline)',
-                        background: isSelected ? 'var(--ws-accent-soft)' : 'transparent',
+                        background: isSelected ? chip(TONES.sky) : 'transparent',
                         cursor: 'pointer',
                         fontFamily: 'inherit',
                       }}
@@ -1943,7 +1932,7 @@ export function AdminSchedulesPage() {
                       <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                           <ScheduleStatusBadge isActive={schedule.is_active} />
-                          <span style={{ fontSize: 12.5, fontWeight: isSelected ? 700 : 600, color: 'var(--ws-text)' }}>
+                          <span style={{ fontSize: 13.5, fontWeight: isSelected ? 700 : 600, color: 'var(--ws-text)' }}>
                             {schedule.name}
                           </span>
                         </span>
@@ -1963,6 +1952,51 @@ export function AdminSchedulesPage() {
 
         {/* الوسط: تفاصيل الجدول */}
         <WsMain>
+          {/* حصيلة الخطط — لغة الإغناء: باستيل + رقاقة بيضاء + علامة مائية */}
+          <WsBlock padded>
+            <div className="ws-dashboard-cards">
+              <DayCard
+                icon={CalendarClock}
+                label="الجداول الزمنية"
+                value={stats.total}
+                tone={TONES.sky}
+                hero
+                context={
+                  stats.active === 1
+                    ? `المعتمد الآن: ${schedules.find((item) => item.is_active)?.name ?? ''}`
+                    : stats.active > 1
+                      ? `${stats.active} جداول معتمدة معاً`
+                      : 'لا جدول معتمداً بعد'
+                }
+                zeroContext="ابدأ بالتوقيت السريع"
+              />
+              <DayCard
+                icon={CheckCircle2}
+                label="مفعلة"
+                value={stats.active}
+                tone={TONES.green}
+                context="المعتمدة في النظام الآن"
+                zeroContext="لا جدول معتمداً بعد"
+              />
+              <DayCard
+                icon={Power}
+                label="معطلة"
+                value={stats.archived}
+                tone={TONES.gray}
+                context="أرشيف جاهز للتفعيل"
+                zeroContext="لا جداول في الأرشيف"
+              />
+              <DayCard
+                icon={Clock3}
+                label="الفترات المسجلة"
+                value={stats.totalPeriods}
+                tone={TONES.purple}
+                context="حصص وفسح وصلوات عبر كل الجداول"
+                zeroContext="لا فترات مسجلة بعد"
+              />
+            </div>
+          </WsBlock>
+
           <WsBlock
             title={selectedSchedule ? selectedSchedule.name : 'تفاصيل الجدول'}
             icon={CalendarClock}
@@ -2025,16 +2059,16 @@ export function AdminSchedulesPage() {
                     <ScheduleTypeBadge type={selectedSchedule.type ?? 'custom'} />
                     {selectedSchedule.target_level ? <WsChip>{selectedSchedule.target_level}</WsChip> : null}
                     {selectedSchedule.description ? (
-                      <span style={{ fontSize: 11, color: 'var(--ws-text-2)' }}>{selectedSchedule.description}</span>
+                      <span style={{ fontSize: 12.5, color: 'var(--ws-text-2)' }}>{selectedSchedule.description}</span>
                     ) : null}
-                    <span style={{ fontSize: 10, color: 'var(--ws-text-2)', marginInlineStart: 'auto' }}>
+                    <span style={{ fontSize: 11.5, color: 'var(--ws-text-2)', marginInlineStart: 'auto' }}>
                       آخر تحديث: {formatDateTime(selectedSchedule.updated_at ?? selectedSchedule.created_at)}
                     </span>
                   </div>
                   {selectedRulerSegments.length > 0 ? (
                     <DayRuler segments={selectedRulerSegments} />
                   ) : (
-                    <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>
+                    <span style={{ fontSize: 12, color: 'var(--ws-text-2)' }}>
                       لا توجد فترات بأوقات صالحة لعرض مسطرة اليوم.
                     </span>
                   )}
@@ -2090,7 +2124,7 @@ export function AdminSchedulesPage() {
                     flexShrink: 0,
                     padding: '6px 14px',
                     borderTop: '1px solid var(--ws-hairline)',
-                    fontSize: 10.5,
+                    fontSize: 12,
                     color: 'var(--ws-text-2)',
                   }}
                 >
