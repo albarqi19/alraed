@@ -23,34 +23,601 @@ import {
   Puzzle,
   ChevronLeft,
   FileUp,
+  Info,
+  KeyRound,
+  ListChecks,
 } from 'lucide-react'
+import {
+  TONES,
+  WsAlert,
+  WsBlock,
+  WsBtn,
+  WsFact,
+  WsHeader,
+  WsLayout,
+  WsMain,
+  WsPage,
+  WsSideCol,
+  WsTable,
+  WsToolbar,
+  type Tone,
+} from '@/shared/workspace'
+import { chip } from './dashboard-ui'
 
-// ─── Platform Import Button ────────────────────────────────────────────────
-function PlatformImportButton({
+const ar = (n: number) => n.toLocaleString('ar-SA')
+
+// ─── بطاقة الرفع ───────────────────────────────────────────────────────────
+function UploadCard({
+  onFileSelected,
+  isLoading,
+  accept,
+  helper,
+  fileName,
+}: {
+  onFileSelected: (file: File) => void
+  isLoading: boolean
+  accept?: string
+  helper?: string
+  fileName?: string | null
+}) {
+  const inputId = useId()
+  const chosen = Boolean(fileName)
+
+  return (
+    <label
+      htmlFor={inputId}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        padding: '12px 14px',
+        borderRadius: 8,
+        cursor: isLoading ? 'default' : 'pointer',
+        border: chosen ? `1px solid ${TONES.sky.bd}` : '1px dashed var(--ws-border)',
+        background: chosen ? chip(TONES.sky) : 'var(--ws-surface-2)',
+        opacity: isLoading ? 0.65 : 1,
+        pointerEvents: isLoading ? 'none' : undefined,
+      }}
+    >
+      <input
+        id={inputId}
+        type="file"
+        accept={accept ?? '.xlsx,.xls,.csv'}
+        onChange={(event) => {
+          const file = event.target.files?.[0]
+          if (!file) return
+          onFileSelected(file)
+          event.target.value = ''
+        }}
+        style={{ display: 'none' }}
+        disabled={isLoading}
+      />
+      <span
+        style={{
+          width: 30,
+          height: 30,
+          borderRadius: 8,
+          background: 'var(--ws-surface)',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+        }}
+      >
+        {isLoading ? (
+          <RefreshCw className="animate-spin" style={{ width: 16, height: 16, color: TONES.sky.tx }} />
+        ) : (
+          <FileUp style={{ width: 16, height: 16, color: chosen ? TONES.sky.tx : 'var(--ws-text-2)' }} />
+        )}
+      </span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span
+          style={{
+            display: 'block',
+            fontSize: 13.5,
+            fontWeight: 700,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {isLoading ? 'جارٍ معالجة الملف...' : fileName ? fileName : 'اضغط لاختيار ملف'}
+        </span>
+        <span style={{ display: 'block', fontSize: 12, color: 'var(--ws-text-2)', marginTop: 2 }}>
+          {helper ?? 'يدعم Excel و CSV'}
+        </span>
+      </span>
+      {!chosen && !isLoading && (
+        <WsBtn size="sm" style={{ pointerEvents: 'none' }}>
+          اختيار
+        </WsBtn>
+      )}
+    </label>
+  )
+}
+
+// ─── إحصاءة مصغّرة بلغة الإغناء ─────────────────────────────────────────────
+function MiniStat({ label, value, tone }: { label: string; value: number; tone: Tone }) {
+  return (
+    <div
+      style={{
+        padding: '8px 10px',
+        borderRadius: 8,
+        border: `1px solid ${tone.bd}`,
+        background: chip(tone),
+      }}
+    >
+      <span style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--ws-text)' }}>{label}</span>
+      <span
+        style={{
+          display: 'block',
+          marginTop: 2,
+          fontSize: 20,
+          fontWeight: 800,
+          color: tone.tx,
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        {ar(value)}
+      </span>
+    </div>
+  )
+}
+
+// ─── ملخص معاينة الطلاب ────────────────────────────────────────────────────
+function StudentPreviewSummary({ preview }: { preview: ImportStudentsPreview }) {
+  const stats = useMemo(
+    () => [
+      { label: 'في الملف', value: preview.total_students, tone: TONES.sky },
+      { label: 'جدد', value: preview.new_students_count, tone: TONES.green },
+      { label: 'تحديث', value: preview.students_with_changes, tone: TONES.amber },
+      { label: 'حذف', value: preview.to_be_deleted_count, tone: TONES.red },
+      { label: 'أخطاء', value: preview.errors_count, tone: preview.errors_count > 0 ? TONES.red : TONES.gray },
+    ],
+    [preview],
+  )
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: 8 }}>
+      {stats.map((item) => (
+        <MiniStat key={item.label} label={item.label} value={item.value} tone={item.tone} />
+      ))}
+    </div>
+  )
+}
+
+// ─── عنوان قسم داخل المعاينة ───────────────────────────────────────────────
+function SectionTitle({ tone, children }: { tone: Tone; children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+      <span style={{ width: 8, height: 8, borderRadius: '50%', background: tone.tx, flexShrink: 0 }} />
+      <h3 style={{ margin: 0, fontSize: 13.5, fontWeight: 700 }}>{children}</h3>
+    </div>
+  )
+}
+
+const tableWrap: React.CSSProperties = {
+  border: '1px solid var(--ws-hairline)',
+  borderRadius: 8,
+  overflow: 'hidden',
+}
+
+// ─── تفاصيل معاينة الطلاب ──────────────────────────────────────────────────
+function StudentPreviewDetails({ preview }: { preview: ImportStudentsPreview }) {
+  const newStudents = preview.new_students.slice(0, 5)
+  const updatedStudents = preview.existing_students.slice(0, 5)
+  const deletedStudents = preview.to_be_deleted.slice(0, 5)
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {preview.errors_count > 0 && (
+        <div>
+          <SectionTitle tone={TONES.red}>أخطاء حرجة — راجع البيانات ({ar(preview.errors.length)})</SectionTitle>
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {preview.errors.map((error, index) => (
+              <li
+                key={`${error}-${index}`}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: 7,
+                  border: `1px solid ${TONES.red.bd}`,
+                  background: chip(TONES.red),
+                  fontSize: 12.5,
+                  color: TONES.red.tx,
+                }}
+              >
+                {error}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {preview.new_students_count > 0 && (
+        <div>
+          <SectionTitle tone={TONES.green}>طلاب جدد ({ar(preview.new_students_count)})</SectionTitle>
+          <div style={tableWrap}>
+            <WsTable>
+              <thead>
+                <tr>
+                  <th>الاسم</th>
+                  <th>الهوية</th>
+                  <th>الصف</th>
+                  <th>الفصل</th>
+                  <th>هاتف ولي الأمر</th>
+                </tr>
+              </thead>
+              <tbody>
+                {newStudents.map((student) => (
+                  <tr key={`new-${student.national_id}-${student.name}`}>
+                    <td style={{ fontWeight: 600 }}>{student.name}</td>
+                    <td style={{ fontFamily: 'monospace', color: 'var(--ws-text-2)' }}>{student.national_id ?? '—'}</td>
+                    <td>{student.grade}</td>
+                    <td>{student.class_name}</td>
+                    <td style={{ color: 'var(--ws-text-2)' }}>{student.parent_phone ?? '—'}</td>
+                  </tr>
+                ))}
+                {preview.new_students_count > newStudents.length && (
+                  <tr>
+                    <td colSpan={5} style={{ textAlign: 'center', color: 'var(--ws-text-2)', fontSize: 12 }}>
+                      + {ar(preview.new_students_count - newStudents.length)} طالب إضافي
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </WsTable>
+          </div>
+        </div>
+      )}
+
+      {preview.students_with_changes > 0 && (
+        <div>
+          <SectionTitle tone={TONES.amber}>تعديلات مقترحة ({ar(preview.students_with_changes)})</SectionTitle>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {updatedStudents.map((item) => (
+              <article
+                key={item.id}
+                style={{
+                  padding: 10,
+                  borderRadius: 8,
+                  border: `1px solid ${TONES.amber.bd}`,
+                  background: chip(TONES.amber),
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>{item.current_data.name}</p>
+                    <p style={{ margin: 0, fontSize: 12, color: 'var(--ws-text-2)' }}>
+                      {item.current_data.grade} / {item.current_data.class_name}
+                    </p>
+                  </div>
+                  {item.attendance_count ? (
+                    <span
+                      style={{
+                        padding: '2px 8px',
+                        borderRadius: 6,
+                        background: 'var(--ws-surface)',
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        color: 'var(--ws-text-2)',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
+                      {ar(item.attendance_count)} سجل حضور
+                    </span>
+                  ) : null}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 6 }}>
+                  {Object.entries(item.changes).map(([field, change]) => (
+                    <div
+                      key={field}
+                      style={{
+                        padding: '5px 8px',
+                        borderRadius: 6,
+                        border: '1px solid var(--ws-hairline)',
+                        background: 'var(--ws-surface)',
+                        fontSize: 12,
+                      }}
+                    >
+                      <p style={{ margin: '0 0 2px', fontWeight: 700, color: 'var(--ws-text-2)' }}>{field}</p>
+                      <span style={{ color: TONES.red.tx, textDecoration: 'line-through' }}>{change.old ?? '—'}</span>
+                      <span style={{ margin: '0 4px', color: 'var(--ws-text-2)' }}>←</span>
+                      <span style={{ color: TONES.green.tx, fontWeight: 700 }}>{change.new ?? '—'}</span>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            ))}
+            {preview.students_with_changes > updatedStudents.length && (
+              <p
+                style={{
+                  margin: 0,
+                  padding: '6px 10px',
+                  borderRadius: 7,
+                  border: `1px dashed ${TONES.amber.bd}`,
+                  textAlign: 'center',
+                  fontSize: 12,
+                  color: TONES.amber.tx,
+                }}
+              >
+                + {ar(preview.students_with_changes - updatedStudents.length)} سجل إضافي
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {preview.to_be_deleted_count > 0 && (
+        <div>
+          <SectionTitle tone={TONES.red}>مرشحون للحذف ({ar(preview.to_be_deleted_count)})</SectionTitle>
+          <div style={tableWrap}>
+            <WsTable>
+              <thead>
+                <tr>
+                  <th>الاسم</th>
+                  <th>الصف</th>
+                  <th>الفصل</th>
+                  <th>آخر تحديث</th>
+                </tr>
+              </thead>
+              <tbody>
+                {deletedStudents.map((student) => (
+                  <tr key={`del-${student.id}-${student.name}`}>
+                    <td>{student.name}</td>
+                    <td>{student.grade}</td>
+                    <td>{student.class_name}</td>
+                    <td style={{ color: 'var(--ws-text-2)' }}>
+                      {student.updated_at ? new Date(student.updated_at).toLocaleDateString('ar-SA') : '—'}
+                    </td>
+                  </tr>
+                ))}
+                {preview.to_be_deleted_count > deletedStudents.length && (
+                  <tr>
+                    <td colSpan={4} style={{ textAlign: 'center', color: TONES.red.tx, fontSize: 12 }}>
+                      + {ar(preview.to_be_deleted_count - deletedStudents.length)} سجل إضافي
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </WsTable>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── بطاقة نتائج التنفيذ ───────────────────────────────────────────────────
+function ImportSummaryCard({ summary, title }: { summary: ImportSummary; title: string }) {
+  const items = [
+    summary.new_count !== undefined ? { label: 'سجلات جديدة', value: summary.new_count, tone: TONES.green } : null,
+    summary.updated_count !== undefined ? { label: 'تم تحديثها', value: summary.updated_count, tone: TONES.amber } : null,
+    summary.deleted_count !== undefined ? { label: 'تم حذفها', value: summary.deleted_count, tone: TONES.red } : null,
+    summary.skipped_count !== undefined ? { label: 'تم تجاهلها', value: summary.skipped_count, tone: TONES.gray } : null,
+    summary.duplicates_in_file !== undefined && summary.duplicates_in_file > 0
+      ? { label: 'مكررات في الملف', value: summary.duplicates_in_file, tone: TONES.amber }
+      : null,
+    summary.errors_count !== undefined ? { label: 'أخطاء', value: summary.errors_count, tone: summary.errors_count > 0 ? TONES.red : TONES.gray } : null,
+  ].filter(Boolean) as Array<{ label: string; value: number; tone: Tone }>
+
+  return (
+    <article
+      style={{
+        padding: 12,
+        borderRadius: 10,
+        border: `1px solid ${TONES.green.bd}`,
+        background: chip(TONES.green),
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+      }}
+    >
+      <header style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span
+          style={{
+            width: 30,
+            height: 30,
+            borderRadius: 8,
+            background: 'var(--ws-surface)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <CheckSquare style={{ width: 16, height: 16, color: TONES.green.tx }} />
+        </span>
+        <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, flex: 1 }}>{title}</h3>
+        {summary.message && <span style={{ fontSize: 12, color: 'var(--ws-text-2)' }}>{summary.message}</span>}
+      </header>
+
+      {items.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 8 }}>
+          {items.map((item) => (
+            <div
+              key={item.label}
+              style={{
+                padding: '8px 10px',
+                borderRadius: 8,
+                border: '1px solid var(--ws-hairline)',
+                background: 'var(--ws-surface)',
+              }}
+            >
+              <span style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--ws-text)' }}>{item.label}</span>
+              <span
+                style={{
+                  display: 'block',
+                  marginTop: 2,
+                  fontSize: 18,
+                  fontWeight: 800,
+                  color: item.tone.tx,
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {ar(item.value)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {summary.deleted_students && summary.deleted_students.length > 0 && (
+        <section
+          style={{
+            padding: 10,
+            borderRadius: 8,
+            border: `1px solid ${TONES.red.bd}`,
+            background: 'var(--ws-surface)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+          }}
+        >
+          <header style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Trash2 style={{ width: 14, height: 14, color: TONES.red.tx }} />
+            <h4 style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>
+              طلاب تم حذفهم ({ar(summary.deleted_students.length)})
+            </h4>
+          </header>
+          <div style={tableWrap}>
+            <WsTable>
+              <thead>
+                <tr>
+                  <th>الاسم</th>
+                  <th>رقم الهوية</th>
+                  <th>الصف</th>
+                  <th>الفصل</th>
+                </tr>
+              </thead>
+              <tbody>
+                {summary.deleted_students.map((student) => (
+                  <tr key={student.id}>
+                    <td>{student.name}</td>
+                    <td style={{ fontFamily: 'monospace', color: 'var(--ws-text-2)' }}>{student.national_id}</td>
+                    <td>{student.grade}</td>
+                    <td>{student.class_name}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </WsTable>
+          </div>
+          <p style={{ margin: 0, fontSize: 12, color: TONES.red.tx }}>
+            لم يكونوا في الملف المرفوع وتم حذفهم من النظام.
+          </p>
+        </section>
+      )}
+
+      {summary.warnings && summary.warnings.length > 0 && (
+        <WsAlert tone="warn" boxed icon={AlertTriangle}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {summary.warnings.map((warning, index) => (
+              <span key={index}>{warning}</span>
+            ))}
+          </div>
+        </WsAlert>
+      )}
+
+      {summary.errors && summary.errors.length > 0 && (
+        <WsAlert tone="error" boxed>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {summary.errors.map((error, index) => (
+              <span key={`${error}-${index}`}>{error}</span>
+            ))}
+          </div>
+        </WsAlert>
+      )}
+    </article>
+  )
+}
+
+// ─── خيار تنفيذ ────────────────────────────────────────────────────────────
+function OptionCheck({
   label,
-  logo,
-  onClick,
+  desc,
+  danger,
+  checked,
+  onChange,
+  disabled,
 }: {
   label: string
-  logo: string
-  onClick: () => void
+  desc: string
+  danger?: boolean
+  checked: boolean
+  onChange: (value: boolean) => void
+  disabled?: boolean
 }) {
+  return (
+    <label
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 8,
+        padding: '8px 10px',
+        borderRadius: 8,
+        border: `1px solid ${danger ? TONES.red.bd : 'var(--ws-hairline)'}`,
+        background: danger ? chip(TONES.red) : 'var(--ws-surface)',
+        cursor: disabled ? 'default' : 'pointer',
+      }}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        disabled={disabled}
+        style={{ width: 14, height: 14, marginTop: 3, accentColor: danger ? TONES.red.tx : 'var(--ws-accent-2)' }}
+      />
+      <span>
+        <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>{label}</span>
+        <span style={{ display: 'block', fontSize: 12, color: 'var(--ws-text-2)', marginTop: 1 }}>{desc}</span>
+      </span>
+    </label>
+  )
+}
+
+// ─── زر منصة ───────────────────────────────────────────────────────────────
+function PlatformImportButton({ label, logo, onClick }: { label: string; logo: string; onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group flex items-center gap-3 rounded-md border border-slate-200 bg-white p-3 text-right transition hover:border-teal-300 hover:bg-teal-50/20 hover:shadow-sm"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '10px 12px',
+        borderRadius: 8,
+        border: '1px solid var(--ws-hairline)',
+        background: 'var(--ws-surface)',
+        cursor: 'pointer',
+        font: 'inherit',
+        textAlign: 'start',
+        color: 'var(--ws-text)',
+      }}
     >
-      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded bg-white p-1 ring-1 ring-slate-200 transition group-hover:ring-teal-300">
-        <img src={logo} alt={label} className="h-full w-full object-contain" />
-      </div>
-      <p className="text-sm font-bold text-slate-800 group-hover:text-teal-700 flex-1">{label}</p>
-      <ChevronLeft className="h-4 w-4 text-slate-300 transition-transform group-hover:-translate-x-0.5 group-hover:text-teal-500" />
+      <span
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 8,
+          background: '#FFFFFF',
+          border: '1px solid var(--ws-hairline)',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden',
+          padding: 4,
+          flexShrink: 0,
+        }}
+      >
+        <img src={logo} alt={label} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+      </span>
+      <span style={{ flex: 1, fontSize: 13.5, fontWeight: 700 }}>{label}</span>
+      <ChevronLeft style={{ width: 15, height: 15, color: 'var(--ws-text-2)', flexShrink: 0 }} />
     </button>
   )
 }
 
-// ─── Extension Detector ────────────────────────────────────────────────────
+// ─── كاشف إضافة الرَّائِد ──────────────────────────────────────────────────
 function ExtensionDetector() {
   const [isInstalled, setIsInstalled] = useState<boolean | null>(null)
   const CHROME_STORE_URL =
@@ -71,497 +638,154 @@ function ExtensionDetector() {
     }
   }, [isInstalled])
 
-  if (isInstalled === null) {
-    return (
-      <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5">
-        <div className="h-5 w-5 animate-pulse rounded bg-slate-200" />
-        <p className="text-xs text-slate-400">جاري الكشف عن الإضافة...</p>
-      </div>
-    )
-  }
-
-  if (isInstalled) {
-    return (
-      <div className="flex items-center gap-2.5 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2.5">
-        <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded bg-white text-sm font-bold text-slate-900 ring-1 ring-emerald-200">
-          R
-        </div>
-        <div>
-          <p className="text-xs font-bold text-emerald-700">إضافة الرَّائِد مُثبّتة ✓</p>
-          <p className="text-[11px] text-emerald-600">يمكنك الآن الاستيراد التلقائي</p>
-        </div>
-      </div>
-    )
-  }
+  const tone = isInstalled === null ? TONES.gray : isInstalled ? TONES.green : TONES.amber
 
   return (
-    <div className="flex items-center gap-3 rounded-md border border-amber-200 bg-amber-50/60 px-3 py-2.5">
-      <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded bg-white text-sm font-bold text-slate-900 ring-1 ring-amber-200">
-        R
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-bold text-slate-800">إضافة الاستيراد التلقائي</p>
-        <p className="text-[11px] text-amber-700">ثبّت الإضافة للاستيراد المباشر من نور ومدرستي</p>
-      </div>
-      <a
-        href={CHROME_STORE_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex flex-shrink-0 items-center gap-1 rounded border border-amber-300 bg-white px-2.5 py-1 text-xs font-bold text-amber-700 transition hover:bg-amber-50"
-      >
-        <Download className="h-3 w-3" /> تحميل
-      </a>
-    </div>
-  )
-}
-
-// ─── Upload Card ───────────────────────────────────────────────────────────
-function UploadCard({
-  onFileSelected,
-  isLoading,
-  accept,
-  helper,
-  fileName,
-}: {
-  onFileSelected: (file: File) => void
-  isLoading: boolean
-  accept?: string
-  helper?: string
-  fileName?: string | null
-}) {
-  const inputId = useId()
-
-  return (
-    <label
-      htmlFor={inputId}
-      className={`flex cursor-pointer items-center gap-4 rounded-md border px-4 py-3 transition ${fileName
-        ? 'border-teal-300 bg-teal-50/40 hover:bg-teal-50'
-        : 'border-dashed border-slate-300 bg-slate-50/60 hover:border-teal-300 hover:bg-teal-50/20'
-        } ${isLoading ? 'pointer-events-none opacity-60' : ''}`}
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '8px 12px',
+        borderRadius: 8,
+        border: `1px solid ${tone.bd}`,
+        background: chip(tone),
+      }}
     >
-      <input
-        id={inputId}
-        type="file"
-        accept={accept ?? '.xlsx,.xls,.csv'}
-        onChange={(event) => {
-          const file = event.target.files?.[0]
-          if (!file) return
-          onFileSelected(file)
-          event.target.value = ''
-        }}
-        className="hidden"
-        disabled={isLoading}
-      />
       <span
-        className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition ${fileName ? 'bg-teal-100 text-teal-600' : 'bg-slate-100 text-slate-400'
-          }`}
+        style={{
+          width: 30,
+          height: 30,
+          borderRadius: 8,
+          background: 'var(--ws-surface)',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 14,
+          fontWeight: 800,
+          color: tone.tx,
+          flexShrink: 0,
+        }}
       >
-        {isLoading ? (
-          <RefreshCw className="h-4 w-4 animate-spin" />
+        R
+      </span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        {isInstalled === null ? (
+          <span style={{ fontSize: 12.5, color: 'var(--ws-text-2)' }}>جاري الكشف عن الإضافة...</span>
+        ) : isInstalled ? (
+          <>
+            <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: tone.tx }}>إضافة الرَّائِد مُثبّتة ✓</span>
+            <span style={{ display: 'block', fontSize: 12, color: 'var(--ws-text-2)' }}>يمكنك الآن الاستيراد التلقائي</span>
+          </>
         ) : (
-          <FileUp className="h-4 w-4" />
+          <>
+            <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>إضافة الاستيراد التلقائي</span>
+            <span style={{ display: 'block', fontSize: 12, color: tone.tx }}>
+              ثبّت الإضافة للاستيراد المباشر من نور ومدرستي
+            </span>
+          </>
         )}
       </span>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-slate-700 truncate">
-          {isLoading ? 'جارٍ معالجة الملف...' : fileName ? fileName : 'اضغط لاختيار ملف'}
-        </p>
-        <p className="text-[11px] text-slate-400 mt-0.5">{helper ?? 'يدعم Excel و CSV'}</p>
-      </div>
-      {!fileName && !isLoading && (
-        <span className="flex-shrink-0 rounded border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:text-teal-700">
-          اختيار
-        </span>
+      {isInstalled === false && (
+        <a
+          href={CHROME_STORE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '4px 10px',
+            borderRadius: 7,
+            border: `1px solid ${tone.bd}`,
+            background: 'var(--ws-surface)',
+            fontSize: 12,
+            fontWeight: 700,
+            color: tone.tx,
+            textDecoration: 'none',
+            flexShrink: 0,
+          }}
+        >
+          <Download style={{ width: 12, height: 12 }} /> تحميل
+        </a>
       )}
-    </label>
-  )
-}
-
-// ─── Stat Badge ────────────────────────────────────────────────────────────
-function StatBadge({
-  label,
-  value,
-  tone = 'default',
-}: {
-  label: string
-  value: number | string
-  tone?: 'default' | 'success' | 'warn' | 'danger'
-}) {
-  const toneStyles: Record<typeof tone, string> = {
-    default: 'bg-slate-50 text-slate-700 border-slate-200',
-    success: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    warn: 'bg-amber-50 text-amber-700 border-amber-200',
-    danger: 'bg-rose-50 text-rose-700 border-rose-200',
-  }
-
-  return (
-    <div className={`rounded-md border px-3 py-2 ${toneStyles[tone]}`}>
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-      <p className="mt-0.5 text-xl font-bold tabular-nums">
-        {typeof value === 'number' ? value.toLocaleString('en-US') : value}
-      </p>
     </div>
   )
 }
 
-// ─── Student Preview Summary ───────────────────────────────────────────────
-function StudentPreviewSummary({ preview }: { preview: ImportStudentsPreview }) {
-  const stats = useMemo(
-    () => [
-      { label: 'إجمالي', value: preview.total_students },
-      { label: 'جدد', value: preview.new_students_count, tone: 'success' as const },
-      { label: 'تحديث', value: preview.students_with_changes, tone: 'warn' as const },
-      { label: 'حذف', value: preview.to_be_deleted_count, tone: 'danger' as const },
-      {
-        label: 'أخطاء',
-        value: preview.errors_count,
-        tone: preview.errors_count > 0 ? ('danger' as const) : ('default' as const),
-      },
-    ],
-    [preview],
-  )
+// ─── سلّم خطوات الاستيراد (يتتبّع مسار الطلاب) ─────────────────────────────
+function ImportSteps({ dones }: { dones: boolean[] }) {
+  const STEPS = [
+    { label: 'حمّل القالب وعبّئه', sub: 'أو صدّر الملف من نور' },
+    { label: 'ارفع الملف', sub: 'تُعرض معاينة آمنة لا تغيّر شيئاً' },
+    { label: 'راجع الغِطاء والفروقات', sub: 'الجدد والتحديثات ومرشّحو الحذف' },
+    { label: 'نفّذ الاستيراد', sub: 'وستصلك نتائج التنفيذ هنا' },
+  ]
+  const current = dones.findIndex((d) => !d)
 
   return (
-    <div className="grid grid-cols-5 gap-2">
-      {stats.map((item) => (
-        <StatBadge key={item.label} label={item.label} value={item.value} tone={item.tone} />
-      ))}
-    </div>
-  )
-}
-
-// ─── Student Preview Details ───────────────────────────────────────────────
-function StudentPreviewDetails({ preview }: { preview: ImportStudentsPreview }) {
-  const hasUpdates = preview.students_with_changes > 0
-  const hasNew = preview.new_students_count > 0
-  const hasDeletes = preview.to_be_deleted_count > 0
-  const hasErrors = preview.errors_count > 0
-
-  const newStudents = preview.new_students.slice(0, 5)
-  const updatedStudents = preview.existing_students.slice(0, 5)
-  const deletedStudents = preview.to_be_deleted.slice(0, 5)
-
-  return (
-    <div className="space-y-3">
-      {hasErrors && (
-        <article className="rounded-md border border-rose-200 bg-rose-50/60 p-3">
-          <header className="flex items-center gap-2 mb-2">
-            <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />
-            <h3 className="text-xs font-bold text-rose-700">أخطاء حرجة — راجع البيانات</h3>
-            <span className="mr-auto rounded bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-600 border border-rose-200">
-              {preview.errors.length}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {STEPS.map((step, i) => {
+        const state = dones[i] ? 'done' : i === current ? 'current' : 'todo'
+        const tone = state === 'done' ? TONES.green : state === 'current' ? TONES.sky : null
+        return (
+          <div
+            key={step.label}
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 10,
+              padding: '8px 10px',
+              borderRadius: 8,
+              border: tone ? `1px solid ${tone.bd}` : '1px solid var(--ws-hairline)',
+              background: tone ? chip(tone) : 'var(--ws-surface)',
+            }}
+          >
+            <span
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: 8,
+                flexShrink: 0,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 12.5,
+                fontWeight: 800,
+                fontVariantNumeric: 'tabular-nums',
+                background: tone ? 'var(--ws-surface)' : 'transparent',
+                border: tone ? undefined : `1px solid ${TONES.gray.bd}`,
+                color: tone ? tone.tx : 'var(--ws-text-2)',
+              }}
+            >
+              {ar(i + 1)}
             </span>
-          </header>
-          <ul className="space-y-1 text-xs text-rose-700">
-            {preview.errors.map((error, index) => (
-              <li key={`${error}-${index}`} className="rounded bg-white/80 px-3 py-1.5 border border-rose-100">
-                {error}
-              </li>
-            ))}
-          </ul>
-        </article>
-      )}
-
-      {hasNew && (
-        <section className="space-y-1.5">
-          <div className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            <h3 className="text-xs font-bold text-slate-700">
-              طلاب جدد ({preview.new_students_count.toLocaleString('en-US')})
-            </h3>
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700 }}>{step.label}</span>
+              <span style={{ display: 'block', fontSize: 12, color: 'var(--ws-text-2)', marginTop: 1 }}>{step.sub}</span>
+            </span>
           </div>
-          <div className="overflow-x-auto rounded-md border border-slate-200">
-            <table className="min-w-[480px] table-fixed text-right text-xs">
-              <thead className="bg-emerald-50 text-emerald-700 border-b border-emerald-100">
-                <tr>
-                  <th className="px-3 py-2 font-semibold">الاسم</th>
-                  <th className="px-3 py-2 font-semibold">الهوية</th>
-                  <th className="px-3 py-2 font-semibold">الصف</th>
-                  <th className="px-3 py-2 font-semibold">الفصل</th>
-                  <th className="px-3 py-2 font-semibold">هاتف ولي الأمر</th>
-                </tr>
-              </thead>
-              <tbody>
-                {newStudents.map((student) => (
-                  <tr
-                    key={`new-${student.national_id}-${student.name}`}
-                    className="border-t border-slate-100 hover:bg-slate-50"
-                  >
-                    <td className="px-3 py-2 text-slate-700 font-medium">{student.name}</td>
-                    <td className="px-3 py-2 text-slate-400 font-mono">{student.national_id ?? '—'}</td>
-                    <td className="px-3 py-2 text-slate-500">{student.grade}</td>
-                    <td className="px-3 py-2 text-slate-500">{student.class_name}</td>
-                    <td className="px-3 py-2 text-slate-400">{student.parent_phone ?? '—'}</td>
-                  </tr>
-                ))}
-                {preview.new_students_count > newStudents.length && (
-                  <tr className="bg-slate-50">
-                    <td colSpan={5} className="px-3 py-2 text-center text-[11px] text-slate-400">
-                      + {(preview.new_students_count - newStudents.length).toLocaleString('en-US')} طالب إضافي
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
-
-      {hasUpdates && (
-        <section className="space-y-1.5">
-          <div className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-            <h3 className="text-xs font-bold text-slate-700">
-              تعديلات مقترحة ({preview.students_with_changes.toLocaleString('en-US')})
-            </h3>
-          </div>
-          <div className="space-y-2">
-            {updatedStudents.map((item) => (
-              <article key={item.id} className="rounded-md border border-amber-200 bg-amber-50/30 p-3">
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <div>
-                    <p className="text-xs font-bold text-slate-800">{item.current_data.name}</p>
-                    <p className="text-[11px] text-slate-400">
-                      {item.current_data.grade} / {item.current_data.class_name}
-                    </p>
-                  </div>
-                  {item.attendance_count ? (
-                    <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">
-                      {item.attendance_count.toLocaleString('en-US')} سجل
-                    </span>
-                  ) : null}
-                </div>
-                <div className="grid gap-1.5 sm:grid-cols-2">
-                  {Object.entries(item.changes).map(([field, change]) => (
-                    <div
-                      key={field}
-                      className="rounded border border-slate-200 bg-white px-2 py-1.5 text-[11px]"
-                    >
-                      <p className="font-semibold text-slate-500 mb-0.5">{field}</p>
-                      <span className="text-rose-500 line-through">{change.old ?? '—'}</span>
-                      <span className="mx-1 text-slate-300">→</span>
-                      <span className="text-emerald-600 font-semibold">{change.new ?? '—'}</span>
-                    </div>
-                  ))}
-                </div>
-              </article>
-            ))}
-            {preview.students_with_changes > updatedStudents.length && (
-              <p className="rounded border border-dashed border-amber-200 bg-amber-50/40 px-3 py-2 text-center text-xs text-amber-600">
-                + {(preview.students_with_changes - updatedStudents.length).toLocaleString('en-US')} سجل إضافي
-              </p>
-            )}
-          </div>
-        </section>
-      )}
-
-      {hasDeletes && (
-        <section className="space-y-1.5">
-          <div className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-            <h3 className="text-xs font-bold text-slate-700">
-              مرشحون للحذف ({preview.to_be_deleted_count.toLocaleString('en-US')})
-            </h3>
-          </div>
-          <div className="overflow-x-auto rounded-md border border-rose-200">
-            <table className="min-w-[400px] table-fixed text-right text-xs">
-              <thead className="bg-rose-50 text-rose-700 border-b border-rose-100">
-                <tr>
-                  <th className="px-3 py-2 font-semibold">الاسم</th>
-                  <th className="px-3 py-2 font-semibold">الصف</th>
-                  <th className="px-3 py-2 font-semibold">الفصل</th>
-                  <th className="px-3 py-2 font-semibold">آخر تحديث</th>
-                </tr>
-              </thead>
-              <tbody>
-                {deletedStudents.map((student) => (
-                  <tr
-                    key={`del-${student.id}-${student.name}`}
-                    className="border-t border-rose-100 hover:bg-rose-50/40"
-                  >
-                    <td className="px-3 py-2 text-slate-700">{student.name}</td>
-                    <td className="px-3 py-2 text-slate-500">{student.grade}</td>
-                    <td className="px-3 py-2 text-slate-500">{student.class_name}</td>
-                    <td className="px-3 py-2 text-slate-400">
-                      {student.updated_at
-                        ? new Date(student.updated_at).toLocaleDateString('ar-SA')
-                        : '—'}
-                    </td>
-                  </tr>
-                ))}
-                {preview.to_be_deleted_count > deletedStudents.length && (
-                  <tr className="bg-rose-50/40">
-                    <td colSpan={4} className="px-3 py-2 text-center text-[11px] text-rose-400">
-                      + {(preview.to_be_deleted_count - deletedStudents.length).toLocaleString('en-US')} سجل إضافي
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
+        )
+      })}
     </div>
   )
 }
 
-// ─── Import Summary Card ───────────────────────────────────────────────────
-function ImportSummaryCard({ summary, title }: { summary: ImportSummary; title: string }) {
-  const items = [
-    summary.new_count !== undefined
-      ? { label: 'سجلات جديدة', value: summary.new_count, tone: 'success' as const }
-      : null,
-    summary.updated_count !== undefined
-      ? { label: 'تم تحديثها', value: summary.updated_count, tone: 'warn' as const }
-      : null,
-    summary.deleted_count !== undefined
-      ? { label: 'تم حذفها', value: summary.deleted_count, tone: 'danger' as const }
-      : null,
-    summary.skipped_count !== undefined
-      ? { label: 'تم تجاهلها', value: summary.skipped_count, tone: 'default' as const }
-      : null,
-    summary.duplicates_in_file !== undefined && summary.duplicates_in_file > 0
-      ? { label: 'مكررات', value: summary.duplicates_in_file, tone: 'warn' as const }
-      : null,
-    summary.errors_count !== undefined
-      ? { label: 'أخطاء', value: summary.errors_count, tone: 'danger' as const }
-      : null,
-  ].filter(Boolean) as Array<{
-    label: string
-    value: number
-    tone: 'default' | 'success' | 'warn' | 'danger'
-  }>
-
-  return (
-    <article className="rounded-md border border-teal-200 bg-teal-50/40 p-4 space-y-3">
-      <header className="flex items-center gap-2 border-b border-teal-100 pb-3">
-        <CheckSquare className="h-4 w-4 text-teal-600" />
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-wide text-teal-600">ملخص العملية</p>
-          <h3 className="text-sm font-bold text-slate-800">{title}</h3>
-        </div>
-        {summary.message && (
-          <p className="mr-auto text-xs text-slate-400">{summary.message}</p>
-        )}
-      </header>
-
-      {items.length > 0 && (
-        <div className="grid gap-2 grid-cols-3">
-          {items.map((item) => (
-            <StatBadge key={item.label} label={item.label} value={item.value} tone={item.tone} />
-          ))}
-        </div>
-      )}
-
-      {summary.deleted_students && summary.deleted_students.length > 0 && (
-        <section className="rounded-md border border-rose-200 bg-white p-3 space-y-2">
-          <header className="flex items-center gap-2">
-            <Trash2 className="h-3.5 w-3.5 text-rose-600" />
-            <h4 className="text-xs font-bold text-rose-800">
-              طلاب تم حذفهم ({summary.deleted_students.length})
-            </h4>
-          </header>
-          <div className="overflow-x-auto rounded border border-rose-100">
-            <table className="w-full text-xs text-right">
-              <thead className="bg-rose-50 text-rose-700">
-                <tr>
-                  <th className="px-3 py-1.5 font-semibold">الاسم</th>
-                  <th className="px-3 py-1.5 font-semibold">رقم الهوية</th>
-                  <th className="px-3 py-1.5 font-semibold">الصف</th>
-                  <th className="px-3 py-1.5 font-semibold">الفصل</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-rose-100">
-                {summary.deleted_students.map((student) => (
-                  <tr key={student.id} className="hover:bg-rose-50/50">
-                    <td className="px-3 py-1.5 text-slate-700">{student.name}</td>
-                    <td className="px-3 py-1.5 text-slate-400 font-mono">{student.national_id}</td>
-                    <td className="px-3 py-1.5 text-slate-500">{student.grade}</td>
-                    <td className="px-3 py-1.5 text-slate-500">{student.class_name}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="text-[11px] text-rose-500">لم يكونوا في الملف المرفوع وتم حذفهم من النظام</p>
-        </section>
-      )}
-
-      {summary.warnings && summary.warnings.length > 0 && (
-        <section className="rounded-md border border-amber-200 bg-amber-50/40 p-3 space-y-1.5">
-          <header className="flex items-center gap-1.5">
-            <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
-            <h4 className="text-xs font-bold text-amber-800">تنبيهات ({summary.warnings.length})</h4>
-          </header>
-          <ul className="space-y-1 text-xs text-amber-700">
-            {summary.warnings.map((warning, index) => (
-              <li key={index} className="rounded bg-white/80 px-3 py-1.5 border border-amber-100">
-                {warning}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {summary.errors && summary.errors.length > 0 && (
-        <ul className="space-y-1 text-xs text-rose-700">
-          {summary.errors.map((error, index) => (
-            <li key={`${error}-${index}`} className="rounded bg-white/80 px-3 py-1.5 border border-rose-100">
-              {error}
-            </li>
-          ))}
-        </ul>
-      )}
-    </article>
-  )
-}
-
-// ─── Tab Types ─────────────────────────────────────────────────────────────
+// ─── التبويبات ─────────────────────────────────────────────────────────────
 type TabId = 'people' | 'schedules' | 'platforms'
 
-interface TabDef {
-  id: TabId
-  label: string
-  subLabel: string
-  icon: React.ReactNode
-  dotColor: string
-}
-
-const TABS: TabDef[] = [
-  {
-    id: 'people',
-    label: 'الطلاب والمعلمون',
-    subLabel: 'استيراد البيانات',
-    icon: (
-      <span className="flex items-center -space-x-1 rtl:space-x-reverse">
-        <GraduationCap className="h-3.5 w-3.5" />
-        <Users className="h-3.5 w-3.5" />
-      </span>
-    ),
-    dotColor: 'bg-teal-500',
-  },
-  {
-    id: 'schedules',
-    label: 'الجداول',
-    subLabel: 'aSc TimeTable',
-    icon: <Calendar className="h-3.5 w-3.5" />,
-    dotColor: 'bg-emerald-500',
-  },
-  {
-    id: 'platforms',
-    label: 'المنصات',
-    subLabel: 'نور · مدرستي',
-    icon: <Puzzle className="h-3.5 w-3.5" />,
-    dotColor: 'bg-amber-500',
-  },
+const TABS: Array<{ id: TabId; label: string }> = [
+  { id: 'people', label: 'الطلاب والمعلمون' },
+  { id: 'schedules', label: 'الجداول' },
+  { id: 'platforms', label: 'المنصات' },
 ]
 
-// ─── Main Page ─────────────────────────────────────────────────────────────
+// ─── الصفحة ────────────────────────────────────────────────────────────────
 export function AdminImportPage() {
   const showToast = useToast()
   const [activeTab, setActiveTab] = useState<TabId>('people')
 
-  // Students state
+  // حالة الطلاب
   const [studentFile, setStudentFile] = useState<File | null>(null)
   const [studentPreview, setStudentPreview] = useState<ImportStudentsPreview | null>(null)
   const [studentOptions, setStudentOptions] = useState(() => ({
@@ -571,7 +795,7 @@ export function AdminImportPage() {
   const [studentError, setStudentError] = useState<string | null>(null)
   const [studentImportSummary, setStudentImportSummary] = useState<ImportSummary | null>(null)
 
-  // Teachers state
+  // حالة المعلمين
   const [teacherFile, setTeacherFile] = useState<File | null>(null)
   const [teacherSummary, setTeacherSummary] = useState<ImportTeachersSummary | null>(null)
   const [teacherError, setTeacherError] = useState<string | null>(null)
@@ -618,8 +842,7 @@ export function AdminImportPage() {
       },
       {
         onSuccess: (summary) => setStudentImportSummary(summary),
-        onError: () =>
-          setStudentError('حدث خطأ أثناء تنفيذ الاستيراد. حاول مجددًا.'),
+        onError: () => setStudentError('حدث خطأ أثناء تنفيذ الاستيراد. حاول مجددًا.'),
       },
     )
   }
@@ -640,8 +863,7 @@ export function AdminImportPage() {
     formData.append('file', teacherFile)
     importTeachersMutation.mutate(formData, {
       onSuccess: (summary) => setTeacherSummary(summary),
-      onError: () =>
-        setTeacherError('تعذر استيراد البيانات. تأكد من القالب أو أعد المحاولة.'),
+      onError: () => setTeacherError('تعذر استيراد البيانات. تأكد من القالب أو أعد المحاولة.'),
     })
   }
 
@@ -656,397 +878,417 @@ export function AdminImportPage() {
   const isStudentBusy = previewStudentsMutation.isPending || importStudentsMutation.isPending
   const isTeacherBusy = importTeachersMutation.isPending
 
-  return (
-    <section className="space-y-4">
-      {/* ── Page Header ── */}
-      <header className="flex flex-wrap items-end justify-between gap-2 border-b border-slate-200 pb-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">استيراد البيانات</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            رفع ملفات Excel أو CSV مع معاينة ذكية قبل التنفيذ
-          </p>
-        </div>
-        <div className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5">
-          <UploadCloud className="h-3.5 w-3.5 text-slate-400" />
-          <span className="text-xs font-semibold text-slate-500">يدعم XLSX · CSV · XML</span>
-        </div>
-      </header>
+  const stepDones = [
+    Boolean(studentFile),
+    Boolean(studentPreview),
+    Boolean(studentImportSummary),
+    Boolean(studentImportSummary),
+  ]
 
-      {/* ── Improved Tab Navigation (Pill Style) ── */}
-      <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-100/70 p-1">
-        {TABS.map((tab) => {
-          const isActive = activeTab === tab.id
-          return (
+  return (
+    <WsPage className="ws-rich">
+      <WsHeader
+        title="استيراد البيانات"
+        badge="معاينة قبل التنفيذ"
+        facts={
+          <WsFact icon={UploadCloud} label="الصيغ المدعومة">
+            XLSX · CSV · XML
+          </WsFact>
+        }
+      />
+
+      <WsToolbar>
+        <div className="ws-seg" style={{ display: 'flex', flex: 1, maxWidth: 480 }}>
+          {TABS.map((tab) => (
             <button
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`relative flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-all ${isActive
-                ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80'
-                : 'text-slate-500 hover:text-slate-700'
-                }`}
+              className={`ws-seg__btn ${activeTab === tab.id ? 'is-active' : ''}`}
+              style={{ flex: 1, justifyContent: 'center' }}
             >
-              {/* Active dot indicator */}
-              {isActive && (
-                <span className={`absolute right-2 top-2 h-1.5 w-1.5 rounded-full ${tab.dotColor}`} />
-              )}
-              <span className={isActive ? 'text-slate-600' : 'text-slate-400'}>{tab.icon}</span>
-              <span className="hidden sm:inline">{tab.label}</span>
-              <span className="sm:hidden">{tab.label.split(' و')[0]}</span>
+              {tab.label}
             </button>
-          )
-        })}
-      </div>
+          ))}
+        </div>
+      </WsToolbar>
 
-      {/* ══════════════════════════════════════════════════════════════
-          TAB: الطلاب والمعلمون — Side by Side
-      ══════════════════════════════════════════════════════════════ */}
-      {activeTab === 'people' && (
-        <div className="grid gap-4 lg:grid-cols-2">
-
-          {/* ── Students Column ── */}
-          <div className="rounded-lg border border-slate-200 bg-white shadow-sm flex flex-col">
-            {/* Header */}
-            <header className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 bg-slate-50/50 rounded-t-lg">
-              <div className="flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-teal-50 border border-teal-200">
-                  <GraduationCap className="h-3.5 w-3.5 text-teal-600" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-teal-600">الطلاب</p>
-                  <h2 className="text-sm font-bold text-slate-800 leading-tight">استيراد ملفات الطلاب</h2>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => downloadStudentsTemplateMutation.mutate()}
-                disabled={downloadStudentsTemplateMutation.isPending}
-                className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-teal-300 hover:text-teal-700"
+      <WsLayout>
+        <WsMain>
+          {activeTab === 'people' && (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+                gap: 10,
+                alignItems: 'start',
+              }}
+            >
+              {/* ── عمود الطلاب ── */}
+              <WsBlock
+                title="الطلاب"
+                icon={GraduationCap}
+                tools={
+                  <WsBtn
+                    size="sm"
+                    icon={Download}
+                    onClick={() => downloadStudentsTemplateMutation.mutate()}
+                    disabled={downloadStudentsTemplateMutation.isPending}
+                  >
+                    القالب
+                  </WsBtn>
+                }
+                padded
               >
-                <Download className="h-3 w-3" /> قالب
-              </button>
-            </header>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <p style={{ margin: 0, fontSize: 12.5, color: 'var(--ws-text-2)' }}>
+                    المعاينة لا تحدّث بيانات — راجع النتائج ثم نفّذ الاستيراد.
+                  </p>
 
-            {/* Body */}
-            <div className="flex-1 p-4 space-y-3">
-              <p className="text-xs text-slate-400">
-                المعاينة لا تحدث بيانات — راجع النتائج ثم نفّذ الاستيراد.
-              </p>
+                  <UploadCard
+                    onFileSelected={handleStudentFileSelected}
+                    isLoading={previewStudentsMutation.isPending}
+                    helper="XLSX / CSV · حتى 10MB"
+                    fileName={studentFile?.name}
+                  />
 
-              <UploadCard
-                onFileSelected={handleStudentFileSelected}
-                isLoading={previewStudentsMutation.isPending}
-                helper="XLSX / CSV · حتى 10MB"
-                fileName={studentFile?.name}
-              />
+                  {studentError && (
+                    <WsAlert tone="error" boxed icon={AlertTriangle}>
+                      {studentError}
+                    </WsAlert>
+                  )}
 
-              {studentError && (
-                <div className="flex items-center gap-2 rounded-md border border-rose-200 bg-rose-50/60 px-3 py-2.5 text-xs font-semibold text-rose-700">
-                  <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
-                  {studentError}
-                </div>
-              )}
+                  {studentPreview && (
+                    <>
+                      {/* «الغِطاء» — الملف غطاءٌ، ومن لم يغطّه سقط */}
+                      <ImportCover preview={studentPreview} armed={studentOptions.delete_missing} />
+                      <StudentPreviewSummary preview={studentPreview} />
 
-              {studentPreview && (
-                <section className="space-y-3">
-                  {/* «الغِطاء» — الملف غطاءٌ، ومن لم يغطّه سقط. يفضح لغم القالب
-                      بنفس الهندسة: ملف لا يُقرأ = غطاء صفر = السجل كله منكشف */}
-                  <ImportCover preview={studentPreview} armed={studentOptions.delete_missing} />
-                  <StudentPreviewSummary preview={studentPreview} />
-
-                  {/* Options */}
-                  <div className="rounded-md border border-slate-200 bg-slate-50/50 p-3 space-y-2">
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
-                      خيارات التنفيذ
-                    </p>
-                    <div className="space-y-1.5">
-                      <label className="flex items-start gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 cursor-pointer hover:border-teal-200 transition text-xs">
-                        <input
-                          type="checkbox"
-                          className="mt-0.5 h-3.5 w-3.5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                      <div
+                        style={{
+                          padding: 10,
+                          borderRadius: 8,
+                          border: '1px solid var(--ws-hairline)',
+                          background: 'var(--ws-surface-2)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 6,
+                        }}
+                      >
+                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ws-text-2)' }}>خيارات التنفيذ</span>
+                        <OptionCheck
+                          label="تحديث السجلات الموجودة"
+                          desc="تحديث بيانات الطلاب الحاليين وفق الملف"
                           checked={studentOptions.update_existing}
-                          onChange={(e) =>
-                            setStudentOptions((prev) => ({ ...prev, update_existing: e.target.checked }))
-                          }
+                          onChange={(v) => setStudentOptions((prev) => ({ ...prev, update_existing: v }))}
                           disabled={isStudentBusy}
                         />
-                        <div>
-                          <p className="font-bold text-slate-700">تحديث السجلات الموجودة</p>
-                          <p className="text-[11px] text-slate-400 mt-0.5">تحديث بيانات الطلاب الحاليين وفق الملف</p>
-                        </div>
-                      </label>
-                      <label className="flex items-start gap-2 rounded-md border border-rose-200 bg-rose-50/30 px-3 py-2 cursor-pointer hover:border-rose-300 transition text-xs">
-                        <input
-                          type="checkbox"
-                          className="mt-0.5 h-3.5 w-3.5 rounded border-rose-300 text-rose-600 focus:ring-rose-500"
+                        <OptionCheck
+                          label="حذف السجلات غير الموجودة"
+                          desc="يقتلع من لم يذكرهم الملف — تأكد أن الملف يشمل جميع الطلاب"
+                          danger
                           checked={studentOptions.delete_missing}
-                          onChange={(e) =>
-                            setStudentOptions((prev) => ({ ...prev, delete_missing: e.target.checked }))
-                          }
+                          onChange={(v) => setStudentOptions((prev) => ({ ...prev, delete_missing: v }))}
                           disabled={isStudentBusy}
                         />
-                        <div>
-                          <p className="font-bold text-slate-700">حذف السجلات غير الموجودة</p>
-                          <p className="text-[11px] text-slate-400 mt-0.5">تأكد أن الملف يحتوي على جميع الطلاب</p>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 2 }}>
+                          <WsBtn
+                            size="sm"
+                            icon={RefreshCw}
+                            onClick={() => {
+                              setStudentPreview(null)
+                              setStudentImportSummary(null)
+                              setStudentFile(null)
+                            }}
+                            disabled={isStudentBusy}
+                          >
+                            إعادة
+                          </WsBtn>
+                          <WsBtn
+                            size="sm"
+                            variant="primary"
+                            icon={UploadCloud}
+                            onClick={handleStudentImport}
+                            disabled={isStudentBusy || !studentPreview}
+                          >
+                            {importStudentsMutation.isPending ? 'جارٍ التنفيذ...' : 'تنفيذ الاستيراد'}
+                          </WsBtn>
                         </div>
-                      </label>
-                    </div>
-                    <div className="flex items-center justify-end gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => { setStudentPreview(null); setStudentImportSummary(null); setStudentFile(null) }}
-                        disabled={isStudentBusy}
-                        className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition"
-                      >
-                        <RefreshCw className="h-3 w-3" /> إعادة
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleStudentImport}
-                        disabled={isStudentBusy || !studentPreview}
-                        className="inline-flex items-center gap-1 rounded bg-teal-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-teal-700 disabled:opacity-50 transition"
-                      >
-                        <UploadCloud className="h-3 w-3" />
-                        {importStudentsMutation.isPending ? 'جارٍ التنفيذ...' : 'تنفيذ الاستيراد'}
-                      </button>
-                    </div>
-                  </div>
-
-                  <StudentPreviewDetails preview={studentPreview} />
-                </section>
-              )}
-
-              {studentImportSummary && (
-                <ImportSummaryCard summary={studentImportSummary} title="نتائج استيراد الطلاب" />
-              )}
-            </div>
-          </div>
-
-          {/* ── Teachers Column ── */}
-          <div className="rounded-lg border border-slate-200 bg-white shadow-sm flex flex-col">
-            {/* Header */}
-            <header className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 bg-slate-50/50 rounded-t-lg">
-              <div className="flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-indigo-50 border border-indigo-200">
-                  <Users className="h-3.5 w-3.5 text-indigo-600" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-indigo-600">المعلمون</p>
-                  <h2 className="text-sm font-bold text-slate-800 leading-tight">استيراد ملفات المعلمين</h2>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => downloadTeachersTemplateMutation.mutate()}
-                disabled={downloadTeachersTemplateMutation.isPending}
-                className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-indigo-300 hover:text-indigo-700"
-              >
-                <Download className="h-3 w-3" /> قالب
-              </button>
-            </header>
-
-            {/* Body */}
-            <div className="flex-1 p-4 space-y-3">
-              <p className="text-xs text-slate-400">
-                سيتم إنشاء الحسابات الجديدة وإرجاع كلمات المرور المؤقتة إن وُجدت.
-              </p>
-
-              <UploadCard
-                onFileSelected={handleTeacherFileSelected}
-                isLoading={isTeacherBusy}
-                helper="الاسم · الهوية · البريد · الجوال · التخصص"
-                fileName={teacherFile?.name}
-              />
-
-              {teacherError && (
-                <div className="flex items-center gap-2 rounded-md border border-rose-200 bg-rose-50/60 px-3 py-2.5 text-xs font-semibold text-rose-700">
-                  <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
-                  {teacherError}
-                </div>
-              )}
-
-              <div className="flex items-center justify-end gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => { setTeacherFile(null); setTeacherSummary(null) }}
-                  disabled={isTeacherBusy}
-                  className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition"
-                >
-                  <RefreshCw className="h-3 w-3" /> إعادة تعيين
-                </button>
-                <button
-                  type="button"
-                  onClick={handleTeacherImport}
-                  disabled={isTeacherBusy || !teacherFile}
-                  className="inline-flex items-center gap-1 rounded bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-700 disabled:opacity-50 transition"
-                >
-                  <UploadCloud className="h-3 w-3" />
-                  {isTeacherBusy ? 'جارٍ الاستيراد...' : 'تنفيذ الاستيراد'}
-                </button>
-              </div>
-
-              {teacherSummary && (
-                <div className="space-y-3">
-                  <ImportSummaryCard summary={teacherSummary} title="نتائج استيراد المعلمين" />
-
-                  {teacherSummary.credentials && teacherSummary.credentials.length > 0 && (
-                    <article className="rounded-md border border-slate-200 bg-white p-4 space-y-3">
-                      <header className="flex items-center justify-between border-b border-slate-100 pb-2">
-                        <div>
-                          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                            حسابات جديدة
-                          </p>
-                          <h3 className="text-sm font-bold text-slate-800">كلمات المرور المؤقتة</h3>
-                        </div>
-                        <span className="rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-bold text-slate-500">
-                          {teacherSummary.credentials.length.toLocaleString('en-US')}
-                        </span>
-                      </header>
-                      <div className="overflow-x-auto rounded-md border border-slate-200">
-                        <table className="min-w-[300px] table-fixed text-right text-xs">
-                          <thead className="bg-slate-50 border-b border-slate-200">
-                            <tr>
-                              <th className="px-3 py-2 font-semibold text-slate-500">رقم الهوية</th>
-                              <th className="px-3 py-2 font-semibold text-slate-500">كلمة المرور</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {teacherSummary.credentials.map((credential) => (
-                              <tr
-                                key={`${credential.national_id}-${credential.password}`}
-                                className="border-t border-slate-100 hover:bg-slate-50"
-                              >
-                                <td className="px-3 py-2 text-slate-700">{credential.national_id}</td>
-                                <td className="px-3 py-2 text-slate-500 font-mono">{credential.password}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
                       </div>
-                      <p className="text-[11px] text-slate-400">
-                        رقم الهوية يُستخدم كاسم مستخدم، ويمكن تغيير كلمة المرور بعد أول دخول.
-                      </p>
-                    </article>
+
+                      <StudentPreviewDetails preview={studentPreview} />
+                    </>
+                  )}
+
+                  {studentImportSummary && (
+                    <ImportSummaryCard summary={studentImportSummary} title="نتائج استيراد الطلاب" />
                   )}
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+              </WsBlock>
 
-      {/* ══════════════════════════════════════════════════════════════
-          TAB: الجداول
-      ══════════════════════════════════════════════════════════════ */}
-      {activeTab === 'schedules' && (
-        <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
-          <header className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 bg-slate-50/50 rounded-t-lg">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-50 border border-emerald-200">
-                <Calendar className="h-3.5 w-3.5 text-emerald-600" />
-              </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-600">جداول الحصص</p>
-                <h2 className="text-sm font-bold text-slate-800">استيراد من aSc TimeTable</h2>
-              </div>
+              {/* ── عمود المعلمين ── */}
+              <WsBlock
+                title="المعلمون"
+                icon={Users}
+                tools={
+                  <WsBtn
+                    size="sm"
+                    icon={Download}
+                    onClick={() => downloadTeachersTemplateMutation.mutate()}
+                    disabled={downloadTeachersTemplateMutation.isPending}
+                  >
+                    القالب
+                  </WsBtn>
+                }
+                padded
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <p style={{ margin: 0, fontSize: 12.5, color: 'var(--ws-text-2)' }}>
+                    سيتم إنشاء الحسابات الجديدة وإرجاع كلمات المرور المؤقتة إن وُجدت.
+                  </p>
+
+                  <UploadCard
+                    onFileSelected={handleTeacherFileSelected}
+                    isLoading={isTeacherBusy}
+                    helper="الاسم · الهوية · البريد · الجوال · التخصص"
+                    fileName={teacherFile?.name}
+                  />
+
+                  {teacherError && (
+                    <WsAlert tone="error" boxed icon={AlertTriangle}>
+                      {teacherError}
+                    </WsAlert>
+                  )}
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                    <WsBtn
+                      size="sm"
+                      icon={RefreshCw}
+                      onClick={() => {
+                        setTeacherFile(null)
+                        setTeacherSummary(null)
+                      }}
+                      disabled={isTeacherBusy}
+                    >
+                      إعادة تعيين
+                    </WsBtn>
+                    <WsBtn
+                      size="sm"
+                      variant="primary"
+                      icon={UploadCloud}
+                      onClick={handleTeacherImport}
+                      disabled={isTeacherBusy || !teacherFile}
+                    >
+                      {isTeacherBusy ? 'جارٍ الاستيراد...' : 'تنفيذ الاستيراد'}
+                    </WsBtn>
+                  </div>
+
+                  {teacherSummary && (
+                    <>
+                      <ImportSummaryCard summary={teacherSummary} title="نتائج استيراد المعلمين" />
+
+                      {teacherSummary.credentials && teacherSummary.credentials.length > 0 && (
+                        <div
+                          style={{
+                            padding: 10,
+                            borderRadius: 8,
+                            border: `1px solid ${TONES.amber.bd}`,
+                            background: chip(TONES.amber),
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 6,
+                          }}
+                        >
+                          <header style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <KeyRound style={{ width: 14, height: 14, color: TONES.amber.tx }} />
+                            <h4 style={{ margin: 0, fontSize: 13, fontWeight: 700, flex: 1 }}>
+                              كلمات المرور المؤقتة ({ar(teacherSummary.credentials.length)})
+                            </h4>
+                          </header>
+                          <div style={{ ...tableWrap, background: 'var(--ws-surface)' }}>
+                            <WsTable>
+                              <thead>
+                                <tr>
+                                  <th>رقم الهوية</th>
+                                  <th>كلمة المرور</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {teacherSummary.credentials.map((credential) => (
+                                  <tr key={`${credential.national_id}-${credential.password}`}>
+                                    <td>{credential.national_id}</td>
+                                    <td style={{ fontFamily: 'monospace' }}>{credential.password}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </WsTable>
+                          </div>
+                          <p style={{ margin: 0, fontSize: 12, color: 'var(--ws-text-2)' }}>
+                            رقم الهوية يُستخدم اسمَ مستخدم — انسخ الكلمات الآن فلن تُعرض مرة أخرى.
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </WsBlock>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsTimeTableDialogOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-700"
+          )}
+
+          {activeTab === 'schedules' && (
+            <WsBlock
+              title="استيراد من aSc TimeTable"
+              icon={Calendar}
+              tools={
+                <WsBtn size="sm" variant="primary" icon={UploadCloud} onClick={() => setIsTimeTableDialogOpen(true)}>
+                  استيراد جدول
+                </WsBtn>
+              }
+              padded
             >
-              <UploadCloud className="h-3.5 w-3.5" /> استيراد جدول
-            </button>
-          </header>
-
-          <div className="p-4 space-y-4">
-            <p className="text-xs text-slate-500">
-              استيراد جداول الحصص من برنامج aSc TimeTable بصيغة XML مع مطابقة ذكية للمعلمين والمواد.
-            </p>
-
-            <div className="flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 p-3">
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md bg-emerald-100">
-                <Calendar className="h-5 w-5 text-emerald-600" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-slate-800">aSc TimeTable XML</p>
-                <p className="text-xs text-slate-400">ملفات XML بترميز windows-1256 (عربي)</p>
-              </div>
-            </div>
-
-            <div className="rounded-md border border-slate-200 bg-slate-50/50 p-4">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-2">مميزات الاستيراد</p>
-              <ul className="space-y-1.5 text-xs text-slate-600">
-                {[
-                  'دعم ملفات XML بترميز windows-1256 (العربية)',
-                  'مطابقة ذكية للمعلمين والمواد مع النظام',
-                  'تحويل أسماء الفصول تلقائياً (أول 1 → الصف الأول / 1)',
-                  'إمكانية استبدال الحصص القديمة أو الإضافة عليها',
-                ].map((item) => (
-                  <li key={item} className="flex items-start gap-2">
-                    <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-emerald-500" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ══════════════════════════════════════════════════════════════
-          TAB: المنصات
-      ══════════════════════════════════════════════════════════════ */}
-      {activeTab === 'platforms' && (
-        <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
-          <header className="flex items-center gap-2 border-b border-slate-100 px-4 py-3 bg-slate-50/50 rounded-t-lg">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-amber-50 border border-amber-200">
-              <Puzzle className="h-3.5 w-3.5 text-amber-600" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wide text-amber-600">استيراد سريع</p>
-              <h2 className="text-sm font-bold text-slate-800">الاستيراد من المنصات التعليمية</h2>
-            </div>
-          </header>
-
-          <div className="p-4 space-y-3">
-            <p className="text-xs text-slate-500">
-              اختر المنصة للاستيراد المباشر — يتطلب تثبيت إضافة الرَّائِد على Chrome.
-            </p>
-
-            <ExtensionDetector />
-
-            <div className="grid gap-2 sm:grid-cols-2">
-              <PlatformImportButton
-                label="استيراد من نظام نور"
-                logo="https://noor.moe.gov.sa/Noor/images/home_login/noor_logo.png"
-                onClick={() => handlePlatformImport('noor')}
-              />
-              <PlatformImportButton
-                label="استيراد من منصة مدرستي"
-                logo="https://object.moe.gov.sa/nasaq/edu/files/logo-2-638593241344546491.png"
-                onClick={() => handlePlatformImport('madrasati')}
-              />
-            </div>
-
-            <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50/40 p-3">
-              <AlertTriangle className="h-4 w-4 flex-shrink-0 text-amber-500 mt-0.5" />
-              <div>
-                <p className="text-xs font-bold text-amber-800">يتطلب إضافة المتصفح</p>
-                <p className="text-xs text-amber-700 mt-0.5">
-                  للاستيراد التلقائي من المنصات يجب تثبيت إضافة الرَّائِد على متصفح Google Chrome
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <p style={{ margin: 0, fontSize: 12.5, color: 'var(--ws-text-2)' }}>
+                  استيراد جداول الحصص من برنامج aSc TimeTable بصيغة XML مع مطابقة ذكية للمعلمين والمواد.
                 </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* ── TimeTable Dialog ── */}
-      <TimeTableImportDialog
-        isOpen={isTimeTableDialogOpen}
-        onClose={() => setIsTimeTableDialogOpen(false)}
-      />
-    </section>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: `1px solid ${TONES.green.bd}`,
+                    background: chip(TONES.green),
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 30,
+                      height: 30,
+                      borderRadius: 8,
+                      background: 'var(--ws-surface)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Calendar style={{ width: 16, height: 16, color: TONES.green.tx }} />
+                  </span>
+                  <span>
+                    <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700 }}>aSc TimeTable XML</span>
+                    <span style={{ display: 'block', fontSize: 12, color: 'var(--ws-text-2)' }}>
+                      ملفات XML بترميز windows-1256 (عربي)
+                    </span>
+                  </span>
+                </div>
+
+                <div
+                  style={{
+                    padding: 12,
+                    borderRadius: 8,
+                    border: '1px solid var(--ws-hairline)',
+                    background: 'var(--ws-surface-2)',
+                  }}
+                >
+                  <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: 'var(--ws-text-2)' }}>
+                    مميزات الاستيراد
+                  </p>
+                  <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    {[
+                      'دعم ملفات XML بترميز windows-1256 (العربية)',
+                      'مطابقة ذكية للمعلمين والمواد مع النظام',
+                      'تحويل أسماء الفصول تلقائياً (أول 1 ← الصف الأول / 1)',
+                      'إمكانية استبدال الحصص القديمة أو الإضافة عليها',
+                    ].map((item) => (
+                      <li key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, fontSize: 13 }}>
+                        <span
+                          style={{
+                            width: 7,
+                            height: 7,
+                            borderRadius: '50%',
+                            background: TONES.green.tx,
+                            flexShrink: 0,
+                            marginTop: 5,
+                          }}
+                        />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </WsBlock>
+          )}
+
+          {activeTab === 'platforms' && (
+            <WsBlock title="الاستيراد من المنصات التعليمية" icon={Puzzle} padded>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <p style={{ margin: 0, fontSize: 12.5, color: 'var(--ws-text-2)' }}>
+                  اختر المنصة للاستيراد المباشر — يتطلب تثبيت إضافة الرَّائِد على Chrome.
+                </p>
+
+                <ExtensionDetector />
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 }}>
+                  <PlatformImportButton
+                    label="استيراد من نظام نور"
+                    logo="https://noor.moe.gov.sa/Noor/images/home_login/noor_logo.png"
+                    onClick={() => handlePlatformImport('noor')}
+                  />
+                  <PlatformImportButton
+                    label="استيراد من منصة مدرستي"
+                    logo="https://object.moe.gov.sa/nasaq/edu/files/logo-2-638593241344546491.png"
+                    onClick={() => handlePlatformImport('madrasati')}
+                  />
+                </div>
+
+                <WsAlert tone="warn" boxed icon={AlertTriangle}>
+                  للاستيراد التلقائي من المنصات يجب تثبيت إضافة الرَّائِد على متصفح Google Chrome.
+                </WsAlert>
+              </div>
+            </WsBlock>
+          )}
+        </WsMain>
+
+        {/* الدليل — سلّم الخطوات الحيّ وتحذيرات ما قبل التنفيذ */}
+        <WsSideCol side="end" title="الدليل" icon={Info} storageKey="ws:import:sidecol" width={300}>
+          <WsBlock title="خطوات الاستيراد" icon={ListChecks} padded>
+            <ImportSteps dones={stepDones} />
+            <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--ws-text-2)' }}>
+              السلّم يتتبّع مسار استيراد الطلاب في هذه الجلسة.
+            </p>
+          </WsBlock>
+
+          <WsBlock title="قبل أن تنفّذ" icon={AlertTriangle} padded fill scroll>
+            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {[
+                { tone: TONES.green, text: 'المعاينة آمنة تماماً — لا تغيّر بيانات النظام.' },
+                { tone: TONES.red, text: 'خيار «حذف السجلات غير الموجودة» يقتلع كل من لم يذكرهم الملف، ومعهم سجلات حضورهم.' },
+                { tone: TONES.amber, text: 'كلمات مرور المعلمين الجدد تظهر مرة واحدة بعد التنفيذ — انسخها فوراً.' },
+                { tone: TONES.sky, text: 'استيراد الجداول يعرض شاشة مطابقة للمعلمين والمواد قبل أي حفظ.' },
+              ].map((item) => (
+                <li key={item.text} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                  <span
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background: item.tone.tx,
+                      flexShrink: 0,
+                      marginTop: 5,
+                    }}
+                  />
+                  <span style={{ fontSize: 12.5, lineHeight: 1.7 }}>{item.text}</span>
+                </li>
+              ))}
+            </ul>
+          </WsBlock>
+        </WsSideCol>
+      </WsLayout>
+
+      <TimeTableImportDialog isOpen={isTimeTableDialogOpen} onClose={() => setIsTimeTableDialogOpen(false)} />
+    </WsPage>
   )
 }
