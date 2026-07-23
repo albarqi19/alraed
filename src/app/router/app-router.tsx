@@ -65,6 +65,7 @@ const TeacherSessionAttendancePage = lazyNamed(() => import('@/modules/teacher/p
 
 // ── الأدمن: إدارة المدرسة ──
 const AdminDashboardPage = lazyNamed(() => import('@/modules/admin/pages/admin-dashboard-page'), 'AdminDashboardPage')
+const AdminDashboardV2Page = lazyNamed(() => import('@/modules/admin/pages/admin-dashboard-v2-page'), 'AdminDashboardV2Page')
 const AdminSubjectsPage = lazyNamed(() => import('@/modules/admin/pages/admin-subjects-page'), 'AdminSubjectsPage')
 const AdminSchedulesPage = lazyNamed(() => import('@/modules/admin/pages/admin-schedules-page'), 'AdminSchedulesPage')
 const AdminImportPage = lazyNamed(() => import('@/modules/admin/pages/admin-import-page'), 'AdminImportPage')
@@ -281,6 +282,7 @@ const appRoutes = [
         children: [
           { index: true, element: <Navigate to="/admin/dashboard" replace /> },
           { path: 'dashboard', element: <AdminDashboardPage /> },
+          { path: 'dashboard-v2', element: <AdminDashboardV2Page /> },
           { path: 'teachers', element: <AdminTeachersPage /> },
           { path: 'teacher-profile', element: <AdminTeacherProfilePage /> },
           { path: 'teacher-profile/:teacherId', element: <AdminTeacherProfilePage /> },

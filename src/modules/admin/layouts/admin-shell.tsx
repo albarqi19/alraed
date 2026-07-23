@@ -169,6 +169,8 @@ export function AdminShell() {
 
     // التحقق من أن الصفحة الحالية متاحة
     const currentPath = location.pathname
+    // نسخة العرض البصرية لنظرة عامة — ليست في القوائم فنستثنيها من الحارس
+    if (currentPath === '/admin/dashboard-v2') return
     const isPageAvailable = allAvailablePages.some(page => {
       // للصفحات التي لها exact match
       if (page === '/admin/dashboard') {
