@@ -4,13 +4,13 @@ import {
   BookOpen,
   CalendarOff,
   Layers,
-  ListChecks,
   Pen,
   Plus,
   RefreshCw,
   Search,
   Trash2,
   Unplug,
+  X,
 } from 'lucide-react'
 import {
   useCreateSubjectMutation,
@@ -36,6 +36,8 @@ import {
   WsIconBtn,
   WsAlert,
   WsEmpty,
+  WsFactsList,
+  WsFactRow,
   TONES,
   ToneChip,
 } from '@/shared/workspace'
@@ -61,6 +63,7 @@ export function AdminSubjectsPage() {
   const [editingSubject, setEditingSubject] = useState<SubjectRecord | null>(null)
   const [form, setForm] = useState<SubjectFormValues>(EMPTY_FORM)
   const [pendingDelete, setPendingDelete] = useState<SubjectRecord | null>(null)
+  const [selectedId, setSelectedId] = useState<number | null>(null)
 
   const { data, isLoading, isFetching, isError, refetch } = useSubjectsWithMetaQuery()
 
@@ -108,48 +111,17 @@ export function AdminSubjectsPage() {
   )
   const activeCount = useMemo(() => subjects.filter((s) => s.status === 'active').length, [subjects])
 
-  /**
-   * نداء المواد — القسم الثاني: يسمّي المحتاجة بدل أن يَعُدّها فقط.
-   * غير النشطة لا تُنادى على «بلا حصص» — غيابها عن الجدول مقصود.
-   */
-  const callRows = useMemo(() => {
-    const rows: Array<{
-      key: string
-      label: string
-      sub: string
-      icon: typeof Unplug
-      count?: number
-      tone: (typeof TONES)['amber']
-    }> = []
-    if (!curriculumBlind) {
-      for (const s of subjects) {
-        const grades = s.weight?.grades ?? []
-        const gaps = grades.filter((g) => !g.has_curriculum).length
-        if (gaps > 0) {
-          rows.push({
-            key: `gap-${s.id}`,
-            label: s.name,
-            sub: `بلا توزيع منهج في ${gaps} من ${grades.length} صفوف`,
-            icon: Unplug,
-            count: gaps,
-            tone: TONES.amber,
-          })
-        }
-      }
-    }
-    for (const s of subjects) {
-      if (s.status === 'active' && (s.weight?.grades.length ?? 0) === 0) {
-        rows.push({
-          key: `nos-${s.id}`,
-          label: s.name,
-          sub: 'نشطة لكنها ليست في جدول الحصص',
-          icon: CalendarOff,
-          tone: TONES.purple,
-        })
-      }
-    }
-    return rows
-  }, [subjects, curriculumBlind])
+  /** بطاقة المادة تُشتق من القائمة الحيّة فلا تعرض بيانات قديمة بعد التعديل */
+  const selectedSubject = useMemo(
+    () => subjects.find((subject) => subject.id === selectedId) ?? null,
+    [subjects, selectedId],
+  )
+
+  const rankedSubjects = useMemo(
+    () => [...subjects].sort((a, b) => (b.weight?.total_slots ?? 0) - (a.weight?.total_slots ?? 0)),
+    [subjects],
+  )
+  const maxTotalSlots = Math.max(1, ...subjects.map((subject) => subject.weight?.total_slots ?? 0))
 
   const filteredSubjects = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
@@ -338,7 +310,12 @@ export function AdminSubjectsPage() {
                     const grades = subject.weight?.grades ?? []
                     const hasGap = !curriculumBlind && grades.some((g) => !g.has_curriculum)
                     return (
-                      <tr key={subject.id} style={hasGap ? { background: chip(TONES.amber) } : undefined}>
+                      <tr
+                        key={subject.id}
+                        onClick={() => setSelectedId((prev) => (prev === subject.id ? null : subject.id))}
+                        className={`is-clickable ${selectedId === subject.id ? 'is-selected' : ''}`}
+                        style={hasGap && selectedId !== subject.id ? { background: chip(TONES.amber) } : undefined}
+                      >
                         <td>
                           <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <span style={{ fontWeight: 600 }}>{subject.name}</span>
@@ -373,7 +350,7 @@ export function AdminSubjectsPage() {
                         <td>
                           <b>{subject.weight?.total_slots ?? 0}</b>
                         </td>
-                        <td>
+                        <td onClick={(e) => e.stopPropagation()}>
                           <span style={{ display: 'inline-flex', gap: 3 }}>
                             <WsIconBtn icon={Pen} label="تعديل" onClick={() => openEdit(subject)} />
                             <WsIconBtn icon={Trash2} label="حذف" onClick={() => setPendingDelete(subject)} />
@@ -388,78 +365,189 @@ export function AdminSubjectsPage() {
           </WsBlock>
         </WsMain>
 
-        {/* القسم الثاني: مواد تحتاج متابعة — يسمّيها بالاسم بدل عدّها */}
-        <WsSideCol side="end" title="مواد تحتاج متابعة" icon={ListChecks} storageKey="ws:subjects:sidecol" width={300}>
-          <WsBlock fill scroll>
-            {isLoading ? (
-              <WsEmpty loading>جارٍ التحميل...</WsEmpty>
-            ) : callRows.length === 0 ? (
-              <WsEmpty icon={ListChecks}>لا شيء معلّق — كل المواد مرتبطة ومجدولة</WsEmpty>
-            ) : (
-              <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {callRows.map((row) => {
-                  const Icon = row.icon
-                  return (
+        {/* القسم الثاني: بطاقة المادة — ترتيب الثقل افتراضاً، وتشريح المادة عند النقر */}
+        <WsSideCol side="end" title="بطاقة المادة" icon={BookOpen} storageKey="ws:subjects:sidecol" width={300}>
+          {selectedSubject ? (
+            <>
+              <WsBlock padded>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700 }}>{selectedSubject.name}</span>
+                  <ToneChip tone={selectedSubject.status === 'active' ? TONES.green : TONES.gray}>
+                    {selectedSubject.status === 'active' ? 'نشطة' : 'غير نشطة'}
+                  </ToneChip>
+                  <WsIconBtn icon={X} label="إغلاق البطاقة" onClick={() => setSelectedId(null)} />
+                </div>
+                <WsFactsList>
+                  <WsFactRow label="الحصص الأسبوعية">
+                    <b style={{ fontVariantNumeric: 'tabular-nums' }}>{selectedSubject.weight?.total_slots ?? 0}</b>
+                  </WsFactRow>
+                  <WsFactRow label="مهارات التقييم">{selectedSubject.skills_count ?? 0}</WsFactRow>
+                  <WsFactRow label="المنهج الوزاري">
+                    {selectedSubject.curriculum_subject_name ?? 'بالاسم المحلي'}
+                  </WsFactRow>
+                </WsFactsList>
+                <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+                  <WsBtn icon={Pen} onClick={() => openEdit(selectedSubject)} style={{ flex: 1 }}>
+                    تعديل
+                  </WsBtn>
+                  <WsBtn icon={Trash2} onClick={() => setPendingDelete(selectedSubject)} style={{ flex: 1 }}>
+                    حذف
+                  </WsBtn>
+                </div>
+              </WsBlock>
+
+              <WsBlock
+                title="صفوفها"
+                icon={Layers}
+                count={(selectedSubject.weight?.grades.length ?? 0) || undefined}
+                fill
+                scroll
+              >
+                {(selectedSubject.weight?.grades.length ?? 0) === 0 ? (
+                  <WsEmpty icon={CalendarOff}>ليست في جدول الحصص</WsEmpty>
+                ) : (
+                  <div>
+                    {(selectedSubject.weight?.grades ?? []).map((g) => {
+                      const gap = !curriculumBlind && !g.has_curriculum
+                      return (
+                        <div key={g.grade} style={{ padding: '8px 12px', borderBottom: '1px solid var(--ws-hairline)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 700 }}>{g.grade}</span>
+                            {gap && (
+                              <Unplug
+                                aria-label="بلا توزيع منهج"
+                                style={{ width: 14, height: 14, color: TONES.amber.tx, flexShrink: 0 }}
+                              />
+                            )}
+                            <b
+                              style={{
+                                fontSize: 14,
+                                fontVariantNumeric: 'tabular-nums',
+                                color: gap ? TONES.amber.tx : TONES.sky.tx,
+                              }}
+                            >
+                              {g.slots}
+                            </b>
+                          </div>
+                          <div
+                            style={{
+                              height: 6,
+                              marginTop: 5,
+                              borderRadius: 3,
+                              background: 'var(--ws-surface-2)',
+                              overflow: 'hidden',
+                            }}
+                          >
+                            <div
+                              style={{
+                                height: '100%',
+                                width: `${Math.min(100, Math.round((g.slots / maxSlots) * 100))}%`,
+                                background: gap ? TONES.amber.bd : TONES.sky.bd,
+                              }}
+                            />
+                          </div>
+                          <span style={{ display: 'block', marginTop: 4, fontSize: 12, color: 'var(--ws-text-2)' }}>
+                            {g.sections} فصول
+                            {g.has_curriculum && g.sessions_per_week != null
+                              ? ` · المقرر وزارياً: ${g.sessions_per_week}`
+                              : ''}
+                            {gap ? ' · بلا توزيع منهج' : ''}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </WsBlock>
+            </>
+          ) : (
+            <WsBlock title="أثقل المواد في الجدول" icon={Layers} count={subjects.length || undefined} fill scroll>
+              {subjects.length === 0 ? (
+                <WsEmpty icon={BookOpen}>لا مواد بعد</WsEmpty>
+              ) : (
+                <div>
+                  {rankedSubjects.map((subject, i) => (
                     <button
-                      key={row.key}
+                      key={subject.id}
                       type="button"
-                      title="حصر الجدول على هذه المادة"
-                      onClick={() => {
-                        setSearchTerm(row.label)
-                        setStatusFilter('all')
-                      }}
+                      onClick={() => setSelectedId(subject.id)}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 10,
-                        padding: '11px 12px',
-                        borderRadius: 8,
-                        border: `1px solid ${row.tone.bd}`,
-                        background: chip(row.tone),
-                        color: 'var(--ws-text)',
-                        textAlign: 'start',
+                        gap: 8,
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: 'none',
+                        borderBottom: '1px solid var(--ws-hairline)',
+                        background: 'transparent',
                         cursor: 'pointer',
                         font: 'inherit',
+                        textAlign: 'start',
                       }}
                     >
-                      {/* اللون حبرٌ ورقاقة: الرقاقة بيضاء والصف يلبس الباستيل */}
                       <span
                         style={{
-                          width: 30,
-                          height: 30,
-                          borderRadius: 8,
-                          background: 'var(--ws-surface)',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
+                          width: 18,
+                          flexShrink: 0,
+                          fontSize: 12.5,
+                          color: 'var(--ws-text-2)',
+                          fontVariantNumeric: 'tabular-nums',
+                        }}
+                      >
+                        {i + 1}
+                      </span>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span
+                          style={{
+                            display: 'block',
+                            fontSize: 13.5,
+                            fontWeight: 700,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {subject.name}
+                        </span>
+                        <span
+                          style={{
+                            display: 'block',
+                            height: 6,
+                            marginTop: 4,
+                            borderRadius: 3,
+                            background: 'var(--ws-surface-2)',
+                            overflow: 'hidden',
+                          }}
+                        >
+                          <span
+                            style={{
+                              display: 'block',
+                              height: '100%',
+                              width: `${Math.round(((subject.weight?.total_slots ?? 0) / maxTotalSlots) * 100)}%`,
+                              background: TONES.sky.bd,
+                            }}
+                          />
+                        </span>
+                      </span>
+                      <b
+                        style={{
+                          fontSize: 14,
+                          fontVariantNumeric: 'tabular-nums',
+                          color: TONES.sky.tx,
                           flexShrink: 0,
                         }}
                       >
-                        <Icon style={{ width: 16, height: 16, color: row.tone.tx }} />
-                      </span>
-                      <span style={{ flex: 1, minWidth: 0 }}>
-                        <span style={{ display: 'block', fontSize: 15, fontWeight: 700, lineHeight: 1.35 }}>{row.label}</span>
-                        <span style={{ display: 'block', fontSize: 13, color: 'var(--ws-text-2)', lineHeight: 1.4 }}>{row.sub}</span>
-                      </span>
-                      {row.count != null && (
-                        <b
-                          style={{
-                            flexShrink: 0,
-                            fontSize: 16,
-                            fontWeight: 700,
-                            fontVariantNumeric: 'tabular-nums',
-                            color: row.tone.tx,
-                          }}
-                        >
-                          {row.count}
-                        </b>
-                      )}
+                        {subject.weight?.total_slots ?? 0}
+                      </b>
                     </button>
-                  )
-                })}
-              </div>
-            )}
-          </WsBlock>
+                  ))}
+                  <p style={{ margin: 0, padding: '8px 12px', fontSize: 12, color: 'var(--ws-text-2)' }}>
+                    حصص كل مادة في جدول الحصص — اضغط مادةً لفتح بطاقتها.
+                  </p>
+                </div>
+              )}
+            </WsBlock>
+          )}
         </WsSideCol>
       </WsLayout>
 
