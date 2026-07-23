@@ -290,15 +290,15 @@ export function AdminShell() {
         "admin-sidebar fixed right-0 top-0 z-50 h-screen flex-col border-l border-slate-700/20 text-right shadow-sm transition-[transform,width] duration-300 lg:flex",
         isDesktopCollapsed ? 'w-64 lg:w-16' : 'w-64',
         isSidebarOpen ? "flex translate-x-0" : "hidden lg:flex lg:translate-x-0 translate-x-full"
-      )} style={{ backgroundColor: '#FCFBF8', borderColor: 'var(--ws-hairline)' }}>
+      )} style={{ backgroundColor: 'var(--color-sidebar)', borderColor: 'rgba(0,0,0,0.15)' }}>
         {isDesktopCollapsed && !isSidebarOpen ? (
           /* ── وضع الطي: عمود أيقونات ضيّق ── */
           <div className="hidden h-full w-full flex-col items-center lg:flex">
             <button
               type="button"
               onClick={() => setIsDesktopCollapsed(false)}
-              className="flex h-14 w-full flex-shrink-0 items-center justify-center border-b transition hover:bg-black/5"
-              style={{ borderColor: 'var(--ws-hairline)' }}
+              className="flex h-14 w-full flex-shrink-0 items-center justify-center border-b transition hover:bg-white/10"
+              style={{ borderColor: 'rgba(255,255,255,0.16)' }}
               title="فتح القائمة — نظام الرائد"
               aria-label="فتح القائمة الجانبية"
             >
@@ -325,10 +325,10 @@ export function AdminShell() {
                       setExpandedGroups((prev) => ({ ...prev, [group.title]: true }))
                     }}
                     title={group.title}
-                    className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg transition hover:bg-black/5"
+                    className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg transition hover:bg-white/10"
                     style={{
                       backgroundColor: isGroupActive ? chip(TONES.green) : 'transparent',
-                      color: isGroupActive ? TONES.green.tx : 'var(--ws-text-2)',
+                      color: isGroupActive ? TONES.green.tx : 'rgba(253,252,251,0.7)',
                     }}
                   >
                     <GroupIcon className="h-5 w-5" />
@@ -336,7 +336,7 @@ export function AdminShell() {
                 )
               })}
 
-              <div className="my-1 h-px w-8 flex-shrink-0" style={{ backgroundColor: 'var(--ws-hairline)' }} />
+              <div className="my-1 h-px w-8 flex-shrink-0" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />
 
               {filteredSecondaryNav.map((link) => {
                 const LinkIcon = link.icon
@@ -345,10 +345,10 @@ export function AdminShell() {
                     key={link.to}
                     to={link.to}
                     title={link.label}
-                    className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg transition hover:bg-black/5"
+                    className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg transition hover:bg-white/10"
                     style={({ isActive }) => ({
                       backgroundColor: isActive ? chip(TONES.amber) : 'transparent',
-                      color: isActive ? TONES.amber.tx : 'var(--ws-text-2)',
+                      color: isActive ? TONES.amber.tx : 'rgba(253,252,251,0.7)',
                     })}
                   >
                     {LinkIcon && <LinkIcon className="h-5 w-5" />}
@@ -363,8 +363,8 @@ export function AdminShell() {
                   setExpandedGroups((prev) => ({ ...prev, [filteredSettingsNav.title]: true }))
                 }}
                 title={filteredSettingsNav.title}
-                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg transition hover:bg-black/5"
-                style={{ color: 'var(--ws-text-2)' }}
+                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg transition hover:bg-white/10"
+                style={{ color: 'rgba(253,252,251,0.7)' }}
               >
                 {(() => {
                   const SettingsIcon = filteredSettingsNav.icon
@@ -375,7 +375,7 @@ export function AdminShell() {
 
             <div
               className="flex w-full flex-shrink-0 flex-col items-center gap-1 border-t py-3"
-              style={{ borderColor: 'var(--ws-hairline)' }}
+              style={{ borderColor: 'rgba(255,255,255,0.16)' }}
             >
               <span
                 className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold"
@@ -388,10 +388,10 @@ export function AdminShell() {
                 type="button"
                 onClick={() => logoutMutation.mutate()}
                 disabled={logoutMutation.isPending}
-                className="flex h-9 w-9 items-center justify-center rounded-lg transition hover:bg-black/5"
+                className="flex h-9 w-9 items-center justify-center rounded-lg transition hover:bg-white/10"
                 title="تسجيل الخروج"
                 aria-label="تسجيل الخروج"
-                style={{ color: 'var(--ws-text-2)' }}
+                style={{ color: 'rgba(253,252,251,0.7)' }}
               >
                 <LogOut className="h-4 w-4" />
               </button>
@@ -402,17 +402,17 @@ export function AdminShell() {
         {/* زر إغلاق للجوال */}
         <button
           onClick={() => setIsSidebarOpen(false)}
-          className="absolute left-4 top-4 rounded-lg p-2 hover:bg-black/5 lg:hidden"
-          style={{ color: 'var(--ws-text-2)' }}
+          className="absolute left-4 top-4 rounded-lg p-2 hover:bg-white/10 lg:hidden"
+          style={{ color: 'rgba(253,252,251,0.7)' }}
           aria-label="إغلاق القائمة"
         >
           <X className="h-5 w-5" />
         </button>
         {/* الترويسة الثابتة: الشعار + اسم المدرسة */}
-        <div className="flex-shrink-0 border-b px-6 py-5 text-center" style={{ borderColor: 'var(--ws-hairline)' }}>
-          <p className="sidebar-brand-title text-lg font-bold" style={{ fontFamily: 'IBM Plex Sans Arabic, sans-serif', color: TONES.green.tx }}>نظام الرائد</p>
+        <div className="flex-shrink-0 border-b px-6 py-5 text-center" style={{ borderColor: 'rgba(255,255,255,0.16)' }}>
+          <p className="sidebar-brand-title text-lg font-bold" style={{ fontFamily: 'IBM Plex Sans Arabic, sans-serif', color: 'var(--color-sidebar-text)' }}>نظام الرائد</p>
           {admin?.school?.name && (
-            <p className="mt-1 truncate text-[11px]" style={{ color: 'var(--ws-text-2)' }}>
+            <p className="mt-1 truncate text-[11px]" style={{ color: 'rgba(253,252,251,0.7)' }}>
               {admin.school.name}
             </p>
           )}
@@ -433,19 +433,19 @@ export function AdminShell() {
                   onClick={() => toggleGroup(group.title)}
                   aria-expanded={isExpanded}
                   aria-controls={panelId}
-                  className="group flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-all hover:bg-black/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-400/40"
-                  style={{ color: 'var(--ws-text)', backgroundColor: '#F4F2ED' }}
+                  className="group flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-all hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-400/40"
+                  style={{ color: 'var(--color-sidebar-text)', backgroundColor: 'rgba(255,255,255,0.07)' }}
                 >
                   <div className="flex items-center gap-2">
-                    <GroupIcon className="h-4 w-4" style={{ color: 'var(--ws-text)' }} />
-                    <span style={{ color: 'var(--ws-text)' }}>{group.title}</span>
+                    <GroupIcon className="h-4 w-4" style={{ color: 'var(--color-sidebar-text)' }} />
+                    <span style={{ color: 'var(--color-sidebar-text)' }}>{group.title}</span>
                   </div>
                   <ChevronDown
                     className={clsx(
                       'h-4 w-4 transition-transform duration-200',
                       isExpanded ? 'rotate-180' : 'rotate-0',
                     )}
-                    style={{ color: 'var(--ws-text-2)' }}
+                    style={{ color: 'rgba(253,252,251,0.7)' }}
                   />
                 </button>
                 <div
@@ -469,12 +469,12 @@ export function AdminShell() {
                               'group flex items-center justify-between gap-3 rounded-lg px-3 py-2 pr-5 text-[13px] transition-all',
                               isActive
                                 ? 'font-medium shadow-sm'
-                                : 'hover:bg-black/5',
+                                : 'hover:bg-white/10',
                             )
                           }
                           style={({ isActive }) => ({
                             backgroundColor: isActive ? chip(TONES.green) : 'transparent',
-                            color: isActive ? TONES.green.tx : 'var(--ws-text)',
+                            color: isActive ? TONES.green.tx : 'var(--color-sidebar-text)',
                           })}
                         >
                           {({ isActive }) => (
@@ -483,7 +483,7 @@ export function AdminShell() {
                                 {LinkIcon && (
                                   <LinkIcon
                                     className="h-4 w-4 transition-colors"
-                                    style={{ color: isActive ? TONES.green.tx : 'var(--ws-text-2)' }}
+                                    style={{ color: isActive ? TONES.green.tx : 'rgba(253,252,251,0.7)' }}
                                   />
                                 )}
                                 <span>{link.label}</span>
@@ -509,10 +509,10 @@ export function AdminShell() {
           })}
         </div>
 
-        <div className="border-t p-4 space-y-4" style={{ borderColor: 'var(--ws-hairline)', backgroundColor: '#F4F2ED' }}>
+        <div className="border-t p-4 space-y-4" style={{ borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(0,0,0,0.14)' }}>
           {/* أدوات مباشرة */}
           <div>
-            <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--ws-text-2)' }}>
+            <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'rgba(253,252,251,0.7)' }}>
               أدوات مباشرة
             </p>
             <nav className="space-y-0.5">
@@ -527,12 +527,12 @@ export function AdminShell() {
                         'group flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm transition-all',
                         isActive
                           ? 'font-medium shadow-sm'
-                          : 'hover:bg-black/5',
+                          : 'hover:bg-white/10',
                       )
                     }
                     style={({ isActive }) => ({
                       backgroundColor: isActive ? chip(TONES.amber) : 'transparent',
-                      color: isActive ? TONES.amber.tx : 'var(--ws-text)'
+                      color: isActive ? TONES.amber.tx : 'var(--color-sidebar-text)'
                     })}
                   >
                     {({ isActive }) => (
@@ -541,7 +541,7 @@ export function AdminShell() {
                           {LinkIcon && (
                             <LinkIcon
                               className="h-4 w-4 transition-colors"
-                              style={{ color: isActive ? TONES.amber.tx : 'var(--ws-text-2)' }}
+                              style={{ color: isActive ? TONES.amber.tx : 'rgba(253,252,251,0.7)' }}
                             />
                           )}
                           <span>{link.label}</span>
@@ -568,8 +568,8 @@ export function AdminShell() {
                     onClick={() => toggleGroup(filteredSettingsNav.title)}
                     aria-expanded={isExpanded}
                     aria-controls={panelId}
-                    className="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-all hover:bg-black/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-400/40"
-                    style={{ color: 'var(--ws-text)' }}
+                    className="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-all hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-400/40"
+                    style={{ color: 'var(--color-sidebar-text)' }}
                   >
                     <div className="flex flex-1 items-center gap-2">
                       <ChevronDown
@@ -577,10 +577,10 @@ export function AdminShell() {
                           'h-4 w-4 transition-transform duration-200',
                           isExpanded ? 'rotate-180' : 'rotate-0',
                         )}
-                        style={{ color: 'var(--ws-text-2)' }}
+                        style={{ color: 'rgba(253,252,251,0.7)' }}
                       />
-                      <GroupIcon className="h-4 w-4" style={{ color: 'var(--ws-text)' }} />
-                      <span className="flex-1 text-right" style={{ color: 'var(--ws-text)' }}>{filteredSettingsNav.title}</span>
+                      <GroupIcon className="h-4 w-4" style={{ color: 'var(--color-sidebar-text)' }} />
+                      <span className="flex-1 text-right" style={{ color: 'var(--color-sidebar-text)' }}>{filteredSettingsNav.title}</span>
                     </div>
                   </button>
                   <div
@@ -604,12 +604,12 @@ export function AdminShell() {
                                 'group flex items-center justify-between gap-3 rounded-lg px-3 py-2 pr-5 text-[13px] transition-all',
                                 isActive
                                   ? 'font-medium shadow-sm'
-                                  : 'hover:bg-black/5',
+                                  : 'hover:bg-white/10',
                               )
                             }
                             style={({ isActive }) => ({
                               backgroundColor: isActive ? chip(TONES.green) : 'transparent',
-                              color: isActive ? TONES.green.tx : 'var(--ws-text)',
+                              color: isActive ? TONES.green.tx : 'var(--color-sidebar-text)',
                             })}
                           >
                             {({ isActive }) => (
@@ -618,7 +618,7 @@ export function AdminShell() {
                                   {LinkIcon && (
                                     <LinkIcon
                                       className="h-4 w-4 transition-colors"
-                                      style={{ color: isActive ? TONES.green.tx : 'var(--ws-text-2)' }}
+                                      style={{ color: isActive ? TONES.green.tx : 'rgba(253,252,251,0.7)' }}
                                     />
                                   )}
                                   <span>{link.label}</span>
@@ -649,7 +649,7 @@ export function AdminShell() {
         {/* البطاقة السفلية الثابتة: المستخدم + تسجيل الخروج */}
         <div
           className="flex-shrink-0 border-t px-3 py-3"
-          style={{ borderColor: 'var(--ws-hairline)', backgroundColor: '#F4F2ED' }}
+          style={{ borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(0,0,0,0.14)' }}
         >
           <div className="flex items-center gap-2.5">
             <span
@@ -659,10 +659,10 @@ export function AdminShell() {
               {(admin?.name ?? 'م').trim().charAt(0)}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[12.5px] font-bold" style={{ color: 'var(--ws-text)' }}>
+              <p className="truncate text-[12.5px] font-bold" style={{ color: 'var(--color-sidebar-text)' }}>
                 {admin?.name ?? 'الإدارة'}
               </p>
-              <p className="truncate text-[10.5px]" style={{ color: 'var(--ws-text-2)' }}>
+              <p className="truncate text-[10.5px]" style={{ color: 'rgba(253,252,251,0.7)' }}>
                 {admin?.school?.name ?? 'مدير النظام'}
                 {planLabel ? ` • ${planLabel}` : ''}
               </p>
@@ -671,10 +671,10 @@ export function AdminShell() {
               type="button"
               onClick={() => logoutMutation.mutate()}
               disabled={logoutMutation.isPending}
-              className="rounded-lg p-2 transition hover:bg-black/5"
+              className="rounded-lg p-2 transition hover:bg-white/10"
               title="تسجيل الخروج"
               aria-label="تسجيل الخروج"
-              style={{ color: 'var(--ws-text)' }}
+              style={{ color: 'var(--color-sidebar-text)' }}
             >
               <LogOut className="h-4 w-4" />
             </button>

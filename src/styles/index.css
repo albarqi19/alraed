@@ -310,7 +310,7 @@
   /* Custom Scrollbar for Admin Sidebar - RTL */
   .admin-sidebar {
     scrollbar-width: thin;
-    scrollbar-color: rgba(0, 0, 0, 0.18) transparent;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
     direction: rtl;
   }
 
@@ -323,13 +323,13 @@
   }
 
   .admin-sidebar::-webkit-scrollbar-thumb {
-    background-color: rgba(0, 0, 0, 0.18);
+    background-color: rgba(255, 255, 255, 0.3);
     border-radius: 3px;
     transition: background-color 0.2s ease;
   }
 
   .admin-sidebar::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(0, 0, 0, 0.3);
+    background-color: rgba(255, 255, 255, 0.5);
   }
 
   .admin-logout-btn {
