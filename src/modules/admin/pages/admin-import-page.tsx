@@ -916,14 +916,7 @@ export function AdminImportPage() {
       <WsLayout>
         <WsMain>
           {activeTab === 'people' && (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
-                gap: 10,
-                alignItems: 'start',
-              }}
-            >
+            <div className="ws-import-duo">
               {/* ── عمود الطلاب ── */}
               <WsBlock
                 title="الطلاب"
@@ -1025,6 +1018,9 @@ export function AdminImportPage() {
                   )}
                 </div>
               </WsBlock>
+
+              {/* الفاصل الملوّن بين العمودين — يستلقي أفقياً عند التراصّ */}
+              <span className="ws-import-duo__bar" style={{ background: TONES.sky.bd }} aria-hidden />
 
               {/* ── عمود المعلمين ── */}
               <WsBlock

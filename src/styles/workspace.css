@@ -1416,3 +1416,26 @@ button.ws-chip:disabled {
 .ws-rich .ws-cell-sub {
     font-size: 12px;
 }
+
+/* ── استيراد البيانات: عمودا الطلاب/المعلمين وبينهما فاصل ملوّن ── */
+.ws-import-duo {
+    display: grid;
+    grid-template-columns: 1fr 3px 1fr;
+    gap: 10px;
+    align-items: start;
+}
+.ws-import-duo__bar {
+    align-self: stretch;
+    width: 3px;
+    border-radius: 2px;
+}
+@media (max-width: 900px) {
+    .ws-import-duo {
+        grid-template-columns: 1fr;
+    }
+    .ws-import-duo__bar {
+        align-self: auto;
+        width: 100%;
+        height: 3px;
+    }
+}
