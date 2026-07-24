@@ -157,92 +157,98 @@ export function ScheduleSetupStep({ onComplete, onSkip, stats, isCompleting, isS
   const canProceed = hasSettings && hasSchedule
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* قسم وقت الدوام */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h4 className="font-semibold text-slate-800">
-              <i className="bi bi-clock ml-2 text-teal-500" />
+      <div className="ws-panel">
+        <div className="ws-panel__head">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="ws-panel__title">
+              <i className="bi bi-clock" style={{ color: 'var(--color-primary-dark)' }} />
               وقت الدوام
-            </h4>
-            <p className="text-sm text-slate-500">تحديد وقت بداية ونهاية الدوام المدرسي</p>
+            </span>
+            <span className="text-[11px] font-normal" style={{ color: 'var(--color-text-secondary)' }}>
+              تحديد وقت بداية ونهاية الدوام المدرسي
+            </span>
           </div>
           {hasSettings && (
-            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
-              <i className="bi bi-check ml-1" />
+            <span className="ws-chip ws-chip--green">
+              <i className="bi bi-check" />
               تم الإعداد
             </span>
           )}
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-600">وقت بداية الدوام</label>
-            <input
-              type="time"
-              value={workStartTime}
-              onChange={(e) => setWorkStartTime(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 focus:border-teal-500 focus:outline-none"
-            />
+        <div className="ws-panel__body">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="ws-field">
+              <label className="ws-label">وقت بداية الدوام</label>
+              <input
+                type="time"
+                value={workStartTime}
+                onChange={(e) => setWorkStartTime(e.target.value)}
+                className="ws-input w-full"
+              />
+            </div>
+            <div className="ws-field">
+              <label className="ws-label">وقت نهاية الدوام</label>
+              <input
+                type="time"
+                value={workEndTime}
+                onChange={(e) => setWorkEndTime(e.target.value)}
+                className="ws-input w-full"
+              />
+            </div>
+            <div className="ws-field">
+              <label className="ws-label">فترة السماح (دقيقة)</label>
+              <input
+                type="number"
+                min={0}
+                max={60}
+                value={graceMinutes}
+                onChange={(e) => setGraceMinutes(Number(e.target.value))}
+                className="ws-input w-full"
+              />
+            </div>
           </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-600">وقت نهاية الدوام</label>
-            <input
-              type="time"
-              value={workEndTime}
-              onChange={(e) => setWorkEndTime(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 focus:border-teal-500 focus:outline-none"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-600">فترة السماح (دقيقة)</label>
-            <input
-              type="number"
-              min={0}
-              max={60}
-              value={graceMinutes}
-              onChange={(e) => setGraceMinutes(Number(e.target.value))}
-              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 focus:border-teal-500 focus:outline-none"
-            />
-          </div>
-        </div>
 
-        <div className="mt-4 flex justify-end">
-          <button
-            type="button"
-            onClick={handleSaveSettings}
-            disabled={saveSettingsMutation.isPending}
-            className="button-primary text-sm"
-          >
-            {saveSettingsMutation.isPending ? (
-              <>
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                جاري الحفظ...
-              </>
-            ) : (
-              <>
-                <i className="bi bi-check" />
-                حفظ الإعدادات
-              </>
-            )}
-          </button>
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              onClick={handleSaveSettings}
+              disabled={saveSettingsMutation.isPending}
+              className="ws-btn ws-btn--primary"
+            >
+              {saveSettingsMutation.isPending ? (
+                <>
+                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  جاري الحفظ...
+                </>
+              ) : (
+                <>
+                  <i className="bi bi-check" />
+                  حفظ الإعدادات
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* قسم الجداول الزمنية */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h4 className="font-semibold text-slate-800">
-              <i className="bi bi-table ml-2 text-amber-500" />
+      <div className="ws-panel">
+        <div className="ws-panel__head">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="ws-panel__title">
+              <i className="bi bi-table" style={{ color: 'var(--color-primary-dark)' }} />
               الخطط الزمنية
-            </h4>
-            <p className="text-sm text-slate-500">إنشاء جدول زمني للحصص الدراسية</p>
+            </span>
+            <span className="text-[11px] font-normal" style={{ color: 'var(--color-text-secondary)' }}>
+              إنشاء جدول زمني للحصص الدراسية
+            </span>
           </div>
           {hasSchedule && (
-            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
-              <i className="bi bi-check ml-1" />
+            <span className="ws-chip ws-chip--green">
+              <i className="bi bi-check" />
               {schedules.length} جدول
             </span>
           )}
@@ -250,144 +256,149 @@ export function ScheduleSetupStep({ onComplete, onSkip, stats, isCompleting, isS
 
         {/* الجداول الموجودة */}
         {schedules.length > 0 && (
-          <div className="mb-4 space-y-2">
+          <div className="ws-rows" style={{ borderBottom: '1px solid var(--color-hairline)' }}>
             {schedules.slice(0, 3).map((schedule) => (
-              <div
-                key={schedule.id}
-                className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3"
-              >
-                <div className="flex items-center gap-3">
-                  <i className="bi bi-calendar-week text-slate-400" />
-                  <div>
-                    <p className="font-medium text-slate-700">{schedule.name}</p>
-                    <p className="text-xs text-slate-500">
-                      {schedule.type === 'winter' ? 'شتوي' : schedule.type === 'summer' ? 'صيفي' : 'مخصص'}
-                    </p>
-                  </div>
-                </div>
-                {schedule.is_active && (
-                  <span className="rounded-full bg-teal-100 px-2 py-0.5 text-xs text-teal-700">نشط</span>
-                )}
+              <div key={schedule.id} className="ws-row">
+                <span className="flex min-w-0 items-center gap-2">
+                  <i className="bi bi-calendar-week" style={{ color: 'var(--color-text-secondary)' }} />
+                  <span className="ws-row__name">{schedule.name}</span>
+                  <span className="text-[11px]" style={{ color: 'var(--color-text-secondary)' }}>
+                    {schedule.type === 'winter' ? 'شتوي' : schedule.type === 'summer' ? 'صيفي' : 'مخصص'}
+                  </span>
+                </span>
+                {schedule.is_active && <span className="ws-chip ws-chip--green">نشط</span>}
               </div>
             ))}
           </div>
         )}
 
-        {/* زر الإضافة */}
-        {!showScheduleForm ? (
-          <button
-            type="button"
-            onClick={() => setShowScheduleForm(true)}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 py-4 text-slate-500 transition hover:border-teal-300 hover:text-teal-600"
-          >
-            <i className="bi bi-plus-lg" />
-            إضافة جدول زمني جديد
-          </button>
-        ) : (
-          <div className="space-y-4 rounded-xl border border-teal-100 bg-teal-50/30 p-4">
-            <h5 className="font-semibold text-slate-700">إضافة سريعة</h5>
+        <div className="ws-panel__body">
+          {/* زر الإضافة */}
+          {!showScheduleForm ? (
+            <button
+              type="button"
+              onClick={() => setShowScheduleForm(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed py-2.5 text-xs font-semibold transition hover:[border-color:var(--color-primary-dark)] hover:[color:var(--color-primary-dark)]"
+              style={{ borderColor: 'var(--color-border-strong)', color: 'var(--color-text-secondary)' }}
+            >
+              <i className="bi bi-plus-lg" />
+              إضافة جدول زمني جديد
+            </button>
+          ) : (
+            <div
+              className="space-y-3 rounded-lg border p-3"
+              style={{ borderColor: 'var(--color-hairline)', background: 'var(--color-surface-2)' }}
+            >
+              <h5 className="text-[13px] font-bold" style={{ color: 'var(--color-text-primary)' }}>
+                إضافة سريعة
+              </h5>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-600">اسم الجدول</label>
-                <input
-                  type="text"
-                  value={scheduleForm.name}
-                  onChange={(e) => setScheduleForm((f) => ({ ...f, name: e.target.value }))}
-                  className="w-full rounded-xl border border-slate-200 px-4 py-2.5 focus:border-teal-500 focus:outline-none"
-                />
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="ws-field">
+                  <label className="ws-label">اسم الجدول</label>
+                  <input
+                    type="text"
+                    value={scheduleForm.name}
+                    onChange={(e) => setScheduleForm((f) => ({ ...f, name: e.target.value }))}
+                    className="ws-input w-full"
+                  />
+                </div>
+                <div className="ws-field">
+                  <label className="ws-label">نوع الفصل</label>
+                  <select
+                    value={scheduleForm.type}
+                    onChange={(e) => setScheduleForm((f) => ({ ...f, type: e.target.value as 'winter' | 'summer' | 'custom' }))}
+                    className="ws-select w-full"
+                  >
+                    <option value="winter">شتوي</option>
+                    <option value="summer">صيفي</option>
+                    <option value="custom">مخصص</option>
+                  </select>
+                </div>
+                <div className="ws-field">
+                  <label className="ws-label">وقت بداية أول حصة</label>
+                  <input
+                    type="time"
+                    value={scheduleForm.first_period_start}
+                    onChange={(e) => setScheduleForm((f) => ({ ...f, first_period_start: e.target.value }))}
+                    className="ws-input w-full"
+                  />
+                </div>
+                <div className="ws-field">
+                  <label className="ws-label">مدة الحصة (دقيقة)</label>
+                  <input
+                    type="number"
+                    min={30}
+                    max={60}
+                    value={scheduleForm.period_duration}
+                    onChange={(e) => setScheduleForm((f) => ({ ...f, period_duration: Number(e.target.value) }))}
+                    className="ws-input w-full"
+                  />
+                </div>
+                <div className="ws-field">
+                  <label className="ws-label">عدد الحصص</label>
+                  <input
+                    type="number"
+                    min={4}
+                    max={10}
+                    value={scheduleForm.periods_count}
+                    onChange={(e) => setScheduleForm((f) => ({ ...f, periods_count: Number(e.target.value) }))}
+                    className="ws-input w-full"
+                  />
+                </div>
+                <div className="ws-field">
+                  <label className="ws-label">الفسحة بعد الحصة رقم</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={scheduleForm.periods_count}
+                    value={scheduleForm.break_after_period}
+                    onChange={(e) => setScheduleForm((f) => ({ ...f, break_after_period: Number(e.target.value) }))}
+                    className="ws-input w-full"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-600">نوع الفصل</label>
-                <select
-                  value={scheduleForm.type}
-                  onChange={(e) => setScheduleForm((f) => ({ ...f, type: e.target.value as 'winter' | 'summer' | 'custom' }))}
-                  className="w-full rounded-xl border border-slate-200 px-4 py-2.5 focus:border-teal-500 focus:outline-none"
+
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setShowScheduleForm(false)} className="ws-btn">
+                  إلغاء
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateSchedule}
+                  disabled={createScheduleMutation.isPending || !scheduleForm.name}
+                  className="ws-btn ws-btn--primary"
                 >
-                  <option value="winter">شتوي</option>
-                  <option value="summer">صيفي</option>
-                  <option value="custom">مخصص</option>
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-600">وقت بداية أول حصة</label>
-                <input
-                  type="time"
-                  value={scheduleForm.first_period_start}
-                  onChange={(e) => setScheduleForm((f) => ({ ...f, first_period_start: e.target.value }))}
-                  className="w-full rounded-xl border border-slate-200 px-4 py-2.5 focus:border-teal-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-600">مدة الحصة (دقيقة)</label>
-                <input
-                  type="number"
-                  min={30}
-                  max={60}
-                  value={scheduleForm.period_duration}
-                  onChange={(e) => setScheduleForm((f) => ({ ...f, period_duration: Number(e.target.value) }))}
-                  className="w-full rounded-xl border border-slate-200 px-4 py-2.5 focus:border-teal-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-600">عدد الحصص</label>
-                <input
-                  type="number"
-                  min={4}
-                  max={10}
-                  value={scheduleForm.periods_count}
-                  onChange={(e) => setScheduleForm((f) => ({ ...f, periods_count: Number(e.target.value) }))}
-                  className="w-full rounded-xl border border-slate-200 px-4 py-2.5 focus:border-teal-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-600">الفسحة بعد الحصة رقم</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={scheduleForm.periods_count}
-                  value={scheduleForm.break_after_period}
-                  onChange={(e) => setScheduleForm((f) => ({ ...f, break_after_period: Number(e.target.value) }))}
-                  className="w-full rounded-xl border border-slate-200 px-4 py-2.5 focus:border-teal-500 focus:outline-none"
-                />
+                  {createScheduleMutation.isPending ? (
+                    <>
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      جاري الإنشاء...
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-plus" />
+                      إنشاء الجدول
+                    </>
+                  )}
+                </button>
               </div>
             </div>
-
-            <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => setShowScheduleForm(false)} className="button-secondary text-sm">
-                إلغاء
-              </button>
-              <button
-                type="button"
-                onClick={handleCreateSchedule}
-                disabled={createScheduleMutation.isPending || !scheduleForm.name}
-                className="button-primary text-sm"
-              >
-                {createScheduleMutation.isPending ? (
-                  <>
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    جاري الإنشاء...
-                  </>
-                ) : (
-                  <>
-                    <i className="bi bi-plus" />
-                    إنشاء الجدول
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Next Button */}
-      <div className="flex items-center justify-between border-t border-slate-100 pt-6">
+      <div
+        className="flex items-center justify-between border-t pt-4"
+        style={{ borderColor: 'var(--color-hairline)' }}
+      >
         {/* Skip Button (للتجربة) */}
         <button
           type="button"
           onClick={onSkip}
           disabled={isSkipping || isCompleting}
-          className="text-sm text-slate-400 underline-offset-2 hover:text-slate-600 hover:underline disabled:opacity-50"
+          className="text-xs underline-offset-2 hover:underline disabled:opacity-50"
+          style={{ color: 'var(--color-text-secondary)' }}
         >
           {isSkipping ? 'جاري التخطي...' : 'تخطي (للتجربة)'}
         </button>
@@ -396,27 +407,27 @@ export function ScheduleSetupStep({ onComplete, onSkip, stats, isCompleting, isS
           type="button"
           onClick={() => onComplete()}
           disabled={!canProceed || isCompleting}
-          className="button-primary"
+          className="ws-btn ws-btn--primary"
         >
           {isCompleting ? (
             <>
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
               جاري الحفظ...
             </>
           ) : (
             <>
               التالي
-              <i className="bi bi-arrow-left mr-2" />
+              <i className="bi bi-arrow-left" />
             </>
           )}
         </button>
       </div>
 
       {!canProceed && (
-        <p className="text-center text-sm text-amber-600">
-          <i className="bi bi-exclamation-triangle ml-1" />
+        <div className="ws-alert ws-alert--warn ws-alert--boxed justify-center">
+          <i className="bi bi-exclamation-triangle" />
           يجب حفظ إعدادات الدوام وإنشاء جدول زمني واحد على الأقل
-        </p>
+        </div>
       )}
     </div>
   )

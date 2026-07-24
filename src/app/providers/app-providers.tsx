@@ -74,7 +74,7 @@ export function AppProviders({ children }: AppProvidersProps) {
               position="bottom-center"
               offset={{ bottom: 80 }}
               options={{
-                fill: 'rgba(255, 255, 255, 0.85)',
+                fill: 'var(--color-surface)',
                 roundness: 16,
                 autopilot: true,
               }}

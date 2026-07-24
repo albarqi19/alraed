@@ -384,35 +384,33 @@ function CountUp({ end, suffix = '', duration = 1500 }: { end: number; suffix?: 
    ───────────────────────────────────────────── */
 
 function BrandMark({ compact = false }: { compact?: boolean }) {
-  return (
-    <div className={compact ? 'flex items-center gap-3' : 'flex items-center justify-center'}>
-      <div
-        className={
-          compact
-            ? 'relative grid h-11 w-11 place-items-center rounded-xl border-2 border-[#d7a74a] bg-[#fff7e9] shadow-[0_6px_18px_-10px_rgba(5,46,94,0.5)]'
-            : 'relative grid h-20 w-20 place-items-center rounded-full border-[3px] border-[#d7a74a] bg-[#fff7e9] shadow-[0_18px_50px_-28px_rgba(5,46,94,0.55)] sm:h-24 sm:w-24'
-        }
-      >
-        <div className={compact ? 'absolute inset-1 rounded-lg border border-[#edd8ad]' : 'absolute inset-2 rounded-full border border-[#edd8ad]'} />
-        <div className="text-center leading-none text-[#0c3b70]">
-          <div className={compact ? 'text-sm font-black' : 'text-3xl font-bold sm:text-4xl'}>الرائد</div>
-          <div
-            className={
-              compact
-                ? 'mt-0.5 text-[6px] font-semibold text-[#7d6b4f]'
-                : 'mt-1 text-[10px] font-semibold text-[#7d6b4f] sm:text-[11px]'
-            }
-          >
-            نظام الإدارة المدرسية
-          </div>
+  /* المضغوطة: خاتم ذهبي على كحلي — لا مربّع كريمي ساطع.
+     الكريمي كان أنصع عنصر في الشريط فيسحب العين من زر الدخول،
+     والسطر الداخلي كان 6px (غير مقروء) ومكرّراً حرفياً للاسم بجواره. */
+  if (compact) {
+    return (
+      <div className="flex items-center gap-2.5">
+        <div className="lp-e-ring relative grid h-10 w-10 place-items-center rounded-xl border border-[#d7a74a]/70 bg-[linear-gradient(150deg,#22432C,#132D1D)]">
+          <div className="absolute inset-[3px] rounded-lg border border-[#d7a74a]/25" />
+          <span className="text-[15px] font-black leading-none text-[#f3cf87]">ر</span>
+        </div>
+        <div className="text-right">
+          <div className="text-[15px] font-black leading-tight text-white">نظام الرائد</div>
+          <div className="text-[10.5px] font-semibold leading-tight text-[#e3c489]">للإدارة المدرسية</div>
         </div>
       </div>
-      {compact ? (
-        <div className="hidden text-right sm:block">
-          <div className="text-sm font-black text-white">نظام الرائد</div>
-          <div className="text-xs font-medium text-white/60">للإدارة المدرسية</div>
+    )
+  }
+
+  return (
+    <div className="flex items-center justify-center">
+      <div className="relative grid h-20 w-20 place-items-center rounded-full border-[3px] border-[#d7a74a] bg-[#fff7e9] sm:h-24 sm:w-24">
+        <div className="absolute inset-2 rounded-full border border-[#edd8ad]" />
+        <div className="text-center leading-none text-[#204029]">
+          <div className="text-3xl font-bold sm:text-4xl">الرائد</div>
+          <div className="mt-1 text-[10px] font-semibold text-[#7d6b4f] sm:text-[11px]">نظام الإدارة المدرسية</div>
         </div>
-      ) : null}
+      </div>
     </div>
   )
 }
@@ -424,12 +422,22 @@ function BrandMark({ compact = false }: { compact?: boolean }) {
 function SiteHeader() {
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [progress, setProgress] = useState(0)
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24)
+    const onScroll = () => {
+      const y = window.scrollY
+      setScrolled(y > 24)
+      const track = document.documentElement.scrollHeight - window.innerHeight
+      setProgress(track > 0 ? Math.min(1, y / track) : 0)
+    }
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    window.addEventListener('resize', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+    }
   }, [])
 
   const closeMenu = () => setMenuOpen(false)
@@ -437,16 +445,20 @@ function SiteHeader() {
   return (
     <div className="fixed inset-x-0 top-0 z-[60] px-4 pt-3 sm:px-6 lg:px-10">
       <div className="mx-auto max-w-[1400px]">
+        {/* فوق الهيرو: بلا لوح إطلاقاً. الشريط كان يرسم لوحاً كحلياً فاتحاً
+            (#24452F) فوق أغمق نقطة في الهيرو (#08190F) فيظهر مستطيلاً ساطعاً
+            معلّقاً، ثم يغمق عند التمرير — عكس المنطق. الآن: شفاف عند القمة،
+            يتجسّد داكناً حين يمرّ فوق الأقسام الفاتحة. */}
         <header
-          className={`rounded-2xl border px-4 py-2.5 backdrop-blur-xl transition-all duration-300 sm:px-5 ${
+          className={`relative rounded-2xl border px-4 py-2.5 transition-all duration-300 sm:px-5 ${
             scrolled
-              ? 'border-[#d7a74a]/25 bg-[#082648]/95 shadow-[0_18px_50px_-24px_rgba(4,19,40,0.95)]'
-              : 'border-white/10 bg-[#0b3d71]/85 shadow-[0_16px_50px_-28px_rgba(4,19,40,0.9)]'
+              ? 'lp-e-head border-[#d7a74a]/25 bg-[#0A1E13]/95 backdrop-blur-xl'
+              : 'border-transparent bg-transparent'
           }`}
         >
           <div className="flex items-center justify-between gap-4">
             <BrandMark compact />
-            <nav className="hidden items-center gap-0.5 text-sm font-bold text-white/85 lg:flex">
+            <nav className="hidden items-center gap-0.5 text-sm font-bold text-white/90 lg:flex">
               {navItems.map((item) =>
                 item.isRoute ? (
                   <Link key={item.label} to={item.href} className="rounded-lg px-3 py-2 transition hover:bg-white/10 hover:text-[#f5d08b]">
@@ -462,13 +474,13 @@ function SiteHeader() {
             <div className="flex items-center gap-2">
               <Link
                 to="/register"
-                className="hidden rounded-xl border border-white/25 bg-white/10 px-4 py-2 text-sm font-bold text-white transition hover:bg-white/15 sm:inline-flex"
+                className="hidden rounded-xl border border-white/30 bg-white/10 px-4 py-2 text-sm font-bold text-white transition hover:border-white/50 hover:bg-white/15 sm:inline-flex"
               >
                 تجربة مجانية
               </Link>
               <Link
                 to="/auth/teacher"
-                className="rounded-xl border border-[#d7a74a] bg-[#d7a74a] px-4 py-2 text-sm font-bold text-[#173f74] transition hover:bg-[#e2b457]"
+                className="rounded-xl border border-[#d7a74a] bg-[#d7a74a] px-4 py-2 text-sm font-bold text-[#163C27] transition hover:bg-[#e8bc63]"
               >
                 تسجيل الدخول
               </Link>
@@ -477,11 +489,24 @@ function SiteHeader() {
                 onClick={() => setMenuOpen((open) => !open)}
                 aria-label={menuOpen ? 'إغلاق القائمة' : 'فتح القائمة'}
                 aria-expanded={menuOpen}
-                className="grid h-9 w-9 place-items-center rounded-xl border border-white/20 bg-white/10 text-white transition hover:bg-white/15 lg:hidden"
+                className="grid h-9 w-9 place-items-center rounded-xl border border-white/25 bg-white/10 text-white transition hover:bg-white/15 lg:hidden"
               >
                 {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </button>
             </div>
+          </div>
+
+          {/* خيط تقدّم القراءة — يظهر مع اللوح فقط كي لا يعلّق خطاً على الهيرو */}
+          <div
+            aria-hidden
+            className={`pointer-events-none absolute inset-x-4 bottom-0 h-px overflow-hidden rounded-full transition-opacity duration-300 sm:inset-x-5 ${
+              scrolled ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            <div
+              className="h-full origin-right rounded-full bg-[linear-gradient(90deg,#d7a74a,#f3cf87)]"
+              style={{ transform: `scaleX(${progress})` }}
+            />
           </div>
         </header>
 
@@ -493,7 +518,7 @@ function SiteHeader() {
           aria-hidden={!menuOpen}
         >
           <div className="overflow-hidden">
-            <nav className="rounded-2xl border border-white/10 bg-[#082648]/95 p-2.5 shadow-[0_24px_60px_-20px_rgba(4,19,40,0.9)] backdrop-blur-xl">
+            <nav className="rounded-2xl border border-[#d7a74a]/20 bg-[#0A1E13]/95 p-2.5 backdrop-blur-xl">
               {navItems.map((item) =>
                 item.isRoute ? (
                   <Link
@@ -503,7 +528,7 @@ function SiteHeader() {
                     className="flex items-center justify-between rounded-xl px-4 py-3 text-sm font-bold text-white/85 transition hover:bg-white/10 hover:text-[#f5d08b]"
                   >
                     {item.label}
-                    <ChevronLeft className="h-4 w-4 text-white/35" />
+                    <ChevronLeft className="h-4 w-4 text-white/70" />
                   </Link>
                 ) : (
                   <a
@@ -513,7 +538,7 @@ function SiteHeader() {
                     className="flex items-center justify-between rounded-xl px-4 py-3 text-sm font-bold text-white/85 transition hover:bg-white/10 hover:text-[#f5d08b]"
                   >
                     {item.label}
-                    <ChevronLeft className="h-4 w-4 text-white/35" />
+                    <ChevronLeft className="h-4 w-4 text-white/70" />
                   </a>
                 ),
               )}
@@ -564,20 +589,20 @@ function HeroProductMock() {
       {/* توهج خلفي */}
       <div
         className="absolute -inset-8 rounded-[40px] opacity-40 blur-3xl"
-        style={{ background: 'radial-gradient(closest-side, rgba(215,167,74,0.35), rgba(59,130,246,0.15), transparent)' }}
+        style={{ background: 'radial-gradient(closest-side, rgba(215,167,74,0.35), rgba(76,175,80,0.18), transparent)' }}
       />
 
       {/* البطاقة الرئيسية: لوحة التحضير */}
-      <div className="lp-tilt relative overflow-hidden rounded-2xl border border-white/60 bg-white text-right shadow-[0_40px_90px_-30px_rgba(3,21,46,0.65)]">
+      <div className="lp-tilt relative overflow-hidden rounded-2xl border border-white/60 bg-white text-right ">
         {/* رأس النافذة */}
         <div className="flex items-center justify-between border-b border-[#eee5d4] bg-[#fbf8f2] px-4 py-3">
           <div className="flex items-center gap-2">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#0c3b70] text-[#f3cf87]">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#204029] text-[#f3cf87]">
               <ClipboardCheck className="h-4 w-4" />
             </span>
             <div>
-              <div className="text-[12.5px] font-black text-[#173f74]">لوحة التحضير — السادس (أ)</div>
-              <div className="text-[10px] font-semibold text-[#9a8a6a]">الحصة الأولى • لغتي الجميلة</div>
+              <div className="text-[12.5px] font-black text-[#163C27]">لوحة التحضير — السادس (أ)</div>
+              <div className="text-[10px] font-semibold text-[#7d6b4f]">الحصة الأولى • لغتي الجميلة</div>
             </div>
           </div>
           <span className="flex items-center gap-1.5 rounded-full bg-[#e6f6ec] px-2.5 py-1 text-[10px] font-black text-[#1e7c45]">
@@ -588,7 +613,12 @@ function HeroProductMock() {
 
         {/* صفوف الطلاب — الحالات تُختم تباعاً */}
         <div className="relative px-3 py-2">
-          <div className="lp-scan pointer-events-none absolute inset-x-0 top-0 h-10 rounded-lg bg-[#d7a74a]/8" />
+          {/* الغلاف يأخذ ارتفاع الحاوية كاملاً فتصير 100% في الحركة = ارتفاع القائمة،
+              والشريط بداخله بارتفاعه الثابت. بلا هذا الغلاف كانت النسبة تُحسب على
+              ارتفاع الشريط نفسه (h-10 = 2.5rem) فتصير مسافة الانتقال صفراً */}
+          <div className="lp-scan pointer-events-none absolute inset-0">
+            <div className="h-10 rounded-lg bg-[#d7a74a]/[0.08]" />
+          </div>
           {mockStudents.map((student, index) => {
             const tone = mockToneStyles[student.tone]
             return (
@@ -601,8 +631,8 @@ function HeroProductMock() {
                     {student.name.charAt(0)}
                   </span>
                   <div>
-                    <div className="text-[12px] font-bold leading-4 text-[#26476e]">{student.name}</div>
-                    <div className="text-[9.5px] font-semibold text-[#a09580]">{student.grade}</div>
+                    <div className="text-[12px] font-bold leading-4 text-[#2A4E37]">{student.name}</div>
+                    <div className="text-[9.5px] font-semibold text-[#7d6b4f]">{student.grade}</div>
                   </div>
                 </div>
                 <span
@@ -633,13 +663,13 @@ function HeroProductMock() {
 
       {/* بطاقة واتساب عائمة */}
       <div className="lp-float absolute -right-4 -top-9 w-[230px] sm:-right-12">
-        <div className="rounded-xl border border-white/70 bg-white/95 p-3 text-right shadow-[0_24px_60px_-24px_rgba(3,21,46,0.6)] backdrop-blur">
+        <div className="rounded-xl border border-white/70 bg-white/95 p-3 text-right backdrop-blur">
           <div className="flex items-start gap-2.5">
             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#e7f8ee] text-[#1faa59]">
               <MessageCircle className="h-4 w-4" />
             </span>
             <div className="min-w-0">
-              <div className="text-[11px] font-black text-[#173f74]">رسالة واتساب أُرسلت</div>
+              <div className="text-[11px] font-black text-[#163C27]">رسالة واتساب أُرسلت</div>
               <div className="mt-0.5 text-[10px] font-semibold leading-4 text-[#6b6b6b]">
                 إشعار غياب «خالد الدوسري» وصل لولي الأمر
               </div>
@@ -655,14 +685,14 @@ function HeroProductMock() {
 
       {/* بطاقة إحصائية عائمة */}
       <div className="lp-float-slow absolute -bottom-8 -left-3 w-[190px] sm:-left-10">
-        <div className="rounded-xl border border-white/70 bg-white/95 p-3 text-right shadow-[0_24px_60px_-24px_rgba(3,21,46,0.6)] backdrop-blur">
+        <div className="rounded-xl border border-white/70 bg-white/95 p-3 text-right backdrop-blur">
           <div className="flex items-center justify-between">
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#fdf3df] text-[#a8690a]">
               <Clock3 className="h-4 w-4" />
             </span>
             <div className="text-left">
-              <div className="text-lg font-black leading-5 text-[#173f74]">3</div>
-              <div className="text-[9.5px] font-bold text-[#9a8a6a]">متأخرو اليوم</div>
+              <div className="text-lg font-black leading-5 text-[#163C27]">3</div>
+              <div className="text-[9.5px] font-bold text-[#7d6b4f]">متأخرو اليوم</div>
             </div>
           </div>
           <div className="mt-2 border-t border-[#f3ede0] pt-1.5 text-[9.5px] font-semibold text-[#6b6b6b]">
@@ -673,7 +703,7 @@ function HeroProductMock() {
 
       {/* شارة الحصة الحالية */}
       <div className="lp-float absolute -top-4 left-2 sm:left-6" style={{ animationDelay: '-2s' }}>
-        <span className="flex items-center gap-1.5 rounded-full border border-[#d7a74a]/40 bg-[#0c3b70]/90 px-3 py-1.5 text-[10px] font-black text-[#f3cf87] shadow-[0_14px_36px_-16px_rgba(3,21,46,0.8)] backdrop-blur">
+        <span className="flex items-center gap-1.5 rounded-full border border-[#d7a74a]/40 bg-[#204029]/90 px-3 py-1.5 text-[10px] font-black text-[#f3cf87] backdrop-blur">
           <span className="lp-live-dot h-1.5 w-1.5 rounded-full bg-[#f3cf87]" />
           الجرس الآلي: الحصة الأولى بدأت
         </span>
@@ -705,7 +735,7 @@ function SectionHeading({
         className={
           light
             ? 'inline-flex items-center gap-2 rounded-full border border-[#d7a74a]/40 bg-[#d7a74a]/10 px-3.5 py-1 text-[11px] font-black tracking-wide text-[#f3cf87]'
-            : 'inline-flex items-center gap-2 rounded-full border border-[#e0cfa6] bg-[#fbf4e4] px-3.5 py-1 text-[11px] font-black tracking-wide text-[#a8823c]'
+            : 'inline-flex items-center gap-2 rounded-full border border-[#e0cfa6] bg-[#fbf4e4] px-3.5 py-1 text-[11px] font-black tracking-wide text-[#856224]'
         }
       >
         <Sparkles className="h-3 w-3" />
@@ -715,12 +745,12 @@ function SectionHeading({
         className={
           light
             ? 'text-3xl font-black leading-tight tracking-tight text-white sm:text-4xl'
-            : 'text-3xl font-black leading-tight tracking-tight text-[#14355d] sm:text-4xl'
+            : 'text-3xl font-black leading-tight tracking-tight text-[#173D28] sm:text-4xl'
         }
       >
         {title}
       </h2>
-      <p className={light ? 'text-sm font-medium leading-7 text-white/65 sm:text-[15px]' : 'text-sm font-medium leading-7 text-[#6f6a5e] sm:text-[15px]'}>
+      <p className={light ? 'text-sm font-medium leading-7 text-white/75 sm:text-[15px]' : 'text-sm font-medium leading-7 text-[#6f6a5e] sm:text-[15px]'}>
         {subtitle}
       </p>
     </div>
@@ -743,7 +773,7 @@ function FaqAccordion() {
             <div
               className={`overflow-hidden rounded-2xl border transition-all duration-300 ${
                 open
-                  ? 'border-[#d7a74a]/55 bg-white shadow-[0_18px_44px_-28px_rgba(8,41,84,0.4)]'
+                  ? 'border-[#d7a74a]/55 bg-white '
                   : 'border-[#e7dcc7] bg-white/80 hover:border-[#dcc99c] hover:bg-white'
               }`}
             >
@@ -753,14 +783,14 @@ function FaqAccordion() {
                 aria-expanded={open}
                 className="flex w-full items-center justify-between gap-4 px-5 py-4 text-right"
               >
-                <span className={`text-[14.5px] font-black transition-colors ${open ? 'text-[#0c3b70]' : 'text-[#14355d]'}`}>
+                <span className={`text-[14.5px] font-black transition-colors ${open ? 'text-[#204029]' : 'text-[#173D28]'}`}>
                   {item.question}
                 </span>
                 <span
                   className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border transition-all duration-300 ${
                     open
-                      ? 'rotate-180 border-[#d7a74a] bg-[#d7a74a] text-[#173f74]'
-                      : 'border-[#e0cfa6] bg-[#fbf4e4] text-[#a8823c]'
+                      ? 'rotate-180 border-[#d7a74a] bg-[#d7a74a] text-[#163C27]'
+                      : 'border-[#e0cfa6] bg-[#fbf4e4] text-[#856224]'
                   }`}
                 >
                   <ChevronDown className="h-4 w-4" />
@@ -795,7 +825,7 @@ function RegisterQrCode() {
     QRCode.toDataURL(`${window.location.origin}/register`, {
       margin: 1,
       width: 360,
-      color: { dark: '#173f74', light: '#fffaf0' },
+      color: { dark: '#163C27', light: '#fffaf0' },
     })
       .then((url) => {
         if (mounted) setSrc(url)
@@ -809,7 +839,7 @@ function RegisterQrCode() {
   }, [])
 
   return (
-    <div className="w-full max-w-[160px] rounded-2xl border border-[#d7a74a]/30 bg-white p-3 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.4)]">
+    <div className="w-full max-w-[160px] rounded-2xl border border-[#d7a74a]/30 bg-white p-3 ">
       <div className="aspect-square w-full overflow-hidden rounded-xl bg-[#fffaf0]">
         {src ? (
           <img src={src} alt="رمز QR للتسجيل السريع في نظام الرائد" className="h-full w-full" />
@@ -836,7 +866,7 @@ export function LandingPage() {
     <div
       id="top"
       dir="rtl"
-      className="min-h-screen bg-[#f6f1e7] text-[#16385f]"
+      className="min-h-screen bg-[#f6f1e7] text-[#1A3F2B]"
       style={{ fontFamily: "'IBM Plex Sans Arabic', 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif" }}
     >
       {/* حركات الصفحة */}
@@ -850,29 +880,52 @@ export function LandingPage() {
           88% { opacity: 1; transform: scale(1); }
           95%, 100% { opacity: 0; transform: scale(0.85); }
         }
-        @keyframes lp-scan { 0% { transform: translateY(0); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(190px); opacity: 0; } }
+        /* المسح يقطع ارتفاع القائمة الفعلي: كان مثبّتاً على 190px بينما
+           الحاوية تحسب ارتفاعها من عدد الطلاب، فيقف قبل النهاية أو يتجاوزها */
+        @keyframes lp-scan { 0% { transform: translateY(0); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(calc(100% - 2.5rem)); opacity: 0; } }
         @keyframes lp-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
         @keyframes lp-aurora { 0%,100% { transform: translate3d(0,0,0) scale(1); } 50% { transform: translate3d(-42px,26px,0) scale(1.14); } }
         @keyframes lp-shine { from { background-position: 200% center; } to { background-position: -200% center; } }
         html { scroll-behavior: smooth; }
-        section[id] { scroll-margin-top: 92px; }
+        section[id], #top { scroll-margin-top: 96px; }
+
+        /* ── العمق بلا ظلال ──
+           الظل الضبابي مظهر قديم، والنظام كله مسطّح عمداً
+           ([class*='shadow'] مُلغى عالمياً في styles/index.css).
+           الفصل هنا يأتي من: حدّ شعري بلونٍ من العائلة نفسها، وفرقِ
+           درجةٍ بين السطح وما تحته، وخطٍّ علوي مضيء داخل الأسطح الداكنة.
+           لا blur ولا ارتفاع وهمي — حوافُّ صريحة فقط. */
+        /* حلقة شعرية حادّة (1px بلا تمويه) — ليست ظلاً بل حدٌّ ثانٍ */
+        .lp-e-ring { box-shadow: 0 0 0 1px rgba(215,167,74,0.22); }
+        /* الشريط الملتصق: خيط ذهبي أسفله يفصله عمّا يمرّ تحته */
+        .lp-e-head { box-shadow: 0 1px 0 0 rgba(215,167,74,0.18); }
+        /* لمعة علوية بمقدار بكسل داخل الأسطح الشفافة الداكنة — تُقعّرها */
+        .lp-e-inset { box-shadow: inset 0 1px 0 rgba(255,255,255,0.12); }
         .lp-float { animation: lp-float 5.5s ease-in-out infinite alternate; }
         .lp-float-slow { animation: lp-float 7s ease-in-out infinite alternate; animation-delay: -3s; }
         .lp-live-dot { animation: lp-live 2s ease-out infinite; }
         .lp-stamp { animation: lp-stamp 8s ease-in-out infinite; }
         .lp-scan { animation: lp-scan 8s ease-in-out infinite; }
-        .lp-marquee-track { animation: lp-marquee 32s linear infinite; }
+        /* 64s لا 32s: مسافة الدورة صارت نسختين بدل واحدة، فمضاعفة المدّة
+           تُبقي السرعة المرئية (بكسل/ثانية) على ما كانت عليه */
+        .lp-marquee-track { animation: lp-marquee 64s linear infinite; will-change: transform; }
         .lp-marquee:hover .lp-marquee-track { animation-play-state: paused; }
         .lp-aurora { animation: lp-aurora 16s ease-in-out infinite; will-change: transform; }
         .lp-gold-shine { background-size: 200% auto; animation: lp-shine 7s linear infinite; }
-        .lp-tilt { transform: rotateY(-6deg) rotateX(3deg); transition: transform 0.6s cubic-bezier(0.22,1,0.36,1); }
-        @media (min-width: 1024px) { .lp-tilt:hover { transform: rotateY(0deg) rotateX(0deg); } }
-        .lp-bar-fill { transition: width 1.6s cubic-bezier(0.22,1,0.36,1) 0.3s; }
-        .lp-portal-card { transition: transform 0.45s cubic-bezier(0.22,1,0.36,1), box-shadow 0.45s ease; }
-        .lp-portal-card:hover { transform: translateY(-8px); box-shadow: 0 34px 70px -34px rgba(8,41,84,0.45); }
-        .lp-journey-step { transition: background-color 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease; }
+        /* الميلان ثلاثي الأبعاد لسطح المكتب فقط — كان دائماً على كل المقاسات
+           فتصل البطاقة للجوال مائلة بلا تفسير ولا مفرّ (الفكّ عند hover فقط) */
+        .lp-tilt { transition: transform 0.6s cubic-bezier(0.22,1,0.36,1); }
         @media (min-width: 1024px) {
-          .lp-journey-step:hover { background-color: #ffffff; border-color: #e7dcc7; box-shadow: 0 18px 44px -30px rgba(8,41,84,0.35); }
+          .lp-tilt { transform: rotateY(-6deg) rotateX(3deg); }
+          .lp-tilt:hover { transform: rotateY(0deg) rotateX(0deg); }
+        }
+        .lp-bar-fill { transition: width 1.6s cubic-bezier(0.22,1,0.36,1) 0.3s; }
+        /* التحويم: رفعة + اشتداد الحدّ — لا ظلّ ينمو تحت البطاقة */
+        .lp-portal-card { transition: transform 0.45s cubic-bezier(0.22,1,0.36,1), border-color 0.3s ease; }
+        .lp-portal-card:hover { transform: translateY(-6px); border-color: #d7a74a; }
+        .lp-journey-step { transition: background-color 0.35s ease, border-color 0.35s ease; }
+        @media (min-width: 1024px) {
+          .lp-journey-step:hover { background-color: #ffffff; border-color: #e7dcc7; }
         }
         @media (prefers-reduced-motion: reduce) {
           html { scroll-behavior: auto; }
@@ -889,23 +942,23 @@ export function LandingPage() {
         className="relative overflow-hidden pb-16 text-white"
         style={{
           background:
-            'radial-gradient(ellipse 80% 55% at 50% -5%, rgba(215,167,74,0.14) 0%, transparent 70%), radial-gradient(ellipse 45% 65% at 95% 20%, rgba(215,167,74,0.2) 0%, transparent 60%), radial-gradient(ellipse 55% 75% at -5% 40%, rgba(14,70,140,0.6) 0%, transparent 65%), linear-gradient(172deg, #061a35 0%, #0a3363 38%, #0b3d71 62%, #0e4a85 100%)',
+            'radial-gradient(ellipse 80% 55% at 50% -5%, rgba(215,167,74,0.14) 0%, transparent 70%), radial-gradient(ellipse 45% 65% at 95% 20%, rgba(215,167,74,0.2) 0%, transparent 60%), radial-gradient(ellipse 55% 75% at -5% 40%, rgba(38,80,52,0.65) 0%, transparent 65%), linear-gradient(172deg, #08190F 0%, #1D3826 38%, #24452F 62%, #2C5637 100%)',
         }}
       >
         {/* شبكة نقطية */}
         <div
           className="absolute inset-0 opacity-[0.07]"
-          style={{ backgroundImage: 'radial-gradient(circle, #a8c8f0 1px, transparent 1px)', backgroundSize: '28px 28px' }}
+          style={{ backgroundImage: 'radial-gradient(circle, #8FD49B 1px, transparent 1px)', backgroundSize: '28px 28px' }}
         />
         {/* حلقات زخرفية */}
-        <div className="absolute -right-24 -top-24 h-[460px] w-[460px] rounded-full border border-[#d7a74a]/12" />
-        <div className="absolute -right-10 -top-10 h-[280px] w-[280px] rounded-full border border-[#d7a74a]/18" />
-        <div className="absolute -left-28 bottom-6 h-[340px] w-[340px] rounded-full border border-white/6" />
+        <div className="absolute -right-24 -top-24 h-[460px] w-[460px] rounded-full border border-[#d7a74a]/[0.12]" />
+        <div className="absolute -right-10 -top-10 h-[280px] w-[280px] rounded-full border border-[#d7a74a]/20" />
+        <div className="absolute -left-28 bottom-6 h-[340px] w-[340px] rounded-full border border-white/[0.06]" />
         {/* توهجات ثابتة */}
         <div className="absolute -right-10 top-0 h-72 w-72 rounded-full opacity-20 blur-3xl" style={{ background: 'radial-gradient(circle, #d7a74a, transparent 70%)' }} />
-        <div className="absolute -left-10 bottom-10 h-64 w-64 rounded-full opacity-25 blur-3xl" style={{ background: 'radial-gradient(circle, #3b82f6, transparent 70%)' }} />
+        <div className="absolute -left-10 bottom-10 h-64 w-64 rounded-full opacity-25 blur-3xl" style={{ background: 'radial-gradient(circle, #4CAF50, transparent 70%)' }} />
         {/* توهجات متحركة (أورورا) */}
-        <div className="lp-aurora absolute right-[12%] top-[18%] h-80 w-80 rounded-full opacity-15 blur-3xl" style={{ background: 'radial-gradient(circle, #4a9df0, transparent 70%)' }} />
+        <div className="lp-aurora absolute right-[12%] top-[18%] h-80 w-80 rounded-full opacity-15 blur-3xl" style={{ background: 'radial-gradient(circle, #66BB6A, transparent 70%)' }} />
         <div className="lp-aurora absolute bottom-[8%] left-[16%] h-72 w-72 rounded-full opacity-10 blur-3xl" style={{ background: 'radial-gradient(circle, #d7a74a, transparent 70%)', animationDelay: '-8s' }} />
         <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent_0%,rgba(215,167,74,0.5)_50%,transparent_100%)]" />
 
@@ -915,7 +968,7 @@ export function LandingPage() {
             {/* النص */}
             <div className="space-y-7 text-center lg:text-right">
               <Reveal from="none">
-                <div className="inline-flex items-center gap-2 rounded-full border border-[#d7a74a]/35 bg-[#d7a74a]/10 px-5 py-2 text-sm font-bold text-[#f8d690] shadow-[0_0_20px_rgba(215,167,74,0.12)] backdrop-blur-sm">
+                <div className="inline-flex items-center gap-2 rounded-full border border-[#d7a74a]/35 bg-[#d7a74a]/10 px-5 py-2 text-sm font-bold text-[#f8d690] backdrop-blur-sm">
                   <Sparkles className="h-4 w-4 text-[#d7a74a]" />
                   نظام ERP متكامل للإدارة المدرسية
                 </div>
@@ -946,14 +999,14 @@ export function LandingPage() {
                 <div className="flex flex-col gap-3 sm:flex-row sm:justify-center lg:justify-start">
                   <Link
                     to="/register"
-                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#d7a74a] bg-[#d7a74a] px-8 py-4 text-base font-black text-[#173f74] shadow-[0_4px_24px_rgba(215,167,74,0.35)] transition hover:bg-[#e2b457] hover:shadow-[0_6px_32px_rgba(215,167,74,0.5)]"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#d7a74a] bg-[#d7a74a] px-8 py-4 text-base font-black text-[#163C27] transition hover:bg-[#e2b457]"
                   >
                     جرّب النظام مجاناً
                     <ChevronLeft className="h-4 w-4" />
                   </Link>
                   <Link
                     to="/plans"
-                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/8 px-8 py-4 text-base font-bold text-white/90 backdrop-blur-sm transition hover:bg-white/12"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/[0.08] px-8 py-4 text-base font-bold text-white/90 backdrop-blur-sm transition hover:bg-white/[0.12]"
                   >
                     استعرض الباقات
                   </Link>
@@ -965,7 +1018,7 @@ export function LandingPage() {
                   to="/story"
                   className="group inline-flex items-center gap-2.5 text-[13.5px] font-black text-[#f3cf87]/90 transition hover:text-[#f8d690]"
                 >
-                  <span className="grid h-9 w-9 place-items-center rounded-full border border-[#d7a74a]/45 bg-[#d7a74a]/12 shadow-[0_0_18px_rgba(215,167,74,0.2)]">
+                  <span className="grid h-9 w-9 place-items-center rounded-full border border-[#d7a74a]/45 bg-[#d7a74a]/[0.12] ">
                     <Sunrise className="h-4 w-4" />
                   </span>
                   عِش قصة يوم مدرسي كامل مع الرائد — من الفجر إلى الليل
@@ -974,7 +1027,7 @@ export function LandingPage() {
               </Reveal>
 
               <Reveal delay={330} from="none">
-                <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[12px] font-bold text-white/60 lg:justify-start">
+                <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[12px] font-bold text-white/75 lg:justify-start">
                   {['إعداد خلال يوم واحد', 'بدون تعقيد تقني', 'دعم فني مستمر'].map((item) => (
                     <span key={item} className="flex items-center gap-1.5">
                       <CheckCircle2 className="h-3.5 w-3.5 text-[#d7a74a]" />
@@ -993,13 +1046,16 @@ export function LandingPage() {
 
           {/* ── شريط الأرقام (عدّادات) ── */}
           <Reveal>
-            <div className="grid grid-cols-2 divide-white/10 rounded-2xl border border-white/12 bg-white/6 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md sm:grid-cols-5 sm:divide-x sm:divide-x-reverse">
+            {/* الفواصل: كانت divide-x عند sm فقط، فتتلاصق الخانات على الجوال
+                بلا أي خط بينها. الآن divide-y رأسي للصفوف المكدّسة، ثم أفقي
+                عند التوسّع (divide-y يُلغى بـ divide-y-0) */}
+            <div className="lp-e-inset grid grid-cols-2 divide-x divide-y divide-white/10 rounded-2xl border border-white/[0.12] bg-white/[0.06] backdrop-blur-md sm:grid-cols-5 sm:divide-y-0 sm:divide-x-reverse">
               {heroMetrics.map((item, index) => (
                 <div key={item.label} className={`px-4 py-5 text-center ${index === heroMetrics.length - 1 ? 'col-span-2 sm:col-span-1' : ''}`}>
                   <div className="text-2xl font-black text-[#f3cf87] drop-shadow-[0_0_12px_rgba(215,167,74,0.4)] sm:text-3xl">
                     {item.raw ?? <CountUp end={item.end!} suffix={item.suffix ?? ''} />}
                   </div>
-                  <div className="mt-1 text-[11px] font-medium text-white/55">{item.label}</div>
+                  <div className="mt-1 text-[11px] font-medium text-white/70">{item.label}</div>
                 </div>
               ))}
             </div>
@@ -1014,14 +1070,23 @@ export function LandingPage() {
         </div>
       </div>
 
-      {/* ══════════ شريط الوحدات الجاري ══════════ */}
+      {/* ══════════ شريط الوحدات الجاري ══════════
+          كان ينقطع: نسختان فقط والحركة إلى -50%، أي أن مسافة الدورة =
+          عرض نسخة واحدة (~1400px). على شاشة أعرض من ذلك يفرغ يمينُها
+          قبل أن يقفز الشريط للبداية — فيُرى انقطاعٌ ثم استئنافٌ مفاجئ.
+          الحل: أربع نسخ، فمسافة الدورة تصير نسختين (~2800px) وتغطّي
+          أعرض الشاشات. والفراغ نُقل من gap على المسار إلى mr على كل
+          شريحة: مع gap يبقى ٣٥ فراغاً بين ٣٦ عنصراً فلا يساوي نصفُ
+          العرض عدداً صحيحاً من الدورات، وكان يُعوَّض بحشوة pr-3 خفيّة
+          تنكسر بأي تغيير في المقاسات. */}
       <div className="lp-marquee overflow-hidden border-b border-[#e5d9c2] bg-[#fdfaf4] py-4" dir="ltr">
-        <div className="lp-marquee-track flex w-max items-center gap-3 pr-3">
-          {[...systemModules, ...systemModules].map(({ name, icon: Icon }, index) => (
+        <div className="lp-marquee-track flex w-max items-center">
+          {[...systemModules, ...systemModules, ...systemModules, ...systemModules].map(({ name, icon: Icon }, index) => (
             <span
               key={`${name}-${index}`}
               dir="rtl"
-              className="flex shrink-0 items-center gap-2 rounded-full border border-[#e7dcc4] bg-white px-4 py-2 text-[12px] font-black text-[#5d5342] shadow-[0_4px_14px_-8px_rgba(8,41,84,0.25)]"
+              aria-hidden={index >= systemModules.length}
+              className="mr-3 flex shrink-0 items-center gap-2 rounded-full border border-[#e7dcc4] bg-white px-4 py-2 text-[12px] font-black text-[#5d5342]"
             >
               <Icon className="h-3.5 w-3.5 text-[#c89638]" />
               {name}
@@ -1048,12 +1113,12 @@ export function LandingPage() {
               <Reveal key={title} delay={index * 90}>
                 <div className="lp-journey-step relative flex gap-4 rounded-2xl border border-transparent pr-1 lg:flex-col lg:gap-0 lg:p-3 lg:pr-3 lg:text-center">
                   {/* النقطة */}
-                  <div className="relative z-10 grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-[#d7a74a] bg-[#0c3b70] text-[#f3cf87] shadow-[0_8px_20px_-8px_rgba(8,41,84,0.5)] lg:mx-auto lg:h-[52px] lg:w-[52px]">
+                  <div className="relative z-10 grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-[#d7a74a] bg-[#204029] text-[#f3cf87] lg:mx-auto lg:h-[52px] lg:w-[52px]">
                     <Icon className="h-4 w-4 lg:h-5 lg:w-5" />
                   </div>
                   <div className="lg:mt-4">
-                    <div className="text-[11px] font-black tracking-wide text-[#b88c3d]">{time}</div>
-                    <h3 className="mt-0.5 text-[15px] font-black text-[#14355d]">{title}</h3>
+                    <div className="text-[11px] font-black tracking-wide text-[#7f6020]">{time}</div>
+                    <h3 className="mt-0.5 text-[15px] font-black text-[#173D28]">{title}</h3>
                     <p className="mt-1.5 text-[12.5px] font-medium leading-6 text-[#6f6a5e]">{text}</p>
                   </div>
                 </div>
@@ -1075,9 +1140,9 @@ export function LandingPage() {
           <div className="mt-10 grid gap-5 lg:grid-cols-3">
             {portalCards.map(({ title, badge, description, icon: Icon, features }, index) => (
               <Reveal key={title} delay={index * 110}>
-                <article className="lp-portal-card h-full overflow-hidden rounded-2xl border border-[#e7dcc7] bg-white shadow-[0_14px_40px_-28px_rgba(8,41,84,0.35)]">
+                <article className="lp-portal-card h-full overflow-hidden rounded-2xl border border-[#e7dcc7] bg-white ">
                   {/* رأس متدرج */}
-                  <div className="relative overflow-hidden bg-[linear-gradient(150deg,#0a3160_0%,#0e4a85_100%)] px-5 py-5 text-white">
+                  <div className="relative overflow-hidden bg-[linear-gradient(150deg,#1A3826_0%,#2C5637_100%)] px-5 py-5 text-white">
                     <div className="absolute -left-8 -top-8 h-28 w-28 rounded-full border border-white/10" />
                     <div className="absolute -right-4 -bottom-10 h-24 w-24 rounded-full bg-[#d7a74a]/15 blur-xl" />
                     <div className="relative flex items-start justify-between gap-3">
@@ -1093,7 +1158,7 @@ export function LandingPage() {
                   </div>
                   <ul className="space-y-2.5 px-5 py-5">
                     {features.map((feature) => (
-                      <li key={feature} className="flex items-center gap-2 text-sm font-medium text-[#3a5a7a]">
+                      <li key={feature} className="flex items-center gap-2 text-sm font-medium text-[#3D6349]">
                         <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#c89638]" />
                         <span>{feature}</span>
                       </li>
@@ -1108,7 +1173,7 @@ export function LandingPage() {
           <Reveal delay={120}>
             <div className="mt-6 rounded-2xl border border-[#e7dcc7] bg-white px-5 py-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-                <div className="shrink-0 text-[13px] font-black text-[#14355d] lg:ml-4">
+                <div className="shrink-0 text-[13px] font-black text-[#173D28] lg:ml-4">
                   ويشمل بقية الأدوار:
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -1133,14 +1198,14 @@ export function LandingPage() {
       <section
         id="features"
         className="relative overflow-hidden text-white"
-        style={{ background: 'linear-gradient(165deg, #082448 0%, #0b3d71 55%, #0d4278 100%)' }}
+        style={{ background: 'linear-gradient(165deg, #0F2A1B 0%, #24452F 55%, #26492F 100%)' }}
       >
         <div
           className="absolute inset-0 opacity-[0.06]"
-          style={{ backgroundImage: 'radial-gradient(circle, #a8c8f0 1px, transparent 1px)', backgroundSize: '26px 26px' }}
+          style={{ backgroundImage: 'radial-gradient(circle, #8FD49B 1px, transparent 1px)', backgroundSize: '26px 26px' }}
         />
         <div className="absolute -left-20 top-10 h-72 w-72 rounded-full bg-[#d7a74a]/10 blur-3xl" />
-        <div className="lp-aurora absolute -right-16 bottom-16 h-80 w-80 rounded-full bg-[#4a9df0]/10 blur-3xl" />
+        <div className="lp-aurora absolute -right-16 bottom-16 h-80 w-80 rounded-full bg-[#66BB6A]/10 blur-3xl" />
         <div className="relative mx-auto max-w-[1400px] px-4 pb-24 pt-16 sm:px-6 lg:px-10 lg:pb-28 lg:pt-20">
           <SectionHeading
             light
@@ -1152,7 +1217,7 @@ export function LandingPage() {
           <div className="mt-10 grid gap-5 lg:grid-cols-3">
             {featureGroups.map(({ category, items }, index) => (
               <Reveal key={category} delay={index * 110}>
-                <div className="h-full rounded-2xl border border-white/12 bg-white/[0.06] p-5 backdrop-blur-sm transition-colors duration-300 hover:border-[#d7a74a]/30 hover:bg-white/[0.09]">
+                <div className="h-full rounded-2xl border border-white/[0.12] bg-white/[0.06] p-5 backdrop-blur-sm transition-colors duration-300 hover:border-[#d7a74a]/30 hover:bg-white/[0.09]">
                   <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3">
                     <span className="text-[15px] font-black text-white">{category}</span>
                     <span className="rounded-md border border-[#d7a74a]/30 bg-[#d7a74a]/10 px-2 py-0.5 text-[11px] font-bold text-[#f3cf87]">
@@ -1162,7 +1227,7 @@ export function LandingPage() {
                   <ul className="space-y-3">
                     {items.map(({ title, icon: Icon }) => (
                       <li key={title} className="flex items-center gap-2.5">
-                        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/8 text-[#e9c579]">
+                        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/[0.08] text-[#e9c579]">
                           <Icon className="h-3.5 w-3.5" />
                         </span>
                         <span className="text-[13px] font-semibold text-white/85">{title}</span>
@@ -1184,7 +1249,7 @@ export function LandingPage() {
                   </div>
                   <div>
                     <div className="text-[13px] font-black text-white">{title}</div>
-                    <div className="text-[11px] leading-5 text-white/55">{subtitle}</div>
+                    <div className="text-[11px] leading-5 text-white/70">{subtitle}</div>
                   </div>
                 </div>
               </Reveal>
@@ -1212,23 +1277,23 @@ export function LandingPage() {
         <div className="mt-12 grid gap-5 lg:grid-cols-3">
           {testimonials.map((testimonial, index) => (
             <Reveal key={testimonial.name} delay={index * 110}>
-              <figure className="lp-portal-card relative flex h-full flex-col rounded-2xl border border-[#e7dcc7] bg-white p-6 shadow-[0_14px_40px_-28px_rgba(8,41,84,0.35)]">
+              <figure className="lp-portal-card relative flex h-full flex-col rounded-2xl border border-[#e7dcc7] bg-white p-6 ">
                 <Quote className="absolute left-5 top-5 h-8 w-8 text-[#d7a74a]/25" />
                 <div className="flex gap-1 text-[#d7a74a]" aria-label="تقييم خمس نجوم">
                   {Array.from({ length: 5 }).map((_, starIndex) => (
                     <Star key={starIndex} className="h-4 w-4 fill-current" />
                   ))}
                 </div>
-                <blockquote className="mt-4 flex-1 text-[13.5px] font-medium leading-7 text-[#3a5a7a]">
+                <blockquote className="mt-4 flex-1 text-[13.5px] font-medium leading-7 text-[#3D6349]">
                   «{testimonial.quote}»
                 </blockquote>
                 <figcaption className="mt-5 flex items-center gap-3 border-t border-[#f3ede0] pt-4">
-                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[linear-gradient(150deg,#0a3160,#0e4a85)] text-base font-black text-[#f3cf87]">
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[linear-gradient(150deg,#1A3826,#2C5637)] text-base font-black text-[#f3cf87]">
                     {testimonial.initials}
                   </span>
                   <div>
-                    <div className="text-[13.5px] font-black text-[#14355d]">{testimonial.name}</div>
-                    <div className="text-[11.5px] font-semibold text-[#9a8a6a]">{testimonial.role}</div>
+                    <div className="text-[13.5px] font-black text-[#173D28]">{testimonial.name}</div>
+                    <div className="text-[11.5px] font-semibold text-[#7d6b4f]">{testimonial.role}</div>
                   </div>
                 </figcaption>
               </figure>
@@ -1253,7 +1318,7 @@ export function LandingPage() {
       {/* ══════════ الدعوة الختامية ══════════ */}
       <section id="cta" className="mx-auto max-w-[1400px] px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
         <Reveal>
-          <div className="overflow-hidden rounded-3xl border border-[#e0cfa6]/60 bg-[linear-gradient(150deg,#0b3d71_0%,#0e4d8a_60%,#133e6e_100%)] text-white shadow-[0_30px_80px_-36px_rgba(8,41,84,0.6)]">
+          <div className="overflow-hidden rounded-3xl border border-[#e0cfa6]/60 bg-[linear-gradient(150deg,#24452F_0%,#2C5637_60%,#1F4029_100%)] text-white">
             <div className="border-b border-white/10 px-6 py-4 sm:px-10">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
@@ -1291,14 +1356,14 @@ export function LandingPage() {
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                   <Link
                     to="/register"
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#d7a74a] px-8 py-4 text-base font-black text-[#173f74] shadow-[0_4px_24px_rgba(215,167,74,0.3)] transition hover:bg-[#e2b457]"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#d7a74a] px-8 py-4 text-base font-black text-[#163C27] transition hover:bg-[#e2b457]"
                   >
                     ابدأ الآن مجاناً
                     <ChevronLeft className="h-4 w-4" />
                   </Link>
                   <Link
                     to="/auth/admin"
-                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/8 px-8 py-4 text-base font-bold text-white/90 transition hover:bg-white/12"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/[0.08] px-8 py-4 text-base font-bold text-white/90 transition hover:bg-white/[0.12]"
                   >
                     دخول الإدارة
                   </Link>
@@ -1308,7 +1373,7 @@ export function LandingPage() {
               <div className="flex flex-col items-center justify-center gap-4 bg-white/5 px-6 py-9 sm:px-10">
                 <div className="text-center">
                   <div className="text-base font-black text-white">سجّل الآن</div>
-                  <div className="mt-0.5 text-xs font-medium text-white/55">امسح الرمز للانتقال لصفحة التسجيل</div>
+                  <div className="mt-0.5 text-xs font-medium text-white/70">امسح الرمز للانتقال لصفحة التسجيل</div>
                 </div>
                 <RegisterQrCode />
               </div>
@@ -1318,18 +1383,28 @@ export function LandingPage() {
       </section>
 
       {/* ══════════ الفوتر ══════════ */}
-      <footer className="border-t border-white/10 bg-[#071e3d] text-white">
-        <div className="mx-auto grid max-w-[1400px] gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.3fr_1fr_1fr_1.1fr] lg:px-10">
+      <footer className="relative overflow-hidden bg-[#0B2114] text-white">
+        {/* موجة الدخول للفوتر — كان الانتقال من الكريمي للكحلي خطاً أفقياً
+            حادّاً وحده في صفحة كل فواصلها الأخرى موجية. نفس اللغة: نفس
+            viewBox والارتفاع والسعة، مقلوبةً رأسياً كي تملأ الأعلى بلون
+            القسم السابق (#f6f1e7) فينسكب على الفوتر. */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 leading-none">
+          <svg viewBox="0 0 1440 64" preserveAspectRatio="none" className="h-10 w-full fill-[#f6f1e7]">
+            <path d="M0,32 C300,4 620,60 900,44 C1120,32 1300,12 1440,36 L1440,0 L0,0 Z" />
+          </svg>
+        </div>
+
+        <div className="relative mx-auto grid max-w-[1400px] gap-10 px-4 pb-12 pt-20 sm:px-6 lg:grid-cols-[1.3fr_1fr_1fr_1.1fr] lg:px-10">
           <div className="space-y-4">
             <BrandMark compact />
-            <p className="max-w-sm text-[13px] leading-7 text-white/55">
+            <p className="max-w-sm text-[13px] leading-7 text-white/70">
               منظومة سعودية متكاملة للإدارة المدرسية — حضور، سلوك، تواصل، تقارير، وأتمتة يومية تعمل
               لحظة بلحظة لخدمة المدرسة وأولياء الأمور.
             </p>
           </div>
           <div>
             <div className="mb-3 text-sm font-black text-[#ecc36e]">روابط سريعة</div>
-            <ul className="space-y-2 text-[13px] font-semibold text-white/65">
+            <ul className="space-y-2 text-[13px] font-semibold text-white/75">
               <li><a href="#journey" className="transition hover:text-[#f5d08b]">رحلة اليوم الدراسي</a></li>
               <li><a href="#portals" className="transition hover:text-[#f5d08b]">الواجهات</a></li>
               <li><a href="#features" className="transition hover:text-[#f5d08b]">المميزات</a></li>
@@ -1340,7 +1415,7 @@ export function LandingPage() {
           </div>
           <div>
             <div className="mb-3 text-sm font-black text-[#ecc36e]">الدخول للنظام</div>
-            <ul className="space-y-2 text-[13px] font-semibold text-white/65">
+            <ul className="space-y-2 text-[13px] font-semibold text-white/75">
               <li><Link to="/auth/admin" className="transition hover:text-[#f5d08b]">بوابة الإدارة</Link></li>
               <li><Link to="/auth/teacher" className="transition hover:text-[#f5d08b]">بوابة المعلمين</Link></li>
               <li><Link to="/story" className="transition hover:text-[#f5d08b]">قصة يوم مدرسي</Link></li>
@@ -1349,38 +1424,38 @@ export function LandingPage() {
           </div>
           <div>
             <div className="mb-3 text-sm font-black text-[#ecc36e]">تواصل معنا</div>
-            <ul className="space-y-3 text-[13px] font-semibold text-white/65">
+            <ul className="space-y-3 text-[13px] font-semibold text-white/75">
               <li className="flex items-center gap-2.5">
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/8 text-[#f3cf87]">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/[0.08] text-[#f3cf87]">
                   <Headphones className="h-4 w-4" />
                 </span>
                 <span>
                   الدعم الفني
-                  <span className="block text-[11px] font-medium text-white/45">متاح على مدار الساعة طوال أيام الأسبوع</span>
+                  <span className="block text-[11px] font-medium text-white/70">متاح على مدار الساعة طوال أيام الأسبوع</span>
                 </span>
               </li>
               <li className="flex items-center gap-2.5">
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/8 text-[#f3cf87]">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/[0.08] text-[#f3cf87]">
                   <MessageCircle className="h-4 w-4" />
                 </span>
                 <span>
                   تواصل واتساب
-                  <span className="block text-[11px] font-medium text-white/45">رد سريع خلال ساعات العمل الرسمية</span>
+                  <span className="block text-[11px] font-medium text-white/70">رد سريع خلال ساعات العمل الرسمية</span>
                 </span>
               </li>
               <li className="flex items-center gap-2.5">
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/8 text-[#f3cf87]">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/[0.08] text-[#f3cf87]">
                   <MapPin className="h-4 w-4" />
                 </span>
                 <span>
                   المقر
-                  <span className="block text-[11px] font-medium text-white/45">المملكة العربية السعودية</span>
+                  <span className="block text-[11px] font-medium text-white/70">المملكة العربية السعودية</span>
                 </span>
               </li>
             </ul>
           </div>
         </div>
-        <div className="border-t border-white/10 px-4 py-4 text-center text-[12.5px] font-medium text-white/50 sm:px-6 lg:px-10">
+        <div className="border-t border-white/10 px-4 py-4 text-center text-[12.5px] font-medium text-white/70 sm:px-6 lg:px-10">
           © {new Date().getFullYear()} نظام الرائد للإدارة المدرسية — جميع الحقوق محفوظة.
         </div>
       </footer>

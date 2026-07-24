@@ -70,22 +70,30 @@ export const themes: Record<string, Theme> = {
     id: 'default',
     name: 'Natural Green',
     nameAr: 'الأخضر الطبيعي',
-    description: 'A calm and professional green theme',
-    descriptionAr: 'ثيم أخضر هادئ واحترافي',
+    description: 'A calm and professional green theme on a warm sand canvas',
+    descriptionAr: 'ثيم أخضر هادئ واحترافي على كنفا بيج رملي دافئ',
     colors: {
-      background: '#F8F5F0',
-      surface: '#FFFFFF',
+      /* الكنفا بيج رملي، والمكوّنات أبيض دافئ — لا بيج على بيج.
+         السطح كان #FAF5EC فيفصله عن الكنفا 1.131:1 فقط، وكلاهما من
+         عائلة واحدة فتقرؤهما العين سطحاً واحداً. الأبيض قفزة صنفية
+         (تشبّع ≈2.7٪ لا ≈9٪) فيُقرأ «ورقة على طاولة» — وهي الآلية
+         التي تنجح بها صفحة الهبوط رغم فارقٍ أصغر (1.126:1).
+         #FFFDF8 مقابل الكنفا = 1.208:1 · مقابل النص #333333 = 12.43:1 */
+      background: '#EFE7D9',
+      surface: '#FFFDF8',
       primary: '#4CAF50',
       primaryDark: '#3F6F55',
       primaryLight: '#66BB6A',
-      accent: '#E2D9C9',
+      accent: '#E7DCC6',
       danger: '#E57373',
       success: '#66BB6A',
       warning: '#D4AF37',
-      muted: '#777777',
+      /* رمادي دافئ أغمق من #777777: فوق سطحٍ بيج كان التباين 4.1:1
+         (تحت AA)، وبهذه الدرجة يصبح ≈ 5:1 */
+      muted: '#6E6A62',
       textPrimary: '#333333',
-      textSecondary: '#777777',
-      border: '#D6CEC2',
+      textSecondary: '#6E6A62',
+      border: '#DBCEB9',
       sidebar: '#264233',
       header: '#3F6F55',
       sidebarText: '#FDFCFB',
@@ -252,6 +260,33 @@ export const themes: Record<string, Theme> = {
         lg: '2.25rem',
       },
     },
+  },
+}
+
+/* لوحة البوابات (المعلم/ولي الأمر): النسخة الكريمية الأصلية قبل تحوّل
+   لوحة الأدمن إلى البيج الرملي. ليست ضمن `themes` فلا تظهر في قائمة
+   اختيار المظهر — ThemeProvider يطبّقها تلقائياً خارج مسارات /admin.
+   مرجع ثابت على مستوى الوحدة كي لا يُعاد تشغيل الـ effect كل render. */
+export const portalTheme: Theme = {
+  ...themes.default,
+  id: 'default',
+  colors: {
+    background: '#F8F5F0',
+    surface: '#FFFFFF',
+    primary: '#4CAF50',
+    primaryDark: '#3F6F55',
+    primaryLight: '#66BB6A',
+    accent: '#E2D9C9',
+    danger: '#E57373',
+    success: '#66BB6A',
+    warning: '#D4AF37',
+    muted: '#777777',
+    textPrimary: '#333333',
+    textSecondary: '#777777',
+    border: '#D6CEC2',
+    sidebar: '#264233',
+    header: '#3F6F55',
+    sidebarText: '#FDFCFB',
   },
 }
 

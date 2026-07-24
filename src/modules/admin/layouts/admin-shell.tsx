@@ -697,7 +697,7 @@ export function AdminShell() {
           isWorkspaceRoute && 'lg:h-screen lg:max-h-screen lg:overflow-hidden',
         )}
       >
-        <header className="sticky top-0 z-20 flex-shrink-0 border-b shadow-sm" style={{ backgroundColor: '#FCFBF8', borderColor: 'var(--ws-hairline)' }}>
+        <header className="sticky top-0 z-20 flex-shrink-0 border-b shadow-sm" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
           <div className="flex w-full items-center justify-between gap-3 px-4 py-2.5 lg:px-6">
             <div className="flex items-center gap-2">
               {/* زر القائمة للجوال */}

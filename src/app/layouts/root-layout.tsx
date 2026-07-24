@@ -10,7 +10,11 @@ const navLinks = [
 
 const APP_SHELL_PREFIXES = ['/admin', '/teacher']
 const FULLSCREEN_ROUTES = ['/display/auto-call']
-const FULLSCREEN_PREFIXES = ['/excuse', '/reply', '/payment', '/account-suspended']
+/* /onboarding يحكم شاشته بالكامل: كان يقع خارج كل الاستثناءات فيُحشر في
+   قالب التسويق — هيدر «الرائد/الدخول» فوق مدير سجّل دخوله للتو، وفوتر
+   ثانٍ، وحصرٌ في max-w-6xl مع py-10 بينما القالب الداخلي min-h-screen
+   فينتج هيدران وفوتران وارتفاعٌ يتجاوز الشاشة. */
+const FULLSCREEN_PREFIXES = ['/excuse', '/reply', '/payment', '/account-suspended', '/onboarding']
 const GUARDIAN_PORTAL_PREFIXES = ['/guardian']
 const NO_HEADER_ROUTES = ['/register']
 

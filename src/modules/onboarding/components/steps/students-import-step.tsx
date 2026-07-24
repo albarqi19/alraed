@@ -77,49 +77,47 @@ export function StudentsImportStep({ onComplete, onSkip, stats, isCompleting, is
   const canProceed = stats.students_count > 0 || (studentImportSummary && (studentImportSummary.new_count ?? 0) > 0)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Instructions */}
-      <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-4">
-        <h4 className="mb-2 font-semibold text-blue-800">
-          <i className="bi bi-info-circle ml-2" />
-          كيفية الحصول على ملف الطلاب
-        </h4>
-        <ol className="list-inside list-decimal space-y-1 text-sm text-blue-700">
-          <li>ادخل على نظام نور</li>
-          <li>اذهب إلى "التقارير" ثم "تقارير الطلاب"</li>
-          <li>اختر "كشف بأسماء الطلاب"</li>
-          <li>صدّر الملف بصيغة Excel</li>
-          <li>ارفع الملف هنا</li>
-        </ol>
+      <div className="ws-alert ws-alert--info ws-alert--boxed items-start">
+        <div className="min-w-0 flex-1">
+          <h4 className="mb-1.5 text-[13px] font-bold">
+            <i className="bi bi-info-circle ml-2" />
+            كيفية الحصول على ملف الطلاب
+          </h4>
+          <ol className="list-inside list-decimal space-y-0.5 text-[12px] font-normal">
+            <li>ادخل على نظام نور</li>
+            <li>اذهب إلى "التقارير" ثم "تقارير الطلاب"</li>
+            <li>اختر "كشف بأسماء الطلاب"</li>
+            <li>صدّر الملف بصيغة Excel</li>
+            <li>ارفع الملف هنا</li>
+          </ol>
+        </div>
       </div>
 
       {/* Current Status */}
       {stats.students_count > 0 && (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500 text-white">
-              <i className="bi bi-check-lg text-xl" />
-            </div>
-            <div>
-              <p className="font-semibold text-emerald-800">تم إضافة الطلاب</p>
-              <p className="text-sm text-emerald-600">
-                يوجد حالياً {stats.students_count.toLocaleString('ar-SA-u-nu-latn')} طالب في النظام
-              </p>
-            </div>
+        <div className="ws-alert ws-alert--success ws-alert--boxed items-start">
+          <i className="bi bi-check-circle-fill mt-0.5 text-[14px]" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-bold">تم إضافة الطلاب</p>
+            <p className="text-[12px] font-normal">
+              يوجد حالياً {stats.students_count.toLocaleString('ar-SA-u-nu-latn')} طالب في النظام
+            </p>
           </div>
         </div>
       )}
 
       {/* Download Template */}
-      <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-        <div>
-          <p className="font-semibold text-slate-800">قالب الاستيراد</p>
-          <p className="text-sm text-slate-500">حمّل القالب إذا أردت الإدخال اليدوي</p>
+      <div className="flex items-center justify-between gap-3 rounded-[10px] border border-[var(--color-hairline)] bg-[var(--color-surface-2)] px-4 py-3">
+        <div className="min-w-0">
+          <p className="text-[13px] font-bold text-[var(--color-text-primary)]">قالب الاستيراد</p>
+          <p className="text-[12px] text-[var(--color-text-secondary)]">حمّل القالب إذا أردت الإدخال اليدوي</p>
         </div>
         <button
           type="button"
           onClick={() => downloadStudentsTemplateMutation.mutate()}
-          className="button-secondary text-sm"
+          className="ws-btn ws-btn--sm shrink-0"
           disabled={downloadStudentsTemplateMutation.isPending}
         >
           <i className="bi bi-download" />
@@ -128,10 +126,10 @@ export function StudentsImportStep({ onComplete, onSkip, stats, isCompleting, is
       </div>
 
       {/* Upload Area */}
-      <div className="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-6">
+      <div>
         <label
           htmlFor={inputId}
-          className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-3xl border border-slate-200 bg-slate-50/70 px-6 py-10 text-center transition hover:border-teal-300 hover:bg-teal-50/60 ${
+          className={`flex cursor-pointer flex-col items-center justify-center gap-2.5 rounded-[10px] border border-dashed border-[var(--color-border-strong)] bg-[var(--color-sunken)] px-5 py-5 text-center transition hover:border-[var(--color-primary)] hover:bg-[var(--color-surface-2)] ${
             isLoading ? 'pointer-events-none opacity-70' : ''
           }`}
         >
@@ -148,53 +146,53 @@ export function StudentsImportStep({ onComplete, onSkip, stats, isCompleting, is
             className="hidden"
             disabled={isLoading}
           />
-          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-teal-100 text-teal-600">
-            <i className="bi bi-cloud-arrow-up text-2xl" />
+          <span className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--color-hairline)] bg-[var(--color-surface)] text-[var(--color-primary-dark)]">
+            <i className="bi bi-cloud-arrow-up text-xl" />
           </span>
-          <div className="space-y-1">
-            <p className="text-sm font-semibold text-slate-800">
+          <div className="space-y-0.5">
+            <p className="text-[13px] font-bold text-[var(--color-text-primary)]">
               {isLoading ? 'جارٍ معالجة الملف...' : 'اضغط هنا أو اسحب الملف لإسقاطه'}
             </p>
-            <p className="text-xs text-slate-500">يدعم ملفات Excel و CSV</p>
+            <p className="text-[12px] text-[var(--color-text-secondary)]">يدعم ملفات Excel و CSV</p>
           </div>
         </label>
       </div>
 
       {/* Error Message */}
       {studentError && (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50/70 px-4 py-3 text-sm font-semibold text-rose-700">
-          <i className="bi bi-exclamation-triangle ml-2" />
+        <div className="ws-alert ws-alert--boxed">
+          <i className="bi bi-exclamation-triangle" />
           {studentError}
         </div>
       )}
 
       {/* Preview Summary */}
       {studentPreview && !studentImportSummary && (
-        <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl bg-emerald-50 p-3 text-center">
-              <p className="text-2xl font-bold text-emerald-600">{studentPreview.new_students_count}</p>
-              <p className="text-xs text-emerald-700">طلاب جدد</p>
+        <div className="space-y-3">
+          <div className="ws-statgrid">
+            <div className="ws-stat">
+              <span className="ws-stat__label">طلاب جدد</span>
+              <span className="ws-stat__value">{studentPreview.new_students_count}</span>
             </div>
-            <div className="rounded-2xl bg-amber-50 p-3 text-center">
-              <p className="text-2xl font-bold text-amber-600">{studentPreview.students_with_changes}</p>
-              <p className="text-xs text-amber-700">بحاجة لتحديث</p>
+            <div className="ws-stat">
+              <span className="ws-stat__label">بحاجة لتحديث</span>
+              <span className="ws-stat__value">{studentPreview.students_with_changes}</span>
             </div>
-            <div className="rounded-2xl bg-slate-100 p-3 text-center">
-              <p className="text-2xl font-bold text-slate-600">{studentPreview.total_students}</p>
-              <p className="text-xs text-slate-700">إجمالي السجلات</p>
+            <div className="ws-stat">
+              <span className="ws-stat__label">إجمالي السجلات</span>
+              <span className="ws-stat__value">{studentPreview.total_students}</span>
             </div>
           </div>
 
           <button
             type="button"
             onClick={handleStudentImport}
-            className="button-primary w-full"
+            className="ws-btn ws-btn--primary w-full"
             disabled={importStudentsMutation.isPending}
           >
             {importStudentsMutation.isPending ? (
               <>
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
                 جارٍ الاستيراد...
               </>
             ) : (
@@ -209,30 +207,30 @@ export function StudentsImportStep({ onComplete, onSkip, stats, isCompleting, is
 
       {/* Import Summary */}
       {studentImportSummary && (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
-          <h4 className="mb-3 font-semibold text-emerald-800">
-            <i className="bi bi-check-circle-fill ml-2" />
-            تم الاستيراد بنجاح
-          </h4>
-          <div className="grid gap-2 text-sm sm:grid-cols-2">
-            <p className="text-emerald-700">
-              طلاب جدد: <strong>{studentImportSummary.new_count ?? 0}</strong>
-            </p>
-            <p className="text-emerald-700">
-              تم تحديثهم: <strong>{studentImportSummary.updated_count ?? 0}</strong>
-            </p>
+        <div className="ws-alert ws-alert--success ws-alert--boxed items-start">
+          <i className="bi bi-check-circle-fill mt-0.5 text-[14px]" />
+          <div className="min-w-0 flex-1">
+            <p className="mb-1 text-[13px] font-bold">تم الاستيراد بنجاح</p>
+            <div className="grid gap-1 text-[12px] font-normal sm:grid-cols-2">
+              <p>
+                طلاب جدد: <strong>{studentImportSummary.new_count ?? 0}</strong>
+              </p>
+              <p>
+                تم تحديثهم: <strong>{studentImportSummary.updated_count ?? 0}</strong>
+              </p>
+            </div>
           </div>
         </div>
       )}
 
       {/* Next Button */}
-      <div className="flex items-center justify-between border-t border-slate-100 pt-6">
+      <div className="flex items-center justify-between gap-3 border-t border-[var(--color-hairline)] pt-4">
         {/* Skip Button (للتجربة) */}
         <button
           type="button"
           onClick={onSkip}
           disabled={isSkipping || isCompleting}
-          className="text-sm text-slate-400 underline-offset-2 hover:text-slate-600 hover:underline disabled:opacity-50"
+          className="text-[12px] text-[var(--color-text-secondary)] underline-offset-2 hover:text-[var(--color-text-primary)] hover:underline disabled:opacity-50"
         >
           {isSkipping ? 'جاري التخطي...' : 'تخطي (للتجربة)'}
         </button>
@@ -241,11 +239,11 @@ export function StudentsImportStep({ onComplete, onSkip, stats, isCompleting, is
           type="button"
           onClick={() => onComplete()}
           disabled={!canProceed || isCompleting}
-          className="button-primary"
+          className="ws-btn ws-btn--primary"
         >
           {isCompleting ? (
             <>
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
               جاري الحفظ...
             </>
           ) : (
@@ -258,10 +256,10 @@ export function StudentsImportStep({ onComplete, onSkip, stats, isCompleting, is
       </div>
 
       {!canProceed && (
-        <p className="text-center text-sm text-amber-600">
-          <i className="bi bi-exclamation-triangle ml-1" />
+        <div className="ws-alert ws-alert--warn ws-alert--boxed justify-center">
+          <i className="bi bi-exclamation-triangle" />
           يجب إضافة طالب واحد على الأقل للمتابعة
-        </p>
+        </div>
       )}
     </div>
   )

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
-import { getThemeById, themes, type Theme } from './theme-definitions'
+import { getThemeById, portalTheme, themes, type Theme } from './theme-definitions'
 
 const defaultDensity = {
   fontSize: {
@@ -60,9 +60,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const currentTheme = getThemeById(currentThemeId)
   const availableThemes = Object.values(themes)
 
-  // الثيم المختار يُطبق فقط على صفحات الأدمن، باقي الصفحات تستخدم الثيم الافتراضي
-  const isAdminRoute = location.pathname.startsWith('/admin')
-  const appliedTheme = isAdminRoute ? currentTheme : getThemeById('default')
+  // الثيم المختار يُطبق فقط على صفحات الأدمن، باقي الصفحات تستخدم لوحة البوابات
+  // (الكريمية الأصلية) — فتحوّل الأدمن للبيج الرملي لا يمسّ المعلم وولي الأمر.
+  // /onboarding ملحقٌ بالأدمن: هو أول ما يراه المدير وينتهي بـ /admin، فلو
+  // أخذ لوحة البوابات لانتقل المستخدم بين لوحتين لونيتين في خطوة واحدة
+  const isAdminRoute =
+    location.pathname.startsWith('/admin') || location.pathname.startsWith('/onboarding')
+  const appliedTheme = isAdminRoute ? currentTheme : portalTheme
 
   useEffect(() => {
     const root = document.documentElement
@@ -70,6 +74,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const density = appliedTheme.density || defaultDensity
 
     root.setAttribute('data-theme', appliedTheme.id)
+    // خطّاف تنسيق خاص بلوحة الأدمن. على <html> عمداً لا على غلاف الأدمن:
+    // المودالات والقوائم المنسدلة تُصيَّر في portals تحت <body> فتظل داخل نطاقه
+    root.classList.toggle('admin-theme', isAdminRoute)
 
     root.style.setProperty('--color-background', colors.background)
     root.style.setProperty('--color-surface', colors.surface)
@@ -132,7 +139,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (msTileColorMeta) {
       msTileColorMeta.setAttribute('content', colors.sidebar)
     }
-  }, [appliedTheme])
+  }, [appliedTheme, isAdminRoute])
 
   const setTheme = (themeId: string) => {
     setCurrentThemeId(themeId)

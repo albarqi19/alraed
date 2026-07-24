@@ -19,6 +19,19 @@
     --color-text-primary: #333333;
     --color-text-secondary: #777777;
     --color-border: #D6CEC2;
+
+    /* ── مستويات السطح المشتقة ──
+       ThemeProvider يكتب --color-* كأنماط سطرية على <html>، وهذه الأربعة
+       ليست منها فتُحَلّ من هذا الشيت وتقرأ القيم السطرية — أي تتبع الثيم
+       المختار تلقائياً بلا تعديل واجهة ThemeColors ولا الثيمات السبعة.
+       مشتقّة من --color-border لا من الأكسنت: فتبقى دافئة في الثيمات
+       الدافئة وباردة في ocean/classic، وفي الثيم الداكن يكون الحدّ أفتح
+       من السطح فيرتفع السطح الثانوي بدل أن يغوص — الاتجاه الصحيح هناك. */
+    --color-surface-2: color-mix(in srgb, var(--color-border) 35%, var(--color-surface));
+    --color-sunken: var(--color-accent);
+    --color-hairline: color-mix(in srgb, var(--color-border) 55%, var(--color-surface));
+    --color-border-strong: color-mix(in srgb, var(--color-text-secondary) 55%, var(--color-border));
+
     --color-sidebar: #264233;
     --color-header: #3F6F55;
     --color-sidebar-text: #FDFCFB;
@@ -1785,6 +1798,219 @@
 
   [data-theme='dark-green'] .bg-slate-400 {
     background-color: #4D7A5E !important;
+  }
+}
+
+/* ========================================
+   البيج الرملي — لوحة الأدمن فقط
+   ----------------------------------------
+   متغيّرات الثيم (--color-*) وحدها لا تكفي: صفحات الأدمن فيها ٢٤٩
+   استخدام مباشر لـ `bg-white` و٢٨٦ رمادي بارد (slate/gray) مكتوبة في
+   الـ JSX. تُركَت بيضاء لبدت جُزُراً باردة فوق البيج، فتُنقل هنا إلى
+   المقياس الرملي.
+
+   نطاق المُحدِّد: `[data-theme='default'].admin-theme` — كلاهما على
+   <html>. `data-theme` يضمن ألا تتدخّل هذه القواعد مع الثيمات الأخرى
+   (الداكن/المؤسسي)، و`admin-theme` يضمن ألا تتسرّب لبوابتَي المعلم
+   وولي الأمر. تخصّصه (0,3,0) يفوق قواعد [data-theme='dark-green']
+   فلا سباق ترتيبٍ داخل الملف.
+
+   المقياس مشتق من ألوان الثيم:
+     السطح  #FAF5EC · تحته #F5EFE4 · الخلفية #EFE7D9
+     الأكسنت #E7DCC6 · أعمق #DED2BC
+     الحدود: خفيف #E8DFCF · أساسي #DBCEB9 · قوي #CDBCA2
+   ======================================== */
+
+@layer base {
+  /* متغيّرات shadcn بالـ HSL — تُلوّن Dialog/Popover/Select/Card
+     التي لا تمرّ على --color-* إطلاقاً */
+  [data-theme='default'].admin-theme {
+    /* --background يبقى الكنفا: دلالته «خلفية الصفحة»، و body يطبّقه
+       (bg-background في آخر الملف) فتبييضه يجعل جسم الصفحة أبيض خلف
+       الغلاف. المكوّنات التي تسيء استعماله كسطحٍ عائم تُصحَّح عندها. */
+    --background: 38 41% 89%;
+    --foreground: 0 0% 20%;
+    /* card و popover ← الأبيض الدافئ #FFFDF8. كانا 39 58% 95% = #FAF5EC
+       أي نفس ما تتحوّل إليه bg-white بالضبط، فكل سطح عائم كان يرث لون
+       شيءٍ تحته لا درجةً أعلى منه. */
+    --card: 42.9 100% 98.6%;
+    --card-foreground: 0 0% 20%;
+    --popover: 42.9 100% 98.6%;
+    --popover-foreground: 0 0% 20%;
+    --secondary: 40 41% 84%;
+    --secondary-foreground: 0 0% 20%;
+    --muted: 40 41% 84%;
+    /* أُغمِّق: النص الثانوي #6E6A62 فوق المسار الغائر #E7DCC6 = 3.96:1
+       (تحت AA)، وبهذه الدرجة 5.36:1 */
+    --muted-foreground: 39 8% 33%;
+    --accent: 40 41% 84%;
+    --accent-foreground: 0 0% 20%;
+    --border: 37 32% 79%;
+    /* حدّ العناصر التفاعلية وحده يرتفع: #DBCEB9 يعطي 1.53:1 فوق السطح
+       الأبيض — تحت عتبة WCAG 1.4.11 (٣:١) لحدود عناصر الواجهة.
+       #96866A يعطي 3.49:1 فوق الأبيض و3.10:1 فوق السطح الثانوي. */
+    --input: 38.2 17.3% 50.2%;
+
+    /* مستويات السطح مثبّتة صراحةً هنا: color-mix في :root يعطي تقريباً
+       صحيحاً، والتثبيت يضمن القيم المقيسة أعلاه بلا انزياح */
+    --color-surface-2: #F5EFE3;
+    --color-sunken: #E7DCC6;
+    --color-hairline: #E8DFCF;
+    --color-border-strong: #96866A;
+  }
+}
+
+@layer utilities {
+
+  /* ── الأسطح البيضاء ── */
+  [data-theme='default'].admin-theme .bg-white {
+    background-color: var(--color-surface) !important;
+  }
+
+  /* البيضاء الشفافة (ترويسات لاصقة وطبقات ضبابية) */
+  [data-theme='default'].admin-theme .bg-white\/90 {
+    background-color: rgba(255, 253, 248, 0.9) !important;
+  }
+
+  [data-theme='default'].admin-theme .bg-white\/80 {
+    background-color: rgba(255, 253, 248, 0.8) !important;
+  }
+
+  [data-theme='default'].admin-theme .bg-white\/70 {
+    background-color: rgba(255, 253, 248, 0.7) !important;
+  }
+
+  [data-theme='default'].admin-theme .bg-white\/60 {
+    background-color: rgba(255, 253, 248, 0.6) !important;
+  }
+
+  [data-theme='default'].admin-theme .bg-white\/50 {
+    background-color: rgba(255, 253, 248, 0.5) !important;
+  }
+
+  /* ملاحظة: bg-white/10 و/20 داخل الشريط الجانبي الداكن مستثناة عمداً —
+     هي إضاءة فوق الأخضر الغامق ولا علاقة لها بأسطح الصفحة */
+
+  /* ── الرماديات الباردة → المقياس الرملي ── */
+  [data-theme='default'].admin-theme .bg-slate-50,
+  [data-theme='default'].admin-theme .bg-gray-50,
+  [data-theme='default'].admin-theme .bg-neutral-50,
+  [data-theme='default'].admin-theme .bg-zinc-50 {
+    background-color: var(--color-surface-2) !important;
+  }
+
+  [data-theme='default'].admin-theme .bg-slate-100,
+  [data-theme='default'].admin-theme .bg-gray-100,
+  [data-theme='default'].admin-theme .bg-neutral-100,
+  [data-theme='default'].admin-theme .bg-zinc-100 {
+    /* كان #EFE7D9 = --color-background حرفياً، أي 1.000:1 على الكنفا
+       والظلال ملغاة فلا ينقذه شيء. الغائر يعطيه 1.337:1 فوق البطاقة */
+    background-color: var(--color-sunken) !important;
+  }
+
+  [data-theme='default'].admin-theme .bg-slate-200,
+  [data-theme='default'].admin-theme .bg-gray-200 {
+    background-color: #DED2BC !important;
+  }
+
+  [data-theme='default'].admin-theme .bg-slate-300,
+  [data-theme='default'].admin-theme .bg-gray-300 {
+    background-color: #D2C3A8 !important;
+  }
+
+  [data-theme='default'].admin-theme .bg-slate-50\/50,
+  [data-theme='default'].admin-theme .bg-gray-50\/50 {
+    background-color: rgba(245, 239, 228, 0.5) !important;
+  }
+
+  /* ── التحويم ── */
+  [data-theme='default'].admin-theme .hover\:bg-white:hover {
+    background-color: var(--color-surface) !important;
+  }
+
+  [data-theme='default'].admin-theme .hover\:bg-slate-50:hover,
+  [data-theme='default'].admin-theme .hover\:bg-gray-50:hover {
+    background-color: var(--color-surface-2) !important;
+  }
+
+  [data-theme='default'].admin-theme .hover\:bg-slate-100:hover,
+  [data-theme='default'].admin-theme .hover\:bg-gray-100:hover {
+    background-color: var(--color-sunken) !important;
+  }
+
+  [data-theme='default'].admin-theme .hover\:bg-slate-200:hover,
+  [data-theme='default'].admin-theme .hover\:bg-gray-200:hover {
+    background-color: #DED2BC !important;
+  }
+
+  [data-theme='default'].admin-theme .hover\:bg-slate-50\/50:hover,
+  [data-theme='default'].admin-theme .hover\:bg-gray-50\/50:hover {
+    background-color: rgba(245, 239, 228, 0.5) !important;
+  }
+
+  /* ── الحدود ── */
+  [data-theme='default'].admin-theme .border-slate-100,
+  [data-theme='default'].admin-theme .border-gray-100 {
+    border-color: var(--color-hairline) !important;
+  }
+
+  [data-theme='default'].admin-theme .border-slate-200,
+  [data-theme='default'].admin-theme .border-gray-200 {
+    border-color: var(--color-border) !important;
+  }
+
+  [data-theme='default'].admin-theme .border-slate-300,
+  [data-theme='default'].admin-theme .border-gray-300 {
+    border-color: #CDBCA2 !important;
+  }
+
+  /* ── الفواصل بين العناصر ── */
+  [data-theme='default'].admin-theme .divide-slate-100> :not([hidden])~ :not([hidden]),
+  [data-theme='default'].admin-theme .divide-gray-100> :not([hidden])~ :not([hidden]) {
+    border-color: #E8DFCF !important;
+  }
+
+  [data-theme='default'].admin-theme .divide-slate-200> :not([hidden])~ :not([hidden]),
+  [data-theme='default'].admin-theme .divide-gray-200> :not([hidden])~ :not([hidden]) {
+    border-color: var(--color-border) !important;
+  }
+
+  /* ── الحلقات ── */
+  [data-theme='default'].admin-theme .ring-slate-100,
+  [data-theme='default'].admin-theme .ring-gray-100 {
+    --tw-ring-color: #E8DFCF !important;
+  }
+
+  [data-theme='default'].admin-theme .ring-slate-200,
+  [data-theme='default'].admin-theme .ring-gray-200 {
+    --tw-ring-color: var(--color-border) !important;
+  }
+
+  /* ── الحقول: أبيض المتصفح الافتراضي يخالف البيج ──
+     ملفوفة بـ :where() عمداً فتصير بتخصّص (0,0,1): تكفي لتغلب نمط
+     المتصفح الافتراضي، وتخسر أمام أي خلفية Tailwind مقصودة على الحقل
+     (كـ bg-red-50 لحقلٍ خاطئ) بدل أن تدهسها */
+  :where([data-theme='default'].admin-theme) input:where(:not([type='checkbox']):not([type='radio']):not([type='range'])),
+  :where([data-theme='default'].admin-theme) select,
+  :where([data-theme='default'].admin-theme) textarea {
+    background-color: var(--color-surface);
+  }
+
+  /* ── شريط التمرير: رملي بدل الرمادي البارد ── */
+  [data-theme='default'].admin-theme .stats-scrollbar {
+    scrollbar-color: rgba(154, 137, 108, 0.35) transparent;
+  }
+
+  [data-theme='default'].admin-theme .stats-scrollbar::-webkit-scrollbar-track {
+    background: rgba(239, 231, 217, 0.6);
+  }
+
+  [data-theme='default'].admin-theme .stats-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(154, 137, 108, 0.35);
+  }
+
+  [data-theme='default'].admin-theme .stats-scrollbar:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(154, 137, 108, 0.55);
   }
 }
 

@@ -20,11 +20,20 @@
     --ws-accent: var(--color-primary-dark, #3F6F55);
     --ws-accent-2: var(--color-primary, #4CAF50);
 
-    /* مشتقات: رؤوس البلوكات، التمييز الخافت، الخطوط الرفيعة.
-       مزيج مريمي (sage) يتبع الأكسنت — لا رصاصي محايد يجفّف الهوية */
-    --ws-surface-2: color-mix(in srgb, var(--ws-accent) 6.5%, var(--ws-surface) 93.5%);
-    --ws-hover: color-mix(in srgb, var(--ws-accent) 4.5%, var(--ws-surface) 95.5%);
-    --ws-hairline: color-mix(in srgb, var(--ws-border) 60%, var(--ws-surface) 40%);
+    /* السطح الثانوي: رؤوس البلوكات والجداول وشريط الأدوات والتحويم.
+       كان مزيجاً من الأكسنت الأخضر — يعطي 1.09:1 فوق السطح البيج (أي
+       رؤوس غير مرئية عملياً)، وينقلب فوق السطح الأبيض إلى رمادي مخضرّ
+       بارد يكسر دفء العائلة. الاشتقاق من الحدّ يبقى دافئاً في كل ثيم،
+       ويرتفع بدل أن يغوص في الثيم الداكن حيث الحدّ أفتح من السطح. */
+    --ws-surface-2: var(--color-surface-2, color-mix(in srgb, var(--ws-border) 35%, var(--ws-surface)));
+    /* التحويم = السطح الثانوي نفسه: يثبّت السلّم عند أربع درجات بدل
+       خمس متقاربة لا تُميَّز */
+    --ws-hover: var(--ws-surface-2);
+    /* الغائر: مسارات، حقول معطّلة، شرائح داخل الحاويات الثانوية */
+    --ws-sunken: var(--color-sunken, var(--color-accent, #E7DCC6));
+    /* حدّ العناصر التفاعلية — الوحيد الذي يستوفي WCAG 1.4.11 */
+    --ws-border-strong: var(--color-border-strong, #96866A);
+    --ws-hairline: var(--color-hairline, color-mix(in srgb, var(--ws-border) 60%, var(--ws-surface) 40%));
     --ws-accent-soft: color-mix(in srgb, var(--ws-accent) 7%, var(--ws-surface) 93%);
     --ws-accent-softer: color-mix(in srgb, var(--ws-accent) 3.5%, var(--ws-surface) 96.5%);
     --ws-focus: color-mix(in srgb, var(--ws-accent-2) 28%, transparent);
@@ -191,7 +200,10 @@
     flex-wrap: wrap;
     gap: 6px 10px;
     padding: 8px 16px 10px;
-    background: var(--ws-surface);
+    /* يغوص درجةً عن الترويسة والمحتوى: الحقول والأزرار تعبئتها
+       --ws-surface فكانت تجلس على شريط بالدرجة نفسها تماماً (صفر فرق)
+       وتُرى بحدّها وحده. الآن تبرز بيضاء فوق أرضية غائرة = 1.126:1 */
+    background: var(--ws-surface-2);
     border-bottom: 1px solid var(--ws-border);
 }
 
@@ -222,7 +234,7 @@
     font-family: inherit;
     color: var(--ws-text);
     background-color: var(--ws-surface);
-    border: 1px solid var(--ws-border);
+    border: 1px solid var(--ws-border-strong);
     border-radius: 7px;
     transition: border-color 0.15s, box-shadow 0.15s;
 }
@@ -243,7 +255,8 @@
 .ws-select:disabled {
     opacity: 0.55;
     cursor: not-allowed;
-    background-color: var(--ws-surface-2);
+    /* الغائر لا الثانوي: شريط الأدوات صار --ws-surface-2 فيختفي فيه */
+    background-color: var(--ws-sunken);
 }
 
 .ws-textarea {
@@ -255,7 +268,7 @@
     line-height: 1.6;
     color: var(--ws-text);
     background-color: var(--ws-surface);
-    border: 1px solid var(--ws-border);
+    border: 1px solid var(--ws-border-strong);
     border-radius: 7px;
     resize: vertical;
     transition: border-color 0.15s, box-shadow 0.15s;
@@ -270,7 +283,7 @@
 .ws-textarea:disabled {
     opacity: 0.55;
     cursor: not-allowed;
-    background-color: var(--ws-surface-2);
+    background-color: var(--ws-sunken);
 }
 
 /* مفتاح تبديل صغير (admin بالعربية RTL دائماً) */
@@ -328,7 +341,7 @@
     font-family: inherit;
     color: var(--ws-text);
     background: var(--ws-surface);
-    border: 1px solid var(--ws-border);
+    border: 1px solid var(--ws-border-strong);
     border-radius: 7px;
     cursor: pointer;
     white-space: nowrap;
@@ -376,6 +389,15 @@
     font-size: 11.5px;
 }
 
+/* مقاس ثالث للإجراء الختامي وحده (دخول اللوحة بعد الإعداد وأمثاله).
+   نشأ استثناءً بأنماط سطرية في زرٍّ واحد يدهس هندسة ws-btn — ورفعُه
+   إلى النظام أولى من إبقاء استثناءٍ يتيم أو إلغاء تمييز الإجراء. */
+.ws-btn--lg {
+    height: 36px;
+    padding: 0 18px;
+    font-size: 13px;
+}
+
 .ws-icon-btn {
     display: inline-flex;
     align-items: center;
@@ -398,7 +420,9 @@
 }
 
 .ws-icon-btn:hover:not(:disabled) {
-    background: var(--ws-surface-2);
+    /* تمييز بالكروما لا بالدرجة: عند 28px لمسةُ الأكسنت أوضح من فرق
+       إضاءة، والدرجة الثانوية صارت لون الحاويات نفسها */
+    background: var(--ws-accent-soft);
     color: var(--ws-text);
 }
 
@@ -569,6 +593,11 @@
     flex: 1;
     min-height: 0;
     overflow: auto;
+    /* «الورقة على الطاولة»: حاضنة الجدول تكشف الكنفا، والجدول نفسه
+       ورقة بيضاء تنتهي عند آخر صف. هذا المنفذ الوحيد لإظهار البيج
+       داخل النمط الملتصق بلا إدخال فجوات — الكنفا تظهر أسفل الجداول
+       القصيرة بفارق 1.208:1 عن الورقة. */
+    background: var(--ws-bg);
 }
 
 .ws-table {
@@ -577,6 +606,7 @@
     border-spacing: 0;
     text-align: right;
     font-size: 12px;
+    background: var(--ws-surface);
 }
 
 .ws-table thead th {
@@ -636,6 +666,7 @@
     border-spacing: 0;
     font-size: 12px;
     text-align: center;
+    background: var(--ws-surface);
 }
 
 .ws-matrix th,
@@ -717,6 +748,13 @@
 .ws-chip svg {
     width: 11px;
     height: 11px;
+}
+
+/* الشريحة تعبئتها --ws-surface-2، فداخل الحاويات التي صارت بالدرجة
+   نفسها (شريط الأدوات ورؤوس البلوكات) تختفي تماماً — تغوص درجةً */
+.ws-toolbar .ws-chip,
+.ws-block__head .ws-chip {
+    background: var(--ws-sunken);
 }
 
 .ws-chip--green {
@@ -1587,14 +1625,11 @@ button.ws-chip:disabled {
     }
 }
 
-/* ── نطاق «الإغناء» ws-rich: أسطح كريمية + سلّم عرضي أكبر — يُطبَّق صفحةً صفحة ── */
-.ws-rich {
-    /* تجربة المالك: الأبيض → كريمي (الكنفا الدافئة كانت موجودة أصلاً #F8F5F0) */
-    --ws-bg: #F4F2ED;
-    --ws-surface: #FCFBF8;
-    /* مريمية دافئة أعمق قليلاً من الجذر — بدل الرصاصي #EFEDE6 */
-    --ws-surface-2: color-mix(in srgb, var(--ws-accent) 8%, var(--ws-surface) 92%);
-}
+/* ── نطاق «الإغناء» ws-rich: سلّم عرضي أكبر فقط — يُطبَّق صفحةً صفحة ──
+   لا يعرّف أي لون. كان يثبّت --ws-bg و--ws-surface على كريميّ ثم
+   --ws-surface-2 على مزيجٍ أخضر، فيعطي صفحات الإغناء سلّم ألوانٍ
+   ثانياً مختلفاً عن باقي اللوحة. الألوان كلها مركزية في الجذر الآن،
+   والإغناء صار ما يقوله اسمه: أحجامٌ أكبر. */
 .ws-rich .ws-header__title {
     font-size: 18px;
 }

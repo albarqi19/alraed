@@ -81,10 +81,13 @@ export function OnboardingWizardPage() {
   // حالة التحميل
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-white to-teal-50/30">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-teal-500 border-t-transparent" />
-          <p className="text-lg text-slate-600">جاري تحميل معالج الإعداد...</p>
+      <div
+        className="flex min-h-[100dvh] items-center justify-center"
+        style={{ background: 'var(--color-background)' }}
+      >
+        <div className="ws-empty">
+          <div className="ws-spinner" />
+          <p className="m-0">جارٍ تحميل معالج الإعداد…</p>
         </div>
       </div>
     )
@@ -93,20 +96,24 @@ export function OnboardingWizardPage() {
   // حالة الخطأ
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-white to-teal-50/30">
-        <div className="mx-auto max-w-md rounded-2xl border border-rose-200 bg-white p-8 text-center shadow-xl">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-rose-100">
-            <i className="bi bi-exclamation-triangle text-3xl text-rose-500" />
+      <div
+        className="flex min-h-[100dvh] items-center justify-center px-4"
+        style={{ background: 'var(--color-background)' }}
+      >
+        <div className="ws-panel w-full max-w-sm">
+          <div className="ws-panel__body text-center">
+            <i className="bi bi-exclamation-triangle mb-2 block text-2xl" style={{ color: 'var(--ws-red)' }} />
+            <h2 className="m-0 text-[15px] font-bold" style={{ color: 'var(--color-text-primary)' }}>
+              تعذّر تحميل معالج الإعداد
+            </h2>
+            <p className="mb-4 mt-1 text-[12.5px]" style={{ color: 'var(--color-text-secondary)' }}>
+              تحقّق من الاتصال ثم أعد المحاولة.
+            </p>
+            <button type="button" onClick={() => refetch()} className="ws-btn ws-btn--primary mx-auto">
+              <i className="bi bi-arrow-clockwise" />
+              إعادة المحاولة
+            </button>
           </div>
-          <h2 className="mb-2 text-xl font-bold text-slate-800">حدث خطأ</h2>
-          <p className="mb-6 text-slate-600">تعذر تحميل معالج الإعداد. يرجى المحاولة مرة أخرى.</p>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className="rounded-xl bg-teal-500 px-6 py-3 font-medium text-white transition-colors hover:bg-teal-600"
-          >
-            إعادة المحاولة
-          </button>
         </div>
       </div>
     )

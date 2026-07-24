@@ -139,75 +139,80 @@ export function WhatsappSetupStep({ onComplete, onSkip, stats, isCompleting, isS
   const canProceed = stats.whatsapp_connected || !!connectedInstance
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Instructions */}
-      <div className="rounded-2xl border border-green-100 bg-green-50/50 p-4">
-        <h4 className="mb-2 font-semibold text-green-800">
-          <i className="bi bi-whatsapp ml-2" />
-          ربط رقم الواتساب
-        </h4>
-        <p className="text-sm text-green-700">
-          سيتم استخدام هذا الرقم لإرسال إشعارات الغياب والتأخير لأولياء الأمور تلقائياً.
-        </p>
+      <div className="ws-alert ws-alert--info ws-alert--boxed">
+        <i className="bi bi-whatsapp" />
+        <div>
+          <h4 className="font-semibold">ربط رقم الواتساب</h4>
+          <p className="text-[12px] font-normal">
+            سيتم استخدام هذا الرقم لإرسال إشعارات الغياب والتأخير لأولياء الأمور تلقائياً.
+          </p>
+        </div>
       </div>
 
       {/* Loading */}
       {isLoading && (
-        <div className="flex items-center justify-center py-8">
-          <span className="h-8 w-8 animate-spin rounded-full border-4 border-teal-500 border-t-transparent" />
+        <div className="flex items-center justify-center py-6">
+          <span className="ws-spinner" />
         </div>
       )}
 
       {/* Connected Instance */}
       {connectedInstance && (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500 text-white">
-              <i className="bi bi-check-lg text-2xl" />
-            </div>
-            <div className="flex-1">
-              <p className="font-semibold text-emerald-800">تم ربط الواتساب بنجاح</p>
-              <p className="text-sm text-emerald-600">
-                الرقم: <span className="font-mono">{connectedInstance.phone_number}</span>
-              </p>
-            </div>
-            <div className="flex h-3 w-3 rounded-full bg-emerald-500">
-              <span className="h-3 w-3 animate-ping rounded-full bg-emerald-400" />
-            </div>
+        <div className="ws-alert ws-alert--success ws-alert--boxed">
+          <i className="bi bi-check-lg text-[15px]" />
+          <div className="flex-1">
+            <p className="font-semibold">تم ربط الواتساب بنجاح</p>
+            <p className="text-[12px] font-normal">
+              الرقم: <span className="font-mono">{connectedInstance.phone_number}</span>
+            </p>
           </div>
+          <span className="ws-pulse" />
         </div>
       )}
 
       {/* QR Code Display */}
       {qrCode && !connectedInstance && (
-        <div className="space-y-4 text-center">
-          <div className="rounded-2xl border border-slate-200 bg-white p-6">
-            <p className="mb-4 text-sm text-slate-600">امسح الرمز باستخدام تطبيق واتساب على هاتفك</p>
-            <div className="relative mx-auto w-fit rounded-xl border-4 border-slate-100 bg-white p-4">
+        <div className="space-y-3 text-center">
+          <div
+            className="rounded-[10px] border p-4"
+            style={{ background: 'var(--color-surface)', borderColor: 'var(--color-hairline)' }}
+          >
+            <p className="mb-3 text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>
+              امسح الرمز باستخدام تطبيق واتساب على هاتفك
+            </p>
+            <div
+              className="relative mx-auto w-fit rounded-lg border p-3"
+              style={{ background: '#fff', borderColor: 'var(--color-border)' }}
+            >
               <img
                 src={qrCode}
                 alt="QR Code"
-                className={`h-64 w-64 transition-opacity ${qrCountdown <= 5 ? 'opacity-40' : ''}`}
+                className={`h-56 w-56 transition-opacity ${qrCountdown <= 5 ? 'opacity-40' : ''}`}
               />
               {qrMutation.isPending && (
-                <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/80">
-                  <span className="h-8 w-8 animate-spin rounded-full border-4 border-teal-500 border-t-transparent" />
+                <div
+                  className="absolute inset-0 flex items-center justify-center rounded-lg"
+                  style={{ background: 'color-mix(in srgb, var(--color-surface) 82%, transparent)' }}
+                >
+                  <span className="ws-spinner" />
                 </div>
               )}
             </div>
-            <div className="mt-4 flex items-center justify-center gap-3 text-sm">
-              <div className="flex items-center gap-2 text-amber-600">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+              <span className="ws-chip ws-chip--amber">
+                <span className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
                 في انتظار المسح...
-              </div>
-              <div className={`font-mono text-xs ${qrCountdown <= 10 ? 'text-red-500' : 'text-slate-400'}`}>
+              </span>
+              <span className={`ws-chip font-mono ${qrCountdown <= 10 ? 'ws-chip--red' : ''}`}>
                 {qrCountdown > 0
                   ? `تجديد تلقائي خلال ${qrCountdown} ث`
                   : 'جاري التجديد...'}
-              </div>
+              </span>
             </div>
           </div>
-          <p className="text-xs text-slate-500">
+          <p className="text-[12px]" style={{ color: 'var(--color-text-secondary)' }}>
             افتح واتساب على هاتفك → الإعدادات → الأجهزة المرتبطة → ربط جهاز
           </p>
         </div>
@@ -215,20 +220,32 @@ export function WhatsappSetupStep({ onComplete, onSkip, stats, isCompleting, isS
 
       {/* No Instance - Create Button */}
       {!connectedInstance && !connectingInstance && !qrCode && !isLoading && (
-        <div className="text-center">
-          <div className="mb-4 inline-flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
-            <i className="bi bi-whatsapp text-4xl" />
+        <div
+          className="rounded-[10px] border p-5 text-center"
+          style={{ background: 'var(--color-surface)', borderColor: 'var(--color-hairline)' }}
+        >
+          <div
+            className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-[10px] border"
+            style={{
+              background: 'var(--color-surface-2)',
+              borderColor: 'var(--color-border)',
+              color: 'var(--color-text-secondary)',
+            }}
+          >
+            <i className="bi bi-whatsapp text-2xl" />
           </div>
-          <p className="mb-4 text-slate-600">لم يتم ربط أي رقم واتساب بعد</p>
+          <p className="mb-3 text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>
+            لم يتم ربط أي رقم واتساب بعد
+          </p>
           <button
             type="button"
             onClick={handleCreateInstance}
             disabled={createMutation.isPending}
-            className="inline-flex items-center gap-2 rounded-xl bg-green-500 px-6 py-3 font-semibold text-white transition hover:bg-green-600 disabled:opacity-50"
+            className="ws-btn ws-btn--primary"
           >
             {createMutation.isPending ? (
               <>
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
                 جاري الإنشاء...
               </>
             ) : (
@@ -243,17 +260,22 @@ export function WhatsappSetupStep({ onComplete, onSkip, stats, isCompleting, isS
 
       {/* Connecting Instance - Show QR */}
       {connectingInstance && !qrCode && !connectedInstance && (
-        <div className="text-center">
-          <p className="mb-4 text-slate-600">يوجد رقم في انتظار الربط</p>
+        <div
+          className="rounded-[10px] border p-5 text-center"
+          style={{ background: 'var(--color-surface)', borderColor: 'var(--color-hairline)' }}
+        >
+          <p className="mb-3 text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>
+            يوجد رقم في انتظار الربط
+          </p>
           <button
             type="button"
             onClick={() => handleShowQr(connectingInstance.id)}
             disabled={qrMutation.isPending}
-            className="inline-flex items-center gap-2 rounded-xl bg-teal-500 px-6 py-3 font-semibold text-white transition hover:bg-teal-600 disabled:opacity-50"
+            className="ws-btn ws-btn--primary"
           >
             {qrMutation.isPending ? (
               <>
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
                 جاري التحميل...
               </>
             ) : (
@@ -267,13 +289,17 @@ export function WhatsappSetupStep({ onComplete, onSkip, stats, isCompleting, isS
       )}
 
       {/* Next Button */}
-      <div className="flex items-center justify-between border-t border-slate-100 pt-6">
+      <div
+        className="flex items-center justify-between border-t pt-4"
+        style={{ borderColor: 'var(--color-hairline)' }}
+      >
         {/* Skip Button (للتجربة) */}
         <button
           type="button"
           onClick={onSkip}
           disabled={isSkipping || isCompleting}
-          className="text-sm text-slate-400 underline-offset-2 hover:text-slate-600 hover:underline disabled:opacity-50"
+          className="text-[13px] underline-offset-2 hover:underline disabled:opacity-50"
+          style={{ color: 'var(--color-text-secondary)' }}
         >
           {isSkipping ? 'جاري التخطي...' : 'تخطي (للتجربة)'}
         </button>
@@ -282,11 +308,11 @@ export function WhatsappSetupStep({ onComplete, onSkip, stats, isCompleting, isS
           type="button"
           onClick={() => onComplete()}
           disabled={!canProceed || isCompleting}
-          className="button-primary"
+          className="ws-btn ws-btn--primary"
         >
           {isCompleting ? (
             <>
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
               جاري الحفظ...
             </>
           ) : (
@@ -299,10 +325,10 @@ export function WhatsappSetupStep({ onComplete, onSkip, stats, isCompleting, isS
       </div>
 
       {!canProceed && (
-        <p className="text-center text-sm text-amber-600">
-          <i className="bi bi-exclamation-triangle ml-1" />
-          يجب ربط رقم واتساب للمتابعة
-        </p>
+        <div className="ws-alert ws-alert--warn ws-alert--boxed justify-center">
+          <i className="bi bi-exclamation-triangle" />
+          <span>يجب ربط رقم واتساب للمتابعة</span>
+        </div>
       )}
     </div>
   )
