@@ -42,7 +42,7 @@ const schoolLevelOptions = [
 ] as const
 
 const fieldInput =
-  'rounded-xl border px-4 py-3 text-sm font-normal text-slate-700 transition-colors focus:outline-none focus:ring-2'
+  'rounded-xl border px-4 py-2.5 text-sm font-normal text-slate-700 transition-colors focus:outline-none focus:ring-2'
 
 const fieldStyle: React.CSSProperties = {
   borderColor: '#E5E0D5',
@@ -128,9 +128,9 @@ export function SchoolRegistrationPage() {
   }
 
   return (
-    <section className="space-y-8 pb-6">
+    <section className="flex flex-col gap-4 pb-4 lg:h-[calc(100vh-80px)] lg:overflow-hidden">
       {/* الصفحة بلا هيدر عام — شريط هوية خفيف يعيد الزائر للرئيسية */}
-      <div className="flex items-center justify-between pt-2">
+      <div className="flex flex-shrink-0 items-center justify-between">
         <Link to="/" className="flex items-center gap-2.5">
           <span
             className="flex h-10 w-10 items-center justify-center rounded-xl shadow-sm"
@@ -257,7 +257,7 @@ export function SchoolRegistrationPage() {
       {/* نموذج التسجيل */}
       {!registerMutation.isSuccess && (
         <>
-          <header className="mx-auto max-w-3xl space-y-3 text-center">
+          <header className="mx-auto max-w-3xl flex-shrink-0 space-y-2 text-center">
             <span
               className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold"
               style={{ background: PASTEL, border: `1px solid ${PASTEL_BD}`, color: GREEN }}
@@ -265,23 +265,23 @@ export function SchoolRegistrationPage() {
               <Sparkles className="h-3.5 w-3.5" />
               تسجيل مدرسة جديدة
             </span>
-            <h1 className="text-3xl font-bold text-slate-900 lg:text-4xl">ابدأ رحلتك مع نظام الرائد</h1>
+            <h1 className="text-2xl font-bold text-slate-900 lg:text-3xl">ابدأ رحلتك مع نظام الرائد</h1>
             <p className="mx-auto max-w-2xl text-sm leading-relaxed text-slate-600">
               عبّئ البيانات التالية لتفعيل حساب مدرستك مباشرة — سننشئ حساباً لمدير المدرسة ونرسل بيانات
               الدخول فوراً عبر واتساب.
             </p>
           </header>
 
-          <div className="grid gap-6 lg:grid-cols-[1fr,320px]">
+          <div className="grid gap-5 lg:min-h-0 lg:flex-1 lg:grid-cols-[1fr,320px]">
             <form
               onSubmit={handleSubmit}
-              className="space-y-6 rounded-2xl bg-white p-6 shadow-sm"
+              className="space-y-5 rounded-2xl bg-white p-5 shadow-sm lg:min-h-0 lg:overflow-y-auto"
               style={{ border: `1px solid ${WARM_BD}` }}
             >
               {/* ١ — بيانات المدرسة */}
               <div className="space-y-4">
                 <SectionTitle step="١">بيانات المدرسة</SectionTitle>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-3 md:grid-cols-2">
                   <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
                     اسم المدرسة
                     <input
@@ -344,7 +344,7 @@ export function SchoolRegistrationPage() {
                 style={{ background: '#F7FBF8', border: `1px solid ${PASTEL_BD}` }}
               >
                 <SectionTitle step="٢">بيانات مدير المدرسة — للدخول على النظام</SectionTitle>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-3 md:grid-cols-2">
                   <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
                     اسم مدير المدرسة
                     <input
@@ -418,7 +418,7 @@ export function SchoolRegistrationPage() {
             </form>
 
             {/* ٣ — اختيار الباقة */}
-            <aside className="space-y-4">
+            <aside className="space-y-4 lg:min-h-0 lg:overflow-y-auto">
               <div
                 className="space-y-4 rounded-2xl bg-white p-5 shadow-sm"
                 style={{ border: `1px solid ${WARM_BD}` }}

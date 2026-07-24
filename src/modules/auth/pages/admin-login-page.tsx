@@ -3,7 +3,7 @@ import { LoginForm } from '../components/login-form'
 
 export function AdminLoginPage() {
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col justify-center space-y-6 lg:min-h-[calc(100vh-250px)]">
       <LoginForm
         role="admin"
         heading="دخول الإدارة"

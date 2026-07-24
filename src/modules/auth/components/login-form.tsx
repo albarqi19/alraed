@@ -25,7 +25,7 @@ const ROLE_ICONS = {
 } as const
 
 const inputClass =
-  'w-full rounded-xl border px-4 py-3.5 text-slate-900 placeholder-slate-400 transition-all focus:outline-none'
+  'w-full rounded-xl border px-4 py-3 text-slate-900 placeholder-slate-400 transition-all focus:outline-none'
 
 const inputStyle: React.CSSProperties = {
   borderColor: '#E5E0D5',
@@ -55,19 +55,19 @@ export function LoginForm({ role, heading, description, submitLabel }: LoginForm
 
   return (
     <section className="mx-auto max-w-md">
-      <div className="mb-8 text-center">
+      <div className="mb-5 text-center">
         <div
-          className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
+          className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl shadow-lg"
           style={{ background: DEEP }}
         >
-          <RoleIcon className="h-8 w-8" style={{ color: '#EAF3EC' }} />
+          <RoleIcon className="h-7 w-7" style={{ color: '#EAF3EC' }} />
         </div>
-        <h1 className="mb-2 text-3xl font-bold text-slate-900">{heading}</h1>
+        <h1 className="mb-1.5 text-2xl font-bold text-slate-900">{heading}</h1>
         <p className="text-sm leading-relaxed text-slate-600">{description}</p>
       </div>
 
-      <div className="rounded-2xl bg-white p-8 shadow-sm" style={{ border: '1px solid #E8E3D9' }}>
-        <form className="space-y-5" onSubmit={handleSubmit} noValidate>
+      <div className="rounded-2xl bg-white p-6 shadow-sm" style={{ border: '1px solid #E8E3D9' }}>
+        <form className="space-y-4" onSubmit={handleSubmit} noValidate>
           <div className="space-y-2">
             <label htmlFor={`${role}-national-id`} className="block text-sm font-semibold text-slate-700">
               رقم الهوية
@@ -148,7 +148,7 @@ export function LoginForm({ role, heading, description, submitLabel }: LoginForm
 
           <button
             type="submit"
-            className="w-full rounded-xl px-6 py-4 font-semibold text-white shadow-md transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-xl px-6 py-3.5 font-semibold text-white shadow-md transition-colors disabled:cursor-not-allowed disabled:opacity-50"
             style={{ background: DEEP }}
             onMouseEnter={(e) => { if (!isLoading) e.currentTarget.style.background = DEEP_HOVER }}
             onMouseLeave={(e) => { e.currentTarget.style.background = DEEP }}
