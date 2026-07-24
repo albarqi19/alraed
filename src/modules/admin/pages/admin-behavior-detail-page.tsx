@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import {
   AlertCircle,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   Circle,
   ClipboardList,
@@ -13,6 +14,7 @@ import {
   MapPin,
   Printer,
   ShieldAlert,
+  StickyNote,
   User,
   UserRoundCheck,
   Users,
@@ -75,6 +77,9 @@ export function AdminBehaviorDetailPage() {
     fileName: string
   } | null>(null)
 
+  // طيّ/فتح ملاحظات كل إجراء — تنفتح تلقائياً إن وُجدت ملاحظات محفوظة
+  const [openNotes, setOpenNotes] = useState<Record<number, boolean>>({})
+
   // جلب المخالفة عند تحميل الصفحة أو تغيير المعرف
   useEffect(() => {
     if (violationId) {
@@ -133,7 +138,7 @@ export function AdminBehaviorDetailPage() {
       violationTime: violation.time || '--:--',
       violationLocation: violation.location || 'غير محدد',
       violationDescription: violation.description,
-      referralDate: new Date().toLocaleDateString('ar-SA'),
+      referralDate: new Date().toLocaleDateString('ar-SA-u-nu-latn'),
       referralReason: 'تحويل الطالب إلى المرشد الطلابي لدراسة حالته ووضع خطة تعديل السلوك المناسبة.',
     })
 
@@ -162,7 +167,7 @@ export function AdminBehaviorDetailPage() {
       locales: string,
       options: Intl.DateTimeFormatOptions,
       target: Date,
-      fallbackLocales: string = 'ar-SA',
+      fallbackLocales: string = 'ar-SA-u-nu-latn',
     ) => {
       try {
         return new Intl.DateTimeFormat(locales, options).format(target)
@@ -174,16 +179,16 @@ export function AdminBehaviorDetailPage() {
     const meetingDate = parseDate(violation.date)
     const now = new Date()
 
-    const meetingDay = safeFormat('ar-SA', { weekday: 'long' }, meetingDate)
-    const meetingDateGregorian = safeFormat('ar-SA', { day: '2-digit', month: 'long', year: 'numeric' }, meetingDate)
+    const meetingDay = safeFormat('ar-SA-u-nu-latn', { weekday: 'long' }, meetingDate)
+    const meetingDateGregorian = safeFormat('ar-SA-u-nu-latn', { day: '2-digit', month: 'long', year: 'numeric' }, meetingDate)
     const meetingDateHijri = safeFormat(
-      'ar-SA-u-ca-islamic',
+      'ar-SA-u-ca-islamic-nu-latn',
       { day: '2-digit', month: 'long', year: 'numeric' },
       meetingDate,
     )
-    const issueDateGregorian = safeFormat('ar-SA', { day: '2-digit', month: 'long', year: 'numeric' }, now)
+    const issueDateGregorian = safeFormat('ar-SA-u-nu-latn', { day: '2-digit', month: 'long', year: 'numeric' }, now)
     const issueDateHijri = safeFormat(
-      'ar-SA-u-ca-islamic',
+      'ar-SA-u-ca-islamic-nu-latn',
       { day: '2-digit', month: 'long', year: 'numeric' },
       now,
     )
@@ -370,6 +375,10 @@ export function AdminBehaviorDetailPage() {
               {violation.procedures.map((procedure) => {
                 const procedureMutationKey = `${violation.id}-${procedure.step}`
                 const isProcedureMutating = Boolean(procedureMutations[procedureMutationKey])
+                // تقدّم خطوات الإجراء — يظهر مصغّراً في الترويسة بجانب زر الإكمال
+                const tasksDone = procedure.tasks.filter((task) => task.completed).length
+                const tasksTotal = procedure.tasks.length
+                const notesOpen = openNotes[procedure.step] ?? Boolean(procedure.notes?.trim())
 
                 return (
                   <article
@@ -409,21 +418,59 @@ export function AdminBehaviorDetailPage() {
                           <p style={{ margin: '2px 0 0', fontSize: 12.5, color: 'var(--ws-text-2)' }}>{procedure.description}</p>
                         </div>
                       </div>
-                      <WsBtn
-                        size="sm"
-                        icon={isProcedureMutating ? Loader2 : procedure.completed ? CheckCircle2 : Circle}
-                        onClick={() => {
-                          void toggleProcedure(violation.id, procedure.step).catch(() => undefined)
-                        }}
-                        disabled={isProcedureMutating}
-                        style={
-                          procedure.completed
-                            ? { background: 'var(--ws-surface)', borderColor: TONES.green.bd, color: TONES.green.tx }
-                            : undefined
-                        }
-                      >
-                        {procedure.completed ? 'مكتمل' : 'تعليم كمكتمل'}
-                      </WsBtn>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                        {tasksTotal > 0 ? (
+                          <span
+                            title={`${tasksDone} من ${tasksTotal} خطوات منجزة`}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                          >
+                            <b
+                              style={{
+                                fontSize: 12,
+                                fontVariantNumeric: 'tabular-nums',
+                                color: tasksDone === tasksTotal ? TONES.green.tx : 'var(--ws-text-2)',
+                              }}
+                            >
+                              {tasksDone}/{tasksTotal}
+                            </b>
+                            <span
+                              style={{
+                                width: 56,
+                                height: 5,
+                                borderRadius: 3,
+                                background: 'var(--ws-surface-2)',
+                                border: '1px solid var(--ws-hairline)',
+                                overflow: 'hidden',
+                              }}
+                            >
+                              <span
+                                style={{
+                                  display: 'block',
+                                  height: '100%',
+                                  width: `${Math.round((tasksDone / tasksTotal) * 100)}%`,
+                                  background: tasksDone === tasksTotal ? TONES.green.bd : TONES.sky.bd,
+                                  transition: 'width .2s ease-out',
+                                }}
+                              />
+                            </span>
+                          </span>
+                        ) : null}
+                        <WsBtn
+                          size="sm"
+                          icon={isProcedureMutating ? Loader2 : procedure.completed ? CheckCircle2 : Circle}
+                          onClick={() => {
+                            void toggleProcedure(violation.id, procedure.step).catch(() => undefined)
+                          }}
+                          disabled={isProcedureMutating}
+                          style={
+                            procedure.completed
+                              ? { background: 'var(--ws-surface)', borderColor: TONES.green.bd, color: TONES.green.tx }
+                              : undefined
+                          }
+                        >
+                          {procedure.completed ? 'مكتمل' : 'تعليم كمكتمل'}
+                        </WsBtn>
+                      </span>
                     </header>
 
                     {procedure.tasks.length > 0 ? (
@@ -489,11 +536,19 @@ export function AdminBehaviorDetailPage() {
                                   )}
                                 </button>
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>{task.title}</p>
+                                  <p
+                                    style={{
+                                      margin: 0,
+                                      fontSize: 13,
+                                      fontWeight: 600,
+                                      textDecoration: task.completed ? 'line-through' : undefined,
+                                      color: task.completed ? 'var(--ws-text-2)' : undefined,
+                                    }}
+                                  >
+                                    {task.title}
+                                  </p>
                                   <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
-                                    <ToneChip tone={task.mandatory ? TONES.red : TONES.sky}>
-                                      {task.mandatory ? 'إلزامية' : 'اختيارية'}
-                                    </ToneChip>
+                                    {task.mandatory ? <ToneChip tone={TONES.red}>إلزامية</ToneChip> : null}
                                     {task.roleLabel ? <ToneChip tone={TONES.purple}>{task.roleLabel}</ToneChip> : null}
                                     {task.actionCategoryLabel ? (
                                       <ToneChip tone={TONES.sky}>{task.actionCategoryLabel}</ToneChip>
@@ -521,41 +576,52 @@ export function AdminBehaviorDetailPage() {
                                       </span>
                                     ) : null}
                                   </div>
-                                  <p style={{ margin: '4px 0 0', fontSize: 11.5, color: 'var(--ws-text-2)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    {task.completedDate ? (
-                                      <>
-                                        <CheckCircle2 style={{ width: 12, height: 12, color: TONES.green.tx }} />
-                                        أُنجز بتاريخ {task.completedDate}
-                                      </>
-                                    ) : task.completed ? (
-                                      <>
-                                        <CheckCircle2 style={{ width: 12, height: 12, color: TONES.green.tx }} />
-                                        تم التعليم كمكتمل
-                                      </>
-                                    ) : task.mandatory ? (
-                                      <>
-                                        <Clock style={{ width: 12, height: 12, color: TONES.amber.tx }} />
-                                        <span style={{ color: TONES.amber.tx }}>بانتظار التنفيذ</span>
-                                      </>
-                                    ) : (
-                                      'خطوة اختيارية'
-                                    )}
-                                  </p>
-                                  {task.actionType === 'counselor_referral' ? (
-                                    <WsBtn size="sm" icon={FileText} onClick={handleOpenReferralForm} style={{ marginTop: 6 }}>
-                                      نموذج التحويل
-                                    </WsBtn>
-                                  ) : matchesGuardianInvitation ? (
-                                    <WsBtn size="sm" icon={Users} onClick={handleOpenGuardianInvitation} style={{ marginTop: 6 }}>
-                                      دعوة ولي الأمر
-                                    </WsBtn>
-                                  ) : task.systemTrigger ? (
-                                    <div style={{ marginTop: 6 }}>
+                                  {/* تذييل المهمة: الحالة يميناً وإجراؤها يساراً في صف واحد */}
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      gap: 8,
+                                      flexWrap: 'wrap',
+                                      marginTop: 5,
+                                    }}
+                                  >
+                                    <p style={{ margin: 0, fontSize: 11.5, color: 'var(--ws-text-2)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                      {task.completedDate ? (
+                                        <>
+                                          <CheckCircle2 style={{ width: 12, height: 12, color: TONES.green.tx }} />
+                                          أُنجز بتاريخ {task.completedDate}
+                                        </>
+                                      ) : task.completed ? (
+                                        <>
+                                          <CheckCircle2 style={{ width: 12, height: 12, color: TONES.green.tx }} />
+                                          تم التعليم كمكتمل
+                                        </>
+                                      ) : task.mandatory ? (
+                                        <>
+                                          <Clock style={{ width: 12, height: 12, color: TONES.amber.tx }} />
+                                          <span style={{ color: TONES.amber.tx }}>بانتظار التنفيذ</span>
+                                        </>
+                                      ) : (
+                                        'خطوة اختيارية'
+                                      )}
+                                    </p>
+                                    {task.actionType === 'counselor_referral' ? (
+                                      <WsBtn size="sm" icon={FileText} onClick={handleOpenReferralForm}>
+                                        نموذج التحويل
+                                      </WsBtn>
+                                    ) : matchesGuardianInvitation ? (
+                                      <WsBtn size="sm" icon={Users} onClick={handleOpenGuardianInvitation}>
+                                        دعوة ولي الأمر
+                                      </WsBtn>
+                                    ) : task.systemTrigger ? (
                                       <AutomationTriggerButton
                                         systemTrigger={task.systemTrigger as BehaviorSystemTrigger}
                                         systemTriggerLabel={task.systemTriggerLabel ?? task.systemTrigger}
                                         pointsToDeduct={task.pointsToDeduct}
                                         disabled={task.completed}
+                                        style={{ marginTop: 0 }}
                                         onExecute={async () => {
                                           await executeAutomation({
                                             violationId: violation.id,
@@ -565,8 +631,8 @@ export function AdminBehaviorDetailPage() {
                                           })
                                         }}
                                       />
-                                    </div>
-                                  ) : null}
+                                    ) : null}
+                                  </div>
                                 </div>
                               </li>
                             )
@@ -575,27 +641,72 @@ export function AdminBehaviorDetailPage() {
                       </div>
                     ) : null}
 
-                    <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {/* تذييل الإجراء: حالة التنفيذ يميناً وزرّ الملاحظات يساراً */}
+                    <div
+                      style={{
+                        marginTop: 10,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 8,
+                        flexWrap: 'wrap',
+                      }}
+                    >
                       <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--ws-text-2)' }}>
                         <Clock style={{ width: 13, height: 13 }} />
                         {procedure.completed
                           ? `أُنجز بتاريخ ${procedure.completedDate ?? 'غير محدد'}`
                           : 'لم يتم التنفيذ بعد'}
                       </p>
-                      <div>
-                        <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700, color: 'var(--ws-text-2)' }}>
-                          ملاحظات الإجراء
-                        </p>
+                      <button
+                        type="button"
+                        onClick={() => setOpenNotes((prev) => ({ ...prev, [procedure.step]: !notesOpen }))}
+                        aria-expanded={notesOpen}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          border: 'none',
+                          background: 'none',
+                          padding: 0,
+                          cursor: 'pointer',
+                          font: 'inherit',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: 'var(--ws-accent)',
+                        }}
+                      >
+                        <StickyNote style={{ width: 13, height: 13 }} />
+                        الملاحظات
+                        {procedure.notes?.trim() ? (
+                          <span
+                            title="توجد ملاحظات محفوظة"
+                            style={{ width: 6, height: 6, borderRadius: '50%', background: TONES.green.bd }}
+                          />
+                        ) : null}
+                        <ChevronDown
+                          style={{
+                            width: 13,
+                            height: 13,
+                            transform: notesOpen ? 'rotate(180deg)' : undefined,
+                            transition: 'transform .15s',
+                          }}
+                        />
+                      </button>
+                    </div>
+                    {notesOpen ? (
+                      <div style={{ marginTop: 6 }}>
                         <WsTextarea
                           value={procedure.notes ?? ''}
                           onChange={(event) =>
                             updateProcedureNotes(violation.id, procedure.step, event.target.value)
                           }
                           placeholder="أضف تحديثات أو تفاصيل حول تنفيذ الإجراء"
+                          aria-label={`ملاحظات الإجراء ${procedure.title}`}
                           rows={3}
                         />
                       </div>
-                    </div>
+                    ) : null}
                   </article>
                 )
               })}

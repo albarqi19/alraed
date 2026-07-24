@@ -150,7 +150,7 @@ export function AdminMadrasatiReportPage() {
             </WsFact>
             {metrics?.last_extraction && (
               <WsFact icon={Clock} label="آخر استيراد">
-                {new Date(metrics.last_extraction).toLocaleDateString('ar-SA')}
+                {new Date(metrics.last_extraction).toLocaleDateString('ar-SA-u-nu-latn')}
               </WsFact>
             )}
           </>

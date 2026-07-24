@@ -223,7 +223,7 @@ export function TeacherDashboardPage() {
           {!isHoliday && (
             <p className="text-sm text-muted">
               {data?.currentDay ?? '—'}{' '}
-              {data?.saudiTime ? `— ${new Date(data.saudiTime).toLocaleString('ar-SA')}` : null}
+              {data?.saudiTime ? `— ${new Date(data.saudiTime).toLocaleString('ar-SA-u-nu-latn')}` : null}
             </p>
           )}
         </header>
@@ -301,7 +301,7 @@ export function TeacherDashboardPage() {
               <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">سجل حصص اليوم</h2>
               <p className="text-sm text-muted">
                 {sessions.length > 0
-                  ? `لديك ${sessions.length.toLocaleString('ar-SA')} حصص مجدولة لليوم.`
+                  ? `لديك ${sessions.length.toLocaleString('ar-SA-u-nu-latn')} حصص مجدولة لليوم.`
                   : 'لا توجد حصص مسجلة لهذا اليوم.'}
               </p>
             </div>

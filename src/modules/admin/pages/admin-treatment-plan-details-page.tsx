@@ -215,9 +215,9 @@ export function AdminTreatmentPlanDetailsPage() {
             </WsFact>
             <WsFact icon={CalendarClock} label="متابعات">{followupsCount}</WsFact>
             <WsFact icon={BarChart3} label="تقييمات">{evaluationsCount}</WsFact>
-            <WsFact icon={CalendarDays} label="البداية">{new Date(plan.start_date).toLocaleDateString('ar-SA')}</WsFact>
+            <WsFact icon={CalendarDays} label="البداية">{new Date(plan.start_date).toLocaleDateString('ar-SA-u-nu-latn')}</WsFact>
             {plan.end_date && (
-              <WsFact icon={CalendarDays} label="النهاية">{new Date(plan.end_date).toLocaleDateString('ar-SA')}</WsFact>
+              <WsFact icon={CalendarDays} label="النهاية">{new Date(plan.end_date).toLocaleDateString('ar-SA-u-nu-latn')}</WsFact>
             )}
           </>
         }
@@ -268,9 +268,9 @@ export function AdminTreatmentPlanDetailsPage() {
               </WsFactRow>
               <WsFactRow label="نوع المشكلة"><ToneChip tone={problemMeta.tone}>{plan.problem_type}</ToneChip></WsFactRow>
               <WsFactRow label="الحالة"><ToneChip tone={statusMeta.tone}>{statusMeta.label}</ToneChip></WsFactRow>
-              <WsFactRow label="تاريخ البدء">{new Date(plan.start_date).toLocaleDateString('ar-SA')}</WsFactRow>
+              <WsFactRow label="تاريخ البدء">{new Date(plan.start_date).toLocaleDateString('ar-SA-u-nu-latn')}</WsFactRow>
               {plan.end_date && (
-                <WsFactRow label="النهاية المتوقعة">{new Date(plan.end_date).toLocaleDateString('ar-SA')}</WsFactRow>
+                <WsFactRow label="النهاية المتوقعة">{new Date(plan.end_date).toLocaleDateString('ar-SA-u-nu-latn')}</WsFactRow>
               )}
             </WsFactsList>
           </WsBlock>
@@ -489,7 +489,7 @@ export function AdminTreatmentPlanDetailsPage() {
                             </span>
                             <div>
                               <p style={{ margin: 0, fontWeight: 700, fontSize: 12.5 }}>
-                                {new Date(followup.followup_date).toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                {new Date(followup.followup_date).toLocaleDateString('ar-SA-u-nu-latn', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                               </p>
                               {followup.type && <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>نوع: {followup.type}</span>}
                             </div>
@@ -597,7 +597,7 @@ export function AdminTreatmentPlanDetailsPage() {
                                 </span>
                                 <div>
                                   <p style={{ margin: 0, fontWeight: 700, fontSize: 12.5 }}>
-                                    {new Date(evaluation.evaluation_date).toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                    {new Date(evaluation.evaluation_date).toLocaleDateString('ar-SA-u-nu-latn', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                                   </p>
                                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
                                     {evaluation.evaluation_type && <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>نوع: {evaluation.evaluation_type}</span>}

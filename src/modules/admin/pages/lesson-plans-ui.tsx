@@ -80,7 +80,7 @@ export function ProofSheet({ plan }: { plan: Plan }) {
       >
         <FileWarning style={{ width: 13, height: 13 }} />
         {plan.audience_count > 0
-          ? `ستصل إلى ${plan.audience_count.toLocaleString('ar-SA')} طالباً في ${plan.grade}`
+          ? `ستصل إلى ${plan.audience_count.toLocaleString('ar-SA-u-nu-latn')} طالباً في ${plan.grade}`
           : `${plan.subject_name} · ${plan.grade}`}
       </p>
 

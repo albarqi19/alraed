@@ -199,7 +199,7 @@ function formatRange(start: string, end: string) {
   if (!start || !end) return '—'
 
   try {
-    const formatter = new Intl.DateTimeFormat('ar-SA', { year: 'numeric', month: 'short', day: 'numeric' })
+    const formatter = new Intl.DateTimeFormat('ar-SA-u-nu-latn', { year: 'numeric', month: 'short', day: 'numeric' })
     const startDate = new Date(start)
     const endDate = new Date(end)
 
@@ -223,8 +223,8 @@ function formatDateLabel(date: string) {
     const target = new Date(date)
     if (Number.isNaN(target.getTime())) return date
 
-    const weekday = new Intl.DateTimeFormat('ar-SA', { weekday: 'short' }).format(target)
-    const dayMonth = new Intl.DateTimeFormat('ar-SA', { day: '2-digit', month: '2-digit' }).format(target)
+    const weekday = new Intl.DateTimeFormat('ar-SA-u-nu-latn', { weekday: 'short' }).format(target)
+    const dayMonth = new Intl.DateTimeFormat('ar-SA-u-nu-latn', { day: '2-digit', month: '2-digit' }).format(target)
 
     return `${weekday} ${dayMonth}`
   } catch {
@@ -596,7 +596,7 @@ export function AttendanceReportPage() {
           report ? (
             <>
               <WsFact icon={Users} label="الطلاب:">
-                {totalStudents.toLocaleString('ar-SA')}
+                {totalStudents.toLocaleString('ar-SA-u-nu-latn')}
               </WsFact>
               {STATUS_ORDER.map((status) => (
                 <WsFact
@@ -606,7 +606,7 @@ export function AttendanceReportPage() {
                   }
                   label={`${STATUS_CONFIG[status].label}:`}
                 >
-                  {getSummaryValue(report.summary, status).toLocaleString('ar-SA')}
+                  {getSummaryValue(report.summary, status).toLocaleString('ar-SA-u-nu-latn')}
                 </WsFact>
               ))}
               <WsFact icon={CalendarDays} label="الفترة:">
@@ -810,7 +810,7 @@ export function AttendanceReportPage() {
           <WsBlock
             title="نتيجة الكشف"
             icon={ClipboardList}
-            count={hasData ? totalStudents.toLocaleString('ar-SA') : undefined}
+            count={hasData ? totalStudents.toLocaleString('ar-SA-u-nu-latn') : undefined}
             tools={
               <>
                 {isRefetching && <span style={{ fontSize: 10.5, color: 'var(--ws-accent)' }}>يُحدَّث...</span>}
@@ -976,11 +976,11 @@ export function AttendanceReportPage() {
                       >
                         {PAGE_SIZE_OPTIONS.map((option) => (
                           <option key={option} value={option}>
-                            {option.toLocaleString('ar-SA')}
+                            {option.toLocaleString('ar-SA-u-nu-latn')}
                           </option>
                         ))}
                       </WsSelect>
-                      سجل — {startIndex + 1}-{endIndex} من {totalStudents.toLocaleString('ar-SA')}
+                      سجل — {startIndex + 1}-{endIndex} من {totalStudents.toLocaleString('ar-SA-u-nu-latn')}
                     </span>
 
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>

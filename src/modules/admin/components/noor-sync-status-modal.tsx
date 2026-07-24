@@ -17,7 +17,7 @@ function formatDate(value?: string | null) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   try {
-    return new Intl.DateTimeFormat('ar-SA', { dateStyle: 'medium', timeStyle: 'short' }).format(date)
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', { dateStyle: 'medium', timeStyle: 'short' }).format(date)
   } catch {
     return value
   }
@@ -45,7 +45,7 @@ function StatsCard({ icon, label, value, tone }: { icon: string; label: string; 
         <i className={`${icon} text-2xl`} />
         <div>
           <p className="text-xs font-semibold text-slate-500">{label}</p>
-          <p className="mt-1 text-xl font-bold text-slate-900">{typeof value === 'number' ? value.toLocaleString('ar-SA') : value}</p>
+          <p className="mt-1 text-xl font-bold text-slate-900">{typeof value === 'number' ? value.toLocaleString('ar-SA-u-nu-latn') : value}</p>
         </div>
       </div>
     </article>

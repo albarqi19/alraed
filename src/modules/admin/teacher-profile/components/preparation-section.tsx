@@ -1,14 +1,15 @@
-import { Badge } from '@/components/ui/badge'
-import { EmptyState } from './empty-state'
 import { ClipboardCheck, Link2Off } from 'lucide-react'
+import { TONES, ToneChip, WsAlert, WsProgress, type Tone } from '@/shared/workspace'
+import { EmptyState } from './empty-state'
+import { ProfilePanel, ProfileTable, StatGrid, StatMini } from './profile-ui'
 import type { TeacherPreparationResponse } from '../types'
 
-const PREP_STATUS_MAP: Record<string, { label: string; className: string }> = {
-  prepared: { label: 'محضّر', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
-  waiting: { label: 'لم يحضّر', className: 'border-amber-200 bg-amber-50 text-amber-700' },
-  warning: { label: 'تحذير', className: 'border-slate-200 bg-slate-50 text-slate-700' },
-  activity: { label: 'نشاط', className: 'border-blue-200 bg-blue-50 text-blue-700' },
-  empty: { label: 'فارغ', className: 'border-slate-200 bg-slate-50 text-slate-500' },
+const PREP_STATUS_MAP: Record<string, { label: string; tone: Tone }> = {
+  prepared: { label: 'محضّر', tone: TONES.green },
+  waiting: { label: 'لم يحضّر', tone: TONES.amber },
+  warning: { label: 'تحذير', tone: TONES.gray },
+  activity: { label: 'نشاط', tone: TONES.sky },
+  empty: { label: 'فارغ', tone: TONES.gray },
 }
 
 interface PreparationSectionProps {
@@ -39,80 +40,65 @@ export function PreparationSection({ data }: PreparationSectionProps) {
   const summary = data.summary!
 
   return (
-    <div className="space-y-4">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* معلومات الربط */}
       {data.madrasati_name && (
-        <div className="rounded-lg border border-blue-100 bg-blue-50/50 px-3 py-2 text-xs text-blue-700">
-          حساب مدرستي: <span className="font-semibold">{data.madrasati_name}</span>
-        </div>
+        <WsAlert tone="info" boxed>
+          حساب مدرستي: <b>{data.madrasati_name}</b>
+        </WsAlert>
       )}
 
       {/* ملخص */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-center">
-          <p className="text-xl font-bold text-slate-900">{summary.total}</p>
-          <p className="text-xs text-slate-500">إجمالي الحصص</p>
-        </div>
-        <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3 text-center">
-          <p className="text-xl font-bold text-slate-900">{summary.prepared}</p>
-          <p className="text-xs text-slate-500">محضّر</p>
-        </div>
-        <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-3 text-center">
-          <p className="text-xl font-bold text-slate-900">{summary.unprepared}</p>
-          <p className="text-xs text-slate-500">لم يحضّر</p>
-        </div>
-        <div className="rounded-xl border border-violet-100 bg-violet-50/50 p-3 text-center">
-          <p className="text-xl font-bold text-slate-900">{summary.rate}%</p>
-          <p className="text-xs text-slate-500">نسبة التحضير</p>
-        </div>
-      </div>
+      <StatGrid>
+        <StatMini label="إجمالي الحصص" value={summary.total} />
+        <StatMini label="محضّر" value={summary.prepared} tone={TONES.green} />
+        <StatMini label="لم يحضّر" value={summary.unprepared} tone={TONES.amber} />
+        <StatMini label="نسبة التحضير" value={summary.rate} suffix="%" tone={TONES.purple} />
+      </StatGrid>
 
       {/* شريط النسبة */}
-      <div className="overflow-hidden rounded-full bg-slate-100">
-        <div
-          className="h-3 rounded-full bg-gradient-to-l from-emerald-400 to-emerald-500 transition-all duration-500"
-          style={{ width: `${summary.rate}%` }}
-        />
-      </div>
+      <WsProgress value={summary.rate} label="نسبة الإنجاز" />
 
       {/* جدول */}
-      <div className="overflow-hidden rounded-xl border border-slate-200">
-        <table className="w-full text-sm">
+      <ProfilePanel title="سجل التحضير" icon={ClipboardCheck} padded={false}>
+        <ProfileTable>
           <thead>
-            <tr className="border-b border-slate-100 bg-slate-50/80">
-              <th className="px-3 py-2.5 text-right font-semibold text-slate-600">التاريخ</th>
-              <th className="px-3 py-2.5 text-right font-semibold text-slate-600">اليوم</th>
-              <th className="px-3 py-2.5 text-right font-semibold text-slate-600">الحصة</th>
-              <th className="px-3 py-2.5 text-right font-semibold text-slate-600">الفصل</th>
-              <th className="px-3 py-2.5 text-right font-semibold text-slate-600">الدرس</th>
-              <th className="px-3 py-2.5 text-right font-semibold text-slate-600">الحالة</th>
+            <tr>
+              <th>التاريخ</th>
+              <th>اليوم</th>
+              <th>الحصة</th>
+              <th>الفصل</th>
+              <th>الدرس</th>
+              <th>الحالة</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="ws-tbl-rise">
             {data.records.map((record) => {
               const statusInfo = PREP_STATUS_MAP[record.status] ?? PREP_STATUS_MAP.empty
               return (
-                <tr key={record.id} className="border-b border-slate-50 transition hover:bg-slate-50/50">
-                  <td className="px-3 py-2 text-slate-700">
-                    {new Date(record.extraction_date).toLocaleDateString('ar-SA')}
+                <tr key={record.id}>
+                  <td style={{ fontWeight: 600 }}>
+                    {new Date(record.extraction_date).toLocaleDateString('ar-SA-u-nu-latn')}
                   </td>
-                  <td className="px-3 py-2 text-slate-600">{record.day}</td>
-                  <td className="px-3 py-2 text-slate-600">{record.period_number}</td>
-                  <td className="px-3 py-2 text-slate-600">{record.class_name}</td>
-                  <td className="max-w-[200px] truncate px-3 py-2 text-slate-600" title={record.lesson_title}>
+                  <td>{record.day}</td>
+                  <td>{record.period_number}</td>
+                  <td>{record.class_name}</td>
+                  <td
+                    className="ws-cell-sub"
+                    style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                    title={record.lesson_title}
+                  >
                     {record.lesson_title || '-'}
                   </td>
-                  <td className="px-3 py-2">
-                    <Badge variant="outline" className={statusInfo.className}>
-                      {statusInfo.label}
-                    </Badge>
+                  <td>
+                    <ToneChip tone={statusInfo.tone}>{statusInfo.label}</ToneChip>
                   </td>
                 </tr>
               )
             })}
           </tbody>
-        </table>
-      </div>
+        </ProfileTable>
+      </ProfilePanel>
     </div>
   )
 }

@@ -197,8 +197,8 @@ export function TreatmentPlanDetailsPage() {
             </div>
             <p className="text-gray-600">{plan.problem_description}</p>
             <div className="mt-3 flex items-center gap-4 text-sm text-gray-500">
-              <span>تاريخ البدء: {new Date(plan.start_date).toLocaleDateString('ar-SA')}</span>
-              {plan.end_date && <span>تاريخ الانتهاء: {new Date(plan.end_date).toLocaleDateString('ar-SA')}</span>}
+              <span>تاريخ البدء: {new Date(plan.start_date).toLocaleDateString('ar-SA-u-nu-latn')}</span>
+              {plan.end_date && <span>تاريخ الانتهاء: {new Date(plan.end_date).toLocaleDateString('ar-SA-u-nu-latn')}</span>}
             </div>
           </div>
           <button
@@ -251,7 +251,7 @@ export function TreatmentPlanDetailsPage() {
                               <span className="flex-1">{intervention.description}</span>
                               {intervention.applied_at && (
                                 <span className="text-xs text-gray-500">
-                                  {new Date(intervention.applied_at).toLocaleDateString('ar-SA')}
+                                  {new Date(intervention.applied_at).toLocaleDateString('ar-SA-u-nu-latn')}
                                 </span>
                               )}
                             </li>
@@ -324,7 +324,7 @@ export function TreatmentPlanDetailsPage() {
                 {plan.followups.map((followup) => (
                   <div key={followup.id} className="border-b border-gray-200 pb-3 last:border-0">
                     <p className="text-xs text-gray-500 mb-1">
-                      {new Date(followup.followup_date).toLocaleDateString('ar-SA')}
+                      {new Date(followup.followup_date).toLocaleDateString('ar-SA-u-nu-latn')}
                     </p>
                     <p className="text-sm text-gray-700">{followup.notes}</p>
                   </div>
@@ -389,7 +389,7 @@ export function TreatmentPlanDetailsPage() {
                 {plan.evaluations.map((evaluation) => (
                   <div key={evaluation.id} className="border-b border-gray-200 pb-3 last:border-0">
                     <p className="text-xs text-gray-500 mb-1">
-                      {new Date(evaluation.evaluation_date).toLocaleDateString('ar-SA')}
+                      {new Date(evaluation.evaluation_date).toLocaleDateString('ar-SA-u-nu-latn')}
                     </p>
                     <p className="text-sm text-gray-700">{evaluation.key_findings}</p>
                   </div>

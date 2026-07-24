@@ -20,9 +20,9 @@ export function openCounselorReferralForm({ violation, task }: ReferralFormConte
     return
   }
 
-  const today = new Intl.DateTimeFormat('ar-SA', { dateStyle: 'long' }).format(new Date())
+  const today = new Intl.DateTimeFormat('ar-SA-u-nu-latn', { dateStyle: 'long' }).format(new Date())
   const incidentDate = violation.date
-    ? new Intl.DateTimeFormat('ar-SA', { dateStyle: 'long' }).format(new Date(violation.date))
+    ? new Intl.DateTimeFormat('ar-SA-u-nu-latn', { dateStyle: 'long' }).format(new Date(violation.date))
     : '................'
   const degreeLabel = DEGREE_LABELS[violation.degree] ?? violation.degree
   const studentName = violation.studentName || '........................'

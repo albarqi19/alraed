@@ -203,7 +203,7 @@ export function getNextOccurrence(event: BellEvent, baseDate: Date): Date | null
 }
 
 export function formatClock(date: Date) {
-  return new Intl.DateTimeFormat('ar-SA', {
+  return new Intl.DateTimeFormat('ar-SA-u-nu-latn', {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
@@ -215,7 +215,7 @@ export function formatTime(time: string) {
   const [hour, minute] = time.split(':')
   const date = new Date()
   date.setHours(parseInt(hour, 10), parseInt(minute, 10), 0, 0)
-  return new Intl.DateTimeFormat('ar-SA', {
+  return new Intl.DateTimeFormat('ar-SA-u-nu-latn', {
     hour: '2-digit',
     minute: '2-digit',
     hour12: true,

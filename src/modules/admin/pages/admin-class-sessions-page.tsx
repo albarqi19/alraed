@@ -752,11 +752,11 @@ export function AdminClassSessionsPage() {
         facts={
           <>
             <WsFact icon={ClipboardList} label="إجمالي الحصص:">
-              {stats.total.toLocaleString('ar-SA')}
+              {stats.total.toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
-            <WsFact label="نشطة:">{stats.active.toLocaleString('ar-SA')}</WsFact>
+            <WsFact label="نشطة:">{stats.active.toLocaleString('ar-SA-u-nu-latn')}</WsFact>
             <WsFact icon={Users} label="معلمون مشاركون:">
-              {stats.uniqueTeachers.toLocaleString('ar-SA')}
+              {stats.uniqueTeachers.toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
           </>
         }
@@ -879,7 +879,7 @@ export function AdminClassSessionsPage() {
                     <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
                       <span style={{ fontSize: 13, fontWeight: isSelected ? 800 : 700, color: 'var(--ws-text)' }}>{day}</span>
                       <span style={{ fontSize: 16, fontWeight: 800, color: isSelected ? 'var(--ws-accent-2)' : 'var(--ws-text-2)' }}>
-                        {total.toLocaleString('ar-SA')}
+                        {total.toLocaleString('ar-SA-u-nu-latn')}
                       </span>
                     </span>
                     <span style={{ display: 'inline-flex', gap: 4, marginTop: 5 }}>
@@ -898,7 +898,7 @@ export function AdminClassSessionsPage() {
           <WsBlock
             title={selectedDay ? `حصص يوم ${selectedDay}` : 'حصص اليوم'}
             icon={Clock3}
-            count={selectedDaySessions.length.toLocaleString('ar-SA')}
+            count={selectedDaySessions.length.toLocaleString('ar-SA-u-nu-latn')}
             tools={<span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>انقر أي حصة للتعديل السريع</span>}
             fill
           >

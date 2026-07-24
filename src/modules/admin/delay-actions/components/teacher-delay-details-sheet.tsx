@@ -37,9 +37,9 @@ function formatDate(value?: string | null) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   try {
-    return new Intl.DateTimeFormat('ar-SA', { dateStyle: 'short' }).format(date)
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', { dateStyle: 'short' }).format(date)
   } catch {
-    return date.toLocaleDateString('ar-SA')
+    return date.toLocaleDateString('ar-SA-u-nu-latn')
   }
 }
 
@@ -48,9 +48,9 @@ function formatTime(value?: string | null) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   try {
-    return new Intl.DateTimeFormat('ar-SA', { hour: '2-digit', minute: '2-digit' }).format(date)
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' }).format(date)
   } catch {
-    return date.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
+    return date.toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' })
   }
 }
 
@@ -178,7 +178,7 @@ export function TeacherDelayDetailsSheet({
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                   <WsChip tone="sky">إجمالي التأخير: {data.delay_summary.formatted_delay}</WsChip>
-                  <WsChip>{data.delay_summary.records_count.toLocaleString('ar-SA')} يوم تأخير</WsChip>
+                  <WsChip>{data.delay_summary.records_count.toLocaleString('ar-SA-u-nu-latn')} يوم تأخير</WsChip>
                 </div>
 
                 {/* تفاصيل التأخير الجديد والمرحّل */}

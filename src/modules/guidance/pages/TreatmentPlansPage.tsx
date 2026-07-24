@@ -174,9 +174,9 @@ export function TreatmentPlansPage() {
                   </div>
                   <p className="text-sm text-gray-600 mb-3">{plan.problem_description}</p>
                   <div className="flex items-center gap-4 text-xs text-gray-500">
-                    <span>تاريخ البدء: {new Date(plan.start_date).toLocaleDateString('ar-SA')}</span>
+                    <span>تاريخ البدء: {new Date(plan.start_date).toLocaleDateString('ar-SA-u-nu-latn')}</span>
                     {plan.end_date && (
-                      <span>تاريخ الانتهاء: {new Date(plan.end_date).toLocaleDateString('ar-SA')}</span>
+                      <span>تاريخ الانتهاء: {new Date(plan.end_date).toLocaleDateString('ar-SA-u-nu-latn')}</span>
                     )}
                     {plan.goals && <span>{plan.goals.length} أهداف</span>}
                     {plan.followups && <span>{plan.followups.length} متابعات</span>}

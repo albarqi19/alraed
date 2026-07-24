@@ -48,7 +48,7 @@ export function freshnessLabel(generatedAt?: string): string | null {
   const then = new Date(generatedAt)
   if (Number.isNaN(then.getTime())) return null
   const mins = Math.floor((Date.now() - then.getTime()) / 60000)
-  const clock = then.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
+  const clock = then.toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' })
   if (mins < 1) return `حُسب ${clock} · الآن`
   if (mins === 1) return `حُسب ${clock} · قبل دقيقة`
   if (mins < 60) return `حُسب ${clock} · قبل ${mins} دقيقة`
@@ -56,7 +56,41 @@ export function freshnessLabel(generatedAt?: string): string | null {
   return `حُسب ${clock} · قبل ${hrs} ساعة`
 }
 
-export const arNum = (n: number) => n.toLocaleString('ar-SA')
+export const arNum = (n: number) => n.toLocaleString('ar-SA-u-nu-latn')
+
+/**
+ * عدّاد تصاعدي ناعم — يبدأ من صفر عند أول ظهور وينتقل بسلاسة عند كل
+ * تحديث للقيمة (refresh). يحترم prefers-reduced-motion فيقفز للقيمة فوراً.
+ */
+export function useCountUp(target: number, duration = 650): number {
+  const [display, setDisplay] = useState(0)
+  const prevRef = useRef(0)
+
+  useEffect(() => {
+    const from = prevRef.current
+    prevRef.current = target
+    if (from === target) {
+      setDisplay(target)
+      return
+    }
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      setDisplay(target)
+      return
+    }
+    let raf = 0
+    const start = performance.now()
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - start) / duration)
+      const eased = 1 - Math.pow(1 - p, 3)
+      setDisplay(Math.round(from + (target - from) * eased))
+      if (p < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [target, duration])
+
+  return display
+}
 
 /* ═══ ★ لمسة التوقيع: طابور الصباح ═══
    شبكة مربّعها طالب. بقرار المالك (ج٤): المربعات تلبس حالاتها —
@@ -160,7 +194,7 @@ export function MorningQueue({
   }
 
   return (
-    <div ref={hostRef} style={{ width: '100%' }}>
+    <div ref={hostRef} className="ws-fade-in" style={{ width: '100%' }}>
       <svg
         width={width || '100%'}
         height={height}
@@ -276,13 +310,13 @@ export function todayGreetingLine(): { greeting: string; hijri: string; greg: st
   const now = new Date()
   return {
     greeting: now.getHours() < 12 ? 'صباح الخير' : 'مساء الخير',
-    hijri: new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', {
+    hijri: new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura-nu-latn', {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
       year: 'numeric',
     }).format(now),
-    greg: new Intl.DateTimeFormat('ar-SA', { day: 'numeric', month: 'long' }).format(now),
+    greg: new Intl.DateTimeFormat('ar-SA-u-nu-latn', { day: 'numeric', month: 'long' }).format(now),
   }
 }
 
@@ -308,9 +342,11 @@ export function DayCard({ icon: Icon, label, value, tone, hero, context, zeroCon
   const isZero = value === 0
   const t = tone
   const ctx = isZero ? (zeroContext ?? context) : context
+  const displayValue = useCountUp(value)
 
   const body = (
     <div
+      className="ws-daycard"
       style={{
         position: 'relative',
         overflow: 'hidden',
@@ -364,7 +400,7 @@ export function DayCard({ icon: Icon, label, value, tone, hero, context, zeroCon
             fontVariantNumeric: 'tabular-nums',
           }}
         >
-          {arNum(value)}
+          {arNum(displayValue)}
         </span>
         {spark}
       </span>
@@ -377,7 +413,7 @@ export function DayCard({ icon: Icon, label, value, tone, hero, context, zeroCon
 
   if (to) {
     return (
-      <Link to={to} style={{ textDecoration: 'none', color: 'inherit', display: 'block', height: '100%' }}>
+      <Link to={to} className="ws-daycard--link">
         {body}
       </Link>
     )
@@ -399,15 +435,17 @@ export function WeekSpark({ days, field, tone }: { days: WeekDay[]; field: 'abse
       title="آخر ٧ أيام دراسية"
       style={{ display: 'inline-flex', gap: 4, alignItems: 'flex-end', height: 28, direction: 'ltr', flexShrink: 0 }}
     >
-      {chrono.map((d) => (
+      {chrono.map((d, i) => (
         <span
           key={d.date}
+          className="ws-sparkbar"
           title={`${d.day} · ${arNum(d[field])}`}
           style={{
             width: 8,
             borderRadius: 2,
             height: Math.max(3, Math.round((28 * d[field]) / max)),
             background: d.date === iso ? tone.tx : tone.bd,
+            animationDelay: `${i * 45}ms`,
           }}
         />
       ))}
@@ -432,6 +470,8 @@ export function CoverageArc({ rate }: { rate: number }) {
   const r = 24
   const c = 2 * Math.PI * r
   const clamped = Math.min(100, Math.max(0, rate))
+  // القوس والرقم يسوقهما عدّاد واحد فيمتلئ القوس مع تصاعد النسبة
+  const display = useCountUp(Math.round(clamped))
   const done = clamped >= 100
   const stroke = done ? TONES.green.tx : TONES.amber.tx
   return (
@@ -447,11 +487,11 @@ export function CoverageArc({ rate }: { rate: number }) {
           strokeWidth={6}
           strokeLinecap="round"
           strokeDasharray={c}
-          strokeDashoffset={c * (1 - clamped / 100)}
+          strokeDashoffset={c * (1 - display / 100)}
           transform="rotate(-90 28 28)"
         />
         <text x={28} y={32} textAnchor="middle" fontSize={14} fontWeight={800} fill={stroke}>
-          {arNum(Math.round(clamped))}٪
+          {arNum(display)}٪
         </text>
       </svg>
       <span style={{ fontSize: 12.5, color: done ? TONES.green.tx : 'var(--ws-text-2)', whiteSpace: 'nowrap' }}>

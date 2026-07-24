@@ -710,7 +710,7 @@ export function AdminParentMeetingPage() {
                         {registerResult.already_registered ? 'مسجل مسبقاً' : 'تم التسجيل بنجاح'}
                       </p>
                       <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--ws-text-2)' }}>
-                        {registerResult.student_name} — {new Date(registerResult.registered_at).toLocaleTimeString('ar-SA')}
+                        {registerResult.student_name} — {new Date(registerResult.registered_at).toLocaleTimeString('ar-SA-u-nu-latn')}
                       </p>
                       {registerResult.print_job && (
                         <p style={{ margin: '4px 0 0', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
@@ -800,7 +800,7 @@ export function AdminParentMeetingPage() {
                         {a.student_name}
                       </p>
                       <p style={{ margin: '2px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {a.grade} • {a.guardian_name} • {new Date(a.registered_at).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}
+                        {a.grade} • {a.guardian_name} • {new Date(a.registered_at).toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
                     <span className={meta.live ? 'ws-soft-pulse' : undefined} style={{ flexShrink: 0 }}>
@@ -892,7 +892,7 @@ export function AdminParentMeetingPage() {
                         </WsBtn>
                         {pairingState.expiresAt && (
                           <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>
-                            ينتهي: {new Date(pairingState.expiresAt).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}
+                            ينتهي: {new Date(pairingState.expiresAt).toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         )}
                       </div>

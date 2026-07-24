@@ -279,12 +279,12 @@ function formatDateTime(value?: string | null) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   try {
-    return new Intl.DateTimeFormat('ar-SA', {
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', {
       dateStyle: 'medium',
       timeStyle: 'short',
     }).format(date)
   } catch {
-    return date.toLocaleString('ar-SA')
+    return date.toLocaleString('ar-SA-u-nu-latn')
   }
 }
 
@@ -705,9 +705,51 @@ interface RulerSegment {
 }
 
 /** مسطرة اليوم: شريط يمثل اليوم الدراسي — عرض كل مقطع بنسبة مدته الحقيقية */
-function DayRuler({ segments }: { segments: RulerSegment[] }) {
+function DayRuler({
+  segments,
+  hoverKey,
+  onHover,
+  showNow,
+}: {
+  segments: RulerSegment[]
+  /** مفتاح المقطع المضاء (تزامن مع جدول الفترات) */
+  hoverKey?: string | null
+  onHover?: (key: string | null) => void
+  /** يعرض مؤشر «الآن» — للجدول المفعّل فقط */
+  showNow?: boolean
+}) {
+  const [nowMin, setNowMin] = useState(() => {
+    const d = new Date()
+    return d.getHours() * 60 + d.getMinutes()
+  })
+
+  useEffect(() => {
+    if (!showNow) return
+    const timer = window.setInterval(() => {
+      const d = new Date()
+      setNowMin(d.getHours() * 60 + d.getMinutes())
+    }, 30_000)
+    return () => window.clearInterval(timer)
+  }, [showNow])
+
   const total = segments.reduce((sum, segment) => sum + segment.duration, 0)
   if (segments.length === 0 || total <= 0) return null
+
+  // موضع «الآن» بمنطق المسطرة نفسها: تراكم المدد لا الزمن المتواصل،
+  // فالمسطرة أصلاً تتجاهل الفجوات بين الفترات
+  let nowPct: number | null = null
+  if (showNow) {
+    let acc = 0
+    for (const seg of segments) {
+      const s = parseTimeToMinutes(seg.startTime)
+      const e = parseTimeToMinutes(seg.endTime)
+      if (s !== null && e !== null && nowMin >= s && nowMin < e) {
+        nowPct = ((acc + (nowMin - s)) / total) * 100
+        break
+      }
+      acc += seg.duration
+    }
+  }
 
   return (
     <div>
@@ -715,13 +757,14 @@ function DayRuler({ segments }: { segments: RulerSegment[] }) {
         <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--ws-text-2)', fontVariantNumeric: 'tabular-nums' }} dir="ltr">
           {segments[0].startTime}
         </span>
-        <span style={{ display: 'inline-flex', gap: 10, fontSize: 11 }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, fontSize: 11 }}>
           {(['class', 'break', 'prayer'] as QuickScheduleEntryType[]).map((type) => (
             <span key={type} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: 'var(--ws-text-2)' }}>
               <span style={{ width: 8, height: 8, borderRadius: 2, background: ENTRY_TONES[type].tx }} />
               {quickEntryTypeLabels[type]}
             </span>
           ))}
+          <span style={{ fontWeight: 700, color: 'var(--ws-text)' }}>المجموع {formatDurationLabel(total)}</span>
         </span>
         <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--ws-text-2)', fontVariantNumeric: 'tabular-nums' }} dir="ltr">
           {segments[segments.length - 1].endTime}
@@ -729,6 +772,7 @@ function DayRuler({ segments }: { segments: RulerSegment[] }) {
       </div>
       <div
         style={{
+          position: 'relative',
           display: 'flex',
           height: 40,
           borderRadius: 8,
@@ -736,13 +780,17 @@ function DayRuler({ segments }: { segments: RulerSegment[] }) {
           border: '1px solid var(--ws-hairline)',
         }}
       >
-        {segments.map((segment) => {
+        {segments.map((segment, i) => {
           const tone = ENTRY_TONES[segment.type]
           const widthPercent = (segment.duration / total) * 100
+          const hot = hoverKey != null && hoverKey === segment.key
           return (
             <div
               key={segment.key}
+              className="ws-ruler-seg ws-bar-x"
               title={`${segment.name} — ${segment.startTime} إلى ${segment.endTime} (${segment.duration} د)`}
+              onMouseEnter={onHover ? () => onHover(segment.key) : undefined}
+              onMouseLeave={onHover ? () => onHover(null) : undefined}
               style={{
                 width: `${widthPercent}%`,
                 minWidth: 4,
@@ -752,6 +800,8 @@ function DayRuler({ segments }: { segments: RulerSegment[] }) {
                 alignItems: 'center',
                 justifyContent: 'center',
                 overflow: 'hidden',
+                animationDelay: `${i * 45}ms`,
+                ...(hot ? { filter: 'brightness(0.92)', boxShadow: 'inset 0 0 0 2px var(--ws-accent-2)' } : null),
               }}
             >
               {widthPercent > 7 ? (
@@ -772,6 +822,13 @@ function DayRuler({ segments }: { segments: RulerSegment[] }) {
             </div>
           )
         })}
+        {nowPct != null ? (
+          <span
+            className="ws-ruler-now"
+            style={{ insetInlineEnd: `${nowPct}%` }}
+            title={`الآن ${formatMinutesToTime(nowMin)}`}
+          />
+        ) : null}
       </div>
     </div>
   )
@@ -1482,6 +1539,8 @@ export function AdminSchedulesPage() {
   const [quickSuccessMessage, setQuickSuccessMessage] = useState<string | null>(null)
   const [isApplyToClassesModalOpen, setIsApplyToClassesModalOpen] = useState(false)
   const [scheduleToApply, setScheduleToApply] = useState<ScheduleRecord | null>(null)
+  /** تزامن الإضاءة بين مسطرة اليوم وجدول الفترات */
+  const [hotSegKey, setHotSegKey] = useState<string | null>(null)
 
   const schedulesQuery = useSchedulesQuery()
   const templatesQuery = useScheduleTemplatesQuery()
@@ -1903,7 +1962,7 @@ export function AdminSchedulesPage() {
             />
           </div>
 
-          <WsBlock title="القائمة" count={filteredSchedules.length.toLocaleString('ar-SA')} fill scroll>
+          <WsBlock title="القائمة" count={filteredSchedules.length.toLocaleString('ar-SA-u-nu-latn')} fill scroll>
             {schedulesQuery.isLoading ? (
               <WsEmpty loading>جاري تحميل الجداول...</WsEmpty>
             ) : filteredSchedules.length === 0 ? (
@@ -1916,6 +1975,7 @@ export function AdminSchedulesPage() {
                     <button
                       key={schedule.id}
                       type="button"
+                      className="ws-rankrow"
                       onClick={() => setSelectedScheduleId(schedule.id)}
                       style={{
                         display: 'block',
@@ -1924,7 +1984,7 @@ export function AdminSchedulesPage() {
                         padding: '8px 12px',
                         border: 'none',
                         borderBottom: '1px solid var(--ws-hairline)',
-                        background: isSelected ? chip(TONES.sky) : 'transparent',
+                        background: isSelected ? chip(TONES.sky) : undefined,
                         cursor: 'pointer',
                         fontFamily: 'inherit',
                       }}
@@ -2066,7 +2126,12 @@ export function AdminSchedulesPage() {
                     </span>
                   </div>
                   {selectedRulerSegments.length > 0 ? (
-                    <DayRuler segments={selectedRulerSegments} />
+                    <DayRuler
+                      segments={selectedRulerSegments}
+                      hoverKey={hotSegKey}
+                      onHover={setHotSegKey}
+                      showNow={selectedSchedule.is_active}
+                    />
                   ) : (
                     <span style={{ fontSize: 12, color: 'var(--ws-text-2)' }}>
                       لا توجد فترات بأوقات صالحة لعرض مسطرة اليوم.
@@ -2090,14 +2155,26 @@ export function AdminSchedulesPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {(selectedSchedule.periods ?? []).map((period) => {
+                      {(selectedSchedule.periods ?? []).map((period, i) => {
                         const start = formatTime(period.start_time)
                         const end = formatTime(period.end_time)
                         const duration = period.break_duration ?? ''
                         const entryType = inferEntryType(Boolean(period.is_break), period.period_name)
                         const tone = ENTRY_TONES[entryType]
+                        // نفس صيغة مفتاح مقطع المسطرة (segmentsFromPeriods) ليتم التزامن
+                        const rowKey = `${period.period_number}-${start}`
+                        const hot = hotSegKey === rowKey
                         return (
-                          <tr key={`${period.period_number}-${period.start_time}`}>
+                          <tr
+                            key={rowKey}
+                            className="ws-tbl-rise"
+                            onMouseEnter={() => setHotSegKey(rowKey)}
+                            onMouseLeave={() => setHotSegKey(null)}
+                            style={{
+                              animationDelay: `${Math.min(i * 30, 300)}ms`,
+                              ...(hot ? { background: 'var(--ws-surface-2)' } : null),
+                            }}
+                          >
                             <td style={{ fontWeight: 700 }}>{period.period_number}</td>
                             <td>{period.period_name ?? '—'}</td>
                             <td>

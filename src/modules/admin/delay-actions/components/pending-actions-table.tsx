@@ -20,9 +20,9 @@ function formatDate(value?: string | null) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   try {
-    return new Intl.DateTimeFormat('ar-SA', { dateStyle: 'short' }).format(date)
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', { dateStyle: 'short' }).format(date)
   } catch {
-    return date.toLocaleDateString('ar-SA')
+    return date.toLocaleDateString('ar-SA-u-nu-latn')
   }
 }
 
@@ -102,7 +102,7 @@ export function PendingActionsTable({
               )}
             </td>
             <td style={{ fontWeight: 700 }}>{teacher.formatted_delay}</td>
-            <td>{teacher.records_count.toLocaleString('ar-SA')} يوم</td>
+            <td>{teacher.records_count.toLocaleString('ar-SA-u-nu-latn')} يوم</td>
             <td>
               <ActionChip type={teacher.pending_action} label={teacher.pending_action_label} />
             </td>

@@ -1188,10 +1188,10 @@ export function AdminClassSchedulesPage() {
         facts={
           <>
             <WsFact icon={Layers} label="الفصول:">
-              {(classSummariesQuery.data?.length ?? 0).toLocaleString('ar-SA')}
+              {(classSummariesQuery.data?.length ?? 0).toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             <WsFact icon={Clock3} label="إجمالي الحصص:">
-              {totalSessionsAllClasses.toLocaleString('ar-SA')}
+              {totalSessionsAllClasses.toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             {selectedClass && (
               <>

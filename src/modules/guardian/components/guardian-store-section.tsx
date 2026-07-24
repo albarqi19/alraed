@@ -53,7 +53,7 @@ const STORE_STATUS_STYLES: Record<StoreStatus, string> = {
   empty: 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700',
 }
 
-const dateFormatter = new Intl.DateTimeFormat('ar-SA', { dateStyle: 'medium', timeStyle: 'short' })
+const dateFormatter = new Intl.DateTimeFormat('ar-SA-u-nu-latn', { dateStyle: 'medium', timeStyle: 'short' })
 
 type GuardianStoreSectionProps = {
   nationalId: string

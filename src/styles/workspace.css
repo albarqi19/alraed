@@ -20,9 +20,10 @@
     --ws-accent: var(--color-primary-dark, #3F6F55);
     --ws-accent-2: var(--color-primary, #4CAF50);
 
-    /* مشتقات: رؤوس البلوكات، التمييز الخافت، الخطوط الرفيعة */
-    --ws-surface-2: color-mix(in srgb, var(--ws-surface) 96%, var(--ws-text) 4%);
-    --ws-hover: color-mix(in srgb, var(--ws-surface) 97%, var(--ws-text) 3%);
+    /* مشتقات: رؤوس البلوكات، التمييز الخافت، الخطوط الرفيعة.
+       مزيج مريمي (sage) يتبع الأكسنت — لا رصاصي محايد يجفّف الهوية */
+    --ws-surface-2: color-mix(in srgb, var(--ws-accent) 6.5%, var(--ws-surface) 93.5%);
+    --ws-hover: color-mix(in srgb, var(--ws-accent) 4.5%, var(--ws-surface) 95.5%);
     --ws-hairline: color-mix(in srgb, var(--ws-border) 60%, var(--ws-surface) 40%);
     --ws-accent-soft: color-mix(in srgb, var(--ws-accent) 7%, var(--ws-surface) 93%);
     --ws-accent-softer: color-mix(in srgb, var(--ws-accent) 3.5%, var(--ws-surface) 96.5%);
@@ -124,6 +125,15 @@
     align-items: center;
     flex-wrap: wrap;
     gap: 8px;
+}
+
+/* فلاتر مضمَّنة في صف العنوان نفسه (بحث/قوائم/أزرار) — تلتف تحته عند الضيق */
+.ws-header__filters {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    min-width: 0;
 }
 
 /* صف الحقائق أسفل العنوان */
@@ -1381,12 +1391,209 @@ button.ws-chip:disabled {
     }
 }
 
+/* ── نظرة عامة: حركات وتحسينات تفاعلية ── */
+
+/* هيكل تحميل مموّج بدل الكتلة الرمادية الساكنة */
+@keyframes ws-shimmer {
+    from {
+        background-position: 200% 0;
+    }
+    to {
+        background-position: -200% 0;
+    }
+}
+.ws-skeleton {
+    background: linear-gradient(90deg, var(--ws-surface-2) 25%, var(--ws-surface) 50%, var(--ws-surface-2) 75%);
+    background-size: 200% 100%;
+    animation: ws-shimmer 1.4s linear infinite;
+}
+
+/* دخول ناعم عام (طابور الصباح وأمثاله) */
+@keyframes ws-fadein {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+.ws-fade-in {
+    animation: ws-fadein 0.4s ease both;
+}
+
+/* بطاقات اليوم: صعود متتابع عند الظهور */
+.ws-dashboard-cards > * {
+    animation: ws-rise 0.35s ease both;
+}
+.ws-dashboard-cards > *:nth-child(2) {
+    animation-delay: 0.06s;
+}
+.ws-dashboard-cards > *:nth-child(3) {
+    animation-delay: 0.12s;
+}
+.ws-dashboard-cards > *:nth-child(4) {
+    animation-delay: 0.18s;
+}
+
+/* بطاقة اليوم المرتبطة: ارتفاع خفيف عند التحويم */
+.ws-daycard--link {
+    display: block;
+    height: 100%;
+    text-decoration: none;
+    color: inherit;
+}
+.ws-daycard--link .ws-daycard {
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.ws-daycard--link:hover .ws-daycard {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(60, 50, 30, 0.1);
+}
+
+/* أعمدة الشرارة الأسبوعية: نموّ من الأسفل */
+@keyframes ws-growbar {
+    from {
+        transform: scaleY(0.2);
+        opacity: 0.4;
+    }
+    to {
+        transform: scaleY(1);
+        opacity: 1;
+    }
+}
+.ws-sparkbar {
+    transform-origin: bottom;
+    animation: ws-growbar 0.4s ease both;
+}
+
+/* صفوف لوحة النداء: انتقال ناعم عند التحويم */
+.ws-callrow {
+    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+.ws-callrow:hover {
+    transform: translateY(-1px);
+    filter: brightness(0.985);
+    box-shadow: 0 3px 10px rgba(60, 50, 30, 0.08);
+}
+
+/* المودال: خلفية تخفت واللوح يصعد */
+.ws-modal {
+    animation: ws-fadein 0.18s ease both;
+}
+.ws-modal__panel {
+    animation: ws-rise 0.22s ease both;
+}
+
+/* صف قائمة مرتبة (أثقل المواد/قائمة الجداول): تحويم لطيف.
+   الخلفية الافتراضية هنا لا inline — وإلا لغت التحويم دائماً */
+.ws-rankrow {
+    background: transparent;
+    transition: background 0.15s ease;
+}
+.ws-rankrow:hover {
+    background: var(--ws-surface-2);
+}
+
+/* مسطرة اليوم: تحويم المقاطع + مؤشر «الآن» */
+.ws-ruler-seg {
+    transition: filter 0.15s ease;
+}
+.ws-ruler-seg:hover {
+    filter: brightness(0.94);
+}
+.ws-ruler-now {
+    position: absolute;
+    top: -3px;
+    bottom: -3px;
+    width: 2px;
+    border-radius: 1px;
+    background: var(--ws-red);
+    box-shadow: 0 0 0 1px var(--ws-surface);
+    z-index: 1;
+    pointer-events: none;
+}
+.ws-ruler-now::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    right: -3px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--ws-red);
+    box-shadow: 0 0 0 1.5px var(--ws-surface);
+}
+
+/* صفوف الجداول تدخل متتابعة عند تبديل المحدد */
+.ws-tbl-rise {
+    animation: ws-rise 0.3s ease both;
+}
+
+/* شبكة بطاقات (الحالات ونظيراتها): دخول متتابع + رفعة خفيفة عند التحويم */
+.ws-cardgrid > * {
+    animation: ws-rise 0.3s ease both;
+    transition: border-color 0.12s, transform 0.15s, box-shadow 0.15s;
+}
+.ws-cardgrid > *:nth-child(2) {
+    animation-delay: 0.05s;
+}
+.ws-cardgrid > *:nth-child(3) {
+    animation-delay: 0.1s;
+}
+.ws-cardgrid > *:nth-child(4) {
+    animation-delay: 0.15s;
+}
+.ws-cardgrid > *:nth-child(n+5) {
+    animation-delay: 0.2s;
+}
+.ws-cardgrid > *:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px -8px rgb(0 0 0 / 0.18);
+}
+
+/* الأشرطة الأفقية تنمو من حافتها اليمنى (واجهة RTL) */
+@keyframes ws-growx {
+    from {
+        transform: scaleX(0);
+    }
+    to {
+        transform: scaleX(1);
+    }
+}
+.ws-bar-x {
+    transform-origin: right center;
+    animation: ws-growx 0.45s ease both;
+}
+
+/* تقليل الحركة: كل ما سبق يتعطّل احتراماً لتفضيل المستخدم */
+@media (prefers-reduced-motion: reduce) {
+    .ws-skeleton,
+    .ws-fade-in,
+    .ws-dashboard-cards > *,
+    .ws-sparkbar,
+    .ws-modal,
+    .ws-modal__panel,
+    .ws-bar-x,
+    .ws-cardgrid > *,
+    .ws-tbl-rise {
+        animation: none;
+    }
+    .ws-daycard--link .ws-daycard,
+    .ws-cardgrid > *,
+    .ws-callrow,
+    .ws-rankrow,
+    .ws-ruler-seg {
+        transition: none;
+    }
+}
+
 /* ── نطاق «الإغناء» ws-rich: أسطح كريمية + سلّم عرضي أكبر — يُطبَّق صفحةً صفحة ── */
 .ws-rich {
     /* تجربة المالك: الأبيض → كريمي (الكنفا الدافئة كانت موجودة أصلاً #F8F5F0) */
     --ws-bg: #F4F2ED;
     --ws-surface: #FCFBF8;
-    --ws-surface-2: #EFEDE6;
+    /* مريمية دافئة أعمق قليلاً من الجذر — بدل الرصاصي #EFEDE6 */
+    --ws-surface-2: color-mix(in srgb, var(--ws-accent) 8%, var(--ws-surface) 92%);
 }
 .ws-rich .ws-header__title {
     font-size: 18px;
@@ -1421,21 +1628,177 @@ button.ws-chip:disabled {
 .ws-import-duo {
     display: grid;
     grid-template-columns: 1fr 3px 1fr;
+    /* المسار لا يقل عن كامل ارتفاع العمود الأوسط — فيصل الفاصل أسفل
+       الصفحة دائماً — ويكبر مع المحتوى الأطول */
+    grid-template-rows: minmax(100%, auto);
     gap: 10px;
     align-items: start;
+    flex: 1;
+    min-height: 0;
+    /* المحتوى الطويل (معاينة الطلاب) يتمرر داخلياً بدل أن يُقصّ —
+       ws-main overflow:hidden */
+    overflow-y: auto;
 }
 .ws-import-duo__bar {
     align-self: stretch;
     width: 3px;
     border-radius: 2px;
+    /* خيط مريمي هادئ يتلاشى عند الطرفين — لا شريط سماوي صارخ.
+       يُشتق من الأكسنت فيتبع كل ثيم تلقائياً */
+    background: linear-gradient(
+        to bottom,
+        transparent,
+        color-mix(in srgb, var(--ws-accent) 22%, var(--ws-surface)) 14%,
+        color-mix(in srgb, var(--ws-accent) 22%, var(--ws-surface)) 86%,
+        transparent
+    );
 }
 @media (max-width: 900px) {
     .ws-import-duo {
         grid-template-columns: 1fr;
+        /* عمود واحد: بلا قسرٍ على الارتفاع وإلا التهم كل صفٍّ الشاشة */
+        grid-template-rows: none;
     }
     .ws-import-duo__bar {
         align-self: auto;
         width: 100%;
         height: 3px;
+        /* أفقي عند التراصّ — نفس التلاشي لكن من اليمين لليسار */
+        background: linear-gradient(
+            to left,
+            transparent,
+            color-mix(in srgb, var(--ws-accent) 22%, var(--ws-surface)) 14%,
+            color-mix(in srgb, var(--ws-accent) 22%, var(--ws-surface)) 86%,
+            transparent
+        );
+    }
+}
+
+/* ── ملف المعلم: أساس التفاصيل الموحد ── */
+
+/* لوح مسطح بحد شعري — وحدة التقسيم داخل تفاصيل الملف، بديل بطاقات الظل القديمة */
+.ws-panel {
+    border: 1px solid var(--ws-hairline);
+    border-radius: 10px;
+    background: var(--ws-surface);
+}
+.ws-panel__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--ws-hairline);
+}
+.ws-panel__title {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ws-text);
+}
+.ws-panel__title svg {
+    width: 15px;
+    height: 15px;
+    color: var(--ws-accent);
+}
+.ws-panel__body {
+    padding: 12px;
+}
+
+/* شبكة أرقام مصغرة — تتكاثف حسب العرض وتصعد متتابعة عند الظهور */
+.ws-statgrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 8px;
+}
+.ws-statgrid > * {
+    animation: ws-rise 0.3s ease both;
+}
+.ws-statgrid > *:nth-child(2) {
+    animation-delay: 0.05s;
+}
+.ws-statgrid > *:nth-child(3) {
+    animation-delay: 0.1s;
+}
+.ws-statgrid > *:nth-child(4) {
+    animation-delay: 0.15s;
+}
+.ws-statgrid > *:nth-child(5) {
+    animation-delay: 0.2s;
+}
+.ws-statgrid > *:nth-child(6) {
+    animation-delay: 0.25s;
+}
+.ws-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    padding: 8px 10px;
+    border: 1px solid var(--ws-hairline);
+    border-radius: 10px;
+    background: var(--ws-surface);
+}
+.ws-stat__label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ws-text-2);
+}
+.ws-stat__value {
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1.2;
+    color: var(--ws-text);
+    font-variant-numeric: tabular-nums;
+}
+.ws-stat__sub {
+    font-size: 10.5px;
+    color: var(--ws-text-2);
+}
+
+/* بطل الملف: شريط تعريفي بلمسة مريمية خفيفة يعلو تفاصيل المعلم */
+.ws-profile-hero {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 14px 16px;
+    border: 1px solid var(--ws-hairline);
+    border-radius: 12px;
+    background: var(--ws-accent-softer);
+}
+
+/* صف عنصر داخل لوح (مناوبة/إحالة/إجراء): حد شعري + تحويم هادئ */
+.ws-lrow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    padding: 8px 12px;
+    border: 1px solid var(--ws-hairline);
+    border-radius: 8px;
+    background: var(--ws-surface);
+    transition: background 0.15s ease;
+}
+.ws-lrow:hover {
+    background: var(--ws-hover);
+}
+
+/* دخول الأوسمة متتابعاً (التأخير يُضبط inline لكل وسام) */
+.ws-badge-pop {
+    animation: ws-rise 0.35s ease both;
+}
+
+/* تقليل الحركة: إلحاق حركات ملف المعلم بالقاعدة الأم */
+@media (prefers-reduced-motion: reduce) {
+    .ws-statgrid > *,
+    .ws-badge-pop {
+        animation: none;
+    }
+    .ws-lrow {
+        transition: none;
     }
 }

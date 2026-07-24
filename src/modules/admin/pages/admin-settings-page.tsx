@@ -170,7 +170,7 @@ export function AdminSettingsPage() {
             </WsFact>
             {lastConnected && (
               <WsFact icon={MessageSquare} label="آخر اتصال">
-                {new Date(lastConnected).toLocaleString('ar-SA')}
+                {new Date(lastConnected).toLocaleString('ar-SA-u-nu-latn')}
               </WsFact>
             )}
           </>

@@ -388,7 +388,7 @@ export function AdminTeacherMessagesPage() {
                     <span className="ws-cell-sub">انقر للتفاصيل</span>
                   </span>
                   <span style={{ fontSize: 20, fontWeight: 800, color: 'var(--ws-accent-2)' }}>
-                    {value.toLocaleString('ar-SA')}
+                    {value.toLocaleString('ar-SA-u-nu-latn')}
                   </span>
                 </button>
               ))}

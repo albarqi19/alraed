@@ -444,14 +444,14 @@ const stickyNotes: Array<{ end: number; prefix: string; label: string; bg: strin
 
 function todayHijri(): string {
   try {
-    return new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', {
+    return new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura-nu-latn', {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
       year: 'numeric',
     }).format(new Date())
   } catch {
-    return new Intl.DateTimeFormat('ar-SA', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())
   }
 }
 

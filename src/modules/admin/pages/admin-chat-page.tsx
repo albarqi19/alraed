@@ -195,8 +195,8 @@ export default function AdminChatPage() {
     if (!dateStr) return ''
     const d = new Date(dateStr)
     const today = new Date()
-    if (d.toDateString() === today.toDateString()) return d.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
-    return d.toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' })
+    if (d.toDateString() === today.toDateString()) return d.toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' })
+    return d.toLocaleDateString('ar-SA-u-nu-latn', { month: 'short', day: 'numeric' })
   }
 
   // فلترة جهات الاتصال
@@ -415,7 +415,7 @@ export default function AdminChatPage() {
                     const isFirstParty = activeConversation.context_type === 'staff'
                       ? msg.sender_id === activeConversation.admin_user_id
                       : msg.sender_type === 'guardian'
-                    const time = new Date(msg.created_at).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
+                    const time = new Date(msg.created_at).toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' })
 
                     if (msg.type === 'system') {
                       return (
@@ -576,7 +576,7 @@ export default function AdminChatPage() {
                 )}
                 {activeConversation.last_message_at && (
                   <WsFactRow label="آخر رسالة">
-                    {new Date(activeConversation.last_message_at).toLocaleString('ar-SA')}
+                    {new Date(activeConversation.last_message_at).toLocaleString('ar-SA-u-nu-latn')}
                   </WsFactRow>
                 )}
                 <WsFactRow label="عدد الرسائل">{sortedMessages.length}</WsFactRow>

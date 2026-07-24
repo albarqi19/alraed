@@ -3,7 +3,8 @@ import {
   ShieldCheck, MessageCircle, BookOpen, Star, Heart, Award,
   TrendingUp, Zap, Target, Users, RefreshCw, Sparkles, Lightbulb,
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { TONES, ToneChip, WsBtn, type Tone } from '@/shared/workspace'
+import { ProfilePanel, toneBg } from './profile-ui'
 import { useTeacherAIAnalysis } from '../hooks'
 import { fetchTeacherAIAnalysis } from '../api'
 import { teacherProfileKeys } from '../query-keys'
@@ -23,29 +24,26 @@ const ICON_MAP: Record<string, React.ElementType> = {
   users: Users,
 }
 
-const RATING_COLORS: Record<string, string> = {
-  'ممتاز': 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  'جيد جداً': 'bg-blue-100 text-blue-700 border-blue-200',
-  'جيد': 'bg-amber-100 text-amber-700 border-amber-200',
-  'يحتاج دعم': 'bg-slate-100 text-slate-700 border-slate-200',
+/** نبرة التقييم العام من اللوحة المعتمدة */
+const RATING_TONES: Record<string, Tone> = {
+  'ممتاز': TONES.green,
+  'جيد جداً': TONES.sky,
+  'جيد': TONES.amber,
+  'يحتاج دعم': TONES.gray,
 }
 
 function SkeletonCard() {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-blue-50/50 to-violet-50/50 p-5 shadow-sm">
-      <div className="animate-pulse space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-lg bg-slate-200" />
-          <div className="h-5 w-40 rounded bg-slate-200" />
+    <ProfilePanel title="تحليل الأداء" icon={Sparkles}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="ws-skeleton" style={{ height: 44, borderRadius: 8 }} />
+        <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+          <div className="ws-skeleton" style={{ height: 72, borderRadius: 8 }} />
+          <div className="ws-skeleton" style={{ height: 72, borderRadius: 8 }} />
         </div>
-        <div className="h-12 w-full rounded-xl bg-slate-200/70" />
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="h-20 rounded-xl bg-white/60" />
-          <div className="h-20 rounded-xl bg-white/60" />
-        </div>
-        <div className="h-16 rounded-xl bg-slate-100/50" />
+        <div className="ws-skeleton" style={{ height: 56, borderRadius: 8 }} />
       </div>
-    </div>
+    </ProfilePanel>
   )
 }
 
@@ -76,103 +74,178 @@ export function AIInsightsCard({ teacherId, filters = {}, enabled = true }: AIIn
 
   if (error) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm">
-        <p className="text-sm text-slate-500">تعذر تحميل التحليل الذكي</p>
-        <Button variant="outline" size="sm" className="mt-2" onClick={handleRefresh}>
-          إعادة المحاولة
-        </Button>
-      </div>
+      <ProfilePanel title="تحليل الأداء" icon={Sparkles}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <p style={{ margin: 0, flex: 1, fontSize: 12.5, color: 'var(--ws-text-2)' }}>تعذر تحميل التحليل الذكي</p>
+          <WsBtn size="sm" onClick={handleRefresh}>
+            إعادة المحاولة
+          </WsBtn>
+        </div>
+      </ProfilePanel>
     )
   }
 
-  const ratingClass = RATING_COLORS[data.overall_rating] ?? RATING_COLORS['جيد']
+  const ratingTone = RATING_TONES[data.overall_rating] ?? TONES.amber
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-blue-50/50 to-violet-50/50 p-5 shadow-sm">
-      {/* الرأس */}
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-violet-500" />
-          <h3 className="text-sm font-bold text-slate-700">تحليل الأداء</h3>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className={`rounded-full border px-3 py-0.5 text-xs font-bold ${ratingClass}`}>
-            {data.overall_rating}
-          </span>
+    <ProfilePanel
+      title="تحليل الأداء"
+      icon={Sparkles}
+      tools={
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <ToneChip tone={ratingTone}>{data.overall_rating}</ToneChip>
           <button
+            type="button"
             onClick={handleRefresh}
             disabled={refreshing}
-            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-white hover:text-slate-600"
+            className="ws-icon-btn"
             title="تحديث التحليل"
+            aria-label="تحديث التحليل"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={refreshing ? 'animate-spin' : undefined} />
           </button>
+        </span>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {/* الملخص التنفيذي */}
+        <div
+          style={{
+            borderRadius: 8,
+            background: 'var(--ws-surface-2)',
+            padding: '9px 12px',
+            fontSize: 12.5,
+            fontWeight: 600,
+            lineHeight: 1.9,
+            color: 'var(--ws-text)',
+          }}
+        >
+          {data.motivational_message}
         </div>
-      </div>
 
-      {/* الملخص التنفيذي */}
-      <div className="mb-4 rounded-xl bg-white/70 px-4 py-3 text-sm font-medium leading-relaxed text-slate-700">
-        {data.motivational_message}
-      </div>
+        {/* نقاط القوة */}
+        {data.strengths.length > 0 && (
+          <div>
+            <h4
+              style={{
+                margin: '0 0 7px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                fontSize: 11.5,
+                fontWeight: 700,
+                color: TONES.green.tx,
+              }}
+            >
+              <Star style={{ width: 13, height: 13 }} />
+              نقاط القوة
+            </h4>
+            <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+              {data.strengths.map((s, i) => {
+                const Icon = ICON_MAP[s.icon] ?? Star
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex',
+                      gap: 9,
+                      padding: '8px 10px',
+                      border: '1px solid var(--ws-hairline)',
+                      borderRadius: 8,
+                      background: 'var(--ws-surface)',
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 30,
+                        height: 30,
+                        flexShrink: 0,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: 7,
+                        background: TONES.green.bg,
+                      }}
+                    >
+                      <Icon style={{ width: 15, height: 15, color: TONES.green.tx }} />
+                    </span>
+                    <span>
+                      <span style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--ws-text)' }}>
+                        {s.title}
+                      </span>
+                      <span style={{ display: 'block', fontSize: 11, lineHeight: 1.7, color: 'var(--ws-text-2)' }}>
+                        {s.description}
+                      </span>
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
-      {/* نقاط القوة */}
-      {data.strengths.length > 0 && (
-        <div className="mb-4">
-          <h4 className="mb-2 flex items-center gap-1.5 text-xs font-bold text-emerald-600">
-            <Star className="h-3.5 w-3.5" />
-            نقاط القوة
-          </h4>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {data.strengths.map((s, i) => {
-              const Icon = ICON_MAP[s.icon] ?? Star
-              return (
-                <div key={i} className="flex gap-2.5 rounded-xl bg-white/80 p-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50">
-                    <Icon className="h-4 w-4 text-emerald-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-700">{s.title}</p>
-                    <p className="text-[11px] leading-relaxed text-slate-500">{s.description}</p>
-                  </div>
+        {/* فرص النمو */}
+        {data.recommendations.length > 0 && (
+          <div>
+            <h4
+              style={{
+                margin: '0 0 7px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                fontSize: 11.5,
+                fontWeight: 700,
+                color: TONES.sky.tx,
+              }}
+            >
+              <Lightbulb style={{ width: 13, height: 13 }} />
+              توصيات
+            </h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {data.recommendations.map((r, i) => (
+                <div
+                  key={i}
+                  style={{
+                    padding: '8px 10px',
+                    borderRadius: 8,
+                    border: `1px solid ${TONES.sky.bd}`,
+                    background: toneBg(TONES.sky),
+                  }}
+                >
+                  <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--ws-text)' }}>{r.title}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 11, lineHeight: 1.7, color: 'var(--ws-text-2)' }}>
+                    {r.suggestion}
+                  </p>
                 </div>
-              )
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* آخر تحديث */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderTop: '1px solid var(--ws-hairline)',
+            paddingTop: 8,
+            fontSize: 10,
+            color: 'var(--ws-text-2)',
+          }}
+        >
+          <span>{data.cached ? 'من الذاكرة المؤقتة' : 'تحليل جديد'}</span>
+          <span>
+            آخر تحديث:{' '}
+            {new Date(data.generated_at).toLocaleString('ar-SA-u-nu-latn', {
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
             })}
-          </div>
+          </span>
         </div>
-      )}
-
-      {/* فرص النمو */}
-      {data.recommendations.length > 0 && (
-        <div className="mb-3">
-          <h4 className="mb-2 flex items-center gap-1.5 text-xs font-bold text-blue-600">
-            <Lightbulb className="h-3.5 w-3.5" />
-            توصيات
-          </h4>
-          <div className="space-y-2">
-            {data.recommendations.map((r, i) => (
-              <div key={i} className="rounded-xl bg-blue-50/50 p-3">
-                <p className="text-xs font-bold text-slate-700">{r.title}</p>
-                <p className="text-[11px] leading-relaxed text-slate-500">{r.suggestion}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* آخر تحديث */}
-      <div className="flex items-center justify-between border-t border-slate-200/50 pt-2 text-[10px] text-slate-400">
-        <span>
-          {data.cached ? 'من الذاكرة المؤقتة' : 'تحليل جديد'}
-        </span>
-        <span>
-          آخر تحديث: {new Date(data.generated_at).toLocaleString('ar-SA', {
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
-        </span>
       </div>
-    </div>
+    </ProfilePanel>
   )
 }

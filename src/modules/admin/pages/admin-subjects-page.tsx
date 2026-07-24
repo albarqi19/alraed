@@ -22,7 +22,6 @@ import type { SubjectRecord } from '../types'
 import {
   WsPage,
   WsHeader,
-  WsToolbar,
   WsField,
   WsInput,
   WsSelect,
@@ -184,18 +183,18 @@ export function AdminSubjectsPage() {
             مادة جديدة
           </WsBtn>
         }
-      />
-
-      <WsToolbar>
-        <WsField label="بحث" htmlFor="subj-q" grow>
-          <div style={{ position: 'relative' }}>
+      >
+        {/* البحث والفلاتر في شريط العنوان نفسه — لا شريط منفصل تحته */}
+        <span className="ws-header__filters">
+          <span style={{ position: 'relative' }}>
             <WsInput
               id="subj-q"
               type="search"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="اسم المادة أو الوصف"
-              style={{ width: '100%', paddingInlineStart: 26 }}
+              aria-label="بحث باسم المادة أو الوصف"
+              style={{ width: 'min(230px, 60vw)', paddingInlineStart: 26 }}
             />
             <Search
               style={{
@@ -209,11 +208,11 @@ export function AdminSubjectsPage() {
                 pointerEvents: 'none',
               }}
             />
-          </div>
-        </WsField>
-        <WsField label="الحالة" htmlFor="subj-st">
+          </span>
           <WsSelect
             id="subj-st"
+            aria-label="فلتر الحالة"
+            title="فلتر الحالة"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
           >
@@ -221,9 +220,9 @@ export function AdminSubjectsPage() {
             <option value="active">نشطة</option>
             <option value="inactive">غير نشطة</option>
           </WsSelect>
-        </WsField>
-        <WsIconBtn icon={RefreshCw} label="تحديث" onClick={() => void refetch()} disabled={isFetching} />
-      </WsToolbar>
+          <WsIconBtn icon={RefreshCw} label="تحديث" onClick={() => void refetch()} disabled={isFetching} />
+        </span>
+      </WsHeader>
 
       {/* حارس الفصل: يقول «لا أعرف» بدل أن يطلي كل سنٍّ كهرماناً فيقول «الكل معطوب» */}
       {curriculumBlind && !isLoading && (
@@ -439,6 +438,7 @@ export function AdminSubjectsPage() {
                             }}
                           >
                             <div
+                              className="ws-bar-x"
                               style={{
                                 height: '100%',
                                 width: `${Math.min(100, Math.round((g.slots / maxSlots) * 100))}%`,
@@ -470,6 +470,7 @@ export function AdminSubjectsPage() {
                     <button
                       key={subject.id}
                       type="button"
+                      className="ws-rankrow"
                       onClick={() => setSelectedId(subject.id)}
                       style={{
                         display: 'flex',
@@ -479,7 +480,6 @@ export function AdminSubjectsPage() {
                         padding: '8px 12px',
                         border: 'none',
                         borderBottom: '1px solid var(--ws-hairline)',
-                        background: 'transparent',
                         cursor: 'pointer',
                         font: 'inherit',
                         textAlign: 'start',
@@ -520,11 +520,13 @@ export function AdminSubjectsPage() {
                           }}
                         >
                           <span
+                            className="ws-bar-x"
                             style={{
                               display: 'block',
                               height: '100%',
                               width: `${Math.round(((subject.weight?.total_slots ?? 0) / maxTotalSlots) * 100)}%`,
                               background: TONES.sky.bd,
+                              animationDelay: `${i * 35}ms`,
                             }}
                           />
                         </span>

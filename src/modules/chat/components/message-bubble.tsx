@@ -24,7 +24,7 @@ export function MessageBubble({ message, isOwn, showStatus = true }: MessageBubb
     )
   }
 
-  const time = new Date(message.created_at).toLocaleTimeString('ar-SA', {
+  const time = new Date(message.created_at).toLocaleTimeString('ar-SA-u-nu-latn', {
     hour: '2-digit',
     minute: '2-digit',
   })

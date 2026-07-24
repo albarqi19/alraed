@@ -55,23 +55,23 @@ export function MissingSessionsPanel() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
           <span style={{ display: 'inline-flex', gap: 5, flexWrap: 'wrap' }}>
             <WsChip tone="green" icon={CheckCircle2}>
-              أرسل {Number(stats?.submitted ?? 0).toLocaleString('ar-SA')}
+              أرسل {Number(stats?.submitted ?? 0).toLocaleString('ar-SA-u-nu-latn')}
             </WsChip>
             <WsChip tone="red" icon={XCircle}>
-              لم يُرسل {Number(stats?.missing ?? 0).toLocaleString('ar-SA')}
+              لم يُرسل {Number(stats?.missing ?? 0).toLocaleString('ar-SA-u-nu-latn')}
             </WsChip>
           </span>
           <WsIconBtn icon={RefreshCw} label="تحديث الآن" onClick={() => refetch()} disabled={isFetching} />
         </div>
         <p style={{ margin: '6px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
-          آخر تحديث: {stats?.timestamp ? new Date(stats.timestamp).toLocaleTimeString('ar-SA') : '—'} — يتحدث تلقائياً كل
+          آخر تحديث: {stats?.timestamp ? new Date(stats.timestamp).toLocaleTimeString('ar-SA-u-nu-latn') : '—'} — يتحدث تلقائياً كل
           دقيقة
         </p>
       </WsBlock>
 
       <WsBlock
         title="الفصول المتأخرة"
-        count={missingSessions.length.toLocaleString('ar-SA')}
+        count={missingSessions.length.toLocaleString('ar-SA-u-nu-latn')}
         fill
         scroll
       >

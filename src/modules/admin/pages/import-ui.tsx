@@ -108,8 +108,8 @@ export function ImportCover({
       >
         {/* الطبقة ١ — سطر المقام */}
         <p style={{ margin: '0 0 6px', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
-          السجل {c.db.toLocaleString('ar-SA')} اسماً · الملف {c.fileRows.toLocaleString('ar-SA')} صفاً · بعد التنفيذ{' '}
-          <b style={{ color: 'var(--ws-text)' }}>{c.afterExecute(armed).toLocaleString('ar-SA')}</b>
+          السجل {c.db.toLocaleString('ar-SA-u-nu-latn')} اسماً · الملف {c.fileRows.toLocaleString('ar-SA-u-nu-latn')} صفاً · بعد التنفيذ{' '}
+          <b style={{ color: 'var(--ws-text)' }}>{c.afterExecute(armed).toLocaleString('ar-SA-u-nu-latn')}</b>
         </p>
 
         {/* الطبقة ٢ — سِكّة الغطاء (ما يبلغه الملف) */}
@@ -189,7 +189,7 @@ export function ImportCover({
           ) : armed ? (
             <span style={{ color: TONES.red.tx }}>
               سيُقتلع {c.D} اسماً
-              {c.seats > 0 && ` — ومعهم ${c.seats.toLocaleString('ar-SA')} صفاً في الجداول`}
+              {c.seats > 0 && ` — ومعهم ${c.seats.toLocaleString('ar-SA-u-nu-latn')} صفاً في الجداول`}
               {c.care > 0 && `، منها ${c.care} ملف إرشاد`}. بلا رجعة.
             </span>
           ) : (

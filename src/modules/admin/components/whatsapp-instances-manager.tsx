@@ -355,7 +355,7 @@ export function WhatsappInstancesManager() {
               {/* Last Connected */}
               {instance.last_connected_at && (
                 <p className="text-xs text-muted">
-                  آخر اتصال: {new Date(instance.last_connected_at).toLocaleString('ar-SA')}
+                  آخر اتصال: {new Date(instance.last_connected_at).toLocaleString('ar-SA-u-nu-latn')}
                 </p>
               )}
 

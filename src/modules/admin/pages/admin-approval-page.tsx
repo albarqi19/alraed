@@ -114,9 +114,9 @@ function formatDate(value?: string | null, options: Intl.DateTimeFormatOptions =
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   try {
-    return new Intl.DateTimeFormat('ar-SA', options).format(date)
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', options).format(date)
   } catch {
-    return date.toLocaleString('ar-SA')
+    return date.toLocaleString('ar-SA-u-nu-latn')
   }
 }
 
@@ -453,19 +453,19 @@ export function AdminApprovalPage() {
         facts={
           <>
             <WsFact icon={ClipboardList} label="جلسات معلّقة:">
-              {totals.totalSessions.toLocaleString('ar-SA')}
+              {totals.totalSessions.toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             <WsFact icon={Users} label="الطلاب:">
-              {totals.totalStudents.toLocaleString('ar-SA')}
+              {totals.totalStudents.toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             <WsFact icon={CheckCircle2} label="حاضر:">
-              {totals.totalPresent.toLocaleString('ar-SA')}
+              {totals.totalPresent.toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             <WsFact icon={XCircle} label="غائب:">
-              {totals.totalAbsent.toLocaleString('ar-SA')}
+              {totals.totalAbsent.toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             <WsFact icon={Clock3} label="متأخر:">
-              {totals.totalLate.toLocaleString('ar-SA')}
+              {totals.totalLate.toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
           </>
         }
@@ -530,10 +530,10 @@ export function AdminApprovalPage() {
           <WsSpinner style={{ width: 14, height: 14 }} />
           <b>جاري الاعتماد الآمن — لا تغلق الصفحة</b>
           <span>
-            معتمد: <b>{progress.approvedRecords.toLocaleString('ar-SA')}</b>
+            معتمد: <b>{progress.approvedRecords.toLocaleString('ar-SA-u-nu-latn')}</b>
           </span>
           <span>
-            رسائل مرسلة: <b>{progress.sentMessages.toLocaleString('ar-SA')}</b>
+            رسائل مرسلة: <b>{progress.sentMessages.toLocaleString('ar-SA-u-nu-latn')}</b>
           </span>
           {progress.isOnBreak && (
             <span className="ws-chip ws-chip--amber">
@@ -561,7 +561,7 @@ export function AdminApprovalPage() {
           <WsBlock
             title="التحضير المعلّق"
             icon={ClipboardList}
-            count={filteredApprovals.length.toLocaleString('ar-SA')}
+            count={filteredApprovals.length.toLocaleString('ar-SA-u-nu-latn')}
             fill
           >
             {approvalsQuery.isLoading ? (
@@ -672,16 +672,16 @@ export function AdminApprovalPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                         <WsChip tone="green" icon={CheckCircle2}>
-                          حاضر {detailsQuery.data.statistics.present_count.toLocaleString('ar-SA')}
+                          حاضر {detailsQuery.data.statistics.present_count.toLocaleString('ar-SA-u-nu-latn')}
                         </WsChip>
                         <WsChip tone="red" icon={XCircle}>
-                          غائب {detailsQuery.data.statistics.absent_count.toLocaleString('ar-SA')}
+                          غائب {detailsQuery.data.statistics.absent_count.toLocaleString('ar-SA-u-nu-latn')}
                         </WsChip>
                         <WsChip tone="amber" icon={Clock3}>
-                          متأخر {detailsQuery.data.statistics.late_count.toLocaleString('ar-SA')}
+                          متأخر {detailsQuery.data.statistics.late_count.toLocaleString('ar-SA-u-nu-latn')}
                         </WsChip>
                         <WsChip tone="sky" icon={DoorOpen}>
-                          مستأذن {detailsQuery.data.statistics.excused_count.toLocaleString('ar-SA')}
+                          مستأذن {detailsQuery.data.statistics.excused_count.toLocaleString('ar-SA-u-nu-latn')}
                         </WsChip>
                       </div>
                       <WsProgress
@@ -697,7 +697,7 @@ export function AdminApprovalPage() {
 
                   <WsBlock
                     title="قائمة الطلاب"
-                    count={detailsQuery.data.students.length.toLocaleString('ar-SA')}
+                    count={detailsQuery.data.students.length.toLocaleString('ar-SA-u-nu-latn')}
                     tools={
                       <WsBtn size="sm" icon={Pencil} onClick={() => setShowStudentsModal(true)}>
                         تعديل الحالات
@@ -779,7 +779,7 @@ export function AdminApprovalPage() {
           footer={
             <>
               <span className="ws-fact" style={{ marginInlineEnd: 'auto' }}>
-                إجمالي الطلاب: <b>{detailsQuery.data.students.length.toLocaleString('ar-SA')}</b>
+                إجمالي الطلاب: <b>{detailsQuery.data.students.length.toLocaleString('ar-SA-u-nu-latn')}</b>
               </span>
               <WsBtn variant="primary" onClick={() => setShowStudentsModal(false)} disabled={updateStatusMutation.isPending}>
                 إغلاق

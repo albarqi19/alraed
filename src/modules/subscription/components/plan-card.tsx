@@ -13,7 +13,7 @@ const FEATURE_LABELS: Record<string, string> = {
 }
 
 function formatCurrency(value: number) {
-  return new Intl.NumberFormat('ar-SA', {
+  return new Intl.NumberFormat('ar-SA-u-nu-latn', {
     style: 'currency',
     currency: 'SAR',
     maximumFractionDigits: 0,
@@ -162,12 +162,12 @@ export function PlanCard({ plan, billingCycle = 'monthly', highlight = false, cu
         {/* حدود الطلاب والمعلمين */}
         {plan.student_limit ? (
           <li className="flex items-center gap-2 text-xs text-slate-600">
-            <Check className="h-4 w-4 flex-shrink-0 text-[#2E7D46]" /> حتى {plan.student_limit.toLocaleString('ar-SA')} طالب
+            <Check className="h-4 w-4 flex-shrink-0 text-[#2E7D46]" /> حتى {plan.student_limit.toLocaleString('ar-SA-u-nu-latn')} طالب
           </li>
         ) : null}
         {plan.teacher_limit ? (
           <li className="flex items-center gap-2 text-xs text-slate-600">
-            <Check className="h-4 w-4 flex-shrink-0 text-[#2E7D46]" /> حتى {plan.teacher_limit.toLocaleString('ar-SA')} معلم
+            <Check className="h-4 w-4 flex-shrink-0 text-[#2E7D46]" /> حتى {plan.teacher_limit.toLocaleString('ar-SA-u-nu-latn')} معلم
           </li>
         ) : null}
       </ul>

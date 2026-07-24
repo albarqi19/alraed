@@ -179,7 +179,7 @@ function normalizeSettingsFromApi(data: Record<string, unknown>): AutoCallSettin
     announcementDurationSeconds: Number(data.announcement_duration_seconds) || 30,
     enableSpeech: data.enable_speech !== false,
     voiceGender: (data.voice_gender as 'male' | 'female' | 'auto') || 'auto',
-    voiceLocale: (data.voice_locale as string) || 'ar-SA',
+    voiceLocale: (data.voice_locale as string) || 'ar-SA-u-nu-latn',
     allowGuardianAcknowledgement: data.allow_guardian_acknowledgement !== false,
     geofence: data.geofence_latitude && data.geofence_longitude
       ? {

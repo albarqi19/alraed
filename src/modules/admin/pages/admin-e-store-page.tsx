@@ -87,7 +87,7 @@ import type {
 } from '@/modules/admin/types'
 
 const numberFormatter = new Intl.NumberFormat('en-US')
-const dateFormatter = new Intl.DateTimeFormat('ar-SA', {
+const dateFormatter = new Intl.DateTimeFormat('ar-SA-u-nu-latn', {
   day: '2-digit',
   month: 'short',
   year: 'numeric',

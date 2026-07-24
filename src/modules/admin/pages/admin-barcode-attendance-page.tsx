@@ -179,7 +179,7 @@ export function AdminBarcodeAttendancePage() {
           status: 'error',
           scan_result: 'error',
           message: 'حدث خطأ في الاتصال',
-          scan_time: new Date().toLocaleTimeString('ar-SA'),
+          scan_time: new Date().toLocaleTimeString('ar-SA-u-nu-latn'),
         })
       },
     })
@@ -228,19 +228,19 @@ export function AdminBarcodeAttendancePage() {
         facts={
           <>
             <WsFact icon={UserCheck} label="حاضرون:">
-              {(stats?.present_count ?? 0).toLocaleString('ar-SA')}
+              {(stats?.present_count ?? 0).toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             <WsFact icon={Clock3} label="متأخرون:">
-              {(stats?.late_count ?? 0).toLocaleString('ar-SA')}
+              {(stats?.late_count ?? 0).toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             <WsFact icon={UserX} label="غائبون:">
-              {(stats?.absent_count ?? 0).toLocaleString('ar-SA')}
+              {(stats?.absent_count ?? 0).toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             <WsFact icon={Users} label="الإجمالي:">
-              {(stats?.total_students ?? 0).toLocaleString('ar-SA')}
+              {(stats?.total_students ?? 0).toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             <WsFact icon={ScanLine} label="تم مسحهم:">
-              {(stats?.scanned_count ?? 0).toLocaleString('ar-SA')} / {(stats?.total_students ?? 0).toLocaleString('ar-SA')}
+              {(stats?.scanned_count ?? 0).toLocaleString('ar-SA-u-nu-latn')} / {(stats?.total_students ?? 0).toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
           </>
         }
@@ -374,7 +374,7 @@ export function AdminBarcodeAttendancePage() {
           <WsBlock
             title="سجل المسح اليوم"
             icon={ScanLine}
-            count={scans.length.toLocaleString('ar-SA')}
+            count={scans.length.toLocaleString('ar-SA-u-nu-latn')}
             tools={
               <>
                 <WsInput

@@ -12,7 +12,7 @@ export const DEFAULT_AUTO_CALL_SETTINGS = {
   announcementDurationSeconds: 30,
   enableSpeech: true,
   voiceGender: 'auto' as const,
-  voiceLocale: 'ar-SA',
+  voiceLocale: 'ar-SA-u-nu-latn',
   allowGuardianAcknowledgement: true,
   geofence: null,
   maxStrikesBeforeBlock: 3,

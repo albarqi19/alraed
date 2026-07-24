@@ -279,7 +279,7 @@ export function GuidanceReferralDetailsPage() {
               <div>
                 <p className="text-xs text-slate-500">تاريخ الإحالة</p>
                 <p className="font-medium text-slate-900 mt-1">
-                  {new Date(referral.created_at).toLocaleDateString('ar-SA')}
+                  {new Date(referral.created_at).toLocaleDateString('ar-SA-u-nu-latn')}
                 </p>
               </div>
             </div>
@@ -376,7 +376,7 @@ export function GuidanceReferralDetailsPage() {
                             <span>{log.performed_by_user.name}</span>
                           )}
                           <span>•</span>
-                          <span>{new Date(log.created_at).toLocaleString('ar-SA')}</span>
+                          <span>{new Date(log.created_at).toLocaleString('ar-SA-u-nu-latn')}</span>
                         </div>
                       </div>
                     </div>
@@ -468,7 +468,7 @@ export function GuidanceReferralDetailsPage() {
                 <p className="font-medium text-slate-900">إشعار ولي الأمر</p>
                 <p className="text-xs text-slate-500">
                   {referral.parent_notified 
-                    ? `تم ${new Date(referral.parent_notified_at!).toLocaleDateString('ar-SA')}`
+                    ? `تم ${new Date(referral.parent_notified_at!).toLocaleDateString('ar-SA-u-nu-latn')}`
                     : 'لم يتم الإشعار'}
                 </p>
               </div>

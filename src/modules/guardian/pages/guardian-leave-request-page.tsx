@@ -65,9 +65,9 @@ function formatDateTime(value?: string | null) {
     return value
   }
   try {
-    return new Intl.DateTimeFormat('ar-SA', { dateStyle: 'medium', timeStyle: 'short' }).format(date)
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', { dateStyle: 'medium', timeStyle: 'short' }).format(date)
   } catch {
-    return date.toLocaleString('ar-SA')
+    return date.toLocaleString('ar-SA-u-nu-latn')
   }
 }
 
@@ -78,9 +78,9 @@ function formatDate(value?: string | null) {
     return value
   }
   try {
-    return new Intl.DateTimeFormat('ar-SA', { dateStyle: 'medium' }).format(date)
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', { dateStyle: 'medium' }).format(date)
   } catch {
-    return date.toLocaleDateString('ar-SA')
+    return date.toLocaleDateString('ar-SA-u-nu-latn')
   }
 }
 
@@ -750,7 +750,7 @@ function GuardianLeaveRequestPageBase({
     }
     if (guardianBlocked) {
       const blockedUntil = guardianStrikeStatus?.blockedUntil
-        ? new Date(guardianStrikeStatus.blockedUntil).toLocaleString('ar-SA')
+        ? new Date(guardianStrikeStatus.blockedUntil).toLocaleString('ar-SA-u-nu-latn')
         : null
       toast({
         type: 'error',
@@ -1383,7 +1383,7 @@ function GuardianLeaveRequestPageBase({
                       لقد تم إيقاف خدمة المناداة لهذا الحساب بسبب عدم تأكيد الاستلام في مرات سابقة.
                       {guardianStrikeStatus?.blockedUntil ? (
                         <span className="block text-xs text-rose-600 dark:text-rose-400">
-                          يمكنك المحاولة بعد {new Date(guardianStrikeStatus.blockedUntil).toLocaleString('ar-SA')}.
+                          يمكنك المحاولة بعد {new Date(guardianStrikeStatus.blockedUntil).toLocaleString('ar-SA-u-nu-latn')}.
                         </span>
                       ) : null}
                     </div>

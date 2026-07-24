@@ -129,7 +129,7 @@ export function AdminFormDetailPage() {
           <>
             <WsFact label="الأسئلة">{form.fields_count ?? 0}</WsFact>
             <WsFact label="الردود">{form.submissions_count ?? 0}</WsFact>
-            <WsFact label="آخر تحديث">{new Date(form.updated_at).toLocaleDateString('ar-SA')}</WsFact>
+            <WsFact label="آخر تحديث">{new Date(form.updated_at).toLocaleDateString('ar-SA-u-nu-latn')}</WsFact>
           </>
         }
       />

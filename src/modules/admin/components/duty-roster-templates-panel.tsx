@@ -597,7 +597,7 @@ export function DutyRosterTemplatesPanel() {
           </WsBtn>
         </div>
 
-        <WsBlock title="القوالب" count={templates.length.toLocaleString('ar-SA')} fill scroll>
+        <WsBlock title="القوالب" count={templates.length.toLocaleString('ar-SA-u-nu-latn')} fill scroll>
           {templatesQuery.isError ? (
             <WsAlert boxed style={{ margin: 10 }}>
               تعذر تحميل القوالب. حاول مرة أخرى.

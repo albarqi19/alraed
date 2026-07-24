@@ -594,7 +594,7 @@ export function AdminTeacherSchedulesPage() {
         facts={
           <>
             <WsFact icon={Users} label="المعلمون:">
-              {(summariesQuery.data?.length ?? 0).toLocaleString('ar-SA')}
+              {(summariesQuery.data?.length ?? 0).toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             {selectedTeacher && (
               <>

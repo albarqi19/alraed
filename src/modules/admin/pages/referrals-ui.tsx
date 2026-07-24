@@ -187,7 +187,7 @@ export function CustodyLine({ referredBy, receivedAt, assignedTo, status, type, 
           label="✓"
           filled={Boolean(receivedAt)}
           tone={TONES.sky}
-          title={receivedAt ? `استُلمت: ${new Date(receivedAt).toLocaleString('ar-SA')}` : 'لم تُستلم بعد'}
+          title={receivedAt ? `استُلمت: ${new Date(receivedAt).toLocaleString('ar-SA-u-nu-latn')}` : 'لم تُستلم بعد'}
         />
         <Link filled={Boolean(assignedTo)} tone={endTone} />
         <Node

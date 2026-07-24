@@ -283,7 +283,7 @@ export function GlobalWhatsappWidget() {
             {/* الفوتر */}
             {insightsData && (
               <div className="border-t border-slate-100 px-5 py-2 text-[11px] text-slate-400">
-                تم التحليل: {new Date(insightsData.generated_at).toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                تم التحليل: {new Date(insightsData.generated_at).toLocaleDateString('ar-SA-u-nu-latn', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 {insightsData.cached && ' (من الذاكرة المؤقتة)'}
               </div>
             )}

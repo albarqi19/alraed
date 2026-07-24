@@ -220,16 +220,16 @@ export function AdminDelayActionsPage() {
           stats ? (
             <>
               <WsFact icon={Users} label="معلمون لديهم تأخير:">
-                {stats.teachers_with_delay.toLocaleString('ar-SA')}
+                {stats.teachers_with_delay.toLocaleString('ar-SA-u-nu-latn')}
               </WsFact>
               <WsFact icon={AlertTriangle} label="ينتظرون تنبيه:">
-                {stats.pending_warnings.toLocaleString('ar-SA')}
+                {stats.pending_warnings.toLocaleString('ar-SA-u-nu-latn')}
               </WsFact>
               <WsFact icon={FileWarning} label="ينتظرون حسم:">
-                {stats.pending_deductions.toLocaleString('ar-SA')}
+                {stats.pending_deductions.toLocaleString('ar-SA-u-nu-latn')}
               </WsFact>
               <WsFact icon={ClipboardCheck} label="إجراءات هذا العام:">
-                {(stats.total_warnings_issued + stats.total_deductions_issued).toLocaleString('ar-SA')}
+                {(stats.total_warnings_issued + stats.total_deductions_issued).toLocaleString('ar-SA-u-nu-latn')}
               </WsFact>
             </>
           ) : undefined

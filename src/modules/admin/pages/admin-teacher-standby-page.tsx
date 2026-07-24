@@ -226,7 +226,7 @@ export function AdminTeacherStandbyPage() {
                             {settings?.standard_weekly_load ?? '—'} حصة/أسبوع
                         </WsFact>
                         <WsFact icon={Users} label="معلمون لديهم إسناد:">
-                            {quotas.length.toLocaleString('ar-SA')}
+                            {quotas.length.toLocaleString('ar-SA-u-nu-latn')}
                         </WsFact>
                         <WsFact icon={CalendarDays} label="الحصص/اليوم:">
                             {settings?.periods_per_day ?? 7}
@@ -256,7 +256,7 @@ export function AdminTeacherStandbyPage() {
                         className={`ws-seg__btn ${activeTab === 'quotas' ? 'is-active' : ''}`}
                     >
                         مدى الإسناد
-                        <span className="ws-count">{quotas.length.toLocaleString('ar-SA')}</span>
+                        <span className="ws-count">{quotas.length.toLocaleString('ar-SA-u-nu-latn')}</span>
                     </button>
                     <button
                         type="button"
@@ -375,7 +375,7 @@ function QuotasTab({ quotas, maxStandbyCount }: { quotas: TeacherQuota[]; maxSta
         <WsBlock
             title="مدى الإسناد"
             icon={Calculator}
-            count={quotas.length.toLocaleString('ar-SA')}
+            count={quotas.length.toLocaleString('ar-SA-u-nu-latn')}
             tools={
                 <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>
                     مرتبون من الأقل نصاباً (أكثر إسناداً) إلى الأكثر نصاباً
@@ -892,7 +892,7 @@ function SimulationTab({
 
                 <WsBlock
                     title="المعلمون الغائبون"
-                    count={selectedTeacherIds.length.toLocaleString('ar-SA')}
+                    count={selectedTeacherIds.length.toLocaleString('ar-SA-u-nu-latn')}
                     tools={
                         selectedTeacherIds.length > 0 ? (
                             <WsBtn size="sm" onClick={() => setSelectedTeacherIds([])}>
@@ -1154,7 +1154,7 @@ function PreferencesTab({ quotas, maxStandbyCount }: { quotas: TeacherQuota[]; m
         <>
             {/* العمود الأيمن: قائمة المعلمين */}
             <WsSideCol title="المعلمون" icon={Users} side="start" width={280} storageKey="ws:standby:preferences">
-                <WsBlock count={quotas.length.toLocaleString('ar-SA')} title="القائمة" fill scroll>
+                <WsBlock count={quotas.length.toLocaleString('ar-SA-u-nu-latn')} title="القائمة" fill scroll>
                     <div>
                         {quotas.map(q => {
                             const pref = prefData?.preferences?.find((p: TeacherPreference) => p.teacher_id === q.teacher_id)

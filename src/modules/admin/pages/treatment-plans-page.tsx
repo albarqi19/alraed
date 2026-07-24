@@ -426,7 +426,7 @@ export function TreatmentPlansPage() {
                         <WsProgress value={progress} label={`${progress}%`} />
                       </td>
                       <td style={{ whiteSpace: 'nowrap', color: 'var(--ws-text-2)' }}>
-                        {new Date(plan.start_date).toLocaleDateString('ar-SA')}
+                        {new Date(plan.start_date).toLocaleDateString('ar-SA-u-nu-latn')}
                       </td>
                       <td><DaysRemainingChip endDate={plan.end_date} /></td>
                       <td>

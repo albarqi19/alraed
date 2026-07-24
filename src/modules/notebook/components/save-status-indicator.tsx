@@ -20,7 +20,7 @@ export function SaveStatusIndicator({ saving, lastSaved, hasUnsaved }: SaveStatu
     return (
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <Cloud className="w-3.5 h-3.5 text-green-500" />
-        <span>تم الحفظ {lastSaved.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}</span>
+        <span>تم الحفظ {lastSaved.toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' })}</span>
       </div>
     )
   }

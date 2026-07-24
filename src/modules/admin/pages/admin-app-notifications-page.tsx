@@ -85,7 +85,7 @@ function timeAgo(dateStr: string | null): string {
   if (hours < 24) return `منذ ${hours} س`
   const days = Math.floor(hours / 24)
   if (days < 30) return `منذ ${days} يوم`
-  return new Date(dateStr).toLocaleDateString('ar-SA')
+  return new Date(dateStr).toLocaleDateString('ar-SA-u-nu-latn')
 }
 
 export default function AdminAppNotificationsPage() {
@@ -702,7 +702,7 @@ export default function AdminAppNotificationsPage() {
                 </WsFactRow>
                 {detailLog.sender && <WsFactRow label="المرسِل">{detailLog.sender.name}</WsFactRow>}
                 {detailLog.completed_at && (
-                  <WsFactRow label="اكتمل في">{new Date(detailLog.completed_at).toLocaleString('ar-SA')}</WsFactRow>
+                  <WsFactRow label="اكتمل في">{new Date(detailLog.completed_at).toLocaleString('ar-SA-u-nu-latn')}</WsFactRow>
                 )}
               </WsFactsList>
 

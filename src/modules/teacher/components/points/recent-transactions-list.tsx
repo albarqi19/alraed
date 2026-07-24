@@ -10,7 +10,7 @@ interface RecentTransactionsListProps {
 function formatDate(value: string) {
   try {
     const date = new Date(value)
-    return new Intl.DateTimeFormat('ar-SA', {
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', {
       hour: 'numeric',
       minute: 'numeric',
     }).format(date)
@@ -95,7 +95,7 @@ export function RecentTransactionsList({ transactions, onUndo, undoingId }: Rece
                   }`}
                 >
                   {isReward ? '+' : '−'}
-                  {Math.abs(transaction.amount).toLocaleString('ar-SA')} نقطة
+                  {Math.abs(transaction.amount).toLocaleString('ar-SA-u-nu-latn')} نقطة
                 </span>
                 {undoable ? (
                   <div className="flex items-center gap-3">

@@ -23,8 +23,8 @@ export function RemoteDayActivationModal({
   if (!isOpen) return null
 
   const dateObj = new Date(date)
-  const dayName = dateObj.toLocaleDateString('ar-SA', { weekday: 'long' })
-  const formattedDate = dateObj.toLocaleDateString('ar-SA', {
+  const dayName = dateObj.toLocaleDateString('ar-SA-u-nu-latn', { weekday: 'long' })
+  const formattedDate = dateObj.toLocaleDateString('ar-SA-u-nu-latn', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

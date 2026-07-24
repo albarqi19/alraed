@@ -271,7 +271,7 @@ export function AdminAbsenceExcusesPage() {
   const formatDate = (dateStr: string | null | undefined) => {
     if (!dateStr) return '-'
     try {
-      return new Date(dateStr).toLocaleDateString('ar-SA', {
+      return new Date(dateStr).toLocaleDateString('ar-SA-u-nu-latn', {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
@@ -286,7 +286,7 @@ export function AdminAbsenceExcusesPage() {
   const formatDateOnly = (dateStr: string | null | undefined) => {
     if (!dateStr) return '-'
     try {
-      return new Date(dateStr).toLocaleDateString('ar-SA', {
+      return new Date(dateStr).toLocaleDateString('ar-SA-u-nu-latn', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
@@ -359,10 +359,10 @@ export function AdminAbsenceExcusesPage() {
         facts={
           <>
             <WsFact icon={Clock3} label="قيد المراجعة:">
-              {Number(pendingCount).toLocaleString('ar-SA')}
+              {Number(pendingCount).toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             <WsFact icon={FileText} label="نتائج الصفحة:">
-              {excuses.length.toLocaleString('ar-SA')}
+              {excuses.length.toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
           </>
         }
@@ -483,7 +483,7 @@ export function AdminAbsenceExcusesPage() {
 
       <WsLayout>
         <WsMain>
-          <WsBlock title="الأعذار" icon={FileText} count={excuses.length.toLocaleString('ar-SA')} fill>
+          <WsBlock title="الأعذار" icon={FileText} count={excuses.length.toLocaleString('ar-SA-u-nu-latn')} fill>
             {excusesQuery.isLoading ? (
               <WsEmpty loading>جاري تحميل الأعذار...</WsEmpty>
             ) : excuses.length === 0 ? (
@@ -519,7 +519,7 @@ export function AdminAbsenceExcusesPage() {
                           </span>
                         </td>
                         <td style={{ whiteSpace: 'nowrap' }}>
-                          {excuse.absence_date ? new Date(excuse.absence_date).toLocaleDateString('ar-SA') : '-'}
+                          {excuse.absence_date ? new Date(excuse.absence_date).toLocaleDateString('ar-SA-u-nu-latn') : '-'}
                         </td>
                         <td style={{ whiteSpace: 'nowrap' }}>{formatDate(excuse.created_at)}</td>
                         <td>

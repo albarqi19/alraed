@@ -207,5 +207,5 @@ export function formatDate(value?: string | null): string {
   if (!value) return '—'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '—'
-  return new Intl.DateTimeFormat('ar-SA', { dateStyle: 'medium' }).format(date)
+  return new Intl.DateTimeFormat('ar-SA-u-nu-latn', { dateStyle: 'medium' }).format(date)
 }

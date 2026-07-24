@@ -543,7 +543,7 @@ export function WhatsAppSendPage() {
       return
     }
 
-    const confirmMessage = `سيتم إرسال ${messages.length.toLocaleString('ar-SA')} رسالة، هل أنت متأكد؟`
+    const confirmMessage = `سيتم إرسال ${messages.length.toLocaleString('ar-SA-u-nu-latn')} رسالة، هل أنت متأكد؟`
     if (!window.confirm(confirmMessage)) {
       return
     }
@@ -591,24 +591,24 @@ export function WhatsAppSendPage() {
           >
             {sendBulkMutation.isPending
               ? 'جاري الإرسال...'
-              : `إرسال (${selectedStudents.length.toLocaleString('ar-SA')})`}
+              : `إرسال (${selectedStudents.length.toLocaleString('ar-SA-u-nu-latn')})`}
           </WsBtn>
         }
         facts={
           <>
             <WsFact icon={Send} label="مرسلة:">
-              {(statisticsQuery.data?.total_sent ?? 0).toLocaleString('ar-SA')}
+              {(statisticsQuery.data?.total_sent ?? 0).toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
-            <WsFact label="وصلت:">{deliveredCount.toLocaleString('ar-SA')}</WsFact>
-            <WsFact label="فشلت:">{(statisticsQuery.data?.total_failed ?? 0).toLocaleString('ar-SA')}</WsFact>
+            <WsFact label="وصلت:">{deliveredCount.toLocaleString('ar-SA-u-nu-latn')}</WsFact>
+            <WsFact label="فشلت:">{(statisticsQuery.data?.total_failed ?? 0).toLocaleString('ar-SA-u-nu-latn')}</WsFact>
             <WsFact icon={Inbox} label="بالانتظار:">
-              {(statisticsQuery.data?.queue_size ?? 0).toLocaleString('ar-SA')}
+              {(statisticsQuery.data?.queue_size ?? 0).toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
           </>
         }
       >
         {selectedStudents.length > 0 && (
-          <WsChip tone="sky">{selectedStudents.length.toLocaleString('ar-SA')} محدد</WsChip>
+          <WsChip tone="sky">{selectedStudents.length.toLocaleString('ar-SA-u-nu-latn')} محدد</WsChip>
         )}
       </WsHeader>
 
@@ -659,7 +659,7 @@ export function WhatsAppSendPage() {
 
           <WsBlock
             title="الطلاب"
-            count={`${availableStudents.length.toLocaleString('ar-SA')}`}
+            count={`${availableStudents.length.toLocaleString('ar-SA-u-nu-latn')}`}
             tools={isStudentsFetching ? <WsChip tone="sky">تحديث...</WsChip> : undefined}
             fill
             scroll
@@ -795,7 +795,7 @@ export function WhatsAppSendPage() {
                   placeholder="اكتب رسالتك هنا باستخدام المتغيرات المتاحة..."
                 />
                 <span style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
-                  <span>عدد الأحرف: {messageText.length.toLocaleString('ar-SA')}</span>
+                  <span>عدد الأحرف: {messageText.length.toLocaleString('ar-SA-u-nu-latn')}</span>
                   <span>سيتم إرسال نسخة مخصصة لكل ولي أمر</span>
                 </span>
               </WsField>
@@ -891,7 +891,7 @@ export function WhatsAppSendPage() {
                       padding: '0 8px',
                     }}
                   >
-                    {selectedStudents.length.toLocaleString('ar-SA')}
+                    {selectedStudents.length.toLocaleString('ar-SA-u-nu-latn')}
                   </span>
                   طالب جاهز للإرسال
                 </span>
@@ -995,7 +995,7 @@ export function WhatsAppSendPage() {
               <h3 className="ws-modal__title">اختيار الطلاب من الفصول</h3>
               <p className="ws-modal__sub">اختر الصف ثم الشعبة لاستعراض الطلاب وتحديدهم بشكل أسرع — يمكنك الجمع من أكثر من فصل.</p>
               <span style={{ position: 'absolute', insetInlineEnd: 12, top: 12 }}>
-                <WsChip tone="sky">{selectedStudentIds.size.toLocaleString('ar-SA')} مختار</WsChip>
+                <WsChip tone="sky">{selectedStudentIds.size.toLocaleString('ar-SA-u-nu-latn')} مختار</WsChip>
               </span>
             </header>
 
@@ -1064,7 +1064,7 @@ export function WhatsAppSendPage() {
                     fontWeight: 700,
                   }}
                 >
-                  قائمة الطلاب ({pickerStudents.length.toLocaleString('ar-SA')})
+                  قائمة الطلاب ({pickerStudents.length.toLocaleString('ar-SA-u-nu-latn')})
                 </div>
                 {pickerStudents.length === 0 ? (
                   <WsEmpty icon={Users}>جرب اختيار صف أو فصل مختلف.</WsEmpty>

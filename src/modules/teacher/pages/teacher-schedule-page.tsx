@@ -88,7 +88,7 @@ function useWeekRange(saudiTime?: string) {
     const endOfWeek = new Date(startOfWeek)
     endOfWeek.setDate(startOfWeek.getDate() + 6)
 
-    const formatter = new Intl.DateTimeFormat('ar-SA', {
+    const formatter = new Intl.DateTimeFormat('ar-SA-u-nu-latn', {
       day: 'numeric',
       month: 'long',
       year: 'numeric',

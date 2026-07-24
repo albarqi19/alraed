@@ -11,9 +11,9 @@ function formatDate(value?: string | null) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value ?? '—'
   try {
-    return new Intl.DateTimeFormat('ar-SA', { dateStyle: 'medium' }).format(date)
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', { dateStyle: 'medium' }).format(date)
   } catch {
-    return date.toLocaleDateString('ar-SA')
+    return date.toLocaleDateString('ar-SA-u-nu-latn')
   }
 }
 

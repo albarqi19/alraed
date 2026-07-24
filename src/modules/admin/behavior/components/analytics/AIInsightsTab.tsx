@@ -411,7 +411,7 @@ export default function AIInsightsTab({ activeTab }: AIInsightsTabProps) {
 
   const formatTime = (timestamp: string) => {
     try {
-      return new Date(timestamp).toLocaleTimeString('ar-SA', {
+      return new Date(timestamp).toLocaleTimeString('ar-SA-u-nu-latn', {
         hour: '2-digit',
         minute: '2-digit',
       })
@@ -423,7 +423,7 @@ export default function AIInsightsTab({ activeTab }: AIInsightsTabProps) {
   const formatInsightsDate = (dateStr: string) => {
     try {
       const date = new Date(dateStr)
-      return date.toLocaleString('ar-SA', {
+      return date.toLocaleString('ar-SA-u-nu-latn', {
         year: 'numeric',
         month: 'short',
         day: 'numeric',

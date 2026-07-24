@@ -38,7 +38,7 @@ export function LiveTrackerPage() {
     const updateTime = () => {
       const now = new Date()
       setCurrentTime(
-        now.toLocaleTimeString('ar-SA', {
+        now.toLocaleTimeString('ar-SA-u-nu-latn', {
           hour: '2-digit',
           minute: '2-digit',
           hour12: true,

@@ -124,9 +124,9 @@ function formatDate(value?: string | null, options: Intl.DateTimeFormatOptions =
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   try {
-    return new Intl.DateTimeFormat('ar-SA', options).format(date)
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', options).format(date)
   } catch {
-    return date.toLocaleString('ar-SA', options)
+    return date.toLocaleString('ar-SA-u-nu-latn', options)
   }
 }
 
@@ -745,7 +745,7 @@ export function AdminLeaveRequestsPage() {
         },
       })
 
-      const today = new Intl.DateTimeFormat('ar-SA', { dateStyle: 'long' }).format(new Date())
+      const today = new Intl.DateTimeFormat('ar-SA-u-nu-latn', { dateStyle: 'long' }).format(new Date())
 
       const finalHtml = `
 <!DOCTYPE html>
@@ -938,16 +938,16 @@ export function AdminLeaveRequestsPage() {
         facts={
           <>
             <WsFact icon={Clock3} label="بانتظار المراجعة:">
-              {stats.pending.toLocaleString('ar-SA')}
+              {stats.pending.toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             <WsFact icon={CheckCircle2} label="تمت الموافقة:">
-              {stats.approved.toLocaleString('ar-SA')}
+              {stats.approved.toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             <WsFact icon={XCircle} label="مرفوض:">
-              {stats.rejected.toLocaleString('ar-SA')}
+              {stats.rejected.toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             <WsFact icon={Ban} label="ملغى:">
-              {stats.cancelled.toLocaleString('ar-SA')}
+              {stats.cancelled.toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
           </>
         }
@@ -1002,7 +1002,7 @@ export function AdminLeaveRequestsPage() {
 
       <WsLayout>
         <WsMain>
-          <WsBlock title="الطلبات" icon={DoorOpen} count={requests.length.toLocaleString('ar-SA')} fill>
+          <WsBlock title="الطلبات" icon={DoorOpen} count={requests.length.toLocaleString('ar-SA-u-nu-latn')} fill>
             {isLoading ? (
               <WsEmpty loading>جاري تحميل طلبات الاستئذان...</WsEmpty>
             ) : requests.length === 0 ? (

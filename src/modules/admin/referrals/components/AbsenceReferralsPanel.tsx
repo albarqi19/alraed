@@ -85,7 +85,7 @@ const GATE_ROWS: Array<{ key: '3days' | '5days' | '10days'; label: string; hint:
   { key: '10days', label: '١٠ أيام', hint: 'تستيقظ عندها: بلاغ 1919 وإشعار إدارة التعليم' },
 ]
 
-const fmtDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('ar-SA') : '—')
+const fmtDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('ar-SA-u-nu-latn') : '—')
 
 /* ═══════════════════════════════════════════════════════════
    ★ لمسة التوقيع: سُلَّم الدليل

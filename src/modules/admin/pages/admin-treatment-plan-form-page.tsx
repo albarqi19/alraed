@@ -399,9 +399,9 @@ export function AdminTreatmentPlanFormPage() {
               <WsFactRow label="نوع المشكلة">
                 <ToneChip tone={problemMeta.tone}>{formData.problem_type}</ToneChip>
               </WsFactRow>
-              <WsFactRow label="البداية">{new Date(formData.start_date).toLocaleDateString('ar-SA')}</WsFactRow>
+              <WsFactRow label="البداية">{new Date(formData.start_date).toLocaleDateString('ar-SA-u-nu-latn')}</WsFactRow>
               {formData.end_date && (
-                <WsFactRow label="النهاية">{new Date(formData.end_date).toLocaleDateString('ar-SA')}</WsFactRow>
+                <WsFactRow label="النهاية">{new Date(formData.end_date).toLocaleDateString('ar-SA-u-nu-latn')}</WsFactRow>
               )}
               {planDurationDays !== null && (
                 <WsFactRow label="مدة الخطة">{planDurationDays} يوم</WsFactRow>

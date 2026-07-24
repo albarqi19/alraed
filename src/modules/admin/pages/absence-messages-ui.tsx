@@ -73,7 +73,7 @@ export function fmtGap(seconds: number): string {
 export function fmtClock(iso: string | null): string {
   const t = ms(iso)
   if (t == null) return '—'
-  return new Date(t).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
+  return new Date(t).toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' })
 }
 
 const TRACK = 180

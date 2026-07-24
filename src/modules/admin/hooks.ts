@@ -1369,7 +1369,7 @@ export function useCreateLateArrivalMutation() {
     onSuccess: (response) => {
       toast({
         type: 'success',
-        title: response.message ?? `تم تسجيل تأخير ${response.registered_count.toLocaleString('ar-SA')} طالب`,
+        title: response.message ?? `تم تسجيل تأخير ${response.registered_count.toLocaleString('ar-SA-u-nu-latn')} طالب`,
       })
       queryClient.invalidateQueries({ queryKey: ['admin', 'late-arrivals'] })
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.lateArrivals.stats() })
@@ -2252,7 +2252,7 @@ export function useSendWhatsappBulkMessagesMutation() {
   return useMutation({
     mutationFn: sendWhatsappBulkMessages,
     onSuccess: ({ queued }) => {
-      toast({ type: 'success', title: `تمت جدولة ${queued.toLocaleString('ar-SA')} رسالة` })
+      toast({ type: 'success', title: `تمت جدولة ${queued.toLocaleString('ar-SA-u-nu-latn')} رسالة` })
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.whatsapp.queue() })
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.whatsapp.statistics() })
     },

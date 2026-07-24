@@ -317,7 +317,7 @@ export function CoverageRequestsModal({ isOpen, onClose }: CoverageRequestsModal
                           <p className="font-semibold text-slate-900">{request.requesting_teacher.name}</p>
                           <div className="flex items-center gap-2 text-xs text-slate-500">
                             <Clock className="h-3 w-3" />
-                            <span>{new Date(request.request_date).toLocaleDateString('ar-SA')}</span>
+                            <span>{new Date(request.request_date).toLocaleDateString('ar-SA-u-nu-latn')}</span>
                             <span>•</span>
                             <span>الحصة {PERIOD_NAMES[request.from_period]} - {PERIOD_NAMES[request.to_period]}</span>
                           </div>

@@ -131,7 +131,7 @@ export function DelayExcusesPanel({ fiscalYear, readOnly = false }: DelayExcuses
       {/* القائمة */}
       <WsBlock
         title="الأعذار"
-        count={(meta?.total ?? excuses.length).toLocaleString('ar-SA')}
+        count={(meta?.total ?? excuses.length).toLocaleString('ar-SA-u-nu-latn')}
         fill
         scroll
       >
@@ -166,7 +166,7 @@ export function DelayExcusesPanel({ fiscalYear, readOnly = false }: DelayExcuses
                 >
                   <span>{excuse.delay_date_formatted}</span>
                   <span style={{ color: 'var(--ws-red)', fontWeight: 700 }}>{excuse.delay_minutes} دقيقة</span>
-                  <span>قُدّم {new Date(excuse.submitted_at).toLocaleDateString('ar-SA')}</span>
+                  <span>قُدّم {new Date(excuse.submitted_at).toLocaleDateString('ar-SA-u-nu-latn')}</span>
                 </div>
                 <p
                   style={{

@@ -1,19 +1,20 @@
-import { Badge } from '@/components/ui/badge'
-import { EmptyState } from './empty-state'
 import { FileText, Award, AlertOctagon } from 'lucide-react'
+import { TONES, ToneChip, type Tone } from '@/shared/workspace'
+import { EmptyState } from './empty-state'
+import { ProfilePanel, ProfileTable, StatGrid, StatMini } from './profile-ui'
 import type { TeacherReferralsResponse, TeacherPointsResponse } from '../types'
 
-const REFERRAL_TYPE_LABELS: Record<string, { label: string; className: string }> = {
-  academic_weakness: { label: 'دعم أكاديمي', className: 'border-blue-200 bg-blue-50 text-blue-700' },
-  behavioral_violation: { label: 'متابعة سلوكية', className: 'border-amber-200 bg-amber-50 text-amber-700' },
-  student_absence: { label: 'غياب طالب', className: 'border-slate-200 bg-slate-50 text-slate-700' },
+const REFERRAL_TYPE_LABELS: Record<string, { label: string; tone: Tone }> = {
+  academic_weakness: { label: 'دعم أكاديمي', tone: TONES.sky },
+  behavioral_violation: { label: 'متابعة سلوكية', tone: TONES.amber },
+  student_absence: { label: 'غياب طالب', tone: TONES.gray },
 }
 
-const PRIORITY_MAP: Record<string, { label: string; className: string }> = {
-  low: { label: 'منخفضة', className: 'border-slate-200 bg-slate-50 text-slate-600' },
-  medium: { label: 'متوسطة', className: 'border-blue-200 bg-blue-50 text-blue-700' },
-  high: { label: 'عالية', className: 'border-amber-200 bg-amber-50 text-amber-700' },
-  urgent: { label: 'عاجلة', className: 'border-rose-200 bg-rose-50 text-rose-700' },
+const PRIORITY_MAP: Record<string, { label: string; tone: Tone }> = {
+  low: { label: 'منخفضة', tone: TONES.gray },
+  medium: { label: 'متوسطة', tone: TONES.sky },
+  high: { label: 'عالية', tone: TONES.amber },
+  urgent: { label: 'عاجلة', tone: TONES.red },
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -46,128 +47,95 @@ export function ReferralsReportsSection({ referrals, points }: ReferralsReportsS
   }
 
   return (
-    <div className="space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* النقاط */}
       {points && hasPoints && (
-        <div>
-          <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700">
-            <Award className="h-4 w-4" />
-            نقاط الأداء
-          </h4>
+        <ProfilePanel title="نقاط الأداء" icon={Award}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <StatGrid>
+              <StatMini label="مكافآت" value={points.summary.total_rewards} sub={`${points.summary.rewards_count} مكافأة`} tone={TONES.green} />
+              <StatMini label="ملاحظات" value={points.summary.total_violations} sub={`${points.summary.violations_count} ملاحظة`} tone={TONES.red} />
+            </StatGrid>
 
-          <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3 text-center">
-              <p className="text-xl font-bold text-emerald-700">{points.summary.total_rewards}</p>
-              <p className="text-xs text-slate-500">{points.summary.rewards_count} مكافأة</p>
-            </div>
-            <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-center">
-              <p className="text-xl font-bold text-slate-700">{points.summary.total_violations}</p>
-              <p className="text-xs text-slate-500">{points.summary.violations_count} ملاحظة</p>
-            </div>
-          </div>
-
-          <div className="overflow-hidden rounded-xl border border-slate-200">
-            <table className="w-full text-sm">
+            <ProfileTable>
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/80">
-                  <th className="px-3 py-2.5 text-right font-semibold text-slate-600">النوع</th>
-                  <th className="px-3 py-2.5 text-right font-semibold text-slate-600">النقاط</th>
-                  <th className="px-3 py-2.5 text-right font-semibold text-slate-600">الطالب</th>
-                  <th className="px-3 py-2.5 text-right font-semibold text-slate-600">السبب</th>
-                  <th className="px-3 py-2.5 text-right font-semibold text-slate-600">التاريخ</th>
+                <tr>
+                  <th>النوع</th>
+                  <th>النقاط</th>
+                  <th>الطالب</th>
+                  <th>السبب</th>
+                  <th>التاريخ</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="ws-tbl-rise">
                 {points.transactions.slice(0, 20).map((tx) => (
-                  <tr key={tx.id} className="border-b border-slate-50 transition hover:bg-slate-50/50">
-                    <td className="px-3 py-2">
-                      <Badge
-                        variant="outline"
-                        className={
-                          tx.type === 'reward'
-                            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                            : 'border-slate-200 bg-slate-50 text-slate-700'
-                        }
-                      >
+                  <tr key={tx.id}>
+                    <td>
+                      <ToneChip tone={tx.type === 'reward' ? TONES.green : TONES.gray}>
                         {tx.type === 'reward' ? 'مكافأة' : 'ملاحظة'}
-                      </Badge>
+                      </ToneChip>
                     </td>
-                    <td className="px-3 py-2 font-bold text-slate-700">{tx.amount}</td>
-                    <td className="px-3 py-2 text-slate-600">{tx.student_name ?? '-'}</td>
-                    <td className="max-w-[200px] truncate px-3 py-2 text-xs text-slate-500">
+                    <td style={{ fontWeight: 700 }}>{tx.amount}</td>
+                    <td>{tx.student_name ?? '-'}</td>
+                    <td
+                      className="ws-cell-sub"
+                      style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                    >
                       {tx.reason ?? '-'}
                     </td>
-                    <td className="px-3 py-2 text-xs text-slate-400">
-                      {tx.created_at ? new Date(tx.created_at).toLocaleDateString('ar-SA') : '-'}
+                    <td className="ws-cell-sub">
+                      {tx.created_at ? new Date(tx.created_at).toLocaleDateString('ar-SA-u-nu-latn') : '-'}
                     </td>
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </ProfileTable>
           </div>
-        </div>
+        </ProfilePanel>
       )}
 
       {/* الإحالات */}
       {referrals && hasReferrals && (
-        <div>
-          <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700">
-            <AlertOctagon className="h-4 w-4" />
-            الإحالات
-          </h4>
+        <ProfilePanel title="الإحالات" icon={AlertOctagon}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <StatGrid>
+              <StatMini label="إجمالي" value={referrals.summary.total} />
+              <StatMini label="دعم أكاديمي" value={referrals.summary.by_type.academic_weakness ?? 0} tone={TONES.sky} />
+              <StatMini label="متابعة سلوكية" value={referrals.summary.by_type.behavioral_violation ?? 0} tone={TONES.amber} />
+              <StatMini label="غياب" value={referrals.summary.by_type.student_absence ?? 0} tone={TONES.gray} />
+            </StatGrid>
 
-          <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-center">
-              <p className="text-xl font-bold text-slate-900">{referrals.summary.total}</p>
-              <p className="text-xs text-slate-500">إجمالي</p>
-            </div>
-            <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-3 text-center">
-              <p className="text-xl font-bold text-slate-900">{referrals.summary.by_type.academic_weakness ?? 0}</p>
-              <p className="text-xs text-slate-500">دعم أكاديمي</p>
-            </div>
-            <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-3 text-center">
-              <p className="text-xl font-bold text-slate-900">{referrals.summary.by_type.behavioral_violation ?? 0}</p>
-              <p className="text-xs text-slate-500">متابعة سلوكية</p>
-            </div>
-            <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-3 text-center">
-              <p className="text-xl font-bold text-slate-900">{referrals.summary.by_type.student_absence ?? 0}</p>
-              <p className="text-xs text-slate-500">غياب</p>
-            </div>
-          </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {referrals.referrals.map((ref) => {
+                const typeInfo = REFERRAL_TYPE_LABELS[ref.referral_type] ?? REFERRAL_TYPE_LABELS.academic_weakness
+                const priorityInfo = PRIORITY_MAP[ref.priority] ?? PRIORITY_MAP.medium
 
-          <div className="space-y-2">
-            {referrals.referrals.map((ref) => {
-              const typeInfo = REFERRAL_TYPE_LABELS[ref.referral_type] ?? REFERRAL_TYPE_LABELS.academic_weakness
-              const priorityInfo = PRIORITY_MAP[ref.priority] ?? PRIORITY_MAP.medium
-
-              return (
-                <div
-                  key={ref.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-3 transition hover:shadow-sm"
-                >
-                  <div className="flex items-center gap-3">
-                    <Badge variant="outline" className={typeInfo.className}>{typeInfo.label}</Badge>
-                    <span className="text-sm font-medium text-slate-700">{ref.title}</span>
-                    {ref.student_name && (
-                      <span className="text-xs text-slate-500">· {ref.student_name}</span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className={priorityInfo.className}>{priorityInfo.label}</Badge>
-                    <span className="text-xs text-slate-500">
-                      {STATUS_LABELS[ref.status] ?? ref.status}
+                return (
+                  <div key={ref.id} className="ws-lrow">
+                    <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                      <ToneChip tone={typeInfo.tone}>{typeInfo.label}</ToneChip>
+                      <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ws-text)' }}>{ref.title}</span>
+                      {ref.student_name && (
+                        <span style={{ fontSize: 11, color: 'var(--ws-text-2)' }}>· {ref.student_name}</span>
+                      )}
                     </span>
-                    {ref.created_at && (
-                      <span className="text-xs text-slate-400">
-                        {new Date(ref.created_at).toLocaleDateString('ar-SA')}
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      <ToneChip tone={priorityInfo.tone}>{priorityInfo.label}</ToneChip>
+                      <span style={{ fontSize: 11, color: 'var(--ws-text-2)' }}>
+                        {STATUS_LABELS[ref.status] ?? ref.status}
                       </span>
-                    )}
+                      {ref.created_at && (
+                        <span style={{ fontSize: 11, color: 'var(--ws-text-2)' }}>
+                          {new Date(ref.created_at).toLocaleDateString('ar-SA-u-nu-latn')}
+                        </span>
+                      )}
+                    </span>
                   </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
-        </div>
+        </ProfilePanel>
       )}
     </div>
   )

@@ -198,7 +198,7 @@ export function AdminDashboardPage() {
             {isLoading ? (
               <div className="ws-dashboard-cards">
                 {[0, 1, 2, 3].map((i) => (
-                  <div key={i} style={{ height: 120, borderRadius: 10, background: 'var(--ws-surface-2)' }} />
+                  <div key={i} className="ws-skeleton" style={{ height: 120, borderRadius: 10 }} />
                 ))}
               </div>
             ) : !today ? (
@@ -284,7 +284,7 @@ export function AdminDashboardPage() {
           {/* ٢ — طابور الصباح: اللمسة، ومعه قوس التغطية */}
           <WsBlock padded title="طابور الصباح" icon={Users}>
             {isLoading ? (
-              <div style={{ height: 72, borderRadius: 6, background: 'var(--ws-surface-2)' }} />
+              <div className="ws-skeleton" style={{ height: 72, borderRadius: 6 }} />
             ) : !today ? (
               <WsEmpty icon={CalendarDays}>لا يوم دراسي اليوم</WsEmpty>
             ) : total === 0 ? (
@@ -382,6 +382,7 @@ export function AdminDashboardPage() {
                   <Link
                     key={row.to}
                     to={row.to}
+                    className="ws-callrow"
                     style={{
                       display: 'flex',
                       alignItems: 'center',

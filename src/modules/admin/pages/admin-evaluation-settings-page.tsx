@@ -622,13 +622,13 @@ export function AdminEvaluationSettingsPage() {
         facts={
           <>
             <WsFact icon={ClipboardCheck} label="تقييمات اليوم:">
-              {totalEvaluations.toLocaleString('ar-SA')}
+              {totalEvaluations.toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             <WsFact icon={Users} label="معلم قيّم:">
-              {teachersCount.toLocaleString('ar-SA')}
+              {teachersCount.toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             <WsFact icon={GraduationCap} label="طالب قُيّم:">
-              {studentsCount.toLocaleString('ar-SA')}
+              {studentsCount.toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
           </>
         }
@@ -694,7 +694,7 @@ export function AdminEvaluationSettingsPage() {
                         <span className="ws-cell-sub">طالب اليوم</span>
                       </span>
                       <span style={{ fontSize: 20, fontWeight: 800, color: tone.tx }}>
-                        {stat.students_count.toLocaleString('ar-SA')}
+                        {stat.students_count.toLocaleString('ar-SA-u-nu-latn')}
                       </span>
                     </div>
                   )
@@ -753,7 +753,7 @@ export function AdminEvaluationSettingsPage() {
               <WsBlock
                 title="آخر التقييمات اليوم"
                 icon={Clock}
-                count={recentEvaluations.length ? `آخر ${recentEvaluations.length.toLocaleString('ar-SA')}` : undefined}
+                count={recentEvaluations.length ? `آخر ${recentEvaluations.length.toLocaleString('ar-SA-u-nu-latn')}` : undefined}
                 fill
               >
                 {totalEvaluations === 0 ? (
@@ -777,7 +777,7 @@ export function AdminEvaluationSettingsPage() {
                       {recentEvaluations.map((ev) => {
                         const emoji =
                           ICON_EMOJI_MAP[ev.behavior_type_icon ?? ''] ?? (ev.evaluation_type === 'skill' ? '📐' : '📌')
-                        const time = new Date(ev.created_at).toLocaleTimeString('ar-SA', {
+                        const time = new Date(ev.created_at).toLocaleTimeString('ar-SA-u-nu-latn', {
                           hour: '2-digit',
                           minute: '2-digit',
                         })

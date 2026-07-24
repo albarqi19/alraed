@@ -462,8 +462,8 @@ export function AdminReferralDetailPage() {
 
     if (meetingDate) {
       const date = new Date(meetingDate)
-      const dayName = date.toLocaleDateString('ar-SA', { weekday: 'long' })
-      const formattedDate = date.toLocaleDateString('ar-SA')
+      const dayName = date.toLocaleDateString('ar-SA-u-nu-latn', { weekday: 'long' })
+      const formattedDate = date.toLocaleDateString('ar-SA-u-nu-latn')
       message += `\n\nنرجو منكم الحضور إلى المدرسة يوم ${dayName} بتاريخ ${formattedDate}`
     }
 
@@ -666,14 +666,14 @@ export function AdminReferralDetailPage() {
               <WsFactRow label="الأولوية"><PriorityBadge priority={referral.priority} /></WsFactRow>
               <WsFactRow label="المحيل">{referral.referred_by?.name ?? 'غير محدد'}</WsFactRow>
               <WsFactRow label="المكلَّف">{referral.assigned_to?.name ?? 'غير معيّن'}</WsFactRow>
-              <WsFactRow label="تاريخ الإحالة">{new Date(referral.created_at).toLocaleString('ar-SA')}</WsFactRow>
+              <WsFactRow label="تاريخ الإحالة">{new Date(referral.created_at).toLocaleString('ar-SA-u-nu-latn')}</WsFactRow>
               {referral.received_at && (
-                <WsFactRow label="تاريخ الاستلام">{new Date(referral.received_at).toLocaleString('ar-SA')}</WsFactRow>
+                <WsFactRow label="تاريخ الاستلام">{new Date(referral.received_at).toLocaleString('ar-SA-u-nu-latn')}</WsFactRow>
               )}
               {referral.completed_at && (
-                <WsFactRow label="تاريخ الإكمال">{new Date(referral.completed_at).toLocaleString('ar-SA')}</WsFactRow>
+                <WsFactRow label="تاريخ الإكمال">{new Date(referral.completed_at).toLocaleString('ar-SA-u-nu-latn')}</WsFactRow>
               )}
-              <WsFactRow label="آخر تحديث">{new Date(referral.updated_at).toLocaleString('ar-SA')}</WsFactRow>
+              <WsFactRow label="آخر تحديث">{new Date(referral.updated_at).toLocaleString('ar-SA-u-nu-latn')}</WsFactRow>
             </WsFactsList>
           </WsBlock>
         </WsSideCol>
@@ -693,7 +693,7 @@ export function AdminReferralDetailPage() {
                 {referral.description || 'بلا وصف'}
               </p>
               <p style={{ margin: '8px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
-                — {referral.referred_by?.name ?? 'غير محدد'} · {new Date(referral.created_at).toLocaleString('ar-SA')}
+                — {referral.referred_by?.name ?? 'غير محدد'} · {new Date(referral.created_at).toLocaleString('ar-SA-u-nu-latn')}
               </p>
             </div>
           </WsBlock>
@@ -745,7 +745,7 @@ export function AdminReferralDetailPage() {
                           )}
                           <p style={{ margin: '3px 0 0', fontSize: 10, color: 'var(--ws-text-2)' }}>
                             {log.performed_by ? `${log.performed_by.name} · ` : ''}
-                            {new Date(log.created_at).toLocaleString('ar-SA')}
+                            {new Date(log.created_at).toLocaleString('ar-SA-u-nu-latn')}
                           </p>
                         </div>
                       </div>
@@ -940,7 +940,7 @@ export function AdminReferralDetailPage() {
                 )}
                 {referral.parent_notified && (
                   <ToneChip tone={TONES.green}>
-                    أُشعر ولي الأمر{referral.parent_notified_at ? ` · ${new Date(referral.parent_notified_at).toLocaleDateString('ar-SA')}` : ''}
+                    أُشعر ولي الأمر{referral.parent_notified_at ? ` · ${new Date(referral.parent_notified_at).toLocaleDateString('ar-SA-u-nu-latn')}` : ''}
                   </ToneChip>
                 )}
               </div>

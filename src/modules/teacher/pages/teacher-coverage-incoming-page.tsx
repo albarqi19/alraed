@@ -284,7 +284,7 @@ export function TeacherCoverageIncomingPage() {
 
               <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
                 <i className="bi bi-calendar text-slate-400 dark:text-slate-500" />
-                {new Date(item.request_date).toLocaleDateString('ar-SA')}
+                {new Date(item.request_date).toLocaleDateString('ar-SA-u-nu-latn')}
               </div>
 
               {item.reason && (

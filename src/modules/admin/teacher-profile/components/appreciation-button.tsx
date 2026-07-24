@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { Heart, Send, Loader2, X, Info } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { useState, type CSSProperties } from 'react'
+import { Heart, Send, Info } from 'lucide-react'
+import { WsAlert, WsBtn, WsModal, WsTextarea } from '@/shared/workspace'
 import { useAppreciationTemplates, useSendAppreciation } from '../hooks'
 import { useToast } from '@/shared/feedback/use-toast'
 
@@ -9,6 +9,7 @@ interface AppreciationButtonProps {
   teacherPhone: string | null
 }
 
+/** زر «أرسل شكراً» وموداله — بنَفَس ws بعد أن كان بطاقة بيضاء طائرة */
 export function AppreciationButton({ teacherId, teacherPhone }: AppreciationButtonProps) {
   const [open, setOpen] = useState(false)
   const [message, setMessage] = useState('')
@@ -46,108 +47,94 @@ export function AppreciationButton({ teacherId, teacherPhone }: AppreciationButt
 
   if (!teacherPhone) return null
 
+  const choiceStyle = (active: boolean): CSSProperties => ({
+    width: '100%',
+    textAlign: 'right',
+    fontFamily: 'inherit',
+    fontSize: 12,
+    lineHeight: 1.7,
+    padding: '8px 10px',
+    borderRadius: 8,
+    border: `1px solid ${active ? 'var(--ws-accent)' : 'var(--ws-hairline)'}`,
+    background: active ? 'var(--ws-accent-soft)' : 'var(--ws-surface)',
+    color: 'var(--ws-text)',
+    cursor: 'pointer',
+    transition: 'background 0.15s ease, border-color 0.15s ease',
+  })
+
   return (
     <>
-      <Button
-        size="sm"
-        onClick={handleOpen}
-        className="bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
-      >
-        <Heart className="ml-1.5 h-3.5 w-3.5" />
+      <WsBtn size="sm" icon={Heart} onClick={handleOpen}>
         أرسل شكراً
-      </Button>
+      </WsBtn>
 
-      {/* Modal Overlay */}
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl" dir="rtl">
-            {/* Header */}
-            <div className="mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Heart className="h-5 w-5 text-emerald-600" />
-                <h3 className="text-base font-bold text-slate-800">أرسل شكراً الآن</h3>
-              </div>
-              <button
-                onClick={() => setOpen(false)}
-                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100"
-              >
-                <X className="h-4 w-4" />
-              </button>
+      <WsModal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+            <Heart style={{ width: 15, height: 15, color: 'var(--ws-accent)' }} />
+            أرسل شكراً الآن
+          </span>
+        }
+        sub={
+          templates?.teacher_name ? `${templates.teacher_name} · ${teacherPhone}` : teacherPhone
+        }
+        footer={
+          <>
+            <WsBtn
+              variant="primary"
+              icon={Send}
+              onClick={handleSend}
+              disabled={!message.trim() || sendMutation.isPending}
+            >
+              {sendMutation.isPending ? 'جاري الإرسال...' : 'أرسل الآن'}
+            </WsBtn>
+            <WsBtn onClick={() => setOpen(false)}>إلغاء</WsBtn>
+          </>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* تلميح آخر شكر */}
+          {daysSinceLast !== null && daysSinceLast <= 3 && (
+            <WsAlert tone="info" boxed icon={Info}>
+              لقد شكرت هذا المعلم قبل{' '}
+              {daysSinceLast === 0 ? 'اليوم' : `${daysSinceLast} ${daysSinceLast === 1 ? 'يوم' : 'أيام'}`}، استمر في
+              دعمه!
+            </WsAlert>
+          )}
+
+          {/* القوالب المقترحة */}
+          {loadingTemplates ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="ws-skeleton" style={{ height: 40, borderRadius: 8 }} />
+              ))}
             </div>
-
-            {/* معلومات المستلم */}
-            <div className="mb-3 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">
-              <span className="font-semibold">{templates?.teacher_name}</span>
-              <span className="mr-2 text-slate-400">{teacherPhone}</span>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: 'var(--ws-text-2)' }}>
+                اختر قالباً أو اكتب رسالتك:
+              </p>
+              {templates?.templates.map((tpl, i) => (
+                <button key={i} type="button" onClick={() => setMessage(tpl)} style={choiceStyle(message === tpl)}>
+                  {tpl}
+                </button>
+              ))}
             </div>
+          )}
 
-            {/* تلميح آخر شكر */}
-            {daysSinceLast !== null && daysSinceLast <= 3 && (
-              <div className="mb-3 flex items-start gap-2 rounded-xl bg-blue-50 px-3 py-2 text-[11px] text-blue-700">
-                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                <span>
-                  لقد شكرت هذا المعلم قبل {daysSinceLast === 0 ? 'اليوم' : `${daysSinceLast} ${daysSinceLast === 1 ? 'يوم' : 'أيام'}`}، استمر في دعمه!
-                </span>
-              </div>
-            )}
-
-            {/* القوالب المقترحة */}
-            {loadingTemplates ? (
-              <div className="mb-3 space-y-2">
-                {[1, 2, 3].map(i => (
-                  <div key={i} className="h-12 animate-pulse rounded-xl bg-slate-100" />
-                ))}
-              </div>
-            ) : (
-              <div className="mb-3 space-y-2">
-                <p className="text-[11px] font-semibold text-slate-500">اختر قالباً أو اكتب رسالتك:</p>
-                {templates?.templates.map((tpl, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setMessage(tpl)}
-                    className={`w-full rounded-xl border px-3 py-2.5 text-right text-xs leading-relaxed transition ${
-                      message === tpl
-                        ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
-                        : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-200 hover:bg-emerald-50/50'
-                    }`}
-                  >
-                    {tpl}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* حقل الرسالة */}
-            <textarea
-              value={message}
-              onChange={e => setMessage(e.target.value)}
-              placeholder="اكتب رسالتك هنا..."
-              className="mb-4 w-full resize-none rounded-xl border border-slate-200 p-3 text-sm leading-relaxed text-slate-700 outline-none transition focus:border-emerald-300 focus:ring-1 focus:ring-emerald-200"
-              rows={3}
-              maxLength={500}
-            />
-
-            {/* أزرار */}
-            <div className="flex gap-2">
-              <Button
-                onClick={handleSend}
-                disabled={!message.trim() || sendMutation.isPending}
-                className="flex-1 bg-emerald-600 text-white hover:bg-emerald-700"
-              >
-                {sendMutation.isPending ? (
-                  <Loader2 className="ml-1.5 h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="ml-1.5 h-3.5 w-3.5" />
-                )}
-                أرسل الآن
-              </Button>
-              <Button variant="outline" onClick={() => setOpen(false)}>
-                إلغاء
-              </Button>
-            </div>
-          </div>
+          {/* حقل الرسالة */}
+          <WsTextarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="اكتب رسالتك هنا..."
+            rows={3}
+            maxLength={500}
+            style={{ resize: 'none' }}
+          />
         </div>
-      )}
+      </WsModal>
     </>
   )
 }

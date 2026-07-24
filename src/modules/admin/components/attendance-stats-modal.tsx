@@ -154,7 +154,7 @@ function StatCard({
       <div className="flex items-start justify-between">
         <div className="space-y-1">
           <p className="text-xs font-medium opacity-80">{title}</p>
-          <p className="text-2xl font-bold">{typeof value === 'number' ? value.toLocaleString('ar-SA') : value}</p>
+          <p className="text-2xl font-bold">{typeof value === 'number' ? value.toLocaleString('ar-SA-u-nu-latn') : value}</p>
           {subtitle && <p className="text-xs opacity-70">{subtitle}</p>}
         </div>
         <div className={`rounded-xl p-2 ${iconColorClasses[color]}`}>
@@ -268,7 +268,7 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
         <div key={index} className="flex items-center gap-2 text-xs">
           <span className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
           <span className="text-slate-600">{entry.name}:</span>
-          <span className="font-semibold text-slate-800">{entry.value.toLocaleString('ar-SA')}</span>
+          <span className="font-semibold text-slate-800">{entry.value.toLocaleString('ar-SA-u-nu-latn')}</span>
         </div>
       ))}
     </div>

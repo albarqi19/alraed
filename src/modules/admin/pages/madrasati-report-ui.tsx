@@ -136,4 +136,4 @@ export function subjectSilenceMap(teachers: MadrasatiTeacherRanking[]): SubjectS
     .sort((a, b) => b.silentSeats - a.silentSeats)
 }
 
-export const arNum = (n: number) => n.toLocaleString('ar-SA')
+export const arNum = (n: number) => n.toLocaleString('ar-SA-u-nu-latn')

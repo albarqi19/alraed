@@ -247,42 +247,42 @@ export function AdminTeacherProfilePage() {
             </>
           ) : undefined
         }
-      />
+      >
+        {/* فلتر الفترة في شريط العنوان نفسه — كبقية الصفحات */}
+        <span className="ws-header__filters">
+          <span className="ws-seg">
+            {(Object.keys(PERIOD_LABELS) as PeriodKey[]).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPeriod(p)}
+                className={`ws-seg__btn ${period === p ? 'is-active' : ''}`}
+              >
+                {PERIOD_LABELS[p]}
+              </button>
+            ))}
+          </span>
+          {period === 'custom' && (
+            <>
+              <WsInput
+                type="date"
+                value={customFrom}
+                onChange={(e) => setCustomFrom(e.target.value)}
+              />
+              <WsInput
+                type="date"
+                value={customTo}
+                onChange={(e) => setCustomTo(e.target.value)}
+              />
+            </>
+          )}
+        </span>
+      </WsHeader>
 
       <WsToolbar>
-        {/* فلتر الفترة */}
-        <div className="ws-seg" style={{ alignSelf: 'flex-end' }}>
-          {(Object.keys(PERIOD_LABELS) as PeriodKey[]).map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => setPeriod(p)}
-              className={`ws-seg__btn ${period === p ? 'is-active' : ''}`}
-            >
-              {PERIOD_LABELS[p]}
-            </button>
-          ))}
-        </div>
-        {period === 'custom' && (
-          <>
-            <WsInput
-              type="date"
-              value={customFrom}
-              onChange={(e) => setCustomFrom(e.target.value)}
-              style={{ alignSelf: 'flex-end' }}
-            />
-            <WsInput
-              type="date"
-              value={customTo}
-              onChange={(e) => setCustomTo(e.target.value)}
-              style={{ alignSelf: 'flex-end' }}
-            />
-          </>
-        )}
-
         {/* التبويبات */}
         {selectedTeacherId && (
-          <div className="ws-seg" style={{ alignSelf: 'flex-end', flexWrap: 'wrap' }}>
+          <div className="ws-seg" style={{ flexWrap: 'wrap' }}>
             {TABS.map((tab) => {
               const Icon = tab.icon
               return (
@@ -314,7 +314,7 @@ export function AdminTeacherProfilePage() {
               style={{ width: '100%' }}
             />
           </div>
-          <WsBlock count={filteredTeachers.length.toLocaleString('ar-SA')} title="القائمة" fill scroll>
+          <WsBlock count={filteredTeachers.length.toLocaleString('ar-SA-u-nu-latn')} title="القائمة" fill scroll>
             {teachersQuery.isLoading ? (
               <WsEmpty loading>جاري تحميل المعلمين...</WsEmpty>
             ) : filteredTeachers.length === 0 ? (
@@ -328,6 +328,7 @@ export function AdminTeacherProfilePage() {
                       key={teacher.id}
                       type="button"
                       onClick={() => handleSelectTeacher(teacher.id)}
+                      className="ws-rankrow"
                       style={{
                         display: 'block',
                         width: '100%',
@@ -335,7 +336,7 @@ export function AdminTeacherProfilePage() {
                         padding: '7px 12px',
                         border: 'none',
                         borderBottom: '1px solid var(--ws-hairline)',
-                        background: isSelected ? 'var(--ws-accent-soft)' : 'transparent',
+                        background: isSelected ? 'var(--ws-accent-soft)' : undefined,
                         cursor: 'pointer',
                         fontFamily: 'inherit',
                       }}

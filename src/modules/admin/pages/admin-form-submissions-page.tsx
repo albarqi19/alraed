@@ -50,12 +50,12 @@ function formatDateTime(value?: string | null): string {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value ?? '—'
   try {
-    return new Intl.DateTimeFormat('ar-SA', {
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', {
       dateStyle: 'medium',
       timeStyle: 'short',
     }).format(date)
   } catch {
-    return date.toLocaleString('ar-SA')
+    return date.toLocaleString('ar-SA-u-nu-latn')
   }
 }
 
@@ -820,7 +820,7 @@ export function AdminFormSubmissionsPage() {
           title="الردود المستلمة"
           value={respondedStudents.length}
           tone="emerald"
-          subtitle={`تمثل ${responseRate.toLocaleString('ar-SA')}٪ من المستهدفين`}
+          subtitle={`تمثل ${responseRate.toLocaleString('ar-SA-u-nu-latn')}٪ من المستهدفين`}
         />
         <StatsCard
           title="ردود قيد المتابعة"
@@ -852,10 +852,10 @@ export function AdminFormSubmissionsPage() {
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-semibold text-slate-500">{FORM_SUBMISSION_STATUS_LABELS[status]}</p>
                   <span className={clsx('rounded-full px-2 py-0.5 text-[11px] font-semibold', createStatusTone(status))}>
-                    {percent.toLocaleString('ar-SA')}٪
+                    {percent.toLocaleString('ar-SA-u-nu-latn')}٪
                   </span>
                 </div>
-                <p className="mt-3 text-2xl font-bold text-slate-900">{total.toLocaleString('ar-SA')}</p>
+                <p className="mt-3 text-2xl font-bold text-slate-900">{total.toLocaleString('ar-SA-u-nu-latn')}</p>
               </div>
             )
           })}
@@ -876,9 +876,9 @@ export function AdminFormSubmissionsPage() {
                         {entry.grade}
                       </span>
                       <div>
-                        <p className="text-sm font-semibold text-slate-800">{entry.responded.toLocaleString('ar-SA')} رد</p>
+                        <p className="text-sm font-semibold text-slate-800">{entry.responded.toLocaleString('ar-SA-u-nu-latn')} رد</p>
                         <p className="text-[11px] text-muted">
-                          من أصل {entry.total.toLocaleString('ar-SA')} طالب | نسبة الاستجابة {entry.rate.toLocaleString('ar-SA')}٪
+                          من أصل {entry.total.toLocaleString('ar-SA-u-nu-latn')} طالب | نسبة الاستجابة {entry.rate.toLocaleString('ar-SA-u-nu-latn')}٪
                         </p>
                       </div>
                     </div>
@@ -918,7 +918,7 @@ export function AdminFormSubmissionsPage() {
               className="flex items-center justify-center gap-2 rounded-3xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 transition hover:border-emerald-400 hover:text-emerald-800"
             >
               <i className="bi bi-whatsapp" />
-              إرسال تذكير للطلاب غير المستجيبين ({pendingStudents.length.toLocaleString('ar-SA')})
+              إرسال تذكير للطلاب غير المستجيبين ({pendingStudents.length.toLocaleString('ar-SA-u-nu-latn')})
             </Link>
           ) : null}
         </div>
@@ -1069,7 +1069,7 @@ export function AdminFormSubmissionsPage() {
 
         <footer className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
           <p>
-            صفحة {meta?.current_page ?? 1} من {meta?.last_page ?? 1} | إجمالي {meta?.total?.toLocaleString('ar-SA') ?? submissions.length.toLocaleString('ar-SA')} رد
+            صفحة {meta?.current_page ?? 1} من {meta?.last_page ?? 1} | إجمالي {meta?.total?.toLocaleString('ar-SA-u-nu-latn') ?? submissions.length.toLocaleString('ar-SA-u-nu-latn')} رد
           </p>
           <div className="flex items-center gap-2">
             <button
@@ -1132,7 +1132,7 @@ function StatsCard({
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs font-semibold text-slate-500">{title}</p>
-          <p className="mt-3 text-3xl font-bold text-slate-900">{value.toLocaleString('ar-SA')}</p>
+          <p className="mt-3 text-3xl font-bold text-slate-900">{value.toLocaleString('ar-SA-u-nu-latn')}</p>
           {subtitle ? <p className="mt-1 text-[11px] text-muted">{subtitle}</p> : null}
         </div>
         <div className={clsx('flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br text-white', toneClasses[tone])}>
@@ -1167,7 +1167,7 @@ function ResponseList({
         </div>
         <span className={clsx('inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold', accent)}>
           <span className="h-2 w-2 rounded-full bg-current" />
-          {students.length.toLocaleString('ar-SA')}
+          {students.length.toLocaleString('ar-SA-u-nu-latn')}
         </span>
       </header>
       {students.length === 0 ? (

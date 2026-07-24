@@ -190,7 +190,7 @@ export function SchoolsTable({ data, isLoading, filters, onFiltersChange, onPage
 function formatDate(value: string | null) {
   if (!value) return '—'
   try {
-    return new Date(value).toLocaleDateString('ar-SA', {
+    return new Date(value).toLocaleDateString('ar-SA-u-nu-latn', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',

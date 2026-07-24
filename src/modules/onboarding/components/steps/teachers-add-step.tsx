@@ -94,7 +94,7 @@ export function TeachersAddStep({ onComplete, onSkip, stats, isCompleting, isSki
             </div>
             <div>
               <p className="font-semibold text-emerald-800">المعلمين في النظام</p>
-              <p className="text-sm text-emerald-600">يوجد {totalTeachers.toLocaleString('ar-SA')} معلم حالياً</p>
+              <p className="text-sm text-emerald-600">يوجد {totalTeachers.toLocaleString('ar-SA-u-nu-latn')} معلم حالياً</p>
             </div>
           </div>
         </div>

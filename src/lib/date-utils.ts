@@ -91,7 +91,7 @@ export function formatDateTimeRiyadh(timestamp: number | Date | string): string 
     ? new Date(timestamp) 
     : timestamp
     
-  return new Intl.DateTimeFormat('ar-SA', {
+  return new Intl.DateTimeFormat('ar-SA-u-nu-latn', {
     timeZone: RIYADH_TIMEZONE,
     dateStyle: 'medium',
     timeStyle: 'short',

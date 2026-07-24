@@ -11,7 +11,7 @@ interface NoteCardProps {
 export function NoteCard({ note, isActive, onClick }: NoteCardProps) {
   const cat = NOTE_CATEGORIES[note.category]
   const title = note.title || 'بدون عنوان'
-  const date = new Date(note.updated_at).toLocaleDateString('ar-SA', {
+  const date = new Date(note.updated_at).toLocaleDateString('ar-SA-u-nu-latn', {
     month: 'short', day: 'numeric',
   })
 

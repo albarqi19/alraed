@@ -41,7 +41,7 @@ export const formatCountdown = (diff: number) => {
   return `بعد ${diff} أيام`
 }
 
-const locale = 'ar-SA'
+const locale = 'ar-SA-u-nu-latn'
 const fullDateFormatter = new Intl.DateTimeFormat(locale, { day: '2-digit', month: 'long', year: 'numeric' })
 const shortDateFormatter = new Intl.DateTimeFormat(locale, { day: '2-digit', month: 'long' })
 const numericFormatter = new Intl.DateTimeFormat(locale, { day: '2-digit', month: '2-digit', year: 'numeric' })

@@ -219,8 +219,8 @@ function ChatTab({ onChatOpenChange }: { onChatOpenChange: (open: boolean) => vo
         if (!dateStr) return ''
         const d = new Date(dateStr)
         const today = new Date()
-        if (d.toDateString() === today.toDateString()) return d.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
-        return d.toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' })
+        if (d.toDateString() === today.toDateString()) return d.toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' })
+        return d.toLocaleDateString('ar-SA-u-nu-latn', { month: 'short', day: 'numeric' })
     }
 
     function handleSend() {
@@ -291,7 +291,7 @@ function ChatTab({ onChatOpenChange }: { onChatOpenChange: (open: boolean) => vo
                 <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
                     {sortedMessages.map((msg) => {
                         const isOwn = msg.sender_type === 'guardian' && msg.sender_id === myGuardianId
-                        const time = new Date(msg.created_at).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
+                        const time = new Date(msg.created_at).toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' })
 
                         if (msg.type === 'system') {
                             return <div key={msg.id} className="flex justify-center my-3"><div className="bg-slate-200/70 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 text-xs px-4 py-1.5 rounded-full text-center">{msg.body}</div></div>
@@ -500,7 +500,7 @@ function MessageCard({ message, isExpanded, onToggle }: { message: GuardianMessa
                         <p className={`font-semibold ${message.is_read ? 'text-slate-700 dark:text-slate-300' : 'text-slate-900 dark:text-slate-100'}`}>{message.title}</p>
                         {!message.is_read && <span className="h-2 w-2 rounded-full bg-indigo-500" />}
                     </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">{new Date(message.date).toLocaleDateString('ar-SA')}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{new Date(message.date).toLocaleDateString('ar-SA-u-nu-latn')}</p>
                 </div>
                 {isExpanded ? <ChevronUp className="h-5 w-5 text-slate-400 dark:text-slate-500" /> : <ChevronDown className="h-5 w-5 text-slate-400 dark:text-slate-500" />}
             </button>

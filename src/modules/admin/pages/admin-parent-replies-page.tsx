@@ -150,13 +150,13 @@ export function AdminParentRepliesPage() {
         facts={
           <>
             <WsFact icon={Inbox} label="إجمالي الردود:">
-              {(stats?.total ?? 0).toLocaleString('ar-SA')}
+              {(stats?.total ?? 0).toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             <WsFact icon={School} label="الإحالات:">
-              {(stats?.referral.total ?? 0).toLocaleString('ar-SA')}
+              {(stats?.referral.total ?? 0).toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             <WsFact icon={MessageSquare} label="رسائل المعلمين:">
-              {(stats?.teacher_message.total ?? 0).toLocaleString('ar-SA')}
+              {(stats?.teacher_message.total ?? 0).toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
           </>
         }
@@ -164,7 +164,7 @@ export function AdminParentRepliesPage() {
         {stats && stats.unread > 0 ? (
           <WsChip tone="sky">
             <span className="ws-pulse" style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--ws-sky)' }} />
-            {stats.unread.toLocaleString('ar-SA')} غير مقروء
+            {stats.unread.toLocaleString('ar-SA-u-nu-latn')} غير مقروء
           </WsChip>
         ) : null}
       </WsHeader>
@@ -224,7 +224,7 @@ export function AdminParentRepliesPage() {
             </div>
           </div>
 
-          <WsBlock fill scroll count={data?.data.length.toLocaleString('ar-SA')} title="الردود">
+          <WsBlock fill scroll count={data?.data.length.toLocaleString('ar-SA-u-nu-latn')} title="الردود">
             {isLoading ? (
               <WsEmpty loading>جاري تحميل الردود...</WsEmpty>
             ) : error ? (
@@ -417,7 +417,7 @@ export function AdminParentRepliesPage() {
                   <WsFactRow label="المستلم">{selectedReply.receiver_name}</WsFactRow>
                   <WsFactRow label="وقت الرد">{selectedReply.replied_at_formatted}</WsFactRow>
                   {selectedReply.read_at && (
-                    <WsFactRow label="تمت القراءة">{new Date(selectedReply.read_at).toLocaleString('ar-SA')}</WsFactRow>
+                    <WsFactRow label="تمت القراءة">{new Date(selectedReply.read_at).toLocaleString('ar-SA-u-nu-latn')}</WsFactRow>
                   )}
                 </WsFactsList>
               </div>

@@ -267,13 +267,13 @@ export function AdminShell() {
   // تاريخ اليوم هجري (أم القرى) مع اسم اليوم
   let todayLabel: string | null = null
   try {
-    todayLabel = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', {
+    todayLabel = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura-nu-latn', {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
     }).format(new Date())
   } catch {
-    todayLabel = new Intl.DateTimeFormat('ar-SA', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())
+    todayLabel = new Intl.DateTimeFormat('ar-SA-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())
   }
 
   const currentAcademicWeek = getCurrentAcademicWeek(new Date())

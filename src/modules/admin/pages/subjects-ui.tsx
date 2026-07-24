@@ -67,13 +67,14 @@ export function SubjectComb({
 
   return (
     <span style={{ display: 'inline-flex', alignItems: 'flex-end', gap: 2, height: 14 }}>
-      {sorted.map((cell) => {
+      {sorted.map((cell, i) => {
         // حارس الفصل: بلا توزيعٍ محمَّل، لا أحد «بلا توزيع» — الكل محايد.
         // بدونه يُطلى ١٠٠٪ من الشاشة كهرماناً فتقول «الكل معطوب» بدل «لا أعرف».
         const gap = !curriculumBlind && !cell.has_curriculum
         return (
           <span
             key={cell.grade}
+            className="ws-sparkbar"
             title={tipFor(cell, curriculumBlind)}
             style={{
               width: 4,
@@ -81,6 +82,7 @@ export function SubjectComb({
               borderRadius: 2,
               flexShrink: 0,
               background: gap ? TONES.amber.tx : 'var(--ws-text-2)',
+              animationDelay: `${i * 40}ms`,
             }}
           />
         )

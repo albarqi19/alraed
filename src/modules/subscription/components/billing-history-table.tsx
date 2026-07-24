@@ -13,7 +13,7 @@ const STATUS_BADGES: Record<SubscriptionInvoiceRecord['status'], { label: string
 }
 
 function formatCurrency(value: number, currency = 'SAR') {
-  return new Intl.NumberFormat('ar-SA', {
+  return new Intl.NumberFormat('ar-SA-u-nu-latn', {
     style: 'currency',
     currency,
     maximumFractionDigits: 0,
@@ -24,7 +24,7 @@ function formatDate(value?: string | null) {
   if (!value) return '—'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '—'
-  return date.toLocaleDateString('ar-SA', {
+  return date.toLocaleDateString('ar-SA-u-nu-latn', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',

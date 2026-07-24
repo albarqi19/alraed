@@ -17,10 +17,15 @@ export function ViolationBadge({ degree, size = 'md' }: ViolationBadgeProps) {
     name: `درجة غير مصنفة (${degree})`,
     badgeClass: 'bg-slate-100 text-slate-600 border border-slate-200',
   }
+  // العرض المختصر: «الدرجة الثانية» فقط — الاسم الكامل يبقى في تلميح العنوان
+  const shortName = config.name.replace(/^مخالفات\s*/, '')
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full font-semibold ${config.badgeClass} ${SIZE_CLASSES[size]}`}>
-      <span className="h-2 w-2 rounded-full bg-current" />
-      {config.name}
+    <span
+      title={config.name}
+      className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold ${config.badgeClass} ${SIZE_CLASSES[size]}`}
+    >
+      <span className="h-2 w-2 shrink-0 rounded-full bg-current" />
+      {shortName}
     </span>
   )
 }

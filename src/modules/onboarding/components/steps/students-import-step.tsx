@@ -103,7 +103,7 @@ export function StudentsImportStep({ onComplete, onSkip, stats, isCompleting, is
             <div>
               <p className="font-semibold text-emerald-800">تم إضافة الطلاب</p>
               <p className="text-sm text-emerald-600">
-                يوجد حالياً {stats.students_count.toLocaleString('ar-SA')} طالب في النظام
+                يوجد حالياً {stats.students_count.toLocaleString('ar-SA-u-nu-latn')} طالب في النظام
               </p>
             </div>
           </div>

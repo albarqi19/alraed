@@ -74,9 +74,9 @@ function formatDate(value?: string | null, options: Intl.DateTimeFormatOptions =
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   try {
-    return new Intl.DateTimeFormat('ar-SA', options).format(date)
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', options).format(date)
   } catch {
-    return date.toLocaleString('ar-SA')
+    return date.toLocaleString('ar-SA-u-nu-latn')
   }
 }
 
@@ -353,13 +353,13 @@ export function AdminAttendancePage() {
         facts={
           <>
             <WsFact icon={ClipboardList} label="السجلات:">
-              {records.length.toLocaleString('ar-SA')}
+              {records.length.toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             <WsFact icon={Users} label="الطلاب:">
-              {totalStudents.toLocaleString('ar-SA')}
+              {totalStudents.toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             <WsFact icon={UserRound} label="معلمون نشطون:">
-              {activeTeachers.toLocaleString('ar-SA')}
+              {activeTeachers.toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             <WsFact icon={CalendarDays} label="المدى:">
               {dateRangeLabel}
@@ -464,7 +464,7 @@ export function AdminAttendancePage() {
 
       <WsLayout>
         <WsMain>
-          <WsBlock title="سجلات التحضير" icon={ClipboardList} count={records.length.toLocaleString('ar-SA')} fill>
+          <WsBlock title="سجلات التحضير" icon={ClipboardList} count={records.length.toLocaleString('ar-SA-u-nu-latn')} fill>
             {reportsQuery.isLoading ? (
               <WsEmpty loading>جاري تحميل سجلات الحضور...</WsEmpty>
             ) : records.length === 0 ? (
@@ -541,16 +541,16 @@ export function AdminAttendancePage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                         <WsChip tone="green" icon={CheckCircle2}>
-                          حاضر {detailsQuery.data.statistics.present_count.toLocaleString('ar-SA')}
+                          حاضر {detailsQuery.data.statistics.present_count.toLocaleString('ar-SA-u-nu-latn')}
                         </WsChip>
                         <WsChip tone="red" icon={XCircle}>
-                          غائب {detailsQuery.data.statistics.absent_count.toLocaleString('ar-SA')}
+                          غائب {detailsQuery.data.statistics.absent_count.toLocaleString('ar-SA-u-nu-latn')}
                         </WsChip>
                         <WsChip tone="amber" icon={Clock3}>
-                          متأخر {detailsQuery.data.statistics.late_count.toLocaleString('ar-SA')}
+                          متأخر {detailsQuery.data.statistics.late_count.toLocaleString('ar-SA-u-nu-latn')}
                         </WsChip>
                         <WsChip tone="sky" icon={DoorOpen}>
-                          مستأذن {detailsQuery.data.statistics.excused_count.toLocaleString('ar-SA')}
+                          مستأذن {detailsQuery.data.statistics.excused_count.toLocaleString('ar-SA-u-nu-latn')}
                         </WsChip>
                       </div>
                       <WsProgress
@@ -566,7 +566,7 @@ export function AdminAttendancePage() {
 
                   <WsBlock
                     title="قائمة الطلاب"
-                    count={detailsQuery.data.students.length.toLocaleString('ar-SA')}
+                    count={detailsQuery.data.students.length.toLocaleString('ar-SA-u-nu-latn')}
                     fill
                     scroll
                   >

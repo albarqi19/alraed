@@ -15,6 +15,7 @@ import {
   UserX,
   Info,
   AlertTriangle,
+  Copy,
 } from 'lucide-react'
 import {
   useCreateTeacherMutation,
@@ -28,6 +29,8 @@ import { useToast } from '@/shared/feedback/use-toast'
 import { ROLE_OPTIONS, getRoleLabel } from '@/modules/auth/constants/roles'
 import {
   TONES,
+  InitialAvatar,
+  WsAlert,
   WsBlock,
   WsBtn,
   WsChip,
@@ -44,7 +47,7 @@ import {
   WsSelect,
   WsSideCol,
   WsTable,
-  WsToolbar,
+  type Tone,
   type WsChipTone,
 } from '@/shared/workspace'
 import { DayCard, chip } from './dashboard-ui'
@@ -70,6 +73,12 @@ const ROLE_LEGEND = [
   { role: 'health_counselor', label: 'موجه صحي' },
   { role: 'teacher', label: 'معلم' },
 ]
+
+/** لون الصورة الرمزية يتبع لون الدور نفسه — العين تربط الاسم بدوره فوراً */
+function roleAvatarTone(role: string): Tone {
+  const chipTone = ROLE_TONES[role]
+  return chipTone ? TONES[chipTone] : TONES.gray
+}
 
 type StatusFilter = 'all' | TeacherStatus
 
@@ -102,12 +111,12 @@ function formatDate(value?: string | null) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value ?? '—'
   try {
-    return new Intl.DateTimeFormat('ar-SA', {
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', {
       dateStyle: 'medium',
       timeStyle: 'short',
     }).format(date)
   } catch {
-    return date.toLocaleString('ar-SA')
+    return date.toLocaleString('ar-SA-u-nu-latn')
   }
 }
 
@@ -337,6 +346,7 @@ export function AdminTeachersPage() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingTeacher, setEditingTeacher] = useState<TeacherRecord | null>(null)
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherRecord | null>(null)
+  const [deletingTeacher, setDeletingTeacher] = useState<TeacherRecord | null>(null)
   const [credentialsLog, setCredentialsLog] = useState<CredentialsEntry[]>([])
 
   const { data, isLoading, isError, refetch, isFetching } = useTeachersQuery()
@@ -445,9 +455,17 @@ export function AdminTeachersPage() {
   }
 
   const handleDelete = (teacher: TeacherRecord) => {
-    const confirmed = window.confirm(`هل ترغب بحذف المعلم ${teacher.name}؟ هذا الإجراء لا يمكن التراجع عنه.`)
-    if (!confirmed) return
-    deleteTeacherMutation.mutate(teacher.id)
+    setDeletingTeacher(teacher)
+  }
+
+  const confirmDelete = () => {
+    if (!deletingTeacher) return
+    deleteTeacherMutation.mutate(deletingTeacher.id, {
+      onSuccess: () => {
+        if (selectedTeacher?.id === deletingTeacher.id) setSelectedTeacher(null)
+        setDeletingTeacher(null)
+      },
+    })
   }
 
   const handleToggleStatus = (teacher: TeacherRecord) => {
@@ -464,13 +482,21 @@ export function AdminTeachersPage() {
   }
 
   const handleCopyCredentials = async (entry: CredentialsEntry) => {
+    await handleCopyText(
+      `الهوية: ${entry.credentials.national_id}\nكلمة المرور: ${entry.credentials.password}`,
+      'بيانات الدخول',
+    )
+  }
+
+  /** نسخ نص واحد مع تغذية راجعة — يخدم أزرار النسخ الصغيرة في بطاقة المعلم */
+  const handleCopyText = async (text: string, label: string) => {
     if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
       toast({ type: 'error', title: 'النسخ غير مدعوم في المتصفح الحالي' })
       return
     }
     try {
-      await navigator.clipboard.writeText(`الهوية: ${entry.credentials.national_id}\nكلمة المرور: ${entry.credentials.password}`)
-      toast({ type: 'success', title: 'تم نسخ بيانات الدخول' })
+      await navigator.clipboard.writeText(text)
+      toast({ type: 'success', title: `تم نسخ ${label}` })
     } catch {
       toast({ type: 'error', title: 'تعذر النسخ تلقائيًا، يرجى النسخ يدويًا' })
     }
@@ -488,21 +514,22 @@ export function AdminTeachersPage() {
             إضافة معلم
           </WsBtn>
         }
-      />
-
-      <WsToolbar>
-        <WsField label="بحث بالاسم أو الهوية أو الجوال" htmlFor="ws-teachers-search" grow>
+      >
+        {/* البحث والفلاتر في شريط العنوان نفسه — لا شريط منفصل تحته */}
+        <span className="ws-header__filters">
           <WsInput
             id="ws-teachers-search"
             type="search"
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="بحث..."
+            placeholder="الاسم أو الهوية أو الجوال"
+            aria-label="بحث بالاسم أو الهوية أو الجوال"
+            style={{ width: 'min(230px, 60vw)' }}
           />
-        </WsField>
-        <WsField label="الحالة" htmlFor="ws-teachers-status">
           <WsSelect
             id="ws-teachers-status"
+            aria-label="فلتر الحالة"
+            title="فلتر الحالة"
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
           >
@@ -510,11 +537,9 @@ export function AdminTeachersPage() {
             <option value="active">نشط</option>
             <option value="inactive">موقوف</option>
           </WsSelect>
-        </WsField>
-        <WsBtn icon={RefreshCw} onClick={() => refetch()} disabled={isFetching}>
-          تحديث
-        </WsBtn>
-      </WsToolbar>
+          <WsIconBtn icon={RefreshCw} label="تحديث" onClick={() => refetch()} disabled={isFetching} />
+        </span>
+      </WsHeader>
 
       <WsLayout>
         <WsMain>
@@ -557,7 +582,7 @@ export function AdminTeachersPage() {
             </div>
           </WsBlock>
 
-          <WsBlock title="المعلمون" icon={Users} count={filteredTeachers.length.toLocaleString('ar-SA')} fill>
+          <WsBlock title="المعلمون" icon={Users} count={filteredTeachers.length.toLocaleString('ar-SA-u-nu-latn')} fill>
             {isLoading ? (
               <WsEmpty loading>جاري تحميل قائمة المعلمين...</WsEmpty>
             ) : isError ? (
@@ -588,7 +613,7 @@ export function AdminTeachersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredTeachers.map((teacher) => {
+                  {filteredTeachers.map((teacher, i) => {
                     const isDeleting = deleteTeacherMutation.isPending && deleteTeacherMutation.variables === teacher.id
                     const isToggling =
                       updateTeacherMutation.isPending &&
@@ -601,16 +626,24 @@ export function AdminTeachersPage() {
                       <tr
                         key={teacher.id}
                         onClick={() => setSelectedTeacher(teacher)}
-                        className={`is-clickable ${isSelected ? 'is-selected' : ''}`}
-                        style={!isSelected && teacher.secondary_role ? { background: chip(TONES.amber) } : undefined}
+                        className={`is-clickable ws-tbl-rise ${isSelected ? 'is-selected' : ''}`}
+                        style={{
+                          animationDelay: `${Math.min(i * 25, 250)}ms`,
+                          ...(!isSelected && teacher.secondary_role ? { background: chip(TONES.amber) } : null),
+                        }}
                       >
                         <td>
-                          <span style={{ fontWeight: 600 }}>{teacher.name}</span>
-                          {teacher.needs_password_change ? (
-                            <span className="ws-cell-sub" style={{ color: 'var(--ws-amber)', fontWeight: 700 }}>
-                              يحتاج تغيير كلمة المرور
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <InitialAvatar name={teacher.name} tone={roleAvatarTone(teacher.role)} size={26} />
+                            <span style={{ minWidth: 0 }}>
+                              <span style={{ display: 'block', fontWeight: 600 }}>{teacher.name}</span>
+                              {teacher.needs_password_change ? (
+                                <span className="ws-cell-sub" style={{ color: 'var(--ws-amber)', fontWeight: 700 }}>
+                                  يحتاج تغيير كلمة المرور
+                                </span>
+                              ) : null}
                             </span>
-                          ) : null}
+                          </span>
                         </td>
                         <td style={{ fontFamily: 'monospace' }}>{teacher.national_id}</td>
                         <td>
@@ -685,8 +718,15 @@ export function AdminTeachersPage() {
           {selectedTeacher ? (
             <>
               <WsBlock padded>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-                  <span style={{ fontSize: 15, fontWeight: 700 }}>{selectedTeacher.name}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                  <InitialAvatar name={selectedTeacher.name} tone={roleAvatarTone(selectedTeacher.role)} size={40} />
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block', fontSize: 15, fontWeight: 700 }}>{selectedTeacher.name}</span>
+                    <span style={{ display: 'block', fontSize: 12, color: 'var(--ws-text-2)', marginTop: 1 }}>
+                      {getRoleLabel(selectedTeacher.role)}
+                      {selectedTeacher.secondary_role ? ` · ${getRoleLabel(selectedTeacher.secondary_role)}` : ''}
+                    </span>
+                  </span>
                   <TeacherStatusChip status={selectedTeacher.status} />
                 </div>
                 <WsFactsList>
@@ -700,15 +740,36 @@ export function AdminTeachersPage() {
                   <WsFactRow label="رقم الجوال">{selectedTeacher.phone ?? '—'}</WsFactRow>
                   {selectedTeacher.generated_password && (
                     <WsFactRow label="كلمة المرور الأساسية">
-                      <span style={{ fontFamily: 'monospace', color: 'var(--ws-amber)' }}>
-                        {selectedTeacher.generated_password}
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                        <span style={{ fontFamily: 'monospace', color: 'var(--ws-amber)' }}>
+                          {selectedTeacher.generated_password}
+                        </span>
+                        <WsIconBtn
+                          icon={Copy}
+                          label="نسخ كلمة المرور الأساسية"
+                          onClick={() =>
+                            void handleCopyText(selectedTeacher.generated_password ?? '', 'كلمة المرور الأساسية')
+                          }
+                        />
                       </span>
                     </WsFactRow>
                   )}
                   {selectedTeacher.secondary_generated_password && (
                     <WsFactRow label="كلمة المرور الثانوية">
-                      <span style={{ fontFamily: 'monospace', color: 'var(--ws-accent)' }}>
-                        {selectedTeacher.secondary_generated_password}
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                        <span style={{ fontFamily: 'monospace', color: 'var(--ws-accent)' }}>
+                          {selectedTeacher.secondary_generated_password}
+                        </span>
+                        <WsIconBtn
+                          icon={Copy}
+                          label="نسخ كلمة المرور الثانوية"
+                          onClick={() =>
+                            void handleCopyText(
+                              selectedTeacher.secondary_generated_password ?? '',
+                              'كلمة المرور الثانوية',
+                            )
+                          }
+                        />
                       </span>
                     </WsFactRow>
                   )}
@@ -763,8 +824,12 @@ export function AdminTeachersPage() {
               </WsEmpty>
             ) : (
               <div>
-                {credentialsLog.map((entry) => (
-                  <div key={entry.id} style={{ padding: '7px 12px', borderBottom: '1px solid var(--ws-hairline)' }}>
+                {credentialsLog.map((entry, i) => (
+                  <div
+                    key={entry.id}
+                    className="ws-tbl-rise"
+                    style={{ animationDelay: `${Math.min(i * 40, 240)}ms`, padding: '7px 12px', borderBottom: '1px solid var(--ws-hairline)' }}
+                  >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
                       <span style={{ fontSize: 13, fontWeight: 700, minWidth: 0 }}>{entry.teacherName}</span>
                       <WsBtn size="sm" onClick={() => handleCopyCredentials(entry)}>
@@ -803,6 +868,51 @@ export function AdminTeachersPage() {
           </WsBlock>
         </WsSideCol>
       </WsLayout>
+
+      {/* مودال الحذف — يعرض البديل الأرحم (الإيقاف) قبل الفعلة النهائية */}
+      {deletingTeacher && (
+        <div
+          className="ws-modal"
+          onClick={() => {
+            if (!deleteTeacherMutation.isPending) setDeletingTeacher(null)
+          }}
+        >
+          <div className="ws-modal__panel" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
+            <header className="ws-modal__head">
+              <h3 className="ws-modal__title">حذف «{deletingTeacher.name}»</h3>
+              <p className="ws-modal__sub">هذا الإجراء نهائي ولا يمكن التراجع عنه</p>
+            </header>
+            <div className="ws-modal__body">
+              <WsAlert tone="error" boxed icon={AlertTriangle}>
+                سيُحذف حساب المعلم نهائياً من النظام. إن كان غيابه مؤقتاً فالإيقاف أرحم —
+                يبقي الحساب ويمنع الدخول فقط.
+              </WsAlert>
+            </div>
+            <footer className="ws-modal__foot">
+              <WsBtn onClick={() => setDeletingTeacher(null)} disabled={deleteTeacherMutation.isPending}>
+                إلغاء
+              </WsBtn>
+              <WsBtn
+                onClick={() => {
+                  handleToggleStatus(deletingTeacher)
+                  setDeletingTeacher(null)
+                }}
+                disabled={deleteTeacherMutation.isPending}
+              >
+                {deletingTeacher.status === 'active' ? 'إيقاف بدل الحذف' : 'تفعيل'}
+              </WsBtn>
+              <WsBtn
+                variant="danger"
+                icon={Trash2}
+                onClick={confirmDelete}
+                disabled={deleteTeacherMutation.isPending}
+              >
+                {deleteTeacherMutation.isPending ? 'جارٍ الحذف...' : 'حذف نهائي'}
+              </WsBtn>
+            </footer>
+          </div>
+        </div>
+      )}
 
       <TeacherFormDialog
         open={isFormOpen}

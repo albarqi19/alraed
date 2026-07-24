@@ -80,7 +80,7 @@ function ReferralCard({
           <i className="bi bi-person ml-1" />
           المحيل: {referral.referred_by_user?.name}
         </span>
-        <span>{new Date(referral.created_at).toLocaleDateString('ar-SA')}</span>
+        <span>{new Date(referral.created_at).toLocaleDateString('ar-SA-u-nu-latn')}</span>
       </div>
       
       <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">

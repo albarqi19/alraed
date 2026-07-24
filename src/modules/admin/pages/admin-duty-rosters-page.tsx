@@ -268,7 +268,7 @@ export function AdminDutyRostersPage() {
   }, [sortedSupervisions, nowTick])
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ar-SA', {
+    return new Date(dateString).toLocaleDateString('ar-SA-u-nu-latn', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -343,16 +343,16 @@ export function AdminDutyRostersPage() {
         facts={
           <>
             <WsFact icon={Users} label="المكلفون:">
-              {stats.totalTeachers.toLocaleString('ar-SA')}
+              {stats.totalTeachers.toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             <WsFact icon={CheckCircle2} label="حضروا:">
-              {stats.totalPresent.toLocaleString('ar-SA')}
+              {stats.totalPresent.toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             <WsFact icon={UserX} label="لم يحضروا:">
-              {stats.totalAbsent.toLocaleString('ar-SA')}
+              {stats.totalAbsent.toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             <WsFact icon={UserPlus} label="بدلاء:">
-              {stats.replacementsAssigned.toLocaleString('ar-SA')}
+              {stats.replacementsAssigned.toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             <WsFact icon={TrendingUp} label="نسبة الحضور:">
               {stats.attendanceRate}%
@@ -433,16 +433,16 @@ export function AdminDutyRostersPage() {
               }
             />
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
-              <WsChip icon={Users}>المكلفون {stats.totalTeachers.toLocaleString('ar-SA')}</WsChip>
+              <WsChip icon={Users}>المكلفون {stats.totalTeachers.toLocaleString('ar-SA-u-nu-latn')}</WsChip>
               <WsChip tone="green" icon={CheckCircle2}>
-                حضروا {stats.totalPresent.toLocaleString('ar-SA')}
+                حضروا {stats.totalPresent.toLocaleString('ar-SA-u-nu-latn')}
               </WsChip>
               <WsChip tone="red" icon={UserX}>
-                لم يحضروا {stats.totalAbsent.toLocaleString('ar-SA')}
+                لم يحضروا {stats.totalAbsent.toLocaleString('ar-SA-u-nu-latn')}
               </WsChip>
               {stats.replacementsAssigned > 0 && (
                 <WsChip tone="amber" icon={UserPlus}>
-                  بديل معين {stats.replacementsAssigned.toLocaleString('ar-SA')}
+                  بديل معين {stats.replacementsAssigned.toLocaleString('ar-SA-u-nu-latn')}
                 </WsChip>
               )}
             </div>
@@ -496,7 +496,7 @@ export function AdminDutyRostersPage() {
             <span className="ws-fact" style={{ marginTop: 6 }}>
               <CalendarClock />
               <span>
-                <b>{stats.totalSupervisions.toLocaleString('ar-SA')}</b> إشراف مجدول
+                <b>{stats.totalSupervisions.toLocaleString('ar-SA-u-nu-latn')}</b> إشراف مجدول
               </span>
             </span>
           </WsBlock>
@@ -504,7 +504,7 @@ export function AdminDutyRostersPage() {
 
         <WsMain>
           {activeView === 'today' ? (
-            <WsBlock title="خط سير اليوم" icon={CalendarClock} count={sortedTimeline.length.toLocaleString('ar-SA')} fill scroll>
+            <WsBlock title="خط سير اليوم" icon={CalendarClock} count={sortedTimeline.length.toLocaleString('ar-SA-u-nu-latn')} fill scroll>
               {isError ? (
                 <WsEmpty icon={AlertTriangle}>
                   {errorMessage}

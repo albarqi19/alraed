@@ -15,7 +15,7 @@ export interface CounselorReferralData {
 }
 
 export function renderCounselorReferralDocument(data: CounselorReferralData): string {
-  const formattedDate = data.issueDate.toLocaleDateString('ar-SA', {
+  const formattedDate = data.issueDate.toLocaleDateString('ar-SA-u-nu-latn', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',

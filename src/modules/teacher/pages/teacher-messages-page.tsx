@@ -374,8 +374,8 @@ export function TeacherMessagesPage() {
         title: 'تم إرسال الرسائل',
         description:
           result.failedCount > 0
-            ? `أُرسلت ${result.sentCount.toLocaleString('ar-SA')} رسائل، وتعذر إرسال ${result.failedCount.toLocaleString('ar-SA')}.`
-            : `تم إرسال ${result.sentCount.toLocaleString('ar-SA')} رسالة بنجاح.`,
+            ? `أُرسلت ${result.sentCount.toLocaleString('ar-SA-u-nu-latn')} رسائل، وتعذر إرسال ${result.failedCount.toLocaleString('ar-SA-u-nu-latn')}.`
+            : `تم إرسال ${result.sentCount.toLocaleString('ar-SA-u-nu-latn')} رسالة بنجاح.`,
       })
 
       await queryClient.invalidateQueries({ queryKey: ['teacher', 'message-stats-today'] })

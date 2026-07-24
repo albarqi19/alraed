@@ -84,7 +84,7 @@ function ReferralCard({ referral, onView, onCancel }: {
 
       <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700">
         <span className="text-xs text-slate-400 dark:text-slate-500">
-          {new Date(referral.created_at).toLocaleDateString('ar-SA')}
+          {new Date(referral.created_at).toLocaleDateString('ar-SA-u-nu-latn')}
         </span>
         <div className="flex gap-2">
           {referral.can_cancel && onCancel && (

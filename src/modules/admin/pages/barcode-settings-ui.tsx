@@ -255,7 +255,7 @@ function ConseqChip({ tone, label, value }: { tone: typeof TONES.green; label: s
       }}
     >
       {label}
-      <b>{value.toLocaleString('ar-SA')}</b>
+      <b>{value.toLocaleString('ar-SA-u-nu-latn')}</b>
     </span>
   )
 }

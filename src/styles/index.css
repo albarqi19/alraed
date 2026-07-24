@@ -19,11 +19,13 @@
     --color-text-primary: #333333;
     --color-text-secondary: #777777;
     --color-border: #D6CEC2;
-    --color-sidebar: #2F4E3A;
+    --color-sidebar: #264233;
     --color-header: #3F6F55;
     --color-sidebar-text: #FDFCFB;
     --radius-base: 14px;
-    font-family: "Tajawal", "Cairo", "Segoe UI", Tahoma, Arial, sans-serif;
+    /* الخط الموحّد: IBM Plex Sans Arabic (محمَّل في index.html) —
+       Tajawal السابق لم يكن محمَّلاً أصلاً فكان الموقع ينزلق لخط النظام */
+    font-family: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;

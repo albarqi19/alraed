@@ -63,12 +63,12 @@ function formatDate(value?: string | null) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value ?? '—'
   try {
-    return new Intl.DateTimeFormat('ar-SA', {
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', {
       dateStyle: 'medium',
       timeStyle: 'short',
     }).format(date)
   } catch {
-    return date.toLocaleString('ar-SA')
+    return date.toLocaleString('ar-SA-u-nu-latn')
   }
 }
 
@@ -506,7 +506,7 @@ export function AdminStudentsPage() {
   const pageHeader = (
     <WsHeader
       title="إدارة الطلاب"
-      badge={`${students.length.toLocaleString('ar-SA')} طالب`}
+      badge={`${students.length.toLocaleString('ar-SA-u-nu-latn')} طالب`}
       actions={
         <>
           <WsBtn icon={RefreshCcw} onClick={handleRefresh} disabled={isFetching}>
@@ -520,7 +520,7 @@ export function AdminStudentsPage() {
       facts={
         <>
           <WsFact icon={Users} label="إجمالي الطلاب:">
-            {students.length.toLocaleString('ar-SA')}
+            {students.length.toLocaleString('ar-SA-u-nu-latn')}
           </WsFact>
           <WsFact icon={GraduationCap} label="الصفوف:">
             {gradeOptions.length}
@@ -530,7 +530,7 @@ export function AdminStudentsPage() {
           </WsFact>
           {isFiltered && (
             <WsFact label="نتيجة الفلترة:">
-              {totalStudents.toLocaleString('ar-SA')}
+              {totalStudents.toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
           )}
         </>
@@ -591,7 +591,7 @@ export function AdminStudentsPage() {
           <WsSelect id="students-page-size" value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
             {PAGE_SIZE_OPTIONS.map((option) => (
               <option key={option} value={option}>
-                {option.toLocaleString('ar-SA')} طالب
+                {option.toLocaleString('ar-SA-u-nu-latn')} طالب
               </option>
             ))}
           </WsSelect>
@@ -624,7 +624,7 @@ export function AdminStudentsPage() {
                 <span style={{ fontSize: 12.5, fontWeight: selectedGrade === 'all' ? 700 : 600, color: 'var(--ws-text)' }}>
                   جميع الصفوف
                 </span>
-                <WsChip>{students.length.toLocaleString('ar-SA')}</WsChip>
+                <WsChip>{students.length.toLocaleString('ar-SA-u-nu-latn')}</WsChip>
               </button>
 
               {gradeOptions.map((grade) => {
@@ -653,7 +653,7 @@ export function AdminStudentsPage() {
                         {grade}
                       </span>
                       <WsChip tone={isSelected ? 'sky' : undefined}>
-                        {(gradeCounts.byGrade.get(grade) ?? 0).toLocaleString('ar-SA')}
+                        {(gradeCounts.byGrade.get(grade) ?? 0).toLocaleString('ar-SA-u-nu-latn')}
                       </WsChip>
                     </button>
 
@@ -672,7 +672,7 @@ export function AdminStudentsPage() {
                             tone={selectedClass === className ? 'sky' : undefined}
                             onClick={() => setSelectedClass(selectedClass === className ? 'all' : className)}
                           >
-                            {className} ({(gradeCounts.byGradeClass.get(`${grade}|${className}`) ?? 0).toLocaleString('ar-SA')})
+                            {className} ({(gradeCounts.byGradeClass.get(`${grade}|${className}`) ?? 0).toLocaleString('ar-SA-u-nu-latn')})
                           </WsChip>
                         ))}
                       </div>
@@ -695,7 +695,7 @@ export function AdminStudentsPage() {
                   : `${selectedGrade} / ${selectedClass}`
             }
             icon={Users}
-            count={totalStudents.toLocaleString('ar-SA')}
+            count={totalStudents.toLocaleString('ar-SA-u-nu-latn')}
             fill
           >
             {filteredStudents.length === 0 ? (
@@ -777,8 +777,8 @@ export function AdminStudentsPage() {
                     }}
                   >
                     <span style={{ fontSize: 11, color: 'var(--ws-text-2)' }}>
-                      عرض {(startIndex + 1).toLocaleString('ar-SA')} - {endIndex.toLocaleString('ar-SA')} من{' '}
-                      {totalStudents.toLocaleString('ar-SA')} طالب
+                      عرض {(startIndex + 1).toLocaleString('ar-SA-u-nu-latn')} - {endIndex.toLocaleString('ar-SA-u-nu-latn')} من{' '}
+                      {totalStudents.toLocaleString('ar-SA-u-nu-latn')} طالب
                     </span>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                       <WsBtn size="sm" onClick={() => setPage(1)} disabled={page === 1}>
@@ -788,7 +788,7 @@ export function AdminStudentsPage() {
                         السابق
                       </WsBtn>
                       <span style={{ fontSize: 11.5, fontWeight: 700, padding: '0 6px' }}>
-                        {page.toLocaleString('ar-SA')} / {totalPages.toLocaleString('ar-SA')}
+                        {page.toLocaleString('ar-SA-u-nu-latn')} / {totalPages.toLocaleString('ar-SA-u-nu-latn')}
                       </span>
                       <WsBtn size="sm" onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))} disabled={page === totalPages}>
                         التالي

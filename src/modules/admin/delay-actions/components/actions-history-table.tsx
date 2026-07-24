@@ -21,9 +21,9 @@ function formatDate(value?: string | null) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   try {
-    return new Intl.DateTimeFormat('ar-SA', { dateStyle: 'short' }).format(date)
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', { dateStyle: 'short' }).format(date)
   } catch {
-    return date.toLocaleDateString('ar-SA')
+    return date.toLocaleDateString('ar-SA-u-nu-latn')
   }
 }
 
@@ -211,7 +211,7 @@ export function ActionsHistoryTable({
         >
           <span style={{ fontSize: 11.5, color: 'var(--ws-text-2)' }}>
             عرض {(meta.current_page - 1) * meta.per_page + 1} -{' '}
-            {Math.min(meta.current_page * meta.per_page, meta.total)} من {meta.total.toLocaleString('ar-SA')}
+            {Math.min(meta.current_page * meta.per_page, meta.total)} من {meta.total.toLocaleString('ar-SA-u-nu-latn')}
           </span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <WsBtn
@@ -223,7 +223,7 @@ export function ActionsHistoryTable({
               السابق
             </WsBtn>
             <span style={{ fontSize: 11.5, fontWeight: 700 }}>
-              {meta.current_page.toLocaleString('ar-SA')} / {meta.last_page.toLocaleString('ar-SA')}
+              {meta.current_page.toLocaleString('ar-SA-u-nu-latn')} / {meta.last_page.toLocaleString('ar-SA-u-nu-latn')}
             </span>
             <WsBtn
               size="sm"

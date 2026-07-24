@@ -61,9 +61,9 @@ function formatDate(value?: string | null, options: Intl.DateTimeFormatOptions =
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   try {
-    return new Intl.DateTimeFormat('ar-SA', options).format(date)
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', options).format(date)
   } catch {
-    return date.toLocaleString('ar-SA', options)
+    return date.toLocaleString('ar-SA-u-nu-latn', options)
   }
 }
 
@@ -72,9 +72,9 @@ function formatTime(value?: string | null) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   try {
-    return new Intl.DateTimeFormat('ar-SA', { hour: '2-digit', minute: '2-digit' }).format(date)
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' }).format(date)
   } catch {
-    return date.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
+    return date.toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' })
   }
 }
 
@@ -327,9 +327,9 @@ function LateArrivalFormDialog({
                   background: 'var(--ws-surface-2)',
                 }}
               >
-                <WsFactRow label="المحددون">{selectedCount.toLocaleString('ar-SA')}</WsFactRow>
-                <WsFactRow label="النتائج الحالية">{filteredStudents.length.toLocaleString('ar-SA')}</WsFactRow>
-                <WsFactRow label="إجمالي القائمة">{(students?.length ?? 0).toLocaleString('ar-SA')}</WsFactRow>
+                <WsFactRow label="المحددون">{selectedCount.toLocaleString('ar-SA-u-nu-latn')}</WsFactRow>
+                <WsFactRow label="النتائج الحالية">{filteredStudents.length.toLocaleString('ar-SA-u-nu-latn')}</WsFactRow>
+                <WsFactRow label="إجمالي القائمة">{(students?.length ?? 0).toLocaleString('ar-SA-u-nu-latn')}</WsFactRow>
               </WsFactsList>
             </div>
 
@@ -341,7 +341,7 @@ function LateArrivalFormDialog({
                   <WsBtn size="sm" onClick={handleToggleFiltered} disabled={filteredIds.length === 0 || isSubmitting}>
                     {allFilteredSelected ? 'إلغاء تحديد النتائج' : 'تحديد كل النتائج'}
                   </WsBtn>
-                  <WsChip>{selectedCount.toLocaleString('ar-SA')} محدد</WsChip>
+                  <WsChip>{selectedCount.toLocaleString('ar-SA-u-nu-latn')} محدد</WsChip>
                 </span>
               </div>
 
@@ -404,7 +404,7 @@ function LateArrivalFormDialog({
                         >
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                             <WsChip tone="green">{className}</WsChip>
-                            <span className="ws-fact">{classStudents.length.toLocaleString('ar-SA')} طالب</span>
+                            <span className="ws-fact">{classStudents.length.toLocaleString('ar-SA-u-nu-latn')} طالب</span>
                           </span>
                           <WsBtn size="sm" onClick={() => handleToggleClass(className)} disabled={isSubmitting}>
                             {classSelected ? 'إلغاء تحديد الفصل' : 'تحديد الفصل'}
@@ -608,21 +608,21 @@ export function AdminLateArrivalsPage() {
             {statsQuery.isSuccess && (
               <>
                 <WsFact icon={Timer} label="تأخر اليوم:">
-                  {statsQuery.data.today.toLocaleString('ar-SA')}
+                  {statsQuery.data.today.toLocaleString('ar-SA-u-nu-latn')}
                 </WsFact>
                 <WsFact icon={ClipboardList} label="إجمالي الأسبوع:">
-                  {statsQuery.data.week.toLocaleString('ar-SA')}
+                  {statsQuery.data.week.toLocaleString('ar-SA-u-nu-latn')}
                 </WsFact>
                 <WsFact icon={MessageSquare} label="رسائل مرسلة اليوم:">
-                  {statsQuery.data.messages_sent.toLocaleString('ar-SA')}
+                  {statsQuery.data.messages_sent.toLocaleString('ar-SA-u-nu-latn')}
                 </WsFact>
               </>
             )}
             <WsFact icon={Clock3} label="بانتظار الإشعار:">
-              {summaries.pendingMessages.toLocaleString('ar-SA')}
+              {summaries.pendingMessages.toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             <WsFact icon={StickyNote} label="بها ملاحظات:">
-              {summaries.noteCount.toLocaleString('ar-SA')}
+              {summaries.noteCount.toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
           </>
         }
@@ -687,7 +687,7 @@ export function AdminLateArrivalsPage() {
 
       <WsLayout>
         <WsMain>
-          <WsBlock title="حالات التأخر" icon={Timer} count={filteredRecords.length.toLocaleString('ar-SA')} fill>
+          <WsBlock title="حالات التأخر" icon={Timer} count={filteredRecords.length.toLocaleString('ar-SA-u-nu-latn')} fill>
             {isLoading ? (
               <WsEmpty loading>جاري تحميل بيانات التأخر...</WsEmpty>
             ) : filteredRecords.length === 0 ? (

@@ -48,9 +48,9 @@ function ExcuseCard({ excuse }: { excuse: DelayExcuse }) {
       )}
 
       <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700 text-xs text-slate-400 dark:text-slate-500">
-        <span>تقديم: {excuse.submitted_at ? new Date(excuse.submitted_at).toLocaleDateString('ar-SA') : '-'}</span>
+        <span>تقديم: {excuse.submitted_at ? new Date(excuse.submitted_at).toLocaleDateString('ar-SA-u-nu-latn') : '-'}</span>
         {excuse.reviewed_at && (
-          <span>مراجعة: {new Date(excuse.reviewed_at).toLocaleDateString('ar-SA')}</span>
+          <span>مراجعة: {new Date(excuse.reviewed_at).toLocaleDateString('ar-SA-u-nu-latn')}</span>
         )}
       </div>
     </div>

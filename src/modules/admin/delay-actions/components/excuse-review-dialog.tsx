@@ -86,7 +86,7 @@ export function ExcuseReviewDialog({
         {excuse.national_id && <WsFactRow label="الهوية">{excuse.national_id}</WsFactRow>}
         {excuse.teacher_phone && <WsFactRow label="الجوال">{excuse.teacher_phone}</WsFactRow>}
         <WsFactRow label="تاريخ التأخير">{excuse.delay_date_formatted}</WsFactRow>
-        <WsFactRow label="تاريخ التقديم">{new Date(excuse.submitted_at).toLocaleString('ar-SA')}</WsFactRow>
+        <WsFactRow label="تاريخ التقديم">{new Date(excuse.submitted_at).toLocaleString('ar-SA-u-nu-latn')}</WsFactRow>
       </WsFactsList>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
@@ -126,7 +126,7 @@ export function ExcuseReviewDialog({
         <WsAlert tone={excuse.status === 'approved' ? 'success' : 'error'} boxed>
           <span>
             <b>{excuse.status === 'approved' ? 'تم القبول' : 'تم الرفض'}</b> بواسطة {excuse.reviewer_name} بتاريخ{' '}
-            {new Date(excuse.reviewed_at).toLocaleString('ar-SA')}
+            {new Date(excuse.reviewed_at).toLocaleString('ar-SA-u-nu-latn')}
             {excuse.review_notes ? ` — الملاحظات: ${excuse.review_notes}` : ''}
           </span>
         </WsAlert>

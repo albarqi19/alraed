@@ -528,7 +528,7 @@ function BehaviorSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                                                 {v.status_label}
                                             </span>
                                             <span className="text-xs text-slate-400 dark:text-slate-500">
-                                                {new Date(v.incident_date).toLocaleDateString('ar-SA')}
+                                                {new Date(v.incident_date).toLocaleDateString('ar-SA-u-nu-latn')}
                                             </span>
                                         </div>
                                     </div>

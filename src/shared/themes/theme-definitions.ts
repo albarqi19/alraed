@@ -86,7 +86,7 @@ export const themes: Record<string, Theme> = {
       textPrimary: '#333333',
       textSecondary: '#777777',
       border: '#D6CEC2',
-      sidebar: '#2F4E3A',
+      sidebar: '#264233',
       header: '#3F6F55',
       sidebarText: '#FDFCFB',
     },

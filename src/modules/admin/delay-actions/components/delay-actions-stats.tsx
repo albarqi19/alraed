@@ -19,7 +19,7 @@ function StatCard({ label, value, icon, tone }: StatCardProps) {
         <div className="rounded-xl bg-white/50 p-2">{icon}</div>
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">{label}</p>
-          <p className="mt-1 text-2xl font-bold">{value.toLocaleString('ar-SA')}</p>
+          <p className="mt-1 text-2xl font-bold">{value.toLocaleString('ar-SA-u-nu-latn')}</p>
         </div>
       </div>
     </article>

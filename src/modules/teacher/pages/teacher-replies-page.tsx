@@ -78,7 +78,7 @@ export function TeacherRepliesPage() {
 
     const formatDate = (dateStr: string) => {
         const date = new Date(dateStr)
-        return date.toLocaleDateString('ar-SA', {
+        return date.toLocaleDateString('ar-SA-u-nu-latn', {
             year: 'numeric',
             month: 'short',
             day: 'numeric',

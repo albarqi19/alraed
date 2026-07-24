@@ -342,13 +342,13 @@ export function AdminStudentCaseDetailsPage() {
               <WsFactRow label="التصنيف"><ToneChip tone={catTone}>{caseData.category}</ToneChip></WsFactRow>
               <WsFactRow label="الحالة"><ToneChip tone={statusMeta.tone}>{statusMeta.label}</ToneChip></WsFactRow>
               <WsFactRow label="الأولوية"><SeverityBadge severity={caseData.severity as Severity} /></WsFactRow>
-              <WsFactRow label="تاريخ الفتح">{new Date(caseData.opened_at).toLocaleDateString('ar-SA')}</WsFactRow>
+              <WsFactRow label="تاريخ الفتح">{new Date(caseData.opened_at).toLocaleDateString('ar-SA-u-nu-latn')}</WsFactRow>
               {caseData.closed_at && (
-                <WsFactRow label="تاريخ الإغلاق">{new Date(caseData.closed_at).toLocaleDateString('ar-SA')}</WsFactRow>
+                <WsFactRow label="تاريخ الإغلاق">{new Date(caseData.closed_at).toLocaleDateString('ar-SA-u-nu-latn')}</WsFactRow>
               )}
               {caseData.opened_by?.name && <WsFactRow label="فتحها">{caseData.opened_by.name}</WsFactRow>}
               {caseData.last_activity_at && (
-                <WsFactRow label="آخر نشاط">{new Date(caseData.last_activity_at).toLocaleDateString('ar-SA')}</WsFactRow>
+                <WsFactRow label="آخر نشاط">{new Date(caseData.last_activity_at).toLocaleDateString('ar-SA-u-nu-latn')}</WsFactRow>
               )}
             </WsFactsList>
           </WsBlock>
@@ -452,7 +452,7 @@ export function AdminStudentCaseDetailsPage() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                               <ToneChip tone={actionMeta(lastAction.action_type).tone}>{lastAction.action_type}</ToneChip>
                               <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>
-                                {new Date(lastAction.created_at).toLocaleString('ar-SA')}
+                                {new Date(lastAction.created_at).toLocaleString('ar-SA-u-nu-latn')}
                               </span>
                             </div>
                             <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--ws-text-2)' }}>{lastAction.notes}</p>
@@ -471,7 +471,7 @@ export function AdminStudentCaseDetailsPage() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
                               <FollowupTimingChip scheduledFor={nextFollowup.scheduled_for} />
                               <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>
-                                {new Date(nextFollowup.scheduled_for).toLocaleString('ar-SA')}
+                                {new Date(nextFollowup.scheduled_for).toLocaleString('ar-SA-u-nu-latn')}
                               </span>
                             </div>
                           </>
@@ -559,7 +559,7 @@ export function AdminStudentCaseDetailsPage() {
                                 <div className="ws-timeline__card-head">
                                   <ToneChip tone={meta.tone}>{action.action_type}</ToneChip>
                                   <span style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>
-                                    {new Date(action.created_at).toLocaleString('ar-SA')}
+                                    {new Date(action.created_at).toLocaleString('ar-SA-u-nu-latn')}
                                   </span>
                                 </div>
                                 <p style={{ margin: 0, padding: '9px 12px', fontSize: 12, lineHeight: 1.8 }}>{action.notes}</p>
@@ -667,7 +667,7 @@ export function AdminStudentCaseDetailsPage() {
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <p style={{ margin: 0, fontWeight: 700, fontSize: 12.5 }}>{followup.title}</p>
                                 <p style={{ margin: '3px 0 0', fontSize: 11, color: 'var(--ws-text-2)' }}>
-                                  {new Date(followup.scheduled_for).toLocaleString('ar-SA')}
+                                  {new Date(followup.scheduled_for).toLocaleString('ar-SA-u-nu-latn')}
                                 </p>
                                 {followup.notes && (
                                   <p style={{ margin: '5px 0 0', fontSize: 11.5, color: 'var(--ws-text-2)' }}>{followup.notes}</p>

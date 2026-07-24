@@ -62,7 +62,7 @@ const subStatusMeta = (status?: string | null) =>
   SUB_STATUS_META[status ?? ''] ?? { label: status || 'غير محدد', tone: TONES.gray }
 
 function formatCurrency(value: number) {
-  return new Intl.NumberFormat('ar-SA', {
+  return new Intl.NumberFormat('ar-SA-u-nu-latn', {
     style: 'currency',
     currency: 'SAR',
     maximumFractionDigits: 0,
@@ -72,7 +72,7 @@ function formatCurrency(value: number) {
 function formatDate(value?: string | null) {
   if (!value) return '—'
   try {
-    return new Date(value).toLocaleDateString('ar-SA', { day: 'numeric', month: 'long', year: 'numeric' })
+    return new Date(value).toLocaleDateString('ar-SA-u-nu-latn', { day: 'numeric', month: 'long', year: 'numeric' })
   } catch {
     return value
   }

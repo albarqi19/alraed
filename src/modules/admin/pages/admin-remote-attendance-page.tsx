@@ -133,16 +133,16 @@ export default function AdminRemoteAttendancePage() {
           dayDetails ? (
             <>
               <WsFact icon={Users} label="المعلمون الكلي:">
-                {dayDetails.stats.total_teachers.toLocaleString('ar-SA')}
+                {dayDetails.stats.total_teachers.toLocaleString('ar-SA-u-nu-latn')}
               </WsFact>
               <WsFact icon={CloudUpload} label="رفعوا الملفات:">
-                {dayDetails.stats.teachers_uploaded.toLocaleString('ar-SA')}
+                {dayDetails.stats.teachers_uploaded.toLocaleString('ar-SA-u-nu-latn')}
               </WsFact>
               <WsFact icon={CloudOff} label="لم يرفعوا:">
-                {dayDetails.stats.teachers_not_uploaded.toLocaleString('ar-SA')}
+                {dayDetails.stats.teachers_not_uploaded.toLocaleString('ar-SA-u-nu-latn')}
               </WsFact>
               <WsFact icon={UserRound} label="إجمالي المشاركين:">
-                {dayDetails.stats.total_participants.toLocaleString('ar-SA')}
+                {dayDetails.stats.total_participants.toLocaleString('ar-SA-u-nu-latn')}
               </WsFact>
             </>
           ) : undefined
@@ -237,7 +237,7 @@ export default function AdminRemoteAttendancePage() {
           <WsBlock
             title="المعلمون"
             icon={Users}
-            count={teacherSummaries.length.toLocaleString('ar-SA')}
+            count={teacherSummaries.length.toLocaleString('ar-SA-u-nu-latn')}
             fill
             scroll
           >
@@ -282,7 +282,7 @@ export default function AdminRemoteAttendancePage() {
                         </span>
                         {teacher.total_participants > 0 && (
                           <span className="ws-pick__sub">
-                            {teacher.total_participants.toLocaleString('ar-SA')} مشارك
+                            {teacher.total_participants.toLocaleString('ar-SA-u-nu-latn')} مشارك
                           </span>
                         )}
                       </span>
@@ -422,7 +422,7 @@ function UploadDetailsModal({
 }) {
   const formatTime = (dt: string | null) => {
     if (!dt) return '-'
-    return new Date(dt).toLocaleTimeString('ar-SA', {
+    return new Date(dt).toLocaleTimeString('ar-SA-u-nu-latn', {
       hour: '2-digit',
       minute: '2-digit',
     })

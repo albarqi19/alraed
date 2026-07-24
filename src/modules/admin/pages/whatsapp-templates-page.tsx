@@ -408,10 +408,10 @@ export function WhatsAppTemplatesPage() {
         facts={
           <>
             <WsFact icon={FileText} label="الإجمالي:">
-              {templates.length.toLocaleString('ar-SA')}
+              {templates.length.toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
-            <WsFact label="مفعّلة:">{activeCount.toLocaleString('ar-SA')}</WsFact>
-            <WsFact label="موقوفة:">{inactiveCount.toLocaleString('ar-SA')}</WsFact>
+            <WsFact label="مفعّلة:">{activeCount.toLocaleString('ar-SA-u-nu-latn')}</WsFact>
+            <WsFact label="موقوفة:">{inactiveCount.toLocaleString('ar-SA-u-nu-latn')}</WsFact>
           </>
         }
       />
@@ -427,7 +427,7 @@ export function WhatsAppTemplatesPage() {
               placeholder="ابحث بالاسم أو التصنيف أو النص"
             />
           </div>
-          <WsBlock title="القائمة" count={filteredTemplates.length.toLocaleString('ar-SA')} fill scroll>
+          <WsBlock title="القائمة" count={filteredTemplates.length.toLocaleString('ar-SA-u-nu-latn')} fill scroll>
             {templatesQuery.isLoading ? (
               <WsEmpty loading>جاري تحميل القوالب...</WsEmpty>
             ) : filteredTemplates.length === 0 ? (

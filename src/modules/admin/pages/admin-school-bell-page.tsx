@@ -626,7 +626,7 @@ function CurrentTime() {
 
   return (
     <span style={{ fontFamily: 'IBM Plex Sans Arabic, sans-serif' }}>
-      {time.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+      {time.toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
     </span>
   )
 }

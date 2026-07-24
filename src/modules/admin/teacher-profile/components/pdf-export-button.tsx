@@ -137,7 +137,7 @@ export function PdfExportButton({ summary, printRef }: PdfExportButtonProps) {
         </div>
 
         <div class="footer">
-          تم إنشاء هذا التقرير بتاريخ ${new Date().toLocaleDateString('ar-SA')} - نظام الحضور والغياب
+          تم إنشاء هذا التقرير بتاريخ ${new Date().toLocaleDateString('ar-SA-u-nu-latn')} - نظام الحضور والغياب
         </div>
       </body>
       </html>

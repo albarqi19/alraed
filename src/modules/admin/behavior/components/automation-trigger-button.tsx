@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import {
   Bot,
   CheckCircle2,
@@ -17,6 +17,7 @@ interface AutomationTriggerButtonProps {
   pointsToDeduct?: number | null
   disabled?: boolean
   onExecute?: () => Promise<void>
+  style?: CSSProperties
 }
 
 // خريطة الأيقونات حسب نوع الـ trigger
@@ -63,6 +64,7 @@ export function AutomationTriggerButton({
   pointsToDeduct,
   disabled = false,
   onExecute,
+  style,
 }: AutomationTriggerButtonProps) {
   const [isExecuting, setIsExecuting] = useState(false)
   const [isExecuted, setIsExecuted] = useState(false)
@@ -119,6 +121,7 @@ export function AutomationTriggerButton({
       onClick={handleClick}
       disabled={disabled || isExecuting || isExecuted}
       className={`mt-2 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${colorClass}`}
+      style={style}
       title={`أتمتة: ${systemTriggerLabel}`}
     >
       {isExecuting ? (

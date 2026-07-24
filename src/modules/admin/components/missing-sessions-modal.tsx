@@ -246,7 +246,7 @@ export function MissingSessionsModal({ open, onClose }: MissingSessionsModalProp
         <footer className="border-t border-slate-200 px-6 py-4">
           <div className="flex items-center justify-between">
             <p className="text-xs text-muted">
-              آخر تحديث: {stats?.timestamp ? new Date(stats.timestamp).toLocaleTimeString('ar-SA') : '—'}
+              آخر تحديث: {stats?.timestamp ? new Date(stats.timestamp).toLocaleTimeString('ar-SA-u-nu-latn') : '—'}
             </p>
             <div className="flex gap-2">
               <button

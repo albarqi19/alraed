@@ -38,7 +38,7 @@ export function InstallPWAPrompt() {
     const promptDismissed = localStorage.getItem('pwa_prompt_dismissed')
     
     console.log('📦 PWA Prompt Status:', {
-      lastShown: lastShown ? new Date(parseInt(lastShown)).toLocaleString('ar-SA') : 'لم يظهر بعد',
+      lastShown: lastShown ? new Date(parseInt(lastShown)).toLocaleString('ar-SA-u-nu-latn') : 'لم يظهر بعد',
       promptDismissed,
       willShow: promptDismissed !== 'true'
     })

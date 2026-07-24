@@ -210,7 +210,7 @@ export function GuardianStoreModal({ isOpen, onClose }: GuardianStoreModalProps)
                                         {order.created_at && (
                                             <p className="mt-2 flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
                                                 <Clock className="h-3 w-3" />
-                                                {new Date(order.created_at).toLocaleDateString('ar-SA')}
+                                                {new Date(order.created_at).toLocaleDateString('ar-SA-u-nu-latn')}
                                             </p>
                                         )}
                                     </div>

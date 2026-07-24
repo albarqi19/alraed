@@ -1,14 +1,15 @@
-import { Badge } from '@/components/ui/badge'
-import { EmptyState } from './empty-state'
 import { CalendarCheck } from 'lucide-react'
+import { TONES, ToneChip, type Tone } from '@/shared/workspace'
+import { EmptyState } from './empty-state'
+import { ProfileTable, StatGrid, StatMini } from './profile-ui'
 import type { TeacherAttendanceResponse } from '../types'
 
-const STATUS_MAP: Record<string, { label: string; className: string }> = {
-  on_time: { label: 'في الوقت', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
-  delayed: { label: 'متأخر', className: 'border-amber-200 bg-amber-50 text-amber-700' },
-  excused: { label: 'معذور', className: 'border-blue-200 bg-blue-50 text-blue-700' },
-  absent: { label: 'غائب', className: 'border-slate-200 bg-slate-50 text-slate-700' },
-  unknown: { label: 'غير محدد', className: 'border-slate-200 bg-slate-50 text-slate-700' },
+const STATUS_MAP: Record<string, { label: string; tone: Tone }> = {
+  on_time: { label: 'في الوقت', tone: TONES.green },
+  delayed: { label: 'متأخر', tone: TONES.amber },
+  excused: { label: 'معذور', tone: TONES.sky },
+  absent: { label: 'غائب', tone: TONES.red },
+  unknown: { label: 'غير محدد', tone: TONES.gray },
 }
 
 const LOGIN_METHOD_MAP: Record<string, string> = {
@@ -36,76 +37,62 @@ export function AttendanceSection({ data }: AttendanceSectionProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* ملخص */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-        {[
-          { label: 'إجمالي', value: data.summary.total, color: 'slate' },
-          { label: 'في الوقت', value: data.summary.on_time, color: 'blue' },
-          { label: 'حاضر', value: data.summary.present, color: 'emerald' },
-          { label: 'متأخر', value: data.summary.delayed, color: 'amber' },
-          { label: 'غائب', value: data.summary.absent, color: 'slate' },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            className={`rounded-xl border border-${stat.color}-100 bg-${stat.color}-50/50 p-3 text-center`}
-          >
-            <p className="text-xl font-bold text-slate-900">{stat.value}</p>
-            <p className="text-xs text-slate-500">{stat.label}</p>
-          </div>
-        ))}
-      </div>
+      <StatGrid>
+        <StatMini label="إجمالي" value={data.summary.total} />
+        <StatMini label="في الوقت" value={data.summary.on_time} tone={TONES.green} />
+        <StatMini label="حاضر" value={data.summary.present} tone={TONES.sky} />
+        <StatMini label="متأخر" value={data.summary.delayed} tone={TONES.amber} />
+        <StatMini label="غائب" value={data.summary.absent} tone={TONES.red} />
+      </StatGrid>
 
       {/* جدول */}
-      <div className="overflow-hidden rounded-xl border border-slate-200">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-slate-100 bg-slate-50/80">
-              <th className="px-3 py-2.5 text-right font-semibold text-slate-600">التاريخ</th>
-              <th className="px-3 py-2.5 text-right font-semibold text-slate-600">الحالة</th>
-              <th className="px-3 py-2.5 text-right font-semibold text-slate-600">الحضور</th>
-              <th className="px-3 py-2.5 text-right font-semibold text-slate-600">الانصراف</th>
-              <th className="px-3 py-2.5 text-right font-semibold text-slate-600">التأخر</th>
-              <th className="px-3 py-2.5 text-right font-semibold text-slate-600">الطريقة</th>
-              <th className="px-3 py-2.5 text-right font-semibold text-slate-600">سبب الغياب</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.records.map((record) => {
-              const statusInfo = STATUS_MAP[record.delay_status] ?? STATUS_MAP.unknown
-              return (
-                <tr key={record.id} className="border-b border-slate-50 transition hover:bg-slate-50/50">
-                  <td className="px-3 py-2 font-medium text-slate-700">
-                    {new Date(record.attendance_date).toLocaleDateString('ar-SA', { weekday: 'short', month: 'short', day: 'numeric' })}
-                  </td>
-                  <td className="px-3 py-2">
-                    <Badge variant="outline" className={statusInfo.className}>
-                      {statusInfo.label}
-                    </Badge>
-                  </td>
-                  <td className="px-3 py-2 text-slate-600">
-                    {record.check_in_time ? new Date(record.check_in_time).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }) : '-'}
-                  </td>
-                  <td className="px-3 py-2 text-slate-600">
-                    {record.check_out_time ? new Date(record.check_out_time).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }) : '-'}
-                  </td>
-                  <td className="px-3 py-2">
-                    {record.delay_minutes && record.delay_minutes > 0 ? (
-                      <span className="font-medium text-amber-600">{record.delay_minutes} د</span>
-                    ) : '-'}
-                  </td>
-                  <td className="px-3 py-2 text-slate-500">
-                    {LOGIN_METHOD_MAP[record.login_method ?? ''] ?? '-'}
-                  </td>
-                  <td className="px-3 py-2 text-slate-500 text-xs">
-                    {record.absence_reason_label ?? '-'}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+      <ProfileTable>
+        <thead>
+          <tr>
+            <th>التاريخ</th>
+            <th>الحالة</th>
+            <th>الحضور</th>
+            <th>الانصراف</th>
+            <th>التأخر</th>
+            <th>الطريقة</th>
+            <th>سبب الغياب</th>
+          </tr>
+        </thead>
+        <tbody className="ws-tbl-rise">
+          {data.records.map((record) => {
+            const statusInfo = STATUS_MAP[record.delay_status] ?? STATUS_MAP.unknown
+            return (
+              <tr key={record.id}>
+                <td style={{ fontWeight: 600 }}>
+                  {new Date(record.attendance_date).toLocaleDateString('ar-SA-u-nu-latn', { weekday: 'short', month: 'short', day: 'numeric' })}
+                </td>
+                <td>
+                  <ToneChip tone={statusInfo.tone}>{statusInfo.label}</ToneChip>
+                </td>
+                <td>
+                  {record.check_in_time ? new Date(record.check_in_time).toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' }) : '-'}
+                </td>
+                <td>
+                  {record.check_out_time ? new Date(record.check_out_time).toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' }) : '-'}
+                </td>
+                <td>
+                  {record.delay_minutes && record.delay_minutes > 0 ? (
+                    <span style={{ fontWeight: 700, color: TONES.amber.tx }}>{record.delay_minutes} د</span>
+                  ) : '-'}
+                </td>
+                <td className="ws-cell-sub">
+                  {LOGIN_METHOD_MAP[record.login_method ?? ''] ?? '-'}
+                </td>
+                <td className="ws-cell-sub">
+                  {record.absence_reason_label ?? '-'}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </ProfileTable>
     </div>
   )
 }

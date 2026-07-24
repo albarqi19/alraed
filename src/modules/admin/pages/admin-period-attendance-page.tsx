@@ -189,10 +189,10 @@ export function AdminPeriodAttendancePage() {
         facts={
           <>
             <WsFact icon={Grid3X3} label="الفصول:">
-              {(grid?.classes.length ?? 0).toLocaleString('ar-SA')}
+              {(grid?.classes.length ?? 0).toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             <WsFact icon={BellRing} label="تنبيهات جديدة:">
-              {(alerts?.counts.new ?? 0).toLocaleString('ar-SA')}
+              {(alerts?.counts.new ?? 0).toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             {grid?.day_name && (
               <WsFact icon={CalendarDays} label="اليوم:">
@@ -241,7 +241,7 @@ export function AdminPeriodAttendancePage() {
               طلاب حاضرون في التحضير اليومي لكنهم غائبون في حصة — تحقق من وضعهم.
             </p>
           </WsBlock>
-          <WsBlock title="بانتظار الاطلاع" count={newAlerts.length.toLocaleString('ar-SA')} fill scroll>
+          <WsBlock title="بانتظار الاطلاع" count={newAlerts.length.toLocaleString('ar-SA-u-nu-latn')} fill scroll>
             {alertsQuery.isLoading ? (
               <WsEmpty loading>جاري تحميل التنبيهات...</WsEmpty>
             ) : newAlerts.length === 0 ? (
@@ -279,7 +279,7 @@ export function AdminPeriodAttendancePage() {
 
         {/* الوسط: شبكة الفصول × الحصص */}
         <WsMain>
-          <WsBlock title="شبكة التحضير" icon={Grid3X3} count={(grid?.classes.length ?? 0).toLocaleString('ar-SA')} fill>
+          <WsBlock title="شبكة التحضير" icon={Grid3X3} count={(grid?.classes.length ?? 0).toLocaleString('ar-SA-u-nu-latn')} fill>
             {gridQuery.isLoading ? (
               <WsEmpty loading>جاري تحميل الشبكة...</WsEmpty>
             ) : !grid || grid.classes.length === 0 ? (
@@ -387,7 +387,7 @@ export function AdminPeriodAttendancePage() {
 
               <WsBlock
                 title="طلاب الحصة"
-                count={detailsQuery.data.students.length.toLocaleString('ar-SA')}
+                count={detailsQuery.data.students.length.toLocaleString('ar-SA-u-nu-latn')}
                 fill
                 scroll
               >

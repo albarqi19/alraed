@@ -253,12 +253,12 @@ export function GuidanceCaseDetailsPage() {
                 </div>
                 <div>
                   <span className="text-gray-600">تاريخ الفتح:</span>
-                  <p className="font-medium">{new Date(caseData.opened_at).toLocaleDateString('ar-SA')}</p>
+                  <p className="font-medium">{new Date(caseData.opened_at).toLocaleDateString('ar-SA-u-nu-latn')}</p>
                 </div>
                 {caseData.closed_at && (
                   <div>
                     <span className="text-gray-600">تاريخ الإغلاق:</span>
-                    <p className="font-medium">{new Date(caseData.closed_at).toLocaleDateString('ar-SA')}</p>
+                    <p className="font-medium">{new Date(caseData.closed_at).toLocaleDateString('ar-SA-u-nu-latn')}</p>
                   </div>
                 )}
                 {caseData.tags && caseData.tags.length > 0 && (
@@ -368,7 +368,7 @@ export function GuidanceCaseDetailsPage() {
                           <div className="flex items-start justify-between mb-2">
                             <span className="font-medium text-indigo-600">{action.action_type}</span>
                             <span className="text-xs text-gray-500">
-                              {new Date(action.created_at).toLocaleString('ar-SA')}
+                              {new Date(action.created_at).toLocaleString('ar-SA-u-nu-latn')}
                             </span>
                           </div>
                           <p className="text-gray-700 text-sm">{action.notes}</p>
@@ -437,7 +437,7 @@ export function GuidanceCaseDetailsPage() {
                             <div className="flex-1">
                               <h4 className="font-medium">{followup.title}</h4>
                               <p className="text-xs text-gray-500 mt-1">
-                                {new Date(followup.scheduled_for).toLocaleString('ar-SA')}
+                                {new Date(followup.scheduled_for).toLocaleString('ar-SA-u-nu-latn')}
                               </p>
                             </div>
                             <div className="flex items-center gap-2">

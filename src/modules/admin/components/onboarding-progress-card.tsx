@@ -55,7 +55,7 @@ export function OnboardingProgressCard() {
       isComplete: stats.students_count > 0,
       link: '/admin/import',
       description: stats.students_count > 0
-        ? `${stats.students_count.toLocaleString('ar-SA')} طالب`
+        ? `${stats.students_count.toLocaleString('ar-SA-u-nu-latn')} طالب`
         : 'لم يتم إضافة طلاب',
     },
     {
@@ -73,7 +73,7 @@ export function OnboardingProgressCard() {
       isComplete: stats.schedules_count > 0,
       link: '/admin/schedules',
       description: stats.schedules_count > 0
-        ? `${stats.schedules_count.toLocaleString('ar-SA')} جدول`
+        ? `${stats.schedules_count.toLocaleString('ar-SA-u-nu-latn')} جدول`
         : 'لم يتم إنشاء جداول',
     },
     {
@@ -83,7 +83,7 @@ export function OnboardingProgressCard() {
       isComplete: stats.teachers_count > 0,
       link: '/admin/teachers',
       description: stats.teachers_count > 0
-        ? `${stats.teachers_count.toLocaleString('ar-SA')} معلم`
+        ? `${stats.teachers_count.toLocaleString('ar-SA-u-nu-latn')} معلم`
         : 'لم يتم إضافة معلمين',
     },
     {

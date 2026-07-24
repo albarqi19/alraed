@@ -413,7 +413,7 @@ export function AdminBarcodeSettingsPage() {
                       <p style={{ margin: '4px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
                         {device.device_type ?? 'بوابة'} ·{' '}
                         {device.last_seen_at
-                          ? `آخر اتصال ${new Date(device.last_seen_at).toLocaleString('ar-SA', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}`
+                          ? `آخر اتصال ${new Date(device.last_seen_at).toLocaleString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}`
                           : 'لم تتصل بعد'}
                       </p>
                       <div style={{ display: 'flex', gap: 4, marginTop: 8, flexWrap: 'wrap' }}>

@@ -91,12 +91,12 @@ function formatDateTime(value?: string | null) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   try {
-    return new Intl.DateTimeFormat('ar-SA', {
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', {
       dateStyle: 'medium',
       timeStyle: 'short',
     }).format(date)
   } catch {
-    return date.toLocaleString('ar-SA')
+    return date.toLocaleString('ar-SA-u-nu-latn')
   }
 }
 
@@ -104,7 +104,7 @@ function formatStatisticValue(value: unknown) {
   if (value == null) return '0'
   const numericValue = typeof value === 'number' ? value : Number(value)
   if (!Number.isFinite(numericValue)) return '0'
-  return numericValue.toLocaleString('ar-SA')
+  return numericValue.toLocaleString('ar-SA-u-nu-latn')
 }
 
 const QUEUE_STATUS_META: Record<string, { tone: WsChipTone; label: string }> = {
@@ -492,7 +492,7 @@ export function WhatsappHubPage() {
             )}
           </WsBlock>
 
-          <WsBlock title="قائمة الانتظار" icon={Inbox} count={pendingQueueCount.toLocaleString('ar-SA')} fill padded>
+          <WsBlock title="قائمة الانتظار" icon={Inbox} count={pendingQueueCount.toLocaleString('ar-SA-u-nu-latn')} fill padded>
             <p style={{ margin: '0 0 10px', fontSize: 11, lineHeight: 1.8, color: 'var(--ws-text-2)' }}>
               رسائل بانتظار الإرسال عبر القناة — أرسلها دفعة واحدة أو راجعها من تبويب «قائمة الانتظار».
             </p>
@@ -634,7 +634,7 @@ export function WhatsappHubPage() {
                     }}
                   >
                     <span style={{ fontSize: 11, color: 'var(--ws-text-2)' }}>
-                      إجمالي {historyTable.getFilteredRowModel().rows.length.toLocaleString('ar-SA')} رسالة — انقر أي صف
+                      إجمالي {historyTable.getFilteredRowModel().rows.length.toLocaleString('ar-SA-u-nu-latn')} رسالة — انقر أي صف
                       للتفاصيل
                     </span>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
@@ -645,8 +645,8 @@ export function WhatsappHubPage() {
                         السابق
                       </WsBtn>
                       <span style={{ fontSize: 11.5, fontWeight: 700, padding: '0 6px' }}>
-                        {(historyTable.getState().pagination.pageIndex + 1).toLocaleString('ar-SA')} /{' '}
-                        {Math.max(1, historyTable.getPageCount()).toLocaleString('ar-SA')}
+                        {(historyTable.getState().pagination.pageIndex + 1).toLocaleString('ar-SA-u-nu-latn')} /{' '}
+                        {Math.max(1, historyTable.getPageCount()).toLocaleString('ar-SA-u-nu-latn')}
                       </span>
                       <WsBtn size="sm" onClick={() => historyTable.nextPage()} disabled={!historyTable.getCanNextPage()}>
                         التالي

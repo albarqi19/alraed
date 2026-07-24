@@ -63,9 +63,9 @@ export function ConversationList({
     const date = new Date(dateStr)
     const today = new Date()
     if (date.toDateString() === today.toDateString()) {
-      return date.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
+      return date.toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' })
     }
-    return date.toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' })
+    return date.toLocaleDateString('ar-SA-u-nu-latn', { month: 'short', day: 'numeric' })
   }
 
   const statusColors: Record<string, string> = {

@@ -84,7 +84,7 @@ import type {
 } from '../types'
 
 const NUMBER_FORMATTER = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 })
-const DATE_FORMATTER = new Intl.DateTimeFormat('ar-SA', {
+const DATE_FORMATTER = new Intl.DateTimeFormat('ar-SA-u-nu-latn', {
   dateStyle: 'medium',
   timeStyle: 'short',
 })

@@ -303,7 +303,7 @@ export function RemoteSessionUpload({ sessionId, isUploaded }: Props) {
 function ParticipantRow({ participant }: { participant: RemoteParticipant }) {
   const formatTime = (dt: string | null) => {
     if (!dt) return '-'
-    return new Date(dt).toLocaleTimeString('ar-SA', {
+    return new Date(dt).toLocaleTimeString('ar-SA-u-nu-latn', {
       hour: '2-digit',
       minute: '2-digit',
     })

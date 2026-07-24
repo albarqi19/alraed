@@ -82,9 +82,9 @@ function formatDate(value?: string | null, options: Intl.DateTimeFormatOptions =
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   try {
-    return new Intl.DateTimeFormat('ar-SA', options).format(date)
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', options).format(date)
   } catch {
-    return date.toLocaleString('ar-SA')
+    return date.toLocaleString('ar-SA-u-nu-latn')
   }
 }
 
@@ -347,16 +347,16 @@ export function AdminStudentProfilePage() {
           selectedStudent ? (
             <>
               <WsFact icon={CalendarDays} label="الحضور:">
-                {attendanceStats.present.toLocaleString('ar-SA')}
+                {attendanceStats.present.toLocaleString('ar-SA-u-nu-latn')}
               </WsFact>
-              <WsFact label="الغياب:">{attendanceStats.absent.toLocaleString('ar-SA')}</WsFact>
-              <WsFact label="التأخير:">{attendanceStats.late.toLocaleString('ar-SA')}</WsFact>
-              <WsFact label="الاستئذان:">{attendanceStats.excused.toLocaleString('ar-SA')}</WsFact>
+              <WsFact label="الغياب:">{attendanceStats.absent.toLocaleString('ar-SA-u-nu-latn')}</WsFact>
+              <WsFact label="التأخير:">{attendanceStats.late.toLocaleString('ar-SA-u-nu-latn')}</WsFact>
+              <WsFact label="الاستئذان:">{attendanceStats.excused.toLocaleString('ar-SA-u-nu-latn')}</WsFact>
               {attendanceRate !== null && <WsFact label="نسبة الحضور:">{attendanceRate}٪</WsFact>}
             </>
           ) : (
             <WsFact icon={Users} label="الطلاب:">
-              {students.length.toLocaleString('ar-SA')}
+              {students.length.toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
           )
         }
@@ -375,7 +375,7 @@ export function AdminStudentProfilePage() {
               placeholder="اسم، هوية، صف..."
             />
           </div>
-          <WsBlock title="النتائج" count={filteredStudents.length.toLocaleString('ar-SA')} fill scroll>
+          <WsBlock title="النتائج" count={filteredStudents.length.toLocaleString('ar-SA-u-nu-latn')} fill scroll>
             {studentsQuery.isLoading ? (
               <WsEmpty loading>جارٍ تحميل الطلاب...</WsEmpty>
             ) : filteredStudents.length === 0 ? (
@@ -502,7 +502,7 @@ export function AdminStudentProfilePage() {
                         <div style={{ marginTop: 12 }}>
                           <WsProgress value={attendanceRate} label={`نسبة الحضور ${attendanceRate}٪`} />
                           <p style={{ margin: '8px 0 0', fontSize: 11.5, lineHeight: 1.8, color: 'var(--ws-text-2)' }}>
-                            إجمالي الأيام المسجلة <b style={{ color: 'var(--ws-text)' }}>{attendanceStats.totalDays.toLocaleString('ar-SA')}</b> يومًا
+                            إجمالي الأيام المسجلة <b style={{ color: 'var(--ws-text)' }}>{attendanceStats.totalDays.toLocaleString('ar-SA-u-nu-latn')}</b> يومًا
                             {attendanceStats.absent > 0 && (
                               <>
                                 {' '}— الغياب <b style={{ color: 'var(--ws-red)' }}>{attendanceStats.absent}</b>
@@ -562,7 +562,7 @@ export function AdminStudentProfilePage() {
                       <div className="ws-block__head">
                         <span className="ws-block__title">
                           سجلات التأخير
-                          <span className="ws-count">{studentLateArrivals.length.toLocaleString('ar-SA')}</span>
+                          <span className="ws-count">{studentLateArrivals.length.toLocaleString('ar-SA-u-nu-latn')}</span>
                         </span>
                       </div>
                       {lateArrivalsQuery.isError ? (
@@ -602,7 +602,7 @@ export function AdminStudentProfilePage() {
                       <div className="ws-block__head">
                         <span className="ws-block__title">
                           طلبات الاستئذان
-                          <span className="ws-count">{leaveRequests.length.toLocaleString('ar-SA')}</span>
+                          <span className="ws-count">{leaveRequests.length.toLocaleString('ar-SA-u-nu-latn')}</span>
                         </span>
                       </div>
                       {leaveRequestsQuery.isError ? (
@@ -650,7 +650,7 @@ export function AdminStudentProfilePage() {
                         <span className="ws-block__title">
                           <MessageSquare style={{ width: 13, height: 13 }} />
                           رسائل الواتساب
-                          <span className="ws-count">{studentWhatsappMessages.length.toLocaleString('ar-SA')}</span>
+                          <span className="ws-count">{studentWhatsappMessages.length.toLocaleString('ar-SA-u-nu-latn')}</span>
                         </span>
                         <span className="ws-block__tools" style={{ fontSize: 10.5, color: 'var(--ws-text-2)' }}>
                           انقر أي رسالة للتفاصيل

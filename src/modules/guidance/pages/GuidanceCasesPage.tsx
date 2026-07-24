@@ -261,7 +261,7 @@ export function GuidanceCasesPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {caseItem.last_activity_at
-                          ? new Date(caseItem.last_activity_at).toLocaleDateString('ar-SA')
+                          ? new Date(caseItem.last_activity_at).toLocaleDateString('ar-SA-u-nu-latn')
                           : '-'}
                       </td>
                     </tr>

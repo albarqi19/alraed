@@ -30,7 +30,7 @@ function formatDate(date?: string | null) {
   if (!date) return null
   const value = new Date(date)
   if (Number.isNaN(value.getTime())) return null
-  return value.toLocaleDateString('ar-SA', {
+  return value.toLocaleDateString('ar-SA-u-nu-latn', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',

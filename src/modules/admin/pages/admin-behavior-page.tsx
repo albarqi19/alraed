@@ -30,6 +30,7 @@ import type {
   BehaviorProcedureDefinition,
   BehaviorStatus,
   BehaviorStudent,
+  BehaviorViolation,
 } from '@/modules/admin/behavior/types'
 import type { CreateBehaviorViolationPayload } from '@/modules/admin/behavior/api'
 import { useBehaviorStore } from '@/modules/admin/behavior/store/use-behavior-store'
@@ -47,12 +48,12 @@ import {
   WsInput,
   WsLayout,
   WsMain,
+  WsModal,
   WsPage,
   WsSelect,
   WsSideCol,
   WsTable,
   WsTextarea,
-  WsToolbar,
   type Tone,
 } from '@/shared/workspace'
 import { DayCard, chip } from './dashboard-ui'
@@ -140,6 +141,8 @@ export function AdminBehaviorPage() {
   const [selectedViolationType, setSelectedViolationType] = useState('')
   const [recordDetails, setRecordDetails] = useState(() => initialDetails())
   const [deletingViolationId, setDeletingViolationId] = useState<string | null>(null)
+  // هدف الحذف — يفتح مودال التأكيد بدل window.confirm
+  const [deleteTarget, setDeleteTarget] = useState<BehaviorViolation | null>(null)
 
   const selectedStudents = useMemo(
     () => students.filter((student) => selectedStudentIds.includes(student.id)),
@@ -448,19 +451,15 @@ export function AdminBehaviorPage() {
     }
   }
 
-  const handleDeleteViolation = async (violationId: string) => {
-    const violation = violations.find((item) => item.id === violationId)
-    const studentName = violation?.studentName ?? 'الطالب'
-
-    const confirmed = window.confirm(`سيتم حذف المخالفة المسجلة للطالب ${studentName}. هل تريد المتابعة؟`)
-    if (!confirmed) {
-      return
-    }
+  // تأكيد الحذف يتم عبر مودال — الزر الأحمر في الجدول يحدد الهدف فقط
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return
 
     try {
-      setDeletingViolationId(violationId)
-      await deleteViolation(violationId)
+      setDeletingViolationId(deleteTarget.id)
+      await deleteViolation(deleteTarget.id)
       toast({ type: 'success', title: 'تم حذف المخالفة بنجاح' })
+      setDeleteTarget(null)
     } catch (error) {
       console.error('Error deleting violation:', error)
       toast({ type: 'error', title: 'تعذر حذف المخالفة' })
@@ -476,6 +475,9 @@ export function AdminBehaviorPage() {
         badge="السلوك والمواظبة"
         actions={
           <>
+            <WsBtn icon={Download} onClick={() => toast({ type: 'info', title: 'ميزة التصدير قيد التطوير' })}>
+              تصدير
+            </WsBtn>
             <WsBtn icon={ListChecks} onClick={() => setIsProceduresModalOpen(true)}>
               المخالفات والإجراءات
             </WsBtn>
@@ -484,18 +486,18 @@ export function AdminBehaviorPage() {
             </WsBtn>
           </>
         }
-      />
-
-      <WsToolbar>
-        <WsField label="بحث" htmlFor="bh-q" grow>
-          <div style={{ position: 'relative' }}>
+      >
+        {/* البحث والفلاتر في شريط العنوان نفسه — لا شريط منفصل تحته */}
+        <div className="ws-header__filters">
+          <span style={{ position: 'relative' }}>
             <WsInput
               id="bh-q"
               type="search"
               value={logSearch}
               onChange={(event) => setLogSearch(event.target.value)}
-              placeholder="الاسم، رقم الطالب، نوع المخالفة، المبلّغ..."
-              style={{ width: '100%', paddingInlineStart: 26 }}
+              placeholder="الاسم، رقم الطالب، النوع، المبلّغ..."
+              aria-label="بحث في سجل المخالفات"
+              style={{ width: 'min(230px, 60vw)', paddingInlineStart: 26 }}
             />
             <Search
               style={{
@@ -509,11 +511,11 @@ export function AdminBehaviorPage() {
                 pointerEvents: 'none',
               }}
             />
-          </div>
-        </WsField>
-        <WsField label="الدرجة" htmlFor="bh-deg">
+          </span>
           <WsSelect
             id="bh-deg"
+            aria-label="فلتر الدرجة"
+            title="فلتر الدرجة"
             value={logDegree === 'all' ? '' : logDegree}
             onChange={(event) =>
               setLogDegree(event.target.value === '' ? 'all' : (Number(event.target.value) as BehaviorDegree))
@@ -526,10 +528,10 @@ export function AdminBehaviorPage() {
               </option>
             ))}
           </WsSelect>
-        </WsField>
-        <WsField label="الحالة" htmlFor="bh-st">
           <WsSelect
             id="bh-st"
+            aria-label="فلتر الحالة"
+            title="فلتر الحالة"
             value={logStatus === 'all' ? '' : logStatus}
             onChange={(event) =>
               setLogStatus(event.target.value === '' ? 'all' : (event.target.value as BehaviorStatus))
@@ -542,12 +544,13 @@ export function AdminBehaviorPage() {
               </option>
             ))}
           </WsSelect>
-        </WsField>
-        <WsField label="الصفوف">
+          {/* منتقي الصفوف — زر يلبس الرقاقة السماوية عند التحديد */}
           <div style={{ position: 'relative' }} ref={gradeDropdownRef}>
             <button
               type="button"
               className="ws-input"
+              aria-label="فلتر الصفوف"
+              title="فلتر الصفوف"
               onClick={() => setIsGradeDropdownOpen(!isGradeDropdownOpen)}
               style={{
                 display: 'inline-flex',
@@ -638,11 +641,8 @@ export function AdminBehaviorPage() {
               </div>
             )}
           </div>
-        </WsField>
-        <WsBtn icon={Download} onClick={() => toast({ type: 'info', title: 'ميزة التصدير قيد التطوير' })}>
-          تصدير
-        </WsBtn>
-      </WsToolbar>
+        </div>
+      </WsHeader>
 
       <WsLayout>
         <WsMain>
@@ -707,7 +707,7 @@ export function AdminBehaviorPage() {
                     <th style={{ width: 84 }}>إجراء</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="ws-tbl-rise">
                   {paginatedViolations.map((violation) => {
                     const pending = violation.status === 'قيد المعالجة'
                     return (
@@ -750,7 +750,7 @@ export function AdminBehaviorPage() {
                               icon={deletingViolationId === violation.id ? Loader2 : Trash2}
                               label="حذف"
                               style={{ color: 'var(--ws-red)' }}
-                              onClick={() => void handleDeleteViolation(violation.id)}
+                              onClick={() => setDeleteTarget(violation)}
                               disabled={deletingViolationId === violation.id}
                             />
                           </span>
@@ -1464,6 +1464,39 @@ export function AdminBehaviorPage() {
           </div>
         </div>
       )}
+
+      {/* تأكيد حذف مخالفة — بديل window.confirm بلغة التصميم نفسها */}
+      <WsModal
+        open={deleteTarget !== null}
+        onClose={() => {
+          if (!deletingViolationId) setDeleteTarget(null)
+        }}
+        title="حذف المخالفة"
+        sub="إجراء نهائي لا يمكن التراجع عنه"
+        maxWidth={440}
+        footer={
+          <>
+            <WsBtn onClick={() => setDeleteTarget(null)} disabled={deletingViolationId !== null}>
+              إلغاء
+            </WsBtn>
+            <WsBtn
+              variant="danger"
+              icon={deletingViolationId ? Loader2 : Trash2}
+              onClick={() => void handleConfirmDelete()}
+              disabled={deletingViolationId !== null}
+            >
+              {deletingViolationId ? 'جاري الحذف...' : 'حذف المخالفة'}
+            </WsBtn>
+          </>
+        }
+      >
+        {deleteTarget ? (
+          <WsAlert tone="warn" boxed>
+            سيتم حذف مخالفة «{deleteTarget.type}» المسجلة للطالب <b>{deleteTarget.studentName}</b> بتاريخ{' '}
+            {deleteTarget.date} نهائياً. هل تريد المتابعة؟
+          </WsAlert>
+        ) : null}
+      </WsModal>
     </WsPage>
   )
 }

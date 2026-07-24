@@ -45,7 +45,7 @@ export function ReasonList({ mode, reasons, selectedReasonId, onSelect }: Reason
                   mode === 'reward' ? 'bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-400' : 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-400'
                 }`}
               >
-                {reason.value.toLocaleString('ar-SA')} نقطة
+                {reason.value.toLocaleString('ar-SA-u-nu-latn')} نقطة
               </span>
             </div>
             {reason.description ? (

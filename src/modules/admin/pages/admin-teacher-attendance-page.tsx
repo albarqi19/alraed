@@ -232,7 +232,7 @@ function formatHijriDateForTemplate(value?: string | Date | null) {
   if (!value) return '—'
   const date = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(date.getTime())) return '—'
-  const locales = ['ar-SA-u-ca-islamic-umalqura', 'ar-SA-u-ca-islamic', 'ar-SA']
+  const locales = ['ar-SA-u-ca-islamic-umalqura-nu-latn', 'ar-SA-u-ca-islamic-nu-latn', 'ar-SA-u-nu-latn']
   for (const locale of locales) {
     try {
       const formatted = new Intl.DateTimeFormat(locale, { dateStyle: 'long' }).format(date)
@@ -241,7 +241,7 @@ function formatHijriDateForTemplate(value?: string | Date | null) {
       continue
     }
   }
-  const fallback = date.toLocaleDateString('ar-SA')
+  const fallback = date.toLocaleDateString('ar-SA-u-nu-latn')
   return convertArabicNumeralsToEnglish(fallback)
 }
 
@@ -250,10 +250,10 @@ function formatGregorianDateForTemplate(value?: string | Date | null) {
   const date = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(date.getTime())) return '—'
   try {
-    const formatted = new Intl.DateTimeFormat('ar-SA', { dateStyle: 'long' }).format(date)
+    const formatted = new Intl.DateTimeFormat('ar-SA-u-nu-latn', { dateStyle: 'long' }).format(date)
     return convertArabicNumeralsToEnglish(formatted)
   } catch {
-    const fallback = date.toLocaleDateString('ar-SA')
+    const fallback = date.toLocaleDateString('ar-SA-u-nu-latn')
     return convertArabicNumeralsToEnglish(fallback)
   }
 }
@@ -270,11 +270,11 @@ function formatDayNameForTemplate(value?: string | Date | null) {
   const date = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(date.getTime())) return '—'
   try {
-    return new Intl.DateTimeFormat('ar-SA', { weekday: 'long' }).format(date)
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', { weekday: 'long' }).format(date)
   } catch {
     try {
       const options: Intl.DateTimeFormatOptions = { weekday: 'long' }
-      return date.toLocaleDateString('ar-SA', options)
+      return date.toLocaleDateString('ar-SA-u-nu-latn', options)
     } catch {
       return '—'
     }
@@ -389,9 +389,9 @@ function formatDate(value?: string | null, options: Intl.DateTimeFormatOptions =
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   try {
-    return new Intl.DateTimeFormat('ar-SA', options).format(date)
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', options).format(date)
   } catch {
-    return date.toLocaleString('ar-SA', options)
+    return date.toLocaleString('ar-SA-u-nu-latn', options)
   }
 }
 
@@ -403,9 +403,9 @@ function formatTime(value?: string | null) {
     return value
   }
   try {
-    return new Intl.DateTimeFormat('ar-SA', { hour: '2-digit', minute: '2-digit' }).format(date)
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' }).format(date)
   } catch {
-    return date.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
+    return date.toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' })
   }
 }
 
@@ -1131,16 +1131,16 @@ export function AdminTeacherAttendancePage() {
         facts={
           <>
             <WsFact icon={ListChecks} label="إجمالي السجلات:">
-              {stats ? stats.total.toLocaleString('ar-SA') : '—'}
+              {stats ? stats.total.toLocaleString('ar-SA-u-nu-latn') : '—'}
             </WsFact>
             <WsFact icon={Link2} label="مرتبطة:">
-              {stats ? stats.matched.toLocaleString('ar-SA') : '—'}
+              {stats ? stats.matched.toLocaleString('ar-SA-u-nu-latn') : '—'}
             </WsFact>
             <WsFact icon={XCircle} label="بحاجة للربط:">
-              {stats ? stats.unmatched.toLocaleString('ar-SA') : '—'}
+              {stats ? stats.unmatched.toLocaleString('ar-SA-u-nu-latn') : '—'}
             </WsFact>
             <WsFact icon={UserCheck} label="حالات الحضور:">
-              {stats ? stats.present.toLocaleString('ar-SA') : '—'}
+              {stats ? stats.present.toLocaleString('ar-SA-u-nu-latn') : '—'}
             </WsFact>
             <WsFact icon={Clock3} label="آخر تحديث:">
               {refreshedAtLabel ?? '—'}
@@ -1169,7 +1169,7 @@ export function AdminTeacherAttendancePage() {
             className={`ws-seg__btn ${activeSection === 'delays' ? 'is-active' : ''}`}
           >
             حالات التأخر والغياب
-            {delayMeta?.total ? <span className="ws-count">{delayMeta.total.toLocaleString('ar-SA')}</span> : null}
+            {delayMeta?.total ? <span className="ws-count">{delayMeta.total.toLocaleString('ar-SA-u-nu-latn')}</span> : null}
           </button>
           <button
             type="button"
@@ -1177,7 +1177,7 @@ export function AdminTeacherAttendancePage() {
             className={`ws-seg__btn ${activeSection === 'records' ? 'is-active' : ''}`}
           >
             سجلات حضوري التفصيلية
-            <span className="ws-count">{records.length.toLocaleString('ar-SA')}</span>
+            <span className="ws-count">{records.length.toLocaleString('ar-SA-u-nu-latn')}</span>
           </button>
         </div>
 
@@ -1326,7 +1326,7 @@ export function AdminTeacherAttendancePage() {
           </WsBlock>
           <WsBlock
             title="سجلات غير مرتبطة"
-            count={unmatchedRecords.length.toLocaleString('ar-SA')}
+            count={unmatchedRecords.length.toLocaleString('ar-SA-u-nu-latn')}
             fill
             scroll
           >
@@ -1365,7 +1365,7 @@ export function AdminTeacherAttendancePage() {
             <WsBlock
               title="حالات التأخر والغياب"
               icon={Clock3}
-              count={delayMeta?.total?.toLocaleString('ar-SA') ?? '0'}
+              count={delayMeta?.total?.toLocaleString('ar-SA-u-nu-latn') ?? '0'}
               tools={
                 <>
                   <WsBtn
@@ -1399,16 +1399,16 @@ export function AdminTeacherAttendancePage() {
                 }}
               >
                 <WsChip tone="red" icon={Clock3}>
-                  متأخرون {delayAnalytics.delayedCount.toLocaleString('ar-SA')}
+                  متأخرون {delayAnalytics.delayedCount.toLocaleString('ar-SA-u-nu-latn')}
                 </WsChip>
                 <WsChip tone="green" icon={CheckCircle2}>
-                  بعذر {delayAnalytics.excusedCount.toLocaleString('ar-SA')}
+                  بعذر {delayAnalytics.excusedCount.toLocaleString('ar-SA-u-nu-latn')}
                 </WsChip>
-                <WsChip icon={CalendarX}>غياب {delayAnalytics.absenceCount.toLocaleString('ar-SA')}</WsChip>
+                <WsChip icon={CalendarX}>غياب {delayAnalytics.absenceCount.toLocaleString('ar-SA-u-nu-latn')}</WsChip>
                 <WsChip tone="sky" icon={Timer}>
                   متوسط التأخر{' '}
                   {delayAnalytics.averageDelay !== null
-                    ? `${delayAnalytics.averageDelay.toLocaleString('ar-SA')} دقيقة`
+                    ? `${delayAnalytics.averageDelay.toLocaleString('ar-SA-u-nu-latn')} دقيقة`
                     : '—'}
                 </WsChip>
               </div>
@@ -1494,7 +1494,7 @@ export function AdminTeacherAttendancePage() {
                                 <>
                                   {typeof delay.delay_minutes === 'number' ? (
                                     <WsChip tone="red" icon={Timer}>
-                                      {delay.delay_minutes.toLocaleString('ar-SA')} دقيقة تأخير
+                                      {delay.delay_minutes.toLocaleString('ar-SA-u-nu-latn')} دقيقة تأخير
                                     </WsChip>
                                   ) : null}
                                   {delay.delay_notes ? (
@@ -1607,7 +1607,7 @@ export function AdminTeacherAttendancePage() {
                   السابق
                 </WsBtn>
                 <span style={{ fontSize: 11.5, color: 'var(--ws-text-2)' }}>
-                  صفحة {delayFilters.page.toLocaleString('ar-SA')} من {totalDelayPages.toLocaleString('ar-SA')}
+                  صفحة {delayFilters.page.toLocaleString('ar-SA-u-nu-latn')} من {totalDelayPages.toLocaleString('ar-SA-u-nu-latn')}
                 </span>
                 <WsBtn
                   size="sm"
@@ -1622,7 +1622,7 @@ export function AdminTeacherAttendancePage() {
             <WsBlock
               title="سجلات حضوري التفصيلية"
               icon={Fingerprint}
-              count={records.length.toLocaleString('ar-SA')}
+              count={records.length.toLocaleString('ar-SA-u-nu-latn')}
               fill
             >
               {attendanceQuery.isLoading ? (
@@ -1677,7 +1677,7 @@ export function AdminTeacherAttendancePage() {
                             <span style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start' }}>
                               <DelayStatusChip status={record.delay_status} label={record.delay_status_label} />
                               {typeof record.delay_minutes === 'number' ? (
-                                <span className="ws-cell-sub">دقائق التأخير: {record.delay_minutes.toLocaleString('ar-SA')}</span>
+                                <span className="ws-cell-sub">دقائق التأخير: {record.delay_minutes.toLocaleString('ar-SA-u-nu-latn')}</span>
                               ) : null}
                               {record.delay_notified_at ? (
                                 <span className="ws-cell-sub">

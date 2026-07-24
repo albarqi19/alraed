@@ -22,7 +22,7 @@ interface DailyReportData {
 export async function openDailySupervisionReport({ date, supervisions, dutySchedules, format = 'pdf' }: DailyReportData) {
     const dateObj = new Date(date)
     const dayName = WEEKDAY_LABELS[dateObj.getDay()] ?? ''
-    const formattedDate = new Intl.DateTimeFormat('ar-SA', { dateStyle: 'long' }).format(dateObj)
+    const formattedDate = new Intl.DateTimeFormat('ar-SA-u-nu-latn', { dateStyle: 'long' }).format(dateObj)
 
     // تقسيم المناوبات حسب النوع
     const morningDuties = dutySchedules.filter(d => d.duty_type === 'morning')

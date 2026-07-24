@@ -42,12 +42,12 @@ function formatDateTime(value?: string | null) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   try {
-    return new Intl.DateTimeFormat('ar-SA', {
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', {
       dateStyle: 'medium',
       timeStyle: 'short',
     }).format(date)
   } catch {
-    return date.toLocaleString('ar-SA')
+    return date.toLocaleString('ar-SA-u-nu-latn')
   }
 }
 
@@ -133,7 +133,7 @@ export function AdminSmsGatewayPage() {
       <WsLayout>
         {/* العمود الأيمن: الأجهزة المسجلة */}
         <WsSideCol title="الأجهزة المسجلة" icon={Smartphone} side="start" width={300} storageKey="ws:sms-gateway:devices">
-          <WsBlock fill scroll count={devices.length.toLocaleString('ar-SA')} title="الأجهزة">
+          <WsBlock fill scroll count={devices.length.toLocaleString('ar-SA-u-nu-latn')} title="الأجهزة">
             {devicesQuery.isLoading ? (
               <WsEmpty loading>جارٍ تحميل الأجهزة...</WsEmpty>
             ) : devices.length === 0 ? (

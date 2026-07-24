@@ -37,9 +37,9 @@ function formatDate(value?: string | null): string {
   const d = new Date(value)
   if (Number.isNaN(d.getTime())) return value
   try {
-    return new Intl.DateTimeFormat('ar-SA', { dateStyle: 'medium' }).format(d)
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', { dateStyle: 'medium' }).format(d)
   } catch {
-    return d.toLocaleDateString('ar-SA')
+    return d.toLocaleDateString('ar-SA-u-nu-latn')
   }
 }
 
@@ -48,9 +48,9 @@ function formatDateTime(value?: string | null): string {
   const d = new Date(value)
   if (Number.isNaN(d.getTime())) return value
   try {
-    return new Intl.DateTimeFormat('ar-SA', { dateStyle: 'short', timeStyle: 'short' }).format(d)
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', { dateStyle: 'short', timeStyle: 'short' }).format(d)
   } catch {
-    return d.toLocaleString('ar-SA')
+    return d.toLocaleString('ar-SA-u-nu-latn')
   }
 }
 

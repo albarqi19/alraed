@@ -4,6 +4,7 @@ import {
   BookOpenCheck,
   CalendarRange,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ClipboardCheck,
   ClipboardList,
@@ -13,10 +14,13 @@ import {
   GraduationCap,
   Headphones,
   LayoutDashboard,
+  MapPin,
   Megaphone,
+  Menu,
   MessageCircle,
   MonitorSmartphone,
   QrCode,
+  Quote,
   ScanLine,
   Send,
   ShieldCheck,
@@ -26,10 +30,12 @@ import {
   Trophy,
   UserRound,
   Users,
+  X,
 } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import QRCode from 'qrcode'
 
 type IconType = LucideIcon
 
@@ -42,8 +48,8 @@ const navItems = [
   { label: 'رحلة اليوم', href: '#journey' },
   { label: 'الواجهات', href: '#portals' },
   { label: 'المميزات', href: '#features' },
+  { label: 'الأسئلة الشائعة', href: '#faq' },
   { label: 'الأسعار', href: '/plans', isRoute: true },
-  { label: 'تواصل معنا', href: '#cta' },
 ]
 
 const heroMetrics: Array<{ end?: number; suffix?: string; raw?: string; label: string }> = [
@@ -204,6 +210,64 @@ const trustItems: Array<{ title: string; subtitle: string; icon: IconType }> = [
   { title: 'سهولة الاستخدام', subtitle: 'واجهة بسيطة ومرنة', icon: MonitorSmartphone },
 ]
 
+// ملاحظة: نماذج آراء تمثيلية — تُستبدل بآراء حقيقية من مدارس العملاء عند توفرها
+const testimonials: Array<{ quote: string; name: string; role: string; initials: string }> = [
+  {
+    quote:
+      'كنا نستهلك أول ساعتين من اليوم في متابعة الحضور والتواصل مع أولياء الأمور. مع الرائد صار كل شيء آلياً — والوقت الذي وفّرناه نستثمره الآن في التعليم نفسه.',
+    name: 'أ. سعد الحربي',
+    role: 'مدير مدرسة',
+    initials: 'س',
+  },
+  {
+    quote:
+      'رسائل الواتساب الفورية غيّرت علاقتنا بأولياء الأمور تماماً؛ صاروا يعرفون قبل أن نتصل بهم. نسبة الغياب عندنا انخفضت بشكل واضح خلال فصل واحد.',
+    name: 'أ. نورة العنزي',
+    role: 'وكيلة شؤون الطلاب',
+    initials: 'ن',
+  },
+  {
+    quote:
+      'التحضير كان عبئاً يومياً، الآن أنهيه بدقيقة من جوالي قبل دخول الفصل. ولوحة النقاط جعلت الطلاب يتنافسون على السلوك الإيجابي بدل مطاردتهم عليه.',
+    name: 'أ. محمد القرني',
+    role: 'معلم صف',
+    initials: 'م',
+  },
+]
+
+const faqItems: Array<{ question: string; answer: string }> = [
+  {
+    question: 'كم يستغرق تجهيز النظام لمدرستنا؟',
+    answer:
+      'يوم عمل واحد فقط. فريقنا يساعدك في استيراد بيانات الطلاب والمعلمين والجداول من ملفات Excel أو نظام نور، وتبدأ المدرسة باستخدام النظام من صباح اليوم التالي.',
+  },
+  {
+    question: 'هل نحتاج أجهزة أو تجهيزات خاصة؟',
+    answer:
+      'لا. النظام يعمل بالكامل من المتصفح على أي جهاز — حاسب، جوال، أو لوح ذكي. وتحضير الطلاب بالباركود يتم عبر كاميرا الجوال دون الحاجة لأي قارئ إضافي.',
+  },
+  {
+    question: 'كيف تصل رسائل الواتساب لأولياء الأمور؟',
+    answer:
+      'تلقائياً فور تسجيل الغياب أو التأخر، دون أي تدخل منك. تُرسل الرسائل بهوية المدرسة وتشمل اسم الطالب ووقت الرصد، مع سجل كامل لكل رسالة مرسلة داخل النظام.',
+  },
+  {
+    question: 'هل يدعم النظام التصدير لنظام نور؟',
+    answer:
+      'نعم، يوفّر الرائد تصدير الغياب والتأخر بصيغة متوافقة مع نظام نور بضغطة واحدة، إضافة إلى تقارير يومية وأسبوعية جاهزة للطباعة والاعتماد.',
+  },
+  {
+    question: 'ماذا عن أمان بيانات المدرسة والطلاب؟',
+    answer:
+      'بياناتك مشفّرة ومحفوظة على خوادم آمنة، مع نسخ احتياطي يومي تلقائي وصلاحيات دقيقة تضمن أن كل مستخدم يرى ما يخصّه فقط — لا أكثر.',
+  },
+  {
+    question: 'هل يمكن تجربة النظام قبل الاشتراك؟',
+    answer:
+      'بالتأكيد. نمنحك تجربة مجانية كاملة تشمل كل المزايا مع بيانات تجريبية جاهزة، لتقيّم النظام في بيئة مدرستك الفعلية قبل أي التزام مالي.',
+  },
+]
+
 const mockStudents: Array<{ name: string; grade: string; status: string; tone: 'green' | 'amber' | 'red' }> = [
   { name: 'فيصل العتيبي', grade: '6/أ', status: 'حاضر', tone: 'green' },
   { name: 'عبدالله القحطاني', grade: '6/أ', status: 'حاضر', tone: 'green' },
@@ -354,6 +418,124 @@ function BrandMark({ compact = false }: { compact?: boolean }) {
 }
 
 /* ─────────────────────────────────────────────
+   الشريط العلوي (يتفاعل مع التمرير + قائمة جوال)
+   ───────────────────────────────────────────── */
+
+function SiteHeader() {
+  const [scrolled, setScrolled] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  const closeMenu = () => setMenuOpen(false)
+
+  return (
+    <div className="fixed inset-x-0 top-0 z-[60] px-4 pt-3 sm:px-6 lg:px-10">
+      <div className="mx-auto max-w-[1400px]">
+        <header
+          className={`rounded-2xl border px-4 py-2.5 backdrop-blur-xl transition-all duration-300 sm:px-5 ${
+            scrolled
+              ? 'border-[#d7a74a]/25 bg-[#082648]/95 shadow-[0_18px_50px_-24px_rgba(4,19,40,0.95)]'
+              : 'border-white/10 bg-[#0b3d71]/85 shadow-[0_16px_50px_-28px_rgba(4,19,40,0.9)]'
+          }`}
+        >
+          <div className="flex items-center justify-between gap-4">
+            <BrandMark compact />
+            <nav className="hidden items-center gap-0.5 text-sm font-bold text-white/85 lg:flex">
+              {navItems.map((item) =>
+                item.isRoute ? (
+                  <Link key={item.label} to={item.href} className="rounded-lg px-3 py-2 transition hover:bg-white/10 hover:text-[#f5d08b]">
+                    {item.label}
+                  </Link>
+                ) : (
+                  <a key={item.label} href={item.href} className="rounded-lg px-3 py-2 transition hover:bg-white/10 hover:text-[#f5d08b]">
+                    {item.label}
+                  </a>
+                ),
+              )}
+            </nav>
+            <div className="flex items-center gap-2">
+              <Link
+                to="/register"
+                className="hidden rounded-xl border border-white/25 bg-white/10 px-4 py-2 text-sm font-bold text-white transition hover:bg-white/15 sm:inline-flex"
+              >
+                تجربة مجانية
+              </Link>
+              <Link
+                to="/auth/teacher"
+                className="rounded-xl border border-[#d7a74a] bg-[#d7a74a] px-4 py-2 text-sm font-bold text-[#173f74] transition hover:bg-[#e2b457]"
+              >
+                تسجيل الدخول
+              </Link>
+              <button
+                type="button"
+                onClick={() => setMenuOpen((open) => !open)}
+                aria-label={menuOpen ? 'إغلاق القائمة' : 'فتح القائمة'}
+                aria-expanded={menuOpen}
+                className="grid h-9 w-9 place-items-center rounded-xl border border-white/20 bg-white/10 text-white transition hover:bg-white/15 lg:hidden"
+              >
+                {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* قائمة الجوال */}
+        <div
+          className={`grid transition-all duration-300 ease-out lg:hidden ${
+            menuOpen ? 'visible mt-2 grid-rows-[1fr] opacity-100' : 'invisible grid-rows-[0fr] opacity-0'
+          }`}
+          aria-hidden={!menuOpen}
+        >
+          <div className="overflow-hidden">
+            <nav className="rounded-2xl border border-white/10 bg-[#082648]/95 p-2.5 shadow-[0_24px_60px_-20px_rgba(4,19,40,0.9)] backdrop-blur-xl">
+              {navItems.map((item) =>
+                item.isRoute ? (
+                  <Link
+                    key={item.label}
+                    to={item.href}
+                    onClick={closeMenu}
+                    className="flex items-center justify-between rounded-xl px-4 py-3 text-sm font-bold text-white/85 transition hover:bg-white/10 hover:text-[#f5d08b]"
+                  >
+                    {item.label}
+                    <ChevronLeft className="h-4 w-4 text-white/35" />
+                  </Link>
+                ) : (
+                  <a
+                    key={item.label}
+                    href={item.href}
+                    onClick={closeMenu}
+                    className="flex items-center justify-between rounded-xl px-4 py-3 text-sm font-bold text-white/85 transition hover:bg-white/10 hover:text-[#f5d08b]"
+                  >
+                    {item.label}
+                    <ChevronLeft className="h-4 w-4 text-white/35" />
+                  </a>
+                ),
+              )}
+              <div className="mt-1.5 border-t border-white/10 pt-1.5 sm:hidden">
+                <Link
+                  to="/register"
+                  onClick={closeMenu}
+                  className="flex items-center justify-center gap-2 rounded-xl border border-[#d7a74a]/60 bg-[#d7a74a]/15 px-4 py-3 text-sm font-black text-[#f3cf87] transition hover:bg-[#d7a74a]/25"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  ابدأ تجربتك المجانية
+                </Link>
+              </div>
+            </nav>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────────────
    موك المنتج الحي (قلب الهيرو)
    ───────────────────────────────────────────── */
 
@@ -386,9 +568,7 @@ function HeroProductMock() {
       />
 
       {/* البطاقة الرئيسية: لوحة التحضير */}
-      <div
-        className="lp-tilt relative overflow-hidden rounded-2xl border border-white/60 bg-white text-right shadow-[0_40px_90px_-30px_rgba(3,21,46,0.65)]"
-      >
+      <div className="lp-tilt relative overflow-hidden rounded-2xl border border-white/60 bg-white text-right shadow-[0_40px_90px_-30px_rgba(3,21,46,0.65)]">
         {/* رأس النافذة */}
         <div className="flex items-center justify-between border-b border-[#eee5d4] bg-[#fbf8f2] px-4 py-3">
           <div className="flex items-center gap-2">
@@ -524,10 +704,11 @@ function SectionHeading({
       <span
         className={
           light
-            ? 'inline-block rounded-full border border-[#d7a74a]/40 bg-[#d7a74a]/10 px-3.5 py-1 text-[11px] font-black tracking-wide text-[#f3cf87]'
-            : 'inline-block rounded-full border border-[#e0cfa6] bg-[#fbf4e4] px-3.5 py-1 text-[11px] font-black tracking-wide text-[#a8823c]'
+            ? 'inline-flex items-center gap-2 rounded-full border border-[#d7a74a]/40 bg-[#d7a74a]/10 px-3.5 py-1 text-[11px] font-black tracking-wide text-[#f3cf87]'
+            : 'inline-flex items-center gap-2 rounded-full border border-[#e0cfa6] bg-[#fbf4e4] px-3.5 py-1 text-[11px] font-black tracking-wide text-[#a8823c]'
         }
       >
+        <Sparkles className="h-3 w-3" />
         {eyebrow}
       </span>
       <h2
@@ -547,12 +728,117 @@ function SectionHeading({
 }
 
 /* ─────────────────────────────────────────────
+   الأسئلة الشائعة (أكورديون)
+   ───────────────────────────────────────────── */
+
+function FaqAccordion() {
+  const [openIndex, setOpenIndex] = useState(0)
+
+  return (
+    <div className="mx-auto mt-10 max-w-3xl space-y-3">
+      {faqItems.map((item, index) => {
+        const open = openIndex === index
+        return (
+          <Reveal key={item.question} delay={index * 60}>
+            <div
+              className={`overflow-hidden rounded-2xl border transition-all duration-300 ${
+                open
+                  ? 'border-[#d7a74a]/55 bg-white shadow-[0_18px_44px_-28px_rgba(8,41,84,0.4)]'
+                  : 'border-[#e7dcc7] bg-white/80 hover:border-[#dcc99c] hover:bg-white'
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => setOpenIndex(open ? -1 : index)}
+                aria-expanded={open}
+                className="flex w-full items-center justify-between gap-4 px-5 py-4 text-right"
+              >
+                <span className={`text-[14.5px] font-black transition-colors ${open ? 'text-[#0c3b70]' : 'text-[#14355d]'}`}>
+                  {item.question}
+                </span>
+                <span
+                  className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border transition-all duration-300 ${
+                    open
+                      ? 'rotate-180 border-[#d7a74a] bg-[#d7a74a] text-[#173f74]'
+                      : 'border-[#e0cfa6] bg-[#fbf4e4] text-[#a8823c]'
+                  }`}
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </span>
+              </button>
+              <div
+                className={`grid transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                  open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                }`}
+              >
+                <div className="overflow-hidden">
+                  <p className="px-5 pb-5 text-[13px] font-medium leading-7 text-[#6f6a5e]">{item.answer}</p>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+        )
+      })}
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────────────
+   رمز QR حقيقي يوجّه لصفحة التسجيل
+   ───────────────────────────────────────────── */
+
+function RegisterQrCode() {
+  const [src, setSrc] = useState<string | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+    QRCode.toDataURL(`${window.location.origin}/register`, {
+      margin: 1,
+      width: 360,
+      color: { dark: '#173f74', light: '#fffaf0' },
+    })
+      .then((url) => {
+        if (mounted) setSrc(url)
+      })
+      .catch(() => {
+        /* يبقى الإطار فارغاً بهدوء عند تعذر التوليد */
+      })
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  return (
+    <div className="w-full max-w-[160px] rounded-2xl border border-[#d7a74a]/30 bg-white p-3 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.4)]">
+      <div className="aspect-square w-full overflow-hidden rounded-xl bg-[#fffaf0]">
+        {src ? (
+          <img src={src} alt="رمز QR للتسجيل السريع في نظام الرائد" className="h-full w-full" />
+        ) : (
+          <div className="grid h-full w-full place-items-center">
+            <QrCode className="h-8 w-8 animate-pulse text-[#d8c6a1]" />
+          </div>
+        )}
+      </div>
+      <div className="mt-2 flex items-center justify-center gap-1.5">
+        <QrCode className="h-3.5 w-3.5 text-[#b88c3d]" />
+        <span className="text-[10px] font-bold text-[#7d6b4f]">نظام الرائد</span>
+      </div>
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────────────
    الصفحة
    ───────────────────────────────────────────── */
 
 export function LandingPage() {
   return (
-    <div id="top" dir="rtl" className="min-h-screen bg-[#f6f1e7] text-[#16385f]">
+    <div
+      id="top"
+      dir="rtl"
+      className="min-h-screen bg-[#f6f1e7] text-[#16385f]"
+      style={{ fontFamily: "'IBM Plex Sans Arabic', 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif" }}
+    >
       {/* حركات الصفحة */}
       <style>{`
         @keyframes lp-float { from { transform: translateY(0); } to { transform: translateY(-12px); } }
@@ -566,6 +852,10 @@ export function LandingPage() {
         }
         @keyframes lp-scan { 0% { transform: translateY(0); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(190px); opacity: 0; } }
         @keyframes lp-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+        @keyframes lp-aurora { 0%,100% { transform: translate3d(0,0,0) scale(1); } 50% { transform: translate3d(-42px,26px,0) scale(1.14); } }
+        @keyframes lp-shine { from { background-position: 200% center; } to { background-position: -200% center; } }
+        html { scroll-behavior: smooth; }
+        section[id] { scroll-margin-top: 92px; }
         .lp-float { animation: lp-float 5.5s ease-in-out infinite alternate; }
         .lp-float-slow { animation: lp-float 7s ease-in-out infinite alternate; animation-delay: -3s; }
         .lp-live-dot { animation: lp-live 2s ease-out infinite; }
@@ -573,21 +863,30 @@ export function LandingPage() {
         .lp-scan { animation: lp-scan 8s ease-in-out infinite; }
         .lp-marquee-track { animation: lp-marquee 32s linear infinite; }
         .lp-marquee:hover .lp-marquee-track { animation-play-state: paused; }
+        .lp-aurora { animation: lp-aurora 16s ease-in-out infinite; will-change: transform; }
+        .lp-gold-shine { background-size: 200% auto; animation: lp-shine 7s linear infinite; }
         .lp-tilt { transform: rotateY(-6deg) rotateX(3deg); transition: transform 0.6s cubic-bezier(0.22,1,0.36,1); }
         @media (min-width: 1024px) { .lp-tilt:hover { transform: rotateY(0deg) rotateX(0deg); } }
         .lp-bar-fill { transition: width 1.6s cubic-bezier(0.22,1,0.36,1) 0.3s; }
         .lp-portal-card { transition: transform 0.45s cubic-bezier(0.22,1,0.36,1), box-shadow 0.45s ease; }
         .lp-portal-card:hover { transform: translateY(-8px); box-shadow: 0 34px 70px -34px rgba(8,41,84,0.45); }
+        .lp-journey-step { transition: background-color 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease; }
+        @media (min-width: 1024px) {
+          .lp-journey-step:hover { background-color: #ffffff; border-color: #e7dcc7; box-shadow: 0 18px 44px -30px rgba(8,41,84,0.35); }
+        }
         @media (prefers-reduced-motion: reduce) {
-          .lp-float, .lp-float-slow, .lp-live-dot, .lp-stamp, .lp-scan, .lp-marquee-track { animation: none !important; }
+          html { scroll-behavior: auto; }
+          .lp-float, .lp-float-slow, .lp-live-dot, .lp-stamp, .lp-scan, .lp-marquee-track, .lp-aurora, .lp-gold-shine { animation: none !important; }
           .lp-stamp { opacity: 1 !important; }
           .lp-scan { opacity: 0 !important; }
         }
       `}</style>
 
+      <SiteHeader />
+
       {/* ══════════ الهيرو ══════════ */}
       <div
-        className="relative overflow-hidden pb-14 text-white"
+        className="relative overflow-hidden pb-16 text-white"
         style={{
           background:
             'radial-gradient(ellipse 80% 55% at 50% -5%, rgba(215,167,74,0.14) 0%, transparent 70%), radial-gradient(ellipse 45% 65% at 95% 20%, rgba(215,167,74,0.2) 0%, transparent 60%), radial-gradient(ellipse 55% 75% at -5% 40%, rgba(14,70,140,0.6) 0%, transparent 65%), linear-gradient(172deg, #061a35 0%, #0a3363 38%, #0b3d71 62%, #0e4a85 100%)',
@@ -602,48 +901,13 @@ export function LandingPage() {
         <div className="absolute -right-24 -top-24 h-[460px] w-[460px] rounded-full border border-[#d7a74a]/12" />
         <div className="absolute -right-10 -top-10 h-[280px] w-[280px] rounded-full border border-[#d7a74a]/18" />
         <div className="absolute -left-28 bottom-6 h-[340px] w-[340px] rounded-full border border-white/6" />
-        {/* توهجات */}
+        {/* توهجات ثابتة */}
         <div className="absolute -right-10 top-0 h-72 w-72 rounded-full opacity-20 blur-3xl" style={{ background: 'radial-gradient(circle, #d7a74a, transparent 70%)' }} />
         <div className="absolute -left-10 bottom-10 h-64 w-64 rounded-full opacity-25 blur-3xl" style={{ background: 'radial-gradient(circle, #3b82f6, transparent 70%)' }} />
+        {/* توهجات متحركة (أورورا) */}
+        <div className="lp-aurora absolute right-[12%] top-[18%] h-80 w-80 rounded-full opacity-15 blur-3xl" style={{ background: 'radial-gradient(circle, #4a9df0, transparent 70%)' }} />
+        <div className="lp-aurora absolute bottom-[8%] left-[16%] h-72 w-72 rounded-full opacity-10 blur-3xl" style={{ background: 'radial-gradient(circle, #d7a74a, transparent 70%)', animationDelay: '-8s' }} />
         <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent_0%,rgba(215,167,74,0.5)_50%,transparent_100%)]" />
-
-        {/* ── الشريط العلوي الثابت ── */}
-        <div className="fixed inset-x-0 top-0 z-[60] px-4 pt-3 sm:px-6 lg:px-10">
-          <div className="mx-auto max-w-[1400px]">
-            <header className="rounded-2xl border border-white/10 bg-[#0b3d71]/85 px-4 py-2.5 shadow-[0_16px_50px_-28px_rgba(4,19,40,0.9)] backdrop-blur-xl sm:px-5">
-              <div className="flex items-center justify-between gap-4">
-                <BrandMark compact />
-                <nav className="hidden items-center gap-0.5 text-sm font-bold text-white/85 lg:flex">
-                  {navItems.map((item) =>
-                    item.isRoute ? (
-                      <Link key={item.label} to={item.href} className="rounded-lg px-3 py-2 transition hover:bg-white/10 hover:text-[#f5d08b]">
-                        {item.label}
-                      </Link>
-                    ) : (
-                      <a key={item.label} href={item.href} className="rounded-lg px-3 py-2 transition hover:bg-white/10 hover:text-[#f5d08b]">
-                        {item.label}
-                      </a>
-                    ),
-                  )}
-                </nav>
-                <div className="flex items-center gap-2">
-                  <Link
-                    to="/register"
-                    className="hidden rounded-xl border border-white/25 bg-white/10 px-4 py-2 text-sm font-bold text-white transition hover:bg-white/15 sm:inline-flex"
-                  >
-                    تجربة مجانية
-                  </Link>
-                  <Link
-                    to="/auth/teacher"
-                    className="rounded-xl border border-[#d7a74a] bg-[#d7a74a] px-4 py-2 text-sm font-bold text-[#173f74] transition hover:bg-[#e2b457]"
-                  >
-                    تسجيل الدخول
-                  </Link>
-                </div>
-              </div>
-            </header>
-          </div>
-        </div>
 
         {/* ── محتوى الهيرو ── */}
         <div className="relative mx-auto max-w-[1400px] px-4 pt-28 sm:px-6 sm:pt-32 lg:px-10">
@@ -660,8 +924,10 @@ export function LandingPage() {
               <Reveal delay={90} from="none">
                 <h1 className="text-[44px] font-black leading-[1.15] tracking-tight text-white drop-shadow-[0_2px_24px_rgba(0,0,0,0.35)] sm:text-6xl lg:text-[64px]">
                   من طابور الصباح
-                  <span className="relative mx-3 inline-block text-[#ecc36e]">
-                    إلى تقرير المساء
+                  <span className="relative mx-3 inline-block">
+                    <span className="lp-gold-shine bg-[linear-gradient(110deg,#ecc36e_25%,#fff3d6_45%,#d7a74a_65%)] bg-clip-text text-transparent">
+                      إلى تقرير المساء
+                    </span>
                     <svg className="absolute -bottom-2 right-0 w-full" viewBox="0 0 220 12" fill="none" preserveAspectRatio="none" style={{ height: 10 }}>
                       <path d="M4 8.5C60 2.5 160 2.5 216 8.5" stroke="#d7a74a" strokeWidth="5" strokeLinecap="round" opacity="0.55" />
                     </svg>
@@ -728,8 +994,8 @@ export function LandingPage() {
           {/* ── شريط الأرقام (عدّادات) ── */}
           <Reveal>
             <div className="grid grid-cols-2 divide-white/10 rounded-2xl border border-white/12 bg-white/6 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md sm:grid-cols-5 sm:divide-x sm:divide-x-reverse">
-              {heroMetrics.map((item) => (
-                <div key={item.label} className="px-4 py-5 text-center">
+              {heroMetrics.map((item, index) => (
+                <div key={item.label} className={`px-4 py-5 text-center ${index === heroMetrics.length - 1 ? 'col-span-2 sm:col-span-1' : ''}`}>
                   <div className="text-2xl font-black text-[#f3cf87] drop-shadow-[0_0_12px_rgba(215,167,74,0.4)] sm:text-3xl">
                     {item.raw ?? <CountUp end={item.end!} suffix={item.suffix ?? ''} />}
                   </div>
@@ -738,6 +1004,13 @@ export function LandingPage() {
               ))}
             </div>
           </Reveal>
+        </div>
+
+        {/* موجة فاصلة نحو شريط الوحدات */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 leading-none">
+          <svg viewBox="0 0 1440 64" preserveAspectRatio="none" className="h-10 w-full fill-[#fdfaf4]">
+            <path d="M0,40 C240,64 480,8 720,24 C960,40 1200,56 1440,24 L1440,64 L0,64 Z" />
+          </svg>
         </div>
       </div>
 
@@ -773,7 +1046,7 @@ export function LandingPage() {
           <div className="grid gap-8 lg:grid-cols-6 lg:gap-4">
             {journeySteps.map(({ time, title, text, icon: Icon }, index) => (
               <Reveal key={title} delay={index * 90}>
-                <div className="relative flex gap-4 pr-1 lg:flex-col lg:gap-0 lg:pr-0 lg:text-center">
+                <div className="lp-journey-step relative flex gap-4 rounded-2xl border border-transparent pr-1 lg:flex-col lg:gap-0 lg:p-3 lg:pr-3 lg:text-center">
                   {/* النقطة */}
                   <div className="relative z-10 grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-[#d7a74a] bg-[#0c3b70] text-[#f3cf87] shadow-[0_8px_20px_-8px_rgba(8,41,84,0.5)] lg:mx-auto lg:h-[52px] lg:w-[52px]">
                     <Icon className="h-4 w-4 lg:h-5 lg:w-5" />
@@ -867,7 +1140,8 @@ export function LandingPage() {
           style={{ backgroundImage: 'radial-gradient(circle, #a8c8f0 1px, transparent 1px)', backgroundSize: '26px 26px' }}
         />
         <div className="absolute -left-20 top-10 h-72 w-72 rounded-full bg-[#d7a74a]/10 blur-3xl" />
-        <div className="relative mx-auto max-w-[1400px] px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
+        <div className="lp-aurora absolute -right-16 bottom-16 h-80 w-80 rounded-full bg-[#4a9df0]/10 blur-3xl" />
+        <div className="relative mx-auto max-w-[1400px] px-4 pb-24 pt-16 sm:px-6 lg:px-10 lg:pb-28 lg:pt-20">
           <SectionHeading
             light
             eyebrow="18 ميزة أساسية"
@@ -878,7 +1152,7 @@ export function LandingPage() {
           <div className="mt-10 grid gap-5 lg:grid-cols-3">
             {featureGroups.map(({ category, items }, index) => (
               <Reveal key={category} delay={index * 110}>
-                <div className="h-full rounded-2xl border border-white/12 bg-white/[0.06] p-5 backdrop-blur-sm">
+                <div className="h-full rounded-2xl border border-white/12 bg-white/[0.06] p-5 backdrop-blur-sm transition-colors duration-300 hover:border-[#d7a74a]/30 hover:bg-white/[0.09]">
                   <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3">
                     <span className="text-[15px] font-black text-white">{category}</span>
                     <span className="rounded-md border border-[#d7a74a]/30 bg-[#d7a74a]/10 px-2 py-0.5 text-[11px] font-bold text-[#f3cf87]">
@@ -904,7 +1178,7 @@ export function LandingPage() {
           <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {trustItems.map(({ title, subtitle, icon: Icon }, index) => (
               <Reveal key={title} delay={index * 80}>
-                <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-3">
+                <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-3 transition-colors duration-300 hover:border-[#d7a74a]/25 hover:bg-white/[0.08]">
                   <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#d7a74a]/15 text-[#f3cf87]">
                     <Icon className="h-5 w-5" />
                   </div>
@@ -916,6 +1190,63 @@ export function LandingPage() {
               </Reveal>
             ))}
           </div>
+        </div>
+
+        {/* موجة فاصلة نحو قسم الآراء */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 leading-none">
+          <svg viewBox="0 0 1440 64" preserveAspectRatio="none" className="h-10 w-full fill-[#f6f1e7]">
+            <path d="M0,32 C300,60 620,4 900,20 C1120,32 1300,52 1440,28 L1440,64 L0,64 Z" />
+          </svg>
+        </div>
+      </section>
+
+      {/* ══════════ آراء المدارس ══════════ */}
+      <section id="testimonials" className="mx-auto max-w-[1400px] px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
+        <SectionHeading
+          center
+          eyebrow="آراء المدارس"
+          title="ماذا يقول من يدير يومه مع الرائد؟"
+          subtitle="من مدير المدرسة إلى معلم الصف — خلاصة تجربة فرق العمل التي تعتمد الرائد في يومها الدراسي."
+        />
+
+        <div className="mt-12 grid gap-5 lg:grid-cols-3">
+          {testimonials.map((testimonial, index) => (
+            <Reveal key={testimonial.name} delay={index * 110}>
+              <figure className="lp-portal-card relative flex h-full flex-col rounded-2xl border border-[#e7dcc7] bg-white p-6 shadow-[0_14px_40px_-28px_rgba(8,41,84,0.35)]">
+                <Quote className="absolute left-5 top-5 h-8 w-8 text-[#d7a74a]/25" />
+                <div className="flex gap-1 text-[#d7a74a]" aria-label="تقييم خمس نجوم">
+                  {Array.from({ length: 5 }).map((_, starIndex) => (
+                    <Star key={starIndex} className="h-4 w-4 fill-current" />
+                  ))}
+                </div>
+                <blockquote className="mt-4 flex-1 text-[13.5px] font-medium leading-7 text-[#3a5a7a]">
+                  «{testimonial.quote}»
+                </blockquote>
+                <figcaption className="mt-5 flex items-center gap-3 border-t border-[#f3ede0] pt-4">
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[linear-gradient(150deg,#0a3160,#0e4a85)] text-base font-black text-[#f3cf87]">
+                    {testimonial.initials}
+                  </span>
+                  <div>
+                    <div className="text-[13.5px] font-black text-[#14355d]">{testimonial.name}</div>
+                    <div className="text-[11.5px] font-semibold text-[#9a8a6a]">{testimonial.role}</div>
+                  </div>
+                </figcaption>
+              </figure>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* ══════════ الأسئلة الشائعة ══════════ */}
+      <section id="faq" className="border-y border-[#e5d9c2] bg-[#fdfaf4]">
+        <div className="mx-auto max-w-[1400px] px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
+          <SectionHeading
+            center
+            eyebrow="الأسئلة الشائعة"
+            title="كل ما تريد معرفته قبل البدء"
+            subtitle="جمعنا أكثر ما يسألنا عنه مديرو المدارس — وإن بقي لديك سؤال آخر، فريقنا جاهز للرد عليك."
+          />
+          <FaqAccordion />
         </div>
       </section>
 
@@ -977,26 +1308,9 @@ export function LandingPage() {
               <div className="flex flex-col items-center justify-center gap-4 bg-white/5 px-6 py-9 sm:px-10">
                 <div className="text-center">
                   <div className="text-base font-black text-white">سجّل الآن</div>
-                  <div className="mt-0.5 text-xs font-medium text-white/55">امسح QR للتسجيل السريع</div>
+                  <div className="mt-0.5 text-xs font-medium text-white/55">امسح الرمز للانتقال لصفحة التسجيل</div>
                 </div>
-                <div className="w-full max-w-[160px] rounded-2xl border border-[#d7a74a]/30 bg-white p-3 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.4)]">
-                  <div className="grid grid-cols-6 gap-1 rounded-xl bg-[#fffaf0] p-3">
-                    {Array.from({ length: 36 }).map((_, index) => (
-                      <div
-                        key={index}
-                        className={
-                          index % 5 === 0 || index % 7 === 0 || index === 1 || index === 8 || index === 28
-                            ? 'aspect-square rounded-[3px] bg-[#173f74]'
-                            : 'aspect-square rounded-[3px] bg-[#d8c6a1]/55'
-                        }
-                      />
-                    ))}
-                  </div>
-                  <div className="mt-2 flex items-center justify-center gap-1.5">
-                    <QrCode className="h-3.5 w-3.5 text-[#b88c3d]" />
-                    <span className="text-[10px] font-bold text-[#7d6b4f]">نظام الرائد</span>
-                  </div>
-                </div>
+                <RegisterQrCode />
               </div>
             </div>
           </div>
@@ -1005,7 +1319,7 @@ export function LandingPage() {
 
       {/* ══════════ الفوتر ══════════ */}
       <footer className="border-t border-white/10 bg-[#071e3d] text-white">
-        <div className="mx-auto grid max-w-[1400px] gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.3fr_1fr_1fr] lg:px-10">
+        <div className="mx-auto grid max-w-[1400px] gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.3fr_1fr_1fr_1.1fr] lg:px-10">
           <div className="space-y-4">
             <BrandMark compact />
             <p className="max-w-sm text-[13px] leading-7 text-white/55">
@@ -1019,6 +1333,7 @@ export function LandingPage() {
               <li><a href="#journey" className="transition hover:text-[#f5d08b]">رحلة اليوم الدراسي</a></li>
               <li><a href="#portals" className="transition hover:text-[#f5d08b]">الواجهات</a></li>
               <li><a href="#features" className="transition hover:text-[#f5d08b]">المميزات</a></li>
+              <li><a href="#faq" className="transition hover:text-[#f5d08b]">الأسئلة الشائعة</a></li>
               <li><Link to="/plans" className="transition hover:text-[#f5d08b]">الباقات والأسعار</Link></li>
               <li><Link to="/register" className="transition hover:text-[#f5d08b]">تسجيل مدرسة جديدة</Link></li>
             </ul>
@@ -1028,7 +1343,40 @@ export function LandingPage() {
             <ul className="space-y-2 text-[13px] font-semibold text-white/65">
               <li><Link to="/auth/admin" className="transition hover:text-[#f5d08b]">بوابة الإدارة</Link></li>
               <li><Link to="/auth/teacher" className="transition hover:text-[#f5d08b]">بوابة المعلمين</Link></li>
+              <li><Link to="/story" className="transition hover:text-[#f5d08b]">قصة يوم مدرسي</Link></li>
               <li><a href="#cta" className="transition hover:text-[#f5d08b]">تواصل معنا</a></li>
+            </ul>
+          </div>
+          <div>
+            <div className="mb-3 text-sm font-black text-[#ecc36e]">تواصل معنا</div>
+            <ul className="space-y-3 text-[13px] font-semibold text-white/65">
+              <li className="flex items-center gap-2.5">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/8 text-[#f3cf87]">
+                  <Headphones className="h-4 w-4" />
+                </span>
+                <span>
+                  الدعم الفني
+                  <span className="block text-[11px] font-medium text-white/45">متاح على مدار الساعة طوال أيام الأسبوع</span>
+                </span>
+              </li>
+              <li className="flex items-center gap-2.5">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/8 text-[#f3cf87]">
+                  <MessageCircle className="h-4 w-4" />
+                </span>
+                <span>
+                  تواصل واتساب
+                  <span className="block text-[11px] font-medium text-white/45">رد سريع خلال ساعات العمل الرسمية</span>
+                </span>
+              </li>
+              <li className="flex items-center gap-2.5">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/8 text-[#f3cf87]">
+                  <MapPin className="h-4 w-4" />
+                </span>
+                <span>
+                  المقر
+                  <span className="block text-[11px] font-medium text-white/45">المملكة العربية السعودية</span>
+                </span>
+              </li>
             </ul>
           </div>
         </div>

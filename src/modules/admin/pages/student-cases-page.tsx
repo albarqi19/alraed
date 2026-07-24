@@ -18,8 +18,6 @@ import {
 import {
   WsPage,
   WsHeader,
-  WsToolbar,
-  WsField,
   WsInput,
   WsSelect,
   WsBlock,
@@ -122,34 +120,34 @@ export function StudentCasesPage() {
         title="الحالات الطلابية"
         badge="الإرشاد الطلابي"
         actions={<WsBtn variant="primary" icon={Plus} onClick={() => navigate('/admin/student-cases/new')}>حالة جديدة</WsBtn>}
-      />
+      >
+        {/* التبديل والبحث والفلاتر في شريط العنوان نفسه — لا شريط منفصل تحته */}
+        <div className="ws-header__filters">
+          <div className="ws-seg">
+            <button
+              type="button"
+              className={`ws-seg__btn ${viewMode === 'table' ? 'is-active' : ''}`}
+              onClick={() => setViewMode('table')}
+            >
+              <Table2 style={{ width: 13, height: 13 }} /> جدول
+            </button>
+            <button
+              type="button"
+              className={`ws-seg__btn ${viewMode === 'cards' ? 'is-active' : ''}`}
+              onClick={() => setViewMode('cards')}
+            >
+              <LayoutGrid style={{ width: 13, height: 13 }} /> بطاقات
+            </button>
+          </div>
 
-      <WsToolbar>
-        <div className="ws-seg">
-          <button
-            type="button"
-            className={`ws-seg__btn ${viewMode === 'table' ? 'is-active' : ''}`}
-            onClick={() => setViewMode('table')}
-          >
-            <Table2 style={{ width: 13, height: 13 }} /> جدول
-          </button>
-          <button
-            type="button"
-            className={`ws-seg__btn ${viewMode === 'cards' ? 'is-active' : ''}`}
-            onClick={() => setViewMode('cards')}
-          >
-            <LayoutGrid style={{ width: 13, height: 13 }} /> بطاقات
-          </button>
-        </div>
-
-        <WsField label="بحث" grow>
-          <div style={{ position: 'relative' }}>
+          <span style={{ position: 'relative' }}>
             <WsInput
-              type="text"
+              type="search"
               value={filters.search || ''}
               onChange={(e) => updateFilter('search', e.target.value || undefined)}
               placeholder="ابحث عن حالة (اسم الطالب، العنوان، رقم الحالة)..."
-              style={{ width: '100%', paddingInlineStart: 26 }}
+              aria-label="بحث في الحالات الطلابية"
+              style={{ width: 'min(230px, 60vw)', paddingInlineStart: 26 }}
             />
             <Search
               style={{
@@ -163,35 +161,34 @@ export function StudentCasesPage() {
                 pointerEvents: 'none',
               }}
             />
-          </div>
-        </WsField>
+          </span>
 
-        <WsField label="الأولوية">
           <WsSelect
+            aria-label="فلتر الأولوية"
+            title="فلتر الأولوية"
             value={filters.severity || ''}
             onChange={(e) => updateFilter('severity', e.target.value || undefined)}
           >
-            <option value="">الكل</option>
+            <option value="">كل الأولويات</option>
             {(Object.keys(SEVERITY_META) as Severity[]).map((sev) => (
               <option key={sev} value={sev}>{SEVERITY_META[sev].label}</option>
             ))}
           </WsSelect>
-        </WsField>
 
-        <WsField label="التصنيف">
           <WsSelect
+            aria-label="فلتر التصنيف"
+            title="فلتر التصنيف"
             value={filters.category || ''}
             onChange={(e) => updateFilter('category', e.target.value || undefined)}
           >
-            <option value="">الكل</option>
+            <option value="">كل التصنيفات</option>
             {CATEGORIES.map((cat) => (
               <option key={cat} value={cat}>{cat}</option>
             ))}
           </WsSelect>
-        </WsField>
 
-        <WsField label="الحالة">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {/* رقاقات الحالة — تلبس نغمتها عند التفعيل */}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             {(Object.keys(STATUS_META) as CaseStatus[]).map((status) => {
               const meta = STATUS_META[status]
               const isActive = filters.status === status
@@ -209,13 +206,13 @@ export function StudentCasesPage() {
                 </button>
               )
             })}
-          </div>
-        </WsField>
+          </span>
 
-        {hasActiveFilters && (
-          <WsBtn size="sm" icon={X} onClick={clearFilters}>مسح الفلاتر</WsBtn>
-        )}
-      </WsToolbar>
+          {hasActiveFilters && (
+            <WsBtn size="sm" icon={X} onClick={clearFilters}>مسح الفلاتر</WsBtn>
+          )}
+        </div>
+      </WsHeader>
 
       <WsLayout>
         <WsMain>
@@ -299,7 +296,7 @@ export function StudentCasesPage() {
                   <th style={{ textAlign: 'center' }}>إجراءات</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="ws-tbl-rise">
                 {casesData.data.map((caseItem) => {
                   const st = STATUS_META[caseItem.status]
                   const catTone = categoryTone(caseItem.category)
@@ -333,7 +330,7 @@ export function StudentCasesPage() {
                       <td><SeverityBadge severity={caseItem.severity} /></td>
                       <td><ToneChip tone={st.tone}>{st.label}</ToneChip></td>
                       <td style={{ whiteSpace: 'nowrap', color: 'var(--ws-text-2)' }}>
-                        {caseItem.last_activity_at ? new Date(caseItem.last_activity_at).toLocaleDateString('ar-SA') : '-'}
+                        {caseItem.last_activity_at ? new Date(caseItem.last_activity_at).toLocaleDateString('ar-SA-u-nu-latn') : '-'}
                       </td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
@@ -356,6 +353,7 @@ export function StudentCasesPage() {
           ) : (
             <div className="ws-block__scroll">
               <div
+                className="ws-cardgrid"
                 style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
@@ -378,7 +376,7 @@ export function StudentCasesPage() {
                         overflow: 'hidden',
                         /* البطاقة تلبس أولويتها — باستيل تينت-60 بلغة الإغناء */
                         background: chip(sev.tone),
-                        transition: 'border-color 0.12s',
+                        /* الانتقال (حدود + رفعة تحويم) يديره صنف ws-cardgrid */
                       }}
                       onMouseEnter={(e) => { e.currentTarget.style.borderColor = sev.tone.tx }}
                       onMouseLeave={(e) => { e.currentTarget.style.borderColor = sev.tone.bd }}
@@ -442,7 +440,7 @@ export function StudentCasesPage() {
                           }}
                         >
                           <span>{caseItem.student.grade} - {caseItem.student.class_name}</span>
-                          <span>{caseItem.last_activity_at ? new Date(caseItem.last_activity_at).toLocaleDateString('ar-SA') : '-'}</span>
+                          <span>{caseItem.last_activity_at ? new Date(caseItem.last_activity_at).toLocaleDateString('ar-SA-u-nu-latn') : '-'}</span>
                         </div>
                       </div>
                     </div>

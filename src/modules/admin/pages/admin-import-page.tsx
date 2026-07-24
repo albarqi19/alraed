@@ -22,10 +22,12 @@ import {
   Calendar,
   Puzzle,
   ChevronLeft,
+  Chrome,
   FileUp,
   Info,
   KeyRound,
   ListChecks,
+  Zap,
 } from 'lucide-react'
 import {
   TONES,
@@ -44,7 +46,7 @@ import {
 } from '@/shared/workspace'
 import { chip } from './dashboard-ui'
 
-const ar = (n: number) => n.toLocaleString('ar-SA')
+const ar = (n: number) => n.toLocaleString('ar-SA-u-nu-latn')
 
 // ─── بطاقة الرفع ───────────────────────────────────────────────────────────
 function UploadCard({
@@ -367,7 +369,7 @@ function StudentPreviewDetails({ preview }: { preview: ImportStudentsPreview }) 
                     <td>{student.grade}</td>
                     <td>{student.class_name}</td>
                     <td style={{ color: 'var(--ws-text-2)' }}>
-                      {student.updated_at ? new Date(student.updated_at).toLocaleDateString('ar-SA') : '—'}
+                      {student.updated_at ? new Date(student.updated_at).toLocaleDateString('ar-SA-u-nu-latn') : '—'}
                     </td>
                   </tr>
                 ))}
@@ -580,6 +582,7 @@ function PlatformImportButton({ label, logo, onClick }: { label: string; logo: s
     <button
       type="button"
       onClick={onClick}
+      className="ws-callrow"
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -617,11 +620,13 @@ function PlatformImportButton({ label, logo, onClick }: { label: string; logo: s
   )
 }
 
-// ─── كاشف إضافة الرَّائِد ──────────────────────────────────────────────────
-function ExtensionDetector() {
+// ─── إضافة الرَّائِد: كشف + بطاقة إبراز ────────────────────────────────────
+const RAED_CHROME_STORE_URL =
+  'https://chromewebstore.google.com/detail/الرَّائِد-مساعد-استيراد-ا/kglcgomelgkhgaefhjmakcfalfdficll'
+
+/** كشف إضافة الرَّائِد — null: جارٍ الكشف · true: مثبتة · false: غير مثبتة */
+function useRaedExtension(): boolean | null {
   const [isInstalled, setIsInstalled] = useState<boolean | null>(null)
-  const CHROME_STORE_URL =
-    'https://chromewebstore.google.com/detail/الرَّائِد-مساعد-استيراد-ا/kglcgomelgkhgaefhjmakcfalfdficll'
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -630,85 +635,191 @@ function ExtensionDetector() {
     window.addEventListener('message', handleMessage)
     window.postMessage({ type: 'ALRAED_DETECT_EXTENSION' }, '*')
     const timeout = setTimeout(() => {
-      if (isInstalled === null) setIsInstalled(false)
+      setIsInstalled((prev) => (prev === null ? false : prev))
     }, 1000)
     return () => {
       window.removeEventListener('message', handleMessage)
       clearTimeout(timeout)
     }
-  }, [isInstalled])
+  }, [])
 
+  return isInstalled
+}
+
+/** الشارة المدمجة — تُعرض في العمود الجانبي فتبقى الإضافة حاضرة في كل التبويبات.
+    عمودية التركيب لتتنفس في الأعمدة الضيقة: عنوان ثم وصف ثم زر بعرض كامل */
+function ExtensionDetector() {
+  const isInstalled = useRaedExtension()
   const tone = isInstalled === null ? TONES.gray : isInstalled ? TONES.green : TONES.amber
 
   return (
     <div
       style={{
         display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        padding: '8px 12px',
+        flexDirection: 'column',
+        gap: 8,
+        padding: '10px 12px',
         borderRadius: 8,
         border: `1px solid ${tone.bd}`,
         background: chip(tone),
       }}
     >
-      <span
-        style={{
-          width: 30,
-          height: 30,
-          borderRadius: 8,
-          background: 'var(--ws-surface)',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: 14,
-          fontWeight: 800,
-          color: tone.tx,
-          flexShrink: 0,
-        }}
-      >
-        R
-      </span>
-      <span style={{ flex: 1, minWidth: 0 }}>
-        {isInstalled === null ? (
-          <span style={{ fontSize: 12.5, color: 'var(--ws-text-2)' }}>جاري الكشف عن الإضافة...</span>
-        ) : isInstalled ? (
-          <>
-            <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: tone.tx }}>إضافة الرَّائِد مُثبّتة ✓</span>
-            <span style={{ display: 'block', fontSize: 12, color: 'var(--ws-text-2)' }}>يمكنك الآن الاستيراد التلقائي</span>
-          </>
-        ) : (
-          <>
-            <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>إضافة الاستيراد التلقائي</span>
-            <span style={{ display: 'block', fontSize: 12, color: tone.tx }}>
-              ثبّت الإضافة للاستيراد المباشر من نور ومدرستي
-            </span>
-          </>
-        )}
-      </span>
-      {isInstalled === false && (
-        <a
-          href={CHROME_STORE_URL}
-          target="_blank"
-          rel="noopener noreferrer"
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span
           style={{
+            width: 32,
+            height: 32,
+            borderRadius: 9,
+            background: 'var(--ws-surface)',
             display: 'inline-flex',
             alignItems: 'center',
-            gap: 4,
-            padding: '4px 10px',
-            borderRadius: 7,
-            border: `1px solid ${tone.bd}`,
-            background: 'var(--ws-surface)',
-            fontSize: 12,
-            fontWeight: 700,
-            color: tone.tx,
-            textDecoration: 'none',
+            justifyContent: 'center',
             flexShrink: 0,
           }}
         >
-          <Download style={{ width: 12, height: 12 }} /> تحميل
+          <Chrome style={{ width: 16, height: 16, color: tone.tx }} />
+        </span>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          {isInstalled === null ? (
+            <span style={{ fontSize: 12.5, color: 'var(--ws-text-2)' }}>جاري الكشف عن الإضافة...</span>
+          ) : isInstalled ? (
+            <>
+              <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: tone.tx }}>
+                إضافة الرَّائِد مُثبّتة ✓
+              </span>
+              <span style={{ display: 'block', fontSize: 12, color: 'var(--ws-text-2)' }}>
+                يمكنك الآن الاستيراد التلقائي
+              </span>
+            </>
+          ) : (
+            <>
+              <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>إضافة الرَّائِد لكروم</span>
+              <span style={{ display: 'block', fontSize: 12, color: 'var(--ws-text-2)', lineHeight: 1.6 }}>
+                استيراد مباشر من نور ومدرستي بلا ملفات
+              </span>
+            </>
+          )}
+        </span>
+      </div>
+      {isInstalled === false && (
+        <a
+          href={RAED_CHROME_STORE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="ws-btn ws-btn--primary"
+          style={{ textDecoration: 'none', width: '100%', justifyContent: 'center' }}
+        >
+          <Download style={{ width: 13, height: 13 }} />
+          تحميل الإضافة
         </a>
       )}
+    </div>
+  )
+}
+
+/** ★ بطاقة البطل — إبراز إضافة كروم كمسار الاستيراد الأسرع: بلا ملفات ولا قوالب */
+function ExtensionHeroCard() {
+  const isInstalled = useRaedExtension()
+  const tone = isInstalled === null ? TONES.gray : isInstalled ? TONES.green : TONES.sky
+
+  return (
+    <div
+      style={{
+        borderRadius: 10,
+        border: `1px solid ${tone.bd}`,
+        background: chip(tone),
+        padding: 14,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span
+          style={{
+            width: 46,
+            height: 46,
+            borderRadius: 12,
+            background: 'var(--ws-surface)',
+            border: `1px solid ${tone.bd}`,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <Chrome style={{ width: 24, height: 24, color: tone.tx }} />
+        </span>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: 'block', fontSize: 15, fontWeight: 800 }}>
+            إضافة الرَّائِد لمتصفح كروم
+          </span>
+          <span style={{ display: 'block', fontSize: 12.5, color: 'var(--ws-text-2)', marginTop: 2, lineHeight: 1.6 }}>
+            تستورد الطلاب والمعلمين مباشرة من نظام نور ومنصة مدرستي بضغطة واحدة — بلا ملفات ولا قوالب.
+          </span>
+        </span>
+        {isInstalled !== null && (
+          <span
+            className="ws-chip"
+            style={{
+              background: 'var(--ws-surface)',
+              borderColor: tone.bd,
+              color: tone.tx,
+              fontWeight: 700,
+              flexShrink: 0,
+            }}
+          >
+            {isInstalled ? 'مُثبّتة ✓' : 'غير مُثبّتة'}
+          </span>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6  }}>
+        {[
+          { icon: Zap, text: 'استيراد بضغطة واحدة' },
+          { icon: FileUp, text: 'بلا ملفات إكسل' },
+          { icon: CheckSquare, text: 'قراءة مباشرة من المنصة' },
+        ].map((f) => (
+          <span
+            key={f.text}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '4px 10px',
+              borderRadius: 999,
+              background: 'var(--ws-surface)',
+              border: `1px solid ${tone.bd}`,
+              fontSize: 12,
+              fontWeight: 600,
+              color: 'var(--ws-text)',
+            }}
+          >
+            <f.icon style={{ width: 12, height: 12, color: tone.tx }} />
+            {f.text}
+          </span>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        {isInstalled === false && (
+          <a
+            href={RAED_CHROME_STORE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ws-btn ws-btn--primary"
+            style={{ textDecoration: 'none' }}
+          >
+            <Download style={{ width: 14, height: 14 }} />
+            تحميل الإضافة من Chrome Web Store
+          </a>
+        )}
+        <span style={{ fontSize: 12, color: 'var(--ws-text-2)', lineHeight: 1.6 }}>
+          {isInstalled
+            ? 'افتح نظام نور أو منصة مدرستي وستجد أدوات الاستيراد مدمجة في الصفحة.'
+            : 'بعد التثبيت افتح نظام نور أو منصة مدرستي وستجد أدوات الاستيراد مدمجة في الصفحة.'}
+        </span>
+      </div>
     </div>
   )
 }
@@ -731,7 +842,9 @@ function ImportSteps({ dones }: { dones: boolean[] }) {
         return (
           <div
             key={step.label}
+            className="ws-tbl-rise"
             style={{
+              animationDelay: `${i * 60}ms`,
               display: 'flex',
               alignItems: 'flex-start',
               gap: 10,
@@ -916,7 +1029,7 @@ export function AdminImportPage() {
       <WsLayout>
         <WsMain>
           {activeTab === 'people' && (
-            <div className="ws-import-duo">
+            <div className="ws-import-duo ws-fade-in">
               {/* ── عمود الطلاب ── */}
               <WsBlock
                 title="الطلاب"
@@ -1019,8 +1132,8 @@ export function AdminImportPage() {
                 </div>
               </WsBlock>
 
-              {/* الفاصل الملوّن بين العمودين — يستلقي أفقياً عند التراصّ */}
-              <span className="ws-import-duo__bar" style={{ background: TONES.sky.bd }} aria-hidden />
+              {/* الفاصل بين العمودين — لونه وشكله من CSS ليتبع الهوية */}
+              <span className="ws-import-duo__bar" aria-hidden />
 
               {/* ── عمود المعلمين ── */}
               <WsBlock
@@ -1135,6 +1248,7 @@ export function AdminImportPage() {
             <WsBlock
               title="استيراد من aSc TimeTable"
               icon={Calendar}
+              className="ws-fade-in"
               tools={
                 <WsBtn size="sm" variant="primary" icon={UploadCloud} onClick={() => setIsTimeTableDialogOpen(true)}>
                   استيراد جدول
@@ -1219,30 +1333,28 @@ export function AdminImportPage() {
           )}
 
           {activeTab === 'platforms' && (
-            <WsBlock title="الاستيراد من المنصات التعليمية" icon={Puzzle} padded>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <p style={{ margin: 0, fontSize: 12.5, color: 'var(--ws-text-2)' }}>
-                  اختر المنصة للاستيراد المباشر — يتطلب تثبيت إضافة الرَّائِد على Chrome.
-                </p>
+            <WsBlock title="الاستيراد من المنصات التعليمية" icon={Puzzle} padded className="ws-fade-in">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* ★ إضافة كروم هي البطل هنا — مسار الاستيراد الأسرع */}
+                <ExtensionHeroCard />
 
-                <ExtensionDetector />
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 }}>
-                  <PlatformImportButton
-                    label="استيراد من نظام نور"
-                    logo="https://noor.moe.gov.sa/Noor/images/home_login/noor_logo.png"
-                    onClick={() => handlePlatformImport('noor')}
-                  />
-                  <PlatformImportButton
-                    label="استيراد من منصة مدرستي"
-                    logo="https://object.moe.gov.sa/nasaq/edu/files/logo-2-638593241344546491.png"
-                    onClick={() => handlePlatformImport('madrasati')}
-                  />
+                <div>
+                  <p style={{ margin: '0 0 8px', fontSize: 12.5, fontWeight: 700, color: 'var(--ws-text-2)' }}>
+                    الاستيراد من داخل النظام (يتطلب الإضافة)
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 }}>
+                    <PlatformImportButton
+                      label="استيراد من نظام نور"
+                      logo="https://noor.moe.gov.sa/Noor/images/home_login/noor_logo.png"
+                      onClick={() => handlePlatformImport('noor')}
+                    />
+                    <PlatformImportButton
+                      label="استيراد من منصة مدرستي"
+                      logo="https://object.moe.gov.sa/nasaq/edu/files/logo-2-638593241344546491.png"
+                      onClick={() => handlePlatformImport('madrasati')}
+                    />
+                  </div>
                 </div>
-
-                <WsAlert tone="warn" boxed icon={AlertTriangle}>
-                  للاستيراد التلقائي من المنصات يجب تثبيت إضافة الرَّائِد على متصفح Google Chrome.
-                </WsAlert>
               </div>
             </WsBlock>
           )}
@@ -1250,6 +1362,11 @@ export function AdminImportPage() {
 
         {/* الدليل — سلّم الخطوات الحيّ وتحذيرات ما قبل التنفيذ */}
         <WsSideCol side="end" title="الدليل" icon={Info} storageKey="ws:import:sidecol" width={300}>
+          {/* إضافة كروم حاضرة في كل التبويبات — لا تُدفن في تبويب المنصات */}
+          <WsBlock title="أداة كروم" icon={Chrome} padded>
+            <ExtensionDetector />
+          </WsBlock>
+
           <WsBlock title="خطوات الاستيراد" icon={ListChecks} padded>
             <ImportSteps dones={stepDones} />
             <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--ws-text-2)' }}>

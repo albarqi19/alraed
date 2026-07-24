@@ -3,65 +3,96 @@ import {
   MessageCircle, ClipboardCheck, FileText, TrendingUp,
   Minus, Award, Percent, Timer,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import { TONES, type Tone } from '@/shared/workspace'
+import { arNum, useCountUp } from '../../pages/dashboard-ui'
+import { StatGrid, toneBg } from './profile-ui'
 import type { TeacherProfileSummary, BenchmarkValues } from '../types'
 
-interface StatCardProps {
+interface SummaryStatProps {
   title: string
-  value: string | number
+  /** رقم يُعدّ تصاعدياً، أو نص يُعرض كما هو (مثل «غير مرتبط») */
+  value: number | string
+  suffix?: string
   subtitle?: string
-  icon: React.ElementType
-  color: string
+  icon: LucideIcon
+  tone: Tone
   benchmark?: number
   /** true = أعلى أفضل, false = أقل أفضل */
   higherIsBetter?: boolean
 }
 
-function StatCard({ title, value, subtitle, icon: Icon, color, benchmark, higherIsBetter = true }: StatCardProps) {
-  const colorMap: Record<string, string> = {
-    emerald: 'border-emerald-100 bg-emerald-50/50',
-    sky: 'border-sky-100 bg-sky-50/50',
-    violet: 'border-violet-100 bg-violet-50/50',
-    blue: 'border-blue-100 bg-blue-50/50',
-    slate: 'border-slate-100 bg-slate-50/50',
-  }
-
-  const iconColorMap: Record<string, string> = {
-    emerald: 'text-emerald-600',
-    sky: 'text-sky-600',
-    violet: 'text-violet-600',
-    blue: 'text-blue-600',
-    slate: 'text-slate-600',
-  }
-
-  const numValue = typeof value === 'number' ? value : parseFloat(String(value)) || 0
+/** بطاقة مؤشر رئيسية — أخت بطاقات لوحة التحكم: تلبس نبرتها دائماً وتعدّ من صفر */
+function SummaryStat({ title, value, suffix, subtitle, icon: Icon, tone, benchmark, higherIsBetter = true }: SummaryStatProps) {
+  const numeric = typeof value === 'number'
+  const display = useCountUp(numeric ? value : 0)
+  const numValue = numeric ? value : parseFloat(String(value)) || 0
   const isBetter = benchmark !== undefined
     ? (higherIsBetter ? numValue >= benchmark : numValue <= benchmark)
     : null
+  const benchTone = isBetter ? TONES.green : TONES.amber
 
   return (
-    <article className={`rounded-2xl border p-4 shadow-sm transition hover:shadow-md ${colorMap[color] ?? colorMap.slate}`}>
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <p className="text-xs font-semibold text-slate-500">{title}</p>
-          <p className="mt-1.5 text-2xl font-bold text-slate-900">{value}</p>
-        </div>
-        <div className="rounded-xl bg-white/60 p-2 shadow-sm">
-          <Icon className={`h-5 w-5 ${iconColorMap[color] ?? iconColorMap.slate}`} />
-        </div>
-      </div>
-      <div className="mt-3 flex items-center justify-between text-xs">
-        {subtitle && <span className="font-medium text-slate-500">{subtitle}</span>}
+    <article
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+        padding: '10px 12px',
+        border: `1px solid ${tone.bd}`,
+        borderRadius: 10,
+        background: toneBg(tone),
+      }}
+    >
+      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--ws-text-2)' }}>{title}</span>
+        <span
+          style={{
+            width: 26,
+            height: 26,
+            borderRadius: 7,
+            background: 'var(--ws-surface)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <Icon style={{ width: 14, height: 14, color: tone.tx }} />
+        </span>
+      </span>
+      <span
+        style={{
+          fontSize: numeric ? 24 : 14,
+          fontWeight: 800,
+          lineHeight: 1.15,
+          color: tone.tx,
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        {numeric ? arNum(display) : value}
+        {suffix}
+      </span>
+      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minHeight: 15 }}>
+        {subtitle && <span style={{ fontSize: 11, color: 'var(--ws-text-2)' }}>{subtitle}</span>}
         {benchmark !== undefined && (
           <span
-            className={`flex items-center gap-1 font-medium ${
-              isBetter ? 'text-emerald-600' : 'text-amber-600'
-            }`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 3,
+              marginInlineStart: 'auto',
+              fontSize: 10.5,
+              fontWeight: 700,
+              color: benchTone.tx,
+            }}
+            title="متوسط المدرسة"
           >
-            {isBetter ? <TrendingUp className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
-            م: {benchmark}
+            {isBetter ? <TrendingUp style={{ width: 11, height: 11 }} /> : <Minus style={{ width: 11, height: 11 }} />}
+            م: {arNum(benchmark)}
           </span>
         )}
-      </div>
+      </span>
     </article>
   )
 }
@@ -77,90 +108,93 @@ export function SummaryCards({ data, benchmarks }: SummaryCardsProps) {
   const rewardsCount = data.rewards?.rewards_count ?? 0
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+    <StatGrid style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
       {/* === إيجابي أولاً === */}
-      <StatCard
+      <SummaryStat
         title="نسبة الانضباط"
-        value={`${attendanceRate}%`}
+        value={attendanceRate}
+        suffix="%"
         subtitle={`${data.attendance.present_days} يوم حضور`}
         icon={Percent}
-        color="emerald"
+        tone={TONES.green}
       />
-      <StatCard
+      <SummaryStat
         title="الالتزام بالمواعيد"
-        value={`${onTimeRate}%`}
+        value={onTimeRate}
+        suffix="%"
         subtitle={`${data.attendance.on_time_days} يوم في الموعد`}
         icon={Timer}
-        color="blue"
+        tone={TONES.amber}
       />
-      <StatCard
+      <SummaryStat
         title="نسبة التحضير"
-        value={data.preparation.is_linked ? `${data.preparation.rate}%` : 'غير مرتبط'}
+        value={data.preparation.is_linked ? data.preparation.rate : 'غير مرتبط'}
+        suffix={data.preparation.is_linked ? '%' : undefined}
         subtitle={data.preparation.is_linked ? `${data.preparation.prepared}/${data.preparation.total}` : undefined}
         icon={ClipboardCheck}
-        color="violet"
+        tone={TONES.purple}
         benchmark={data.preparation.is_linked ? benchmarks?.school_preparation_rate : undefined}
         higherIsBetter={true}
       />
-      <StatCard
+      <SummaryStat
         title="الرسائل المرسلة"
         value={data.messages.total_sent}
         subtitle={`${data.messages.replies_count} رد`}
         icon={MessageCircle}
-        color="sky"
+        tone={TONES.sky}
         benchmark={benchmarks?.avg_messages_per_teacher}
         higherIsBetter={true}
       />
-      <StatCard
+      <SummaryStat
         title="الحصص"
         value={data.schedule.total_sessions}
         subtitle={`${data.schedule.subjects_count} مادة · ${data.schedule.classes_count} فصل`}
         icon={BookOpen}
-        color="blue"
+        tone={TONES.gray}
       />
       {/* المكافآت - تظهر فقط إذا > 0 */}
       {rewardsCount > 0 && (
-        <StatCard
+        <SummaryStat
           title="المكافآت الممنوحة"
           value={rewardsCount}
           subtitle={`${data.rewards.total_rewards} نقطة`}
           icon={Award}
-          color="emerald"
+          tone={TONES.green}
         />
       )}
-      {/* === البقية بألوان هادئة === */}
-      <StatCard
+      {/* === البقية بنبرات هادئة === */}
+      <SummaryStat
         title="أيام الحضور"
         value={data.attendance.present_days}
         subtitle={`من ${data.attendance.total_records}`}
         icon={CheckCircle}
-        color="emerald"
+        tone={TONES.gray}
         benchmark={benchmarks?.avg_present_days}
         higherIsBetter={true}
       />
-      <StatCard
+      <SummaryStat
         title="أيام الغياب"
         value={data.attendance.absent_days}
         icon={XCircle}
-        color="slate"
+        tone={TONES.red}
         benchmark={benchmarks?.avg_absent_days}
         higherIsBetter={false}
       />
-      <StatCard
+      <SummaryStat
         title="أيام التأخر"
         value={data.attendance.delayed_days}
         icon={Clock}
-        color="slate"
+        tone={TONES.amber}
         benchmark={benchmarks?.avg_delayed_days}
         higherIsBetter={false}
       />
-      <StatCard
+      <SummaryStat
         title="الإحالات"
         value={data.referrals_count}
         icon={FileText}
-        color="slate"
+        tone={TONES.gray}
         benchmark={benchmarks?.avg_referrals_per_teacher}
       />
-    </div>
+    </StatGrid>
   )
 }

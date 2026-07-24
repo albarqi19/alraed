@@ -1011,7 +1011,7 @@ function getStatusTone(status: AutoCallQueueEntry['status']) {
 function formatDate(value: string) {
   try {
     const date = new Date(value)
-    return new Intl.DateTimeFormat('ar-SA', { dateStyle: 'medium', timeStyle: 'short' }).format(date)
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', { dateStyle: 'medium', timeStyle: 'short' }).format(date)
   } catch {
     return value
   }

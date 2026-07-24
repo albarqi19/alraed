@@ -55,7 +55,7 @@ function AutoCallDisplayScreen({ customTitle }: AutoCallDisplayScreenProps) {
     }
 
     const utterance = new SpeechSynthesisUtterance(announcing.studentName)
-    utterance.lang = settings.voiceLocale || 'ar-SA'
+    utterance.lang = settings.voiceLocale || 'ar-SA-u-nu-latn'
     utterance.rate = 0.9
     utterance.pitch = 1.0
     utterance.volume = 1.0
@@ -157,7 +157,7 @@ function AutoCallDisplayScreen({ customTitle }: AutoCallDisplayScreenProps) {
           <div className="flex flex-wrap items-center justify-center gap-2 text-xs font-medium text-slate-100 md:text-sm">
             <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5">
               <Clock3 className="h-4 w-4" />
-              {new Intl.DateTimeFormat('ar-SA', {
+              {new Intl.DateTimeFormat('ar-SA-u-nu-latn', {
                 dateStyle: 'full',
                 timeStyle: 'short',
               }).format(now)}

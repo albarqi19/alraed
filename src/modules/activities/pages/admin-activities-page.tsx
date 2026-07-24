@@ -72,7 +72,7 @@ const cellTone = (hasReport: boolean, status: ReportStatus | null): Tone =>
 function formatDate(value: string | null | undefined): string {
   if (!value) return '—'
   try {
-    return new Intl.DateTimeFormat('ar-SA', { dateStyle: 'medium' }).format(new Date(value))
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', { dateStyle: 'medium' }).format(new Date(value))
   } catch {
     return value
   }
@@ -81,7 +81,7 @@ function formatDate(value: string | null | undefined): string {
 function formatDateTime(value: string | null | undefined): string {
   if (!value) return '—'
   try {
-    return new Intl.DateTimeFormat('ar-SA', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+    return new Intl.DateTimeFormat('ar-SA-u-nu-latn', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
   } catch {
     return value
   }
