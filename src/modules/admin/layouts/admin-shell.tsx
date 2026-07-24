@@ -81,6 +81,8 @@ const WORKSPACE_ROUTES = [
 const WORKSPACE_ROUTES_EXACT = [
   '/admin/forms',
   '/admin/forms/new',
+  // سجل المخالفات محوّل، لكن شقيقه behavior/analytics ما زال قديماً — فمطابقة دقيقة
+  '/admin/behavior',
 ]
 
 /**
@@ -90,6 +92,8 @@ const WORKSPACE_ROUTES_EXACT = [
  */
 const WORKSPACE_ROUTE_PATTERNS = [
   /^\/admin\/forms\/\d+$/,
+  // تفاصيل المخالفة (معرّفات) — دون analytics غير المحوّلة
+  /^\/admin\/behavior\/(?!analytics$)[^/]+$/,
 ]
 
 export function AdminShell() {

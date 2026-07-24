@@ -1,18 +1,20 @@
-﻿import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   AlertCircle,
   CheckCircle,
+  CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
   Download,
+  Eye,
   ListChecks,
+  Loader2,
   Plus,
   Search,
   Trash2,
-  Users,
-  X,
 } from 'lucide-react'
 import { useToast } from '@/shared/feedback/use-toast'
 import { ViolationBadge } from '@/modules/admin/behavior/components/violation-badge'
@@ -32,6 +34,28 @@ import type {
 import type { CreateBehaviorViolationPayload } from '@/modules/admin/behavior/api'
 import { useBehaviorStore } from '@/modules/admin/behavior/store/use-behavior-store'
 import { useBehaviorConfigStore } from '@/modules/admin/behavior/store/use-behavior-config-store'
+import {
+  TONES,
+  ToneChip,
+  WsAlert,
+  WsBlock,
+  WsBtn,
+  WsEmpty,
+  WsField,
+  WsHeader,
+  WsIconBtn,
+  WsInput,
+  WsLayout,
+  WsMain,
+  WsPage,
+  WsSelect,
+  WsSideCol,
+  WsTable,
+  WsTextarea,
+  WsToolbar,
+  type Tone,
+} from '@/shared/workspace'
+import { DayCard, chip } from './dashboard-ui'
 
 type RecordStep = 1 | 2 | 3 | 4 | 5
 
@@ -48,11 +72,21 @@ const ITEMS_PER_PAGE = 10
 const clampRecordStep = (value: number): RecordStep =>
   Math.min(5, Math.max(1, value)) as RecordStep
 
-const STATUS_COLORS: Record<BehaviorStatus, string> = {
-  'قيد المعالجة': 'bg-amber-50 text-amber-700 border border-amber-200',
-  'جاري التنفيذ': 'bg-sky-50 text-sky-700 border border-sky-200',
-  مكتملة: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-  ملغاة: 'bg-slate-50 text-slate-600 border border-slate-200',
+/** الحالة تلبس نغمتها في كل الصفحة — نفس عائلة TONES المعتمدة */
+const STATUS_TONES: Record<BehaviorStatus, Tone> = {
+  'قيد المعالجة': TONES.amber,
+  'جاري التنفيذ': TONES.sky,
+  مكتملة: TONES.green,
+  ملغاة: TONES.gray,
+}
+
+/** سلّم خطورة الدرجات: الأولى هادئة والخامسة حمراء */
+const DEGREE_TONES: Record<number, Tone> = {
+  1: TONES.green,
+  2: TONES.sky,
+  3: TONES.amber,
+  4: TONES.red,
+  5: TONES.red,
 }
 
 type ProcedureAssignment = {
@@ -326,8 +360,11 @@ export function AdminBehaviorPage() {
       byStatus,
       byDegree,
       recent: violations.slice(0, 5),
+      uniqueStudents: new Set(violations.map((v) => v.studentId)).size,
     }
   }, [violations])
+
+  const maxDegreeCount = Math.max(1, ...Object.values(dashboardStats.byDegree))
 
   const handleNextStep = () => {
     if (recordStep === 1 && selectedStudentIds.length === 0) {
@@ -433,120 +470,140 @@ export function AdminBehaviorPage() {
   }
 
   return (
-    <section className="space-y-8">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-slate-900">السلوك والمخالفات</h1>
-          <p className="text-sm text-muted">
-            لوحة موحدة لرصد المخالفات، البحث عن الطلاب، واستعراض السجل السلوكي في صفحة واحدة.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setIsProceduresModalOpen(true)}
-            className="button-secondary flex items-center gap-2 text-sm"
+    <WsPage className="ws-rich">
+      <WsHeader
+        title="سجل المخالفات"
+        badge="السلوك والمواظبة"
+        actions={
+          <>
+            <WsBtn icon={ListChecks} onClick={() => setIsProceduresModalOpen(true)}>
+              المخالفات والإجراءات
+            </WsBtn>
+            <WsBtn variant="primary" icon={Plus} onClick={handleOpenModal}>
+              رصد مخالفة
+            </WsBtn>
+          </>
+        }
+      />
+
+      <WsToolbar>
+        <WsField label="بحث" htmlFor="bh-q" grow>
+          <div style={{ position: 'relative' }}>
+            <WsInput
+              id="bh-q"
+              type="search"
+              value={logSearch}
+              onChange={(event) => setLogSearch(event.target.value)}
+              placeholder="الاسم، رقم الطالب، نوع المخالفة، المبلّغ..."
+              style={{ width: '100%', paddingInlineStart: 26 }}
+            />
+            <Search
+              style={{
+                width: 13,
+                height: 13,
+                position: 'absolute',
+                insetInlineStart: 8,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: 'var(--ws-text-2)',
+                pointerEvents: 'none',
+              }}
+            />
+          </div>
+        </WsField>
+        <WsField label="الدرجة" htmlFor="bh-deg">
+          <WsSelect
+            id="bh-deg"
+            value={logDegree === 'all' ? '' : logDegree}
+            onChange={(event) =>
+              setLogDegree(event.target.value === '' ? 'all' : (Number(event.target.value) as BehaviorDegree))
+            }
           >
-            <ListChecks className="h-5 w-5" />
-            المخالفات والإجراءات
-          </button>
-          <button
-            type="button"
-            onClick={handleOpenModal}
-            className="button-primary flex items-center gap-2"
+            <option value="">جميع الدرجات</option>
+            {BEHAVIOR_DEGREE_OPTIONS.map((degree) => (
+              <option key={degree} value={degree}>
+                الدرجة {degree}
+              </option>
+            ))}
+          </WsSelect>
+        </WsField>
+        <WsField label="الحالة" htmlFor="bh-st">
+          <WsSelect
+            id="bh-st"
+            value={logStatus === 'all' ? '' : logStatus}
+            onChange={(event) =>
+              setLogStatus(event.target.value === '' ? 'all' : (event.target.value as BehaviorStatus))
+            }
           >
-            <Plus className="h-5 w-5" />
-            إضافة مخالفة سلوكية
-          </button>
-        </div>
-      </header>
-
-      <div className="grid grid-cols-2 gap-4">
-        <StatCard title="إجمالي المخالفات" value={dashboardStats.total} icon={<ClipboardList className="h-5 w-5" />} accent="bg-emerald-500/10 text-emerald-700 border border-emerald-200" />
-        <StatCard title="قيد المعالجة" value={dashboardStats.byStatus['قيد المعالجة']} icon={<AlertCircle className="h-5 w-5" />} accent="bg-amber-500/10 text-amber-700 border border-amber-200" />
-        <StatCard title="مكتملة" value={dashboardStats.byStatus['مكتملة']} icon={<CheckCircle className="h-5 w-5" />} accent="bg-sky-500/10 text-sky-700 border border-sky-200" />
-        <StatCard title="عدد الطلاب" value={students.length} icon={<Users className="h-5 w-5" />} accent="bg-slate-500/10 text-slate-700 border border-slate-200" />
-      </div>
-
-      <div className="glass-card space-y-6">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold text-primary-700">سجل المخالفات</p>
-            <h2 className="text-xl font-bold text-slate-900">البحث والاستعراض</h2>
-          </div>
-          <button type="button" className="button-secondary flex items-center gap-2 text-sm" onClick={() => toast({ type: 'info', title: 'ميزة التصدير قيد التطوير' })}>
-            <Download className="h-4 w-4" />
-            تصدير البيانات
-          </button>
-        </header>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-          <div className="md:col-span-2">
-            <div className="relative">
-              <input
-                type="search"
-                value={logSearch}
-                placeholder="ابحث بالاسم، رقم الطالب، أو نوع المخالفة"
-                onChange={(event) => setLogSearch(event.target.value)}
-                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 pr-12 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-              <Search className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-300" />
-            </div>
-          </div>
-          <div>
-            <select
-              value={logDegree === 'all' ? '' : logDegree}
-              onChange={(event) =>
-                setLogDegree(event.target.value === '' ? 'all' : (Number(event.target.value) as BehaviorDegree))
-              }
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            >
-              <option value="">جميع الدرجات</option>
-              {BEHAVIOR_DEGREE_OPTIONS.map((degree) => (
-                <option key={degree} value={degree}>
-                  الدرجة {degree}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <select
-              value={logStatus === 'all' ? '' : logStatus}
-              onChange={(event) =>
-                setLogStatus(event.target.value === '' ? 'all' : (event.target.value as BehaviorStatus))
-              }
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            >
-              <option value="">جميع الحالات</option>
-              {BEHAVIOR_STATUSES.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="relative" ref={gradeDropdownRef}>
+            <option value="">جميع الحالات</option>
+            {BEHAVIOR_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </WsSelect>
+        </WsField>
+        <WsField label="الصفوف">
+          <div style={{ position: 'relative' }} ref={gradeDropdownRef}>
             <button
               type="button"
+              className="ws-input"
               onClick={() => setIsGradeDropdownOpen(!isGradeDropdownOpen)}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 text-right flex items-center justify-between"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 6,
+                minWidth: 130,
+                cursor: 'pointer',
+                background: logGrades.length > 0 ? chip(TONES.sky) : undefined,
+                borderColor: logGrades.length > 0 ? TONES.sky.bd : undefined,
+                color: logGrades.length > 0 ? TONES.sky.tx : undefined,
+                fontWeight: logGrades.length > 0 ? 700 : undefined,
+              }}
             >
-              <span className="truncate">
-                {logGrades.length === 0
-                  ? 'جميع الصفوف'
-                  : `${logGrades.length} صف محدد`}
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {logGrades.length === 0 ? 'جميع الصفوف' : `${logGrades.length} صف محدد`}
               </span>
-              <i className={`bi bi-chevron-${isGradeDropdownOpen ? 'up' : 'down'} text-slate-400`} />
+              <ChevronDown
+                style={{
+                  width: 13,
+                  height: 13,
+                  flexShrink: 0,
+                  transform: isGradeDropdownOpen ? 'rotate(180deg)' : undefined,
+                  transition: 'transform .15s',
+                }}
+              />
             </button>
             {isGradeDropdownOpen && (
               <div
-                className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-64 overflow-y-auto"
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 4px)',
+                  insetInlineStart: 0,
+                  minWidth: 190,
+                  maxHeight: 260,
+                  overflowY: 'auto',
+                  background: 'var(--ws-surface)',
+                  border: '1px solid var(--ws-border)',
+                  borderRadius: 8,
+                  zIndex: 50,
+                }}
               >
-                <div className="p-2 border-b border-slate-100">
+                <div style={{ padding: '6px 10px', borderBottom: '1px solid var(--ws-hairline)' }}>
                   <button
                     type="button"
                     onClick={() => setLogGrades([])}
-                    className="text-xs text-primary hover:underline"
+                    style={{
+                      border: 'none',
+                      background: 'none',
+                      padding: 0,
+                      cursor: 'pointer',
+                      font: 'inherit',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: 'var(--ws-accent)',
+                    }}
                   >
                     إلغاء التحديد
                   </button>
@@ -554,7 +611,14 @@ export function AdminBehaviorPage() {
                 {(availableGrades.length > 0 ? availableGrades : BEHAVIOR_GRADES).map((grade) => (
                   <label
                     key={grade}
-                    className="flex items-center gap-2 px-3 py-2 hover:bg-slate-50 cursor-pointer"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '6px 10px',
+                      cursor: 'pointer',
+                      fontSize: 13,
+                    }}
                   >
                     <input
                       type="checkbox"
@@ -566,181 +630,353 @@ export function AdminBehaviorPage() {
                           setLogGrades((prev) => prev.filter((g) => g !== grade))
                         }
                       }}
-                      className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/20"
+                      style={{ width: 14, height: 14, accentColor: 'var(--ws-accent-2)' }}
                     />
-                    <span className="text-sm text-slate-700">{grade}</span>
+                    {grade}
                   </label>
                 ))}
               </div>
             )}
           </div>
-        </div>
+        </WsField>
+        <WsBtn icon={Download} onClick={() => toast({ type: 'info', title: 'ميزة التصدير قيد التطوير' })}>
+          تصدير
+        </WsBtn>
+      </WsToolbar>
 
-        {/* شارات الصفوف المحددة */}
-        {logGrades.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {logGrades.map((grade) => (
-              <span
-                key={grade}
-                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
-              >
-                {grade}
-                <button
-                  type="button"
-                  onClick={() => setLogGrades((prev) => prev.filter((g) => g !== grade))}
-                  className="hover:text-primary/70"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-
-        <div className="overflow-x-auto rounded-3xl border border-slate-100">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50/80 text-xs font-semibold uppercase text-slate-500">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-right">رقم المخالفة</th>
-                <th scope="col" className="px-6 py-3 text-right">الطالب</th>
-                <th scope="col" className="px-6 py-3 text-right">الدرجة</th>
-                <th scope="col" className="px-6 py-3 text-right">نوع المخالفة</th>
-                <th scope="col" className="px-6 py-3 text-right">التاريخ</th>
-                <th scope="col" className="px-6 py-3 text-right">الحالة</th>
-                <th scope="col" className="px-6 py-3 text-right">الإجراءات</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
-              {paginatedViolations.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-sm text-muted">
-                    لا توجد نتائج مطابقة للبحث الحالي.
-                  </td>
-                </tr>
-              ) : (
-                paginatedViolations.map((violation) => (
-                  <tr
-                    key={violation.id}
-                    className="transition hover:bg-primary/5 cursor-pointer"
-                    onClick={() => navigate(`/admin/behavior/${violation.id}`)}
-                  >
-                    <td className="px-6 py-4 font-mono text-xs text-muted" title={violation.id}>
-                      {violation.id.split('-')[0]}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="space-y-1">
-                        <p className="font-semibold text-slate-900">{violation.studentName}</p>
-                        <p className="text-xs text-muted">{violation.grade} • {violation.class}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <ViolationBadge degree={violation.degree} size="sm" />
-                    </td>
-                    <td className="px-6 py-4 text-xs text-muted">{violation.type}</td>
-                    <td className="px-6 py-4 text-xs text-muted">
-                      <div className="space-y-1">
-                        <p>{violation.date}</p>
-                        <p>{violation.time}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${STATUS_COLORS[violation.status]}`}>
-                        {violation.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-end gap-2">
-                        <Link
-                          to={`/admin/behavior/${violation.id}`}
-                          className="rounded-full border border-primary/40 px-3 py-1 text-xs font-semibold text-primary transition hover:bg-primary/10"
-                        >
-                          عرض التفاصيل
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteViolation(violation.id)}
-                          disabled={deletingViolationId === violation.id}
-                          className="inline-flex items-center gap-1 rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          حذف
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {filteredViolations.length > 0 ? (
-          <Pagination
-            page={pageSafe}
-            totalPages={totalPages}
-            onChange={(value) => setLogPage(value)}
-          />
-        ) : null}
-      </div>
-
-      {isProceduresModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="relative flex max-h-[90vh] w-full max-w-5xl flex-col rounded-3xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-6 py-4">
-              <div>
-                <p className="text-xs font-semibold text-primary-700">مرجع المخالفات والإجراءات</p>
-                <h2 className="text-xl font-bold text-slate-900">المخالفات حسب الدرجة</h2>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsProceduresModalOpen(false)}
-                className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
+      <WsLayout>
+        <WsMain>
+          {/* حصيلة السلوك — لغة الإغناء: باستيل + رقاقة بيضاء + علامة مائية */}
+          <WsBlock padded>
+            <div className="ws-dashboard-cards">
+              <DayCard
+                icon={ClipboardList}
+                label="المخالفات المرصودة"
+                value={dashboardStats.total}
+                tone={TONES.sky}
+                hero
+                context={
+                  dashboardStats.uniqueStudents > 0
+                    ? `على ${dashboardStats.uniqueStudents} طالباً مختلفاً`
+                    : undefined
+                }
+                zeroContext="لا مخالفات مرصودة"
+              />
+              <DayCard
+                icon={AlertCircle}
+                label="قيد المعالجة"
+                value={dashboardStats.byStatus['قيد المعالجة']}
+                tone={TONES.amber}
+                context="تنتظر بدء الإجراءات"
+                zeroContext="لا شيء ينتظر"
+              />
+              <DayCard
+                icon={ListChecks}
+                label="جاري التنفيذ"
+                value={dashboardStats.byStatus['جاري التنفيذ']}
+                tone={TONES.purple}
+                context="إجراءاتها تُنفَّذ الآن"
+                zeroContext="لا إجراءات جارية"
+              />
+              <DayCard
+                icon={CheckCircle}
+                label="مكتملة"
+                value={dashboardStats.byStatus['مكتملة']}
+                tone={TONES.green}
+                context="أُغلقت إجراءاتها كاملة"
+                zeroContext="لم تكتمل أي حالة بعد"
+              />
             </div>
+          </WsBlock>
 
-            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+          <WsBlock fill scroll title="السجل" icon={ClipboardList} count={filteredViolations.length}>
+            {paginatedViolations.length === 0 ? (
+              <WsEmpty icon={ClipboardList}>
+                {violations.length === 0 ? 'لا مخالفات مرصودة بعد' : 'لا نتائج مطابقة للبحث الحالي'}
+              </WsEmpty>
+            ) : (
+              <WsTable>
+                <thead>
+                  <tr>
+                    <th style={{ width: 70 }}>الرقم</th>
+                    <th>الطالب</th>
+                    <th style={{ width: 120 }}>الدرجة</th>
+                    <th>نوع المخالفة</th>
+                    <th style={{ width: 100 }}>التاريخ</th>
+                    <th style={{ width: 110 }}>الحالة</th>
+                    <th style={{ width: 84 }}>إجراء</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedViolations.map((violation) => {
+                    const pending = violation.status === 'قيد المعالجة'
+                    return (
+                      <tr
+                        key={violation.id}
+                        className="is-clickable"
+                        onClick={() => navigate(`/admin/behavior/${violation.id}`)}
+                        style={pending ? { background: chip(TONES.amber) } : undefined}
+                      >
+                        <td style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--ws-text-2)' }} title={violation.id}>
+                          {violation.id.split('-')[0]}
+                        </td>
+                        <td>
+                          <span style={{ fontWeight: 600 }}>{violation.studentName}</span>
+                          <span className="ws-cell-sub">
+                            {violation.grade} · {violation.class}
+                          </span>
+                        </td>
+                        <td>
+                          <ViolationBadge degree={violation.degree} size="sm" />
+                        </td>
+                        <td>{violation.type}</td>
+                        <td>
+                          <span style={{ fontVariantNumeric: 'tabular-nums' }}>{violation.date}</span>
+                          <span className="ws-cell-sub" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                            {violation.time}
+                          </span>
+                        </td>
+                        <td>
+                          <ToneChip tone={STATUS_TONES[violation.status] ?? TONES.gray}>{violation.status}</ToneChip>
+                        </td>
+                        <td onClick={(e) => e.stopPropagation()}>
+                          <span style={{ display: 'inline-flex', gap: 3 }}>
+                            <WsIconBtn
+                              icon={Eye}
+                              label="عرض التفاصيل"
+                              onClick={() => navigate(`/admin/behavior/${violation.id}`)}
+                            />
+                            <WsIconBtn
+                              icon={deletingViolationId === violation.id ? Loader2 : Trash2}
+                              label="حذف"
+                              style={{ color: 'var(--ws-red)' }}
+                              onClick={() => void handleDeleteViolation(violation.id)}
+                              disabled={deletingViolationId === violation.id}
+                            />
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </WsTable>
+            )}
+
+            {/* ترقيم الصفحات */}
+            {filteredViolations.length > ITEMS_PER_PAGE && (
+              <div
+                style={{
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 4,
+                  padding: '8px 14px',
+                  borderTop: '1px solid var(--ws-hairline)',
+                }}
+              >
+                <WsIconBtn
+                  icon={ChevronRight}
+                  label="السابق"
+                  onClick={() => setLogPage(Math.max(1, pageSafe - 1))}
+                  disabled={pageSafe === 1}
+                />
+                {Array.from({ length: totalPages }, (_, index) => index + 1)
+                  .slice(0, 8)
+                  .map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => setLogPage(item)}
+                      style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: 7,
+                        border: `1px solid ${item === pageSafe ? TONES.sky.bd : 'var(--ws-hairline)'}`,
+                        background: item === pageSafe ? chip(TONES.sky) : 'var(--ws-surface)',
+                        color: item === pageSafe ? TONES.sky.tx : 'var(--ws-text-2)',
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        fontFamily: 'inherit',
+                        fontVariantNumeric: 'tabular-nums',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {item}
+                    </button>
+                  ))}
+                <WsIconBtn
+                  icon={ChevronLeft}
+                  label="التالي"
+                  onClick={() => setLogPage(Math.min(totalPages, pageSafe + 1))}
+                  disabled={pageSafe === totalPages}
+                />
+              </div>
+            )}
+          </WsBlock>
+        </WsMain>
+
+        {/* القسم الثاني: خريطة الدرجات + أحدث الرصد */}
+        <WsSideCol side="end" title="خريطة السجل" icon={ListChecks} storageKey="ws:behavior:sidecol" width={300}>
+          <WsBlock title="حسب الدرجة" icon={ClipboardList} padded>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {BEHAVIOR_DEGREE_OPTIONS.map((degree) => {
+                const count = dashboardStats.byDegree[degree] ?? 0
+                const tone = DEGREE_TONES[degree] ?? TONES.gray
+                return (
+                  <div key={degree}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <ViolationBadge degree={degree} size="sm" />
+                      </span>
+                      <b
+                        style={{
+                          fontSize: 14,
+                          fontVariantNumeric: 'tabular-nums',
+                          color: count > 0 ? tone.tx : 'var(--ws-text-2)',
+                        }}
+                      >
+                        {count}
+                      </b>
+                    </div>
+                    <div
+                      style={{
+                        height: 6,
+                        marginTop: 4,
+                        borderRadius: 3,
+                        background: 'var(--ws-surface-2)',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <div
+                        style={{
+                          height: '100%',
+                          width: `${Math.round((count / maxDegreeCount) * 100)}%`,
+                          background: tone.bd,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </WsBlock>
+
+          <WsBlock title="أحدث الرصد" icon={ClipboardList} count={dashboardStats.recent.length || undefined} fill scroll>
+            {dashboardStats.recent.length === 0 ? (
+              <WsEmpty icon={ClipboardList}>لا مخالفات بعد</WsEmpty>
+            ) : (
+              <div>
+                {dashboardStats.recent.map((violation) => (
+                  <button
+                    key={violation.id}
+                    type="button"
+                    onClick={() => navigate(`/admin/behavior/${violation.id}`)}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      textAlign: 'start',
+                      padding: '8px 12px',
+                      border: 'none',
+                      borderBottom: '1px solid var(--ws-hairline)',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      font: 'inherit',
+                      color: 'var(--ws-text)',
+                    }}
+                  >
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          fontSize: 13.5,
+                          fontWeight: 700,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {violation.studentName}
+                      </span>
+                      <ViolationBadge degree={violation.degree} size="sm" />
+                    </span>
+                    <span style={{ display: 'block', marginTop: 2, fontSize: 12, color: 'var(--ws-text-2)' }}>
+                      {violation.type} · {violation.date}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </WsBlock>
+        </WsSideCol>
+      </WsLayout>
+
+      {/* مرجع المخالفات والإجراءات */}
+      {isProceduresModalOpen && (
+        <div className="ws-modal" onClick={() => setIsProceduresModalOpen(false)}>
+          <div
+            className="ws-modal__panel"
+            style={{ maxWidth: 900, display: 'flex', flexDirection: 'column', overflow: 'hidden', maxHeight: '88vh' }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="ws-modal__head">
+              <h3 className="ws-modal__title">المخالفات حسب الدرجة</h3>
+              <p className="ws-modal__sub">مرجع المخالفات والإجراءات المعتمد في النظام</p>
+            </header>
+
+            <div className="ws-modal__body" style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
               {BEHAVIOR_DEGREE_OPTIONS.map((degree) => {
                 const violationsByDegree = getViolationsForDegree(degree)
                 const proceduresByDegree = getProceduresForDegree(degree)
 
                 return (
-                  <section key={degree} className="space-y-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <ViolationBadge degree={degree} size="md" />
-                        <span className="text-sm font-semibold text-slate-700">الدرجة {degree}</span>
-                      </div>
-                      <span className="text-xs text-muted">
-                        {violationsByDegree.length} مخالفة • {proceduresByDegree.length} إجراء
+                  <section key={degree} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                      <ViolationBadge degree={degree} size="md" />
+                      <span style={{ fontSize: 12, color: 'var(--ws-text-2)' }}>
+                        {violationsByDegree.length} مخالفة · {proceduresByDegree.length} إجراء
                       </span>
                     </div>
-                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-                      <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
-                        <p className="text-sm font-semibold text-slate-700">أنواع المخالفات</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 10 }}>
+                      <div
+                        style={{
+                          borderRadius: 8,
+                          border: '1px solid var(--ws-hairline)',
+                          background: 'var(--ws-surface-2)',
+                          padding: 10,
+                        }}
+                      >
+                        <p style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 700 }}>أنواع المخالفات</p>
                         {violationsByDegree.length > 0 ? (
-                          <ul className="mt-2 space-y-2 text-sm text-muted">
+                          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4 }}>
                             {violationsByDegree.map((violation) => (
-                              <li key={violation} className="flex items-start gap-2">
-                                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary/70" />
-                                <span>{violation}</span>
+                              <li key={violation} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, fontSize: 12.5, color: 'var(--ws-text-2)' }}>
+                                <span
+                                  style={{
+                                    width: 6,
+                                    height: 6,
+                                    borderRadius: '50%',
+                                    background: (DEGREE_TONES[degree] ?? TONES.gray).tx,
+                                    flexShrink: 0,
+                                    marginTop: 6,
+                                  }}
+                                />
+                                {violation}
                               </li>
                             ))}
                           </ul>
                         ) : (
-                          <p className="mt-2 text-xs text-muted">لا توجد مخالفات محددة لهذه الدرجة.</p>
+                          <p style={{ margin: 0, fontSize: 12, color: 'var(--ws-text-2)' }}>لا توجد مخالفات محددة لهذه الدرجة.</p>
                         )}
                       </div>
-                      <div className="space-y-3">
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {proceduresByDegree.length > 0 ? (
                           proceduresByDegree.map((procedure) => (
                             <ProcedureCard key={procedure.step} procedure={procedure} />
                           ))
                         ) : (
-                          <div className="rounded-2xl border border-slate-200 bg-white/70 p-4 text-sm text-muted shadow-sm">
-                            لا توجد إجراءات محددة لهذه الدرجة.
-                          </div>
+                          <p style={{ margin: 0, fontSize: 12, color: 'var(--ws-text-2)' }}>لا توجد إجراءات محددة لهذه الدرجة.</p>
                         )}
                       </div>
                     </div>
@@ -748,170 +984,216 @@ export function AdminBehaviorPage() {
                 )
               })}
             </div>
+            <footer className="ws-modal__foot">
+              <WsBtn onClick={() => setIsProceduresModalOpen(false)}>إغلاق</WsBtn>
+            </footer>
           </div>
         </div>
       )}
 
-      {/* Modal for adding new violation */}
+      {/* معالج رصد مخالفة جديدة */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="relative w-full max-w-4xl rounded-3xl bg-white shadow-2xl flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4 rounded-t-3xl">
+        <div className="ws-modal" onClick={handleCloseModal}>
+          <div
+            className="ws-modal__panel"
+            style={{ maxWidth: 860, display: 'flex', flexDirection: 'column', overflow: 'hidden', maxHeight: '88vh' }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="ws-modal__head" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
               <div>
-                <p className="text-xs font-semibold text-primary-700">رصد مخالفة جديدة</p>
-                <h2 className="text-xl font-bold text-slate-900">نموذج الرصد الموحد</h2>
+                <h3 className="ws-modal__title">رصد مخالفة جديدة</h3>
+                <p className="ws-modal__sub">نموذج الرصد الموحد — خمس خطوات حتى الحفظ</p>
               </div>
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={resetRecordForm} className="button-secondary text-sm">
-                  إعادة التعيين
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
+              <WsBtn size="sm" onClick={resetRecordForm}>
+                إعادة التعيين
+              </WsBtn>
+            </header>
+
+            {/* مؤشر الخطوات — المنجَز أخضر والحالي سماوي */}
+            <div
+              style={{
+                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexWrap: 'wrap',
+                gap: 6,
+                padding: '8px 16px',
+                borderBottom: '1px solid var(--ws-hairline)',
+                background: 'var(--ws-surface-2)',
+              }}
+            >
+              {RECORD_STEPS.map((step, index) => {
+                const isActive = step.id === recordStep
+                const isDone = step.id < recordStep
+                const tone = isDone ? TONES.green : isActive ? TONES.sky : null
+                return (
+                  <div key={step.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <button
+                      type="button"
+                      onClick={() => setRecordStep(step.id)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '4px 10px 4px 6px',
+                        borderRadius: 999,
+                        border: `1px solid ${tone ? tone.bd : 'var(--ws-hairline)'}`,
+                        background: tone ? chip(tone) : 'var(--ws-surface)',
+                        cursor: 'pointer',
+                        font: 'inherit',
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: '50%',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 11.5,
+                          fontWeight: 800,
+                          background: tone ? 'var(--ws-surface)' : 'transparent',
+                          border: tone ? 'none' : `1px solid ${TONES.gray.bd}`,
+                          color: tone ? tone.tx : 'var(--ws-text-2)',
+                        }}
+                      >
+                        {isDone ? <CheckCircle2 style={{ width: 13, height: 13 }} /> : step.id}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: tone ? tone.tx : 'var(--ws-text-2)',
+                        }}
+                      >
+                        {step.label}
+                      </span>
+                    </button>
+                    {index !== RECORD_STEPS.length - 1 && (
+                      <span style={{ width: 14, height: 1, background: 'var(--ws-border)' }} />
+                    )}
+                  </div>
+                )
+              })}
             </div>
 
-            <div className="flex flex-col flex-1 min-h-0">
-              {/* مؤشر الخطوات */}
-              <div className="px-6 py-3 border-b border-slate-200 bg-slate-50/30">
-                <div className="flex items-center justify-center gap-1.5">
-                  {RECORD_STEPS.map((step, index) => {
-                    const isActive = step.id === recordStep
-                    const isDone = step.id < recordStep
-                    return (
-                      <div key={step.id} className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setRecordStep(step.id)}
-                          className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition ${isActive
-                            ? 'bg-primary text-white shadow-sm'
-                            : isDone
-                              ? 'bg-emerald-500/10 text-emerald-700 border border-emerald-200'
-                              : 'bg-slate-100 text-slate-500'
-                            }`}
-                        >
-                          {step.id}
-                        </button>
-                        <span className={`text-[11px] font-semibold ${isActive ? 'text-primary-700' : 'text-muted'}`}>
-                          {step.label}
-                        </span>
-                        {index !== RECORD_STEPS.length - 1 && (
-                          <span className="h-px w-4 bg-slate-200 mx-0.5" />
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* المحتوى */}
-              <div className="flex-1 overflow-y-auto px-6 py-4">
-                {recordStep === 1 ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-semibold text-slate-700">
-                        اختيار الطلاب ({selectedStudentIds.length} محدد)
-                      </p>
-                      {selectedStudentIds.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setSelectedStudentIds([])}
-                          className="text-xs text-primary hover:underline"
-                        >
-                          إلغاء التحديد
-                        </button>
-                      )}
-                    </div>
-                    <div className="relative">
-                      <input
-                        type="search"
-                        value={recordStudentSearch}
-                        placeholder="ابحث بالاسم أو رقم الطالب"
-                        onChange={(event) => setRecordStudentSearch(event.target.value)}
-                        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 pr-12 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                      />
-                      <Search className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-300" />
-                    </div>
-                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                      {isLoadingStudents ? (
-                        <div className="col-span-full py-12 text-center">
-                          <div className="inline-flex items-center gap-2 text-sm text-muted">
-                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                            جاري تحميل الطلاب...
-                          </div>
-                        </div>
-                      ) : recordStudentSearch.trim() === '' ? (
-                        <div className="col-span-full py-16 text-center">
-                          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                            <Search className="h-8 w-8 text-primary" />
-                          </div>
-                          <h3 className="text-base font-semibold text-slate-900 mb-2">ابحث عن الطالب</h3>
-                          <p className="text-sm text-muted max-w-md mx-auto">
-                            ابدأ بكتابة اسم الطالب أو رقمه في حقل البحث أعلاه لعرض النتائج واختيار الطلاب
-                          </p>
-                        </div>
-                      ) : filteredStudents.length === 0 ? (
-                        <div className="col-span-full py-12 text-center">
-                          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100">
-                            <Search className="h-6 w-6 text-slate-400" />
-                          </div>
-                          <p className="text-sm text-muted">
-                            لا توجد نتائج مطابقة لـ "<span className="font-semibold text-slate-700">{recordStudentSearch}</span>"
-                          </p>
-                          <p className="text-xs text-muted mt-1">جرب البحث باسم آخر أو رقم طالب مختلف</p>
-                        </div>
-                      ) : (
-                        filteredStudents.map((student) => {
-                          const isSelected = selectedStudentIds.includes(student.id)
-                          return (
-                            <button
-                              key={student.id}
-                              type="button"
-                              onClick={() => {
-                                setSelectedStudentIds(prev =>
-                                  isSelected
-                                    ? prev.filter(id => id !== student.id)
-                                    : [...prev, student.id]
-                                )
-                              }}
-                              className={`flex flex-col gap-2 rounded-2xl border px-4 py-3 text-right transition ${isSelected
-                                ? 'border-primary bg-primary/5 shadow-sm'
-                                : 'border-slate-200 bg-white hover:border-primary/50'
-                                }`}
-                            >
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="flex-1">
-                                  <p className="text-sm font-semibold text-slate-900">{student.name}</p>
-                                  <p className="text-xs text-muted mt-0.5">{student.grade} • {student.class}</p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  {isSelected && (
-                                    <CheckCircle className="h-5 w-5 text-primary" />
-                                  )}
-                                </div>
-                              </div>
-                              <div className="flex items-center justify-between text-xs text-muted pt-1 border-t border-slate-100">
-                                <span>المخالفات: {student.violationsCount}</span>
-                                <span>السلوك: {student.behaviorScore}</span>
-                              </div>
-                            </button>
-                          )
-                        })
-                      )}
-                    </div>
+            {/* المحتوى */}
+            <div className="ws-modal__body" style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
+              {recordStep === 1 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700 }}>
+                      اختيار الطلاب ({selectedStudentIds.length} محدد)
+                    </p>
+                    {selectedStudentIds.length > 0 && (
+                      <WsBtn size="sm" onClick={() => setSelectedStudentIds([])}>
+                        إلغاء التحديد
+                      </WsBtn>
+                    )}
                   </div>
-                ) : null}
+                  <div style={{ position: 'relative' }}>
+                    <WsInput
+                      type="search"
+                      value={recordStudentSearch}
+                      placeholder="ابحث بالاسم أو رقم الطالب"
+                      onChange={(event) => setRecordStudentSearch(event.target.value)}
+                      style={{ width: '100%', paddingInlineStart: 26 }}
+                      autoFocus
+                    />
+                    <Search
+                      style={{
+                        width: 13,
+                        height: 13,
+                        position: 'absolute',
+                        insetInlineStart: 8,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        color: 'var(--ws-text-2)',
+                        pointerEvents: 'none',
+                      }}
+                    />
+                  </div>
+                  {isLoadingStudents ? (
+                    <WsEmpty loading>جاري تحميل الطلاب...</WsEmpty>
+                  ) : recordStudentSearch.trim() === '' ? (
+                    <WsEmpty icon={Search}>
+                      ابدأ بكتابة اسم الطالب أو رقمه لعرض النتائج واختيار الطلاب.
+                    </WsEmpty>
+                  ) : filteredStudents.length === 0 ? (
+                    <WsEmpty icon={Search}>
+                      لا نتائج مطابقة لـ «{recordStudentSearch}» — جرّب اسماً آخر أو رقم طالب مختلفاً.
+                    </WsEmpty>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
+                      {filteredStudents.map((student) => {
+                        const isSelected = selectedStudentIds.includes(student.id)
+                        return (
+                          <button
+                            key={student.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedStudentIds(prev =>
+                                isSelected
+                                  ? prev.filter(id => id !== student.id)
+                                  : [...prev, student.id]
+                              )
+                            }}
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 6,
+                              padding: '10px 12px',
+                              borderRadius: 8,
+                              border: `1px solid ${isSelected ? TONES.green.bd : 'var(--ws-hairline)'}`,
+                              background: isSelected ? chip(TONES.green) : 'var(--ws-surface)',
+                              cursor: 'pointer',
+                              font: 'inherit',
+                              textAlign: 'start',
+                              color: 'var(--ws-text)',
+                            }}
+                          >
+                            <span style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6 }}>
+                              <span style={{ minWidth: 0 }}>
+                                <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700 }}>{student.name}</span>
+                                <span style={{ display: 'block', fontSize: 12, color: 'var(--ws-text-2)', marginTop: 1 }}>
+                                  {student.grade} · {student.class}
+                                </span>
+                              </span>
+                              {isSelected && (
+                                <CheckCircle style={{ width: 16, height: 16, color: TONES.green.tx, flexShrink: 0 }} />
+                              )}
+                            </span>
+                            <span
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                fontSize: 11.5,
+                                color: 'var(--ws-text-2)',
+                                borderTop: '1px solid var(--ws-hairline)',
+                                paddingTop: 5,
+                              }}
+                            >
+                              <span>المخالفات: {student.violationsCount}</span>
+                              <span>السلوك: {student.behaviorScore}</span>
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : null}
 
-                {recordStep === 2 ? (
-                  <div className="space-y-6">
-                    <div className="space-y-3">
-                      <p className="text-sm font-semibold text-slate-700">اختر درجة المخالفة</p>
-                      <div className="grid gap-3 md:grid-cols-5">
-                        {BEHAVIOR_DEGREE_OPTIONS.map((degree) => (
+              {recordStep === 2 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div>
+                    <p style={{ margin: '0 0 8px', fontSize: 13.5, fontWeight: 700 }}>اختر درجة المخالفة</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8 }}>
+                      {BEHAVIOR_DEGREE_OPTIONS.map((degree) => {
+                        const isSelected = selectedDegree === degree
+                        return (
                           <button
                             key={degree}
                             type="button"
@@ -919,320 +1201,328 @@ export function AdminBehaviorPage() {
                               setSelectedDegree(degree)
                               setSelectedViolationType('')
                             }}
-                            className={`rounded-2xl border px-3 py-3 transition ${selectedDegree === degree
-                              ? 'border-primary bg-primary/5 shadow-sm'
-                              : 'border-slate-200 bg-white hover:border-primary/50'
-                              }`}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: '10px 8px',
+                              borderRadius: 8,
+                              border: `1px solid ${isSelected ? TONES.sky.bd : 'var(--ws-hairline)'}`,
+                              background: isSelected ? chip(TONES.sky) : 'var(--ws-surface)',
+                              cursor: 'pointer',
+                              font: 'inherit',
+                            }}
                           >
                             <ViolationBadge degree={degree} size="sm" />
                           </button>
-                        ))}
-                      </div>
+                        )
+                      })}
                     </div>
+                  </div>
 
-                    {selectedDegree ? (
-                      <div className="space-y-3">
-                        <p className="text-sm font-semibold text-slate-700">نوع المخالفة</p>
-                        <select
-                          value={selectedViolationType}
-                          onChange={(event) => setSelectedViolationType(event.target.value)}
-                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  {selectedDegree ? (
+                    <WsField label="نوع المخالفة" htmlFor="bh-type">
+                      <WsSelect
+                        id="bh-type"
+                        value={selectedViolationType}
+                        onChange={(event) => setSelectedViolationType(event.target.value)}
+                      >
+                        <option value="" disabled>
+                          اختر نوع المخالفة
+                        </option>
+                        {availableViolations.map((violation) => (
+                          <option key={violation} value={violation}>
+                            {violation}
+                          </option>
+                        ))}
+                      </WsSelect>
+                    </WsField>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {recordStep === 3 ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+                  <WsField label="التاريخ" htmlFor="bh-date">
+                    <WsInput
+                      id="bh-date"
+                      type="date"
+                      value={recordDetails.date}
+                      onChange={(event) => setRecordDetails((prev) => ({ ...prev, date: event.target.value }))}
+                    />
+                  </WsField>
+                  <WsField label="الوقت" htmlFor="bh-time">
+                    <WsInput
+                      id="bh-time"
+                      type="time"
+                      value={recordDetails.time}
+                      onChange={(event) => setRecordDetails((prev) => ({ ...prev, time: event.target.value }))}
+                    />
+                  </WsField>
+                  <WsField label="الموقع" htmlFor="bh-loc">
+                    <WsSelect
+                      id="bh-loc"
+                      value={recordDetails.location}
+                      onChange={(event) => setRecordDetails((prev) => ({ ...prev, location: event.target.value }))}
+                    >
+                      <option value="" disabled>
+                        اختر موقع المخالفة
+                      </option>
+                      {BEHAVIOR_LOCATIONS.map((location) => (
+                        <option key={location} value={location}>
+                          {location}
+                        </option>
+                      ))}
+                    </WsSelect>
+                  </WsField>
+                  <WsField label="المبلّغ عن الحالة" htmlFor="bh-rep">
+                    <WsSelect
+                      id="bh-rep"
+                      value={selectedReporterId || ''}
+                      onChange={(event) => setSelectedReporterId(event.target.value ? Number(event.target.value) : null)}
+                    >
+                      <option value="" disabled>
+                        اختر المبلّغ
+                      </option>
+                      {reporters.map((reporter) => (
+                        <option key={reporter.id} value={reporter.id}>
+                          {reporter.name}
+                        </option>
+                      ))}
+                    </WsSelect>
+                  </WsField>
+                  <WsField label="الوصف التفصيلي" htmlFor="bh-desc" style={{ gridColumn: '1 / -1' }}>
+                    <WsTextarea
+                      id="bh-desc"
+                      rows={4}
+                      value={recordDetails.description}
+                      onChange={(event) => setRecordDetails((prev) => ({ ...prev, description: event.target.value }))}
+                      placeholder="أدخل وصفاً مختصراً للحالة"
+                    />
+                  </WsField>
+                </div>
+              ) : null}
+
+              {recordStep === 4 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <WsAlert tone="info" boxed>
+                    يتحدد الإجراء التالي تلقائياً بناءً على سجل كل طالب — ويمكن تحديث حالة التنفيذ لاحقاً من صفحة التفاصيل.
+                  </WsAlert>
+                  {procedurePreview && procedurePreview.groups.length > 0 ? (
+                    procedurePreview.groups.map(({ procedure, students }) => (
+                      <div key={procedure.step} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <ProcedureCard procedure={procedure} />
+                        <div
+                          style={{
+                            borderRadius: 8,
+                            border: '1px solid var(--ws-hairline)',
+                            background: 'var(--ws-surface-2)',
+                            padding: '8px 12px',
+                            fontSize: 12.5,
+                          }}
                         >
-                          <option value="" disabled>
-                            اختر نوع المخالفة
-                          </option>
-                          {availableViolations.map((violation) => (
-                            <option key={violation} value={violation}>
-                              {violation}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-
-                {recordStep === 3 ? (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold text-slate-700">التاريخ</label>
-                      <input
-                        type="date"
-                        value={recordDetails.date}
-                        onChange={(event) => setRecordDetails((prev) => ({ ...prev, date: event.target.value }))}
-                        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold text-slate-700">الوقت</label>
-                      <input
-                        type="time"
-                        value={recordDetails.time}
-                        onChange={(event) => setRecordDetails((prev) => ({ ...prev, time: event.target.value }))}
-                        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold text-slate-700">الموقع</label>
-                      <select
-                        value={recordDetails.location}
-                        onChange={(event) => setRecordDetails((prev) => ({ ...prev, location: event.target.value }))}
-                        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                      >
-                        <option value="" disabled>
-                          اختر موقع المخالفة
-                        </option>
-                        {BEHAVIOR_LOCATIONS.map((location) => (
-                          <option key={location} value={location}>
-                            {location}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold text-slate-700">المبلغ عن الحالة</label>
-                      <select
-                        value={selectedReporterId || ''}
-                        onChange={(event) => setSelectedReporterId(event.target.value ? Number(event.target.value) : null)}
-                        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                      >
-                        <option value="" disabled>
-                          اختر المبلغ
-                        </option>
-                        {reporters.map((reporter) => (
-                          <option key={reporter.id} value={reporter.id}>
-                            {reporter.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="md:col-span-2 space-y-2">
-                      <label className="text-sm font-semibold text-slate-700">الوصف التفصيلي</label>
-                      <textarea
-                        value={recordDetails.description}
-                        onChange={(event) => setRecordDetails((prev) => ({ ...prev, description: event.target.value }))}
-                        rows={4}
-                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                        placeholder="أدخل وصفاً مختصراً للحالة"
-                      />
-                    </div>
-                  </div>
-                ) : null}
-
-                {recordStep === 4 ? (
-                  <div className="space-y-4">
-                    <div className="rounded-2xl border border-sky-200 bg-sky-50/60 p-4 text-sm text-sky-700">
-                      يتم تحديد الإجراء التالي تلقائياً بناءً على سجل كل طالب. يمكن تحديث حالة التنفيذ لاحقاً من صفحة تفاصيل المخالفة.
-                    </div>
-                    <div className="space-y-3">
-                      {procedurePreview && procedurePreview.groups.length > 0 ? (
-                        procedurePreview.groups.map(({ procedure, students }) => (
-                          <div key={procedure.step} className="space-y-3">
-                            <ProcedureCard procedure={procedure} />
-                            <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-3 text-xs text-muted">
-                              <p className="font-semibold text-slate-600">
-                                سيطبق على {students.length} {students.length === 1 ? 'طالباً' : 'طلاباً'}:
-                              </p>
-                              <ul className="mt-2 space-y-1">
-                                {students.map(({ student, occurrence }) => (
-                                  <li key={student.id} className="flex items-center justify-between gap-3">
-                                    <span className="font-medium text-slate-700">{student.name}</span>
-                                    <span className="text-[11px] text-muted">المخالفة رقم {occurrence}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        availableProcedures.map((procedure) => (
-                          <ProcedureCard key={procedure.step} procedure={procedure} />
-                        ))
-                      )}
-                    </div>
-                  </div>
-                ) : null}
-
-                {recordStep === 5 && selectedStudents.length > 0 ? (
-                  <div className="space-y-4">
-                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 text-sm text-emerald-700">
-                      راجع البيانات التالية قبل الحفظ النهائي. سيتم تسجيل المخالفة لـ {selectedStudents.length} {selectedStudents.length === 1 ? 'طالب' : 'طلاب'}.
-                    </div>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
-                        <h3 className="text-sm font-semibold text-slate-700">الطلاب المحددون ({selectedStudents.length})</h3>
-                        <div className="mt-3 max-h-40 overflow-y-auto space-y-2">
-                          {selectedStudents.map((student) => {
-                            const assignment = procedureAssignmentsByStudentId[student.id]
-                            return (
-                              <div key={student.id} className="text-sm border-r-2 border-primary pr-3 py-1">
-                                <p className="font-semibold text-slate-900">{student.name}</p>
-                                <p className="text-xs text-muted">
-                                  {student.studentId} • {student.grade} {student.class}
-                                </p>
-                                {assignment ? (
-                                  <p className="text-[11px] text-muted">
-                                    المخالفة رقم {assignment.occurrence} • الإجراء: {assignment.procedure.title}
-                                  </p>
-                                ) : null}
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                      <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
-                        <h3 className="text-sm font-semibold text-slate-700">تفاصيل المخالفة</h3>
-                        <div className="mt-3 space-y-2 text-sm text-muted">
-                          {selectedDegree ? (
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-slate-900">الدرجة:</span>
-                              <ViolationBadge degree={selectedDegree} size="sm" />
-                            </div>
-                          ) : null}
-                          <p>
-                            <span className="font-semibold text-slate-900">النوع:</span> {selectedViolationType}
+                          <p style={{ margin: '0 0 4px', fontWeight: 700 }}>
+                            سيطبق على {students.length} {students.length === 1 ? 'طالب' : 'طلاب'}:
                           </p>
-                          <p>
-                            <span className="font-semibold text-slate-900">التاريخ:</span> {recordDetails.date}
-                          </p>
-                          <p>
-                            <span className="font-semibold text-slate-900">الوقت:</span> {recordDetails.time}
-                          </p>
-                          <p>
-                            <span className="font-semibold text-slate-900">الموقع:</span> {recordDetails.location}
-                          </p>
-                          {selectedReporterId && (
-                            <p>
-                              <span className="font-semibold text-slate-900">المبلغ:</span>{' '}
-                              {reporters.find(r => r.id === selectedReporterId)?.name || 'غير محدد'}
-                            </p>
-                          )}
-                          {recordDetails.description ? (
-                            <p>
-                              <span className="font-semibold text-slate-900">الوصف:</span> {recordDetails.description}
-                            </p>
-                          ) : null}
-                        </div>
-                      </div>
-                      <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
-                        <h3 className="text-sm font-semibold text-slate-700">الإجراءات ({procedureSummaryGroups.length})</h3>
-                        {procedureSummaryGroups.length === 0 ? (
-                          <p className="mt-3 text-sm text-muted">لا توجد إجراءات محددة لهذه الدرجة.</p>
-                        ) : (
-                          <ul className="mt-3 space-y-2 pr-1 text-sm text-muted">
-                            {procedureSummaryGroups.map(({ procedure, students }) => (
-                              <li
-                                key={procedure.step}
-                                className="rounded-xl border border-slate-100 bg-slate-50/70 p-3"
-                              >
-                                <div className="font-semibold text-slate-900">{procedure.title}</div>
-                                <p className="mt-1 text-xs text-muted">{procedure.description}</p>
-                                {procedurePreview && students.length > 0 ? (
-                                  <p className="mt-2 text-[11px] text-muted">
-                                    يستهدف {students.length === 1 ? 'طالباً واحداً' : `${students.length} طلاب`}{' '}
-                                    ({students
-                                      .map(({ student, occurrence }) => `${student.name} - المخالفة رقم ${occurrence}`)
-                                      .join('، ')})
-                                  </p>
-                                ) : null}
+                          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            {students.map(({ student, occurrence }) => (
+                              <li key={student.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                                <span style={{ fontWeight: 600 }}>{student.name}</span>
+                                <span style={{ color: 'var(--ws-text-2)', fontSize: 12 }}>المخالفة رقم {occurrence}</span>
                               </li>
                             ))}
                           </ul>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    availableProcedures.map((procedure) => (
+                      <ProcedureCard key={procedure.step} procedure={procedure} />
+                    ))
+                  )}
+                </div>
+              ) : null}
+
+              {recordStep === 5 && selectedStudents.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <WsAlert tone="success" boxed icon={CheckCircle2}>
+                    راجع البيانات قبل الحفظ النهائي — ستُسجَّل المخالفة لـ {selectedStudents.length}{' '}
+                    {selectedStudents.length === 1 ? 'طالب' : 'طلاب'}.
+                  </WsAlert>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 10 }}>
+                    <div style={{ borderRadius: 8, border: '1px solid var(--ws-hairline)', padding: 10 }}>
+                      <h4 style={{ margin: '0 0 8px', fontSize: 13.5, fontWeight: 700 }}>
+                        الطلاب المحددون ({selectedStudents.length})
+                      </h4>
+                      <div style={{ maxHeight: 170, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {selectedStudents.map((student) => {
+                          const assignment = procedureAssignmentsByStudentId[student.id]
+                          return (
+                            <div
+                              key={student.id}
+                              style={{
+                                borderRadius: 7,
+                                background: chip(TONES.sky),
+                                border: `1px solid ${TONES.sky.bd}`,
+                                padding: '6px 10px',
+                              }}
+                            >
+                              <p style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>{student.name}</p>
+                              <p style={{ margin: 0, fontSize: 11.5, color: 'var(--ws-text-2)' }}>
+                                {student.studentId} · {student.grade} {student.class}
+                              </p>
+                              {assignment ? (
+                                <p style={{ margin: '2px 0 0', fontSize: 11.5, color: TONES.sky.tx }}>
+                                  المخالفة رقم {assignment.occurrence} · الإجراء: {assignment.procedure.title}
+                                </p>
+                              ) : null}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                    <div style={{ borderRadius: 8, border: '1px solid var(--ws-hairline)', padding: 10 }}>
+                      <h4 style={{ margin: '0 0 8px', fontSize: 13.5, fontWeight: 700 }}>تفاصيل المخالفة</h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12.5 }}>
+                        {selectedDegree ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <b>الدرجة:</b>
+                            <ViolationBadge degree={selectedDegree} size="sm" />
+                          </div>
+                        ) : null}
+                        <p style={{ margin: 0 }}><b>النوع:</b> {selectedViolationType}</p>
+                        <p style={{ margin: 0 }}><b>التاريخ:</b> {recordDetails.date}</p>
+                        <p style={{ margin: 0 }}><b>الوقت:</b> {recordDetails.time}</p>
+                        <p style={{ margin: 0 }}><b>الموقع:</b> {recordDetails.location}</p>
+                        {selectedReporterId && (
+                          <p style={{ margin: 0 }}>
+                            <b>المبلّغ:</b> {reporters.find(r => r.id === selectedReporterId)?.name || 'غير محدد'}
+                          </p>
                         )}
+                        {recordDetails.description ? (
+                          <p style={{ margin: 0 }}><b>الوصف:</b> {recordDetails.description}</p>
+                        ) : null}
                       </div>
                     </div>
                   </div>
-                ) : null}
-              </div>
-
-              {/* أزرار التنقل */}
-              <div className="border-t border-slate-200 px-6 py-3 bg-white rounded-b-3xl">
-                <div className="flex items-center justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={handlePrevStep}
-                    className="button-secondary flex items-center gap-1 text-sm"
-                    disabled={recordStep === 1}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                    السابق
-                  </button>
-                  <div className="text-xs text-muted font-medium">
-                    الخطوة {recordStep} من {RECORD_STEPS.length}
+                  <div style={{ borderRadius: 8, border: '1px solid var(--ws-hairline)', padding: 10 }}>
+                    <h4 style={{ margin: '0 0 8px', fontSize: 13.5, fontWeight: 700 }}>
+                      الإجراءات ({procedureSummaryGroups.length})
+                    </h4>
+                    {procedureSummaryGroups.length === 0 ? (
+                      <p style={{ margin: 0, fontSize: 12.5, color: 'var(--ws-text-2)' }}>لا توجد إجراءات محددة لهذه الدرجة.</p>
+                    ) : (
+                      <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {procedureSummaryGroups.map(({ procedure, students }) => (
+                          <li
+                            key={procedure.step}
+                            style={{
+                              borderRadius: 7,
+                              border: '1px solid var(--ws-hairline)',
+                              background: 'var(--ws-surface-2)',
+                              padding: '8px 10px',
+                            }}
+                          >
+                            <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>{procedure.title}</span>
+                            <span style={{ display: 'block', marginTop: 2, fontSize: 12, color: 'var(--ws-text-2)' }}>
+                              {procedure.description}
+                            </span>
+                            {procedurePreview && students.length > 0 ? (
+                              <span style={{ display: 'block', marginTop: 4, fontSize: 11.5, color: 'var(--ws-text-2)' }}>
+                                يستهدف {students.length === 1 ? 'طالباً واحداً' : `${students.length} طلاب`}{' '}
+                                ({students
+                                  .map(({ student, occurrence }) => `${student.name} - المخالفة رقم ${occurrence}`)
+                                  .join('، ')})
+                              </span>
+                            ) : null}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={recordStep < 5 ? handleNextStep : handleSubmitViolation}
-                    disabled={isCreating}
-                    className={`button-primary flex items-center gap-1 text-sm ${recordStep === 5 ? 'bg-emerald-600 hover:bg-emerald-700' : ''
-                      } ${isCreating ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    {isCreating ? 'جاري الحفظ...' : recordStep === 5 ? 'تأكيد وحفظ' : 'التالي'}
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
                 </div>
-              </div>
+              ) : null}
             </div>
+
+            {/* أزرار التنقل */}
+            <footer className="ws-modal__foot" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+              <WsBtn icon={ChevronRight} onClick={handlePrevStep} disabled={recordStep === 1}>
+                السابق
+              </WsBtn>
+              <span style={{ fontSize: 12, color: 'var(--ws-text-2)', fontVariantNumeric: 'tabular-nums' }}>
+                الخطوة {recordStep} من {RECORD_STEPS.length}
+              </span>
+              <WsBtn
+                variant="primary"
+                icon={recordStep === 5 ? CheckCircle2 : ChevronLeft}
+                onClick={recordStep < 5 ? handleNextStep : () => void handleSubmitViolation()}
+                disabled={isCreating}
+              >
+                {isCreating ? 'جاري الحفظ...' : recordStep === 5 ? 'تأكيد وحفظ' : 'التالي'}
+              </WsBtn>
+            </footer>
           </div>
         </div>
       )}
-    </section>
+    </WsPage>
   )
 }
 
-interface StatCardProps {
-  title: string
-  value: number
-  icon: ReactNode
-  accent: string
-}
-
-function StatCard({ title, value, icon, accent }: StatCardProps) {
-  return (
-    <article className={`rounded-2xl border bg-white/80 p-5 shadow-sm ${accent}`}>
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold text-muted">{title}</p>
-          <p className="mt-2 text-2xl font-bold text-slate-900">{value.toLocaleString('en-US')}</p>
-        </div>
-        <span className="rounded-full bg-white/60 p-2 text-primary">{icon}</span>
-      </div>
-    </article>
-  )
-}
-
+/** بطاقة إجراء — رقم الخطوة رقاقة سماوية، والإلزامية تلبس الأحمر */
 function ProcedureCard({ procedure }: { procedure: BehaviorProcedureDefinition }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
-      <div className="flex items-start gap-3">
-        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+    <div
+      style={{
+        borderRadius: 8,
+        border: '1px solid var(--ws-hairline)',
+        background: 'var(--ws-surface)',
+        padding: 10,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+        <span
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: 8,
+            flexShrink: 0,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 13,
+            fontWeight: 800,
+            background: chip(TONES.sky),
+            color: TONES.sky.tx,
+          }}
+        >
           {procedure.step}
         </span>
-        <div className="space-y-1 text-sm">
-          <p className="flex items-center gap-2 font-semibold text-slate-900">
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13.5, fontWeight: 700 }}>
             {procedure.title}
-            {procedure.mandatory ? (
-              <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700">
-                إلزامي
-              </span>
-            ) : (
-              <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700">
-                اختياري
-              </span>
-            )}
+            <ToneChip tone={procedure.mandatory ? TONES.red : TONES.sky}>
+              {procedure.mandatory ? 'إلزامي' : 'اختياري'}
+            </ToneChip>
           </p>
-          <p className="text-muted">{procedure.description}</p>
+          <p style={{ margin: '2px 0 0', fontSize: 12.5, color: 'var(--ws-text-2)' }}>{procedure.description}</p>
           {procedure.tasks && procedure.tasks.length > 0 ? (
-            <ul className="mt-2 space-y-1 text-xs text-muted">
+            <ul style={{ margin: '6px 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
               {procedure.tasks.map((task) => (
-                <li key={task.id} className="flex items-start gap-2">
-                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary/60" />
+                <li key={task.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, fontSize: 12, color: 'var(--ws-text-2)' }}>
+                  <span
+                    style={{
+                      width: 5,
+                      height: 5,
+                      borderRadius: '50%',
+                      background: 'var(--ws-accent-2)',
+                      flexShrink: 0,
+                      marginTop: 6,
+                    }}
+                  />
                   <span>
                     {task.title}
                     {!task.mandatory ? (
-                      <span className="mr-1 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
-                        اختياري
-                      </span>
+                      <span style={{ marginInlineStart: 4, fontSize: 10.5, color: 'var(--ws-text-2)' }}>(اختياري)</span>
                     ) : null}
                   </span>
                 </li>
@@ -1241,46 +1531,6 @@ function ProcedureCard({ procedure }: { procedure: BehaviorProcedureDefinition }
           ) : null}
         </div>
       </div>
-    </div>
-  )
-}
-
-function Pagination({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (value: number) => void }) {
-  if (totalPages <= 1) return null
-
-  const pages = Array.from({ length: totalPages }, (_, index) => index + 1).slice(0, 8)
-
-  return (
-    <div className="flex flex-wrap items-center justify-center gap-2 text-sm">
-      <button
-        type="button"
-        onClick={() => onChange(Math.max(1, page - 1))}
-        className="button-secondary flex items-center gap-1"
-        disabled={page === 1}
-      >
-        <ChevronRight className="h-4 w-4" />
-        السابق
-      </button>
-      {pages.map((item) => (
-        <button
-          key={item}
-          type="button"
-          onClick={() => onChange(item)}
-          className={`h-10 w-10 rounded-full text-sm font-semibold transition ${item === page ? 'bg-primary text-white shadow' : 'bg-slate-100 text-slate-600 hover:bg-primary/10'
-            }`}
-        >
-          {item}
-        </button>
-      ))}
-      <button
-        type="button"
-        onClick={() => onChange(Math.min(totalPages, page + 1))}
-        className="button-secondary flex items-center gap-1"
-        disabled={page === totalPages}
-      >
-        التالي
-        <ChevronLeft className="h-4 w-4" />
-      </button>
     </div>
   )
 }

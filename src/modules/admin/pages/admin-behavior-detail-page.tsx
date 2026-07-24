@@ -1,23 +1,21 @@
-import { type ReactNode, useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import {
   AlertCircle,
-  ArrowRight,
   CheckCircle2,
   ChevronLeft,
   Circle,
+  ClipboardList,
   Clock,
   Download,
   FileText,
   Loader2,
   MapPin,
-  Minus,
   Printer,
   ShieldAlert,
-  Tag,
   User,
   UserRoundCheck,
-  X,
+  Users,
   Zap,
 } from 'lucide-react'
 import { useBehaviorStore } from '@/modules/admin/behavior/store/use-behavior-store'
@@ -28,16 +26,39 @@ import { generateCounselorReferralHtml } from '@/modules/admin/behavior/counselo
 import { generateGuardianInvitationHtml } from '@/modules/admin/behavior/generate-guardian-invitation.tsx'
 import { useAdminSettingsQuery } from '@/modules/admin/hooks'
 import { executeAutomation } from '@/modules/admin/behavior/api'
+import {
+  TONES,
+  ToneChip,
+  WsBlock,
+  WsBtn,
+  WsEmpty,
+  WsFact,
+  WsFactRow,
+  WsFactsList,
+  WsHeader,
+  WsLayout,
+  WsMain,
+  WsPage,
+  WsSideCol,
+  WsTextarea,
+  type Tone,
+} from '@/shared/workspace'
+import { chip } from './dashboard-ui'
 
-const STATUS_META: Record<BehaviorStatus, string> = {
-  'قيد المعالجة': 'bg-amber-50 text-amber-700 border border-amber-200',
-  'جاري التنفيذ': 'bg-sky-50 text-sky-700 border border-sky-200',
-  مكتملة: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-  ملغاة: 'bg-rose-50 text-rose-600 border border-rose-200',
+const STATUS_TONES: Record<BehaviorStatus, Tone> = {
+  'قيد المعالجة': TONES.amber,
+  'جاري التنفيذ': TONES.sky,
+  مكتملة: TONES.green,
+  ملغاة: TONES.gray,
 }
+
+/** مؤشر السلوك يلبس حاله: ٨٠+ أخضر، ٦٠+ كهرماني، دونها أحمر */
+const scoreTone = (score: number): Tone =>
+  score >= 80 ? TONES.green : score >= 60 ? TONES.amber : TONES.red
 
 export function AdminBehaviorDetailPage() {
   const { violationId = '' } = useParams<{ violationId: string }>()
+  const navigate = useNavigate()
   const violations = useBehaviorStore((state) => state.violations)
   const students = useBehaviorStore((state) => state.students)
   const toggleProcedure = useBehaviorStore((state) => state.toggleProcedure)
@@ -219,121 +240,133 @@ export function AdminBehaviorDetailPage() {
 
   if (!violation) {
     return (
-      <section className="mx-auto max-w-4xl space-y-6 py-10">
-        <header className="flex items-center gap-3">
-          <div className="rounded-full bg-amber-50 p-2 text-amber-600">
-            <AlertCircle className="h-6 w-6" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">لم يتم العثور على المخالفة</h1>
-            <p className="text-sm text-muted">تحقق من الرابط أو عد إلى سجل المخالفات.</p>
-          </div>
-        </header>
-        <div className="glass-card flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm text-muted">
-              ربما تمت إزالة هذه المخالفة أو أن المعرف المستخدم غير صحيح.
-            </p>
-            <p className="mt-1 text-xs text-muted">
-              يمكنك الرجوع إلى سجل المخالفات للبحث عن الطالب أو المخالفة المطلوبة.
-            </p>
-          </div>
-          <Link to="/admin/behavior" className="button-primary inline-flex items-center gap-2 text-sm">
-            العودة إلى سجل المخالفات
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
-      </section>
+      <WsPage className="ws-rich">
+        <WsHeader title="تفاصيل المخالفة" badge="السلوك والمواظبة" />
+        <WsLayout>
+          <WsMain>
+            <WsBlock fill>
+              <WsEmpty icon={AlertCircle}>
+                لم يتم العثور على المخالفة — ربما أُزيلت أو أن المعرّف غير صحيح.
+                <WsBtn icon={ChevronLeft} onClick={() => navigate('/admin/behavior')}>
+                  العودة إلى سجل المخالفات
+                </WsBtn>
+              </WsEmpty>
+            </WsBlock>
+          </WsMain>
+        </WsLayout>
+      </WsPage>
     )
   }
 
-  const statusClass = STATUS_META[violation.status]
+  const statusTone = STATUS_TONES[violation.status] ?? TONES.gray
   const completionLabel = `${completion.completed} / ${violation.procedures.length}`
+  const behaviorScore = student?.behaviorScore
 
   return (
-    <section className="mx-auto max-w-6xl space-y-6 py-10">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold text-primary-700">متابعة المخالفة السلوكية</p>
-          <h1 className="text-3xl font-bold text-slate-900">{violation.studentName}</h1>
-          <p className="mt-1 text-sm text-muted">
-            تفاصيل المخالفة رقم{' '}
-            <span className="font-mono text-xs text-slate-500" title={violation.id}>
-              {violation.id.split('-')[0]}
-            </span>
-          </p>
-        </div>
-        <Link
-          to="/admin/behavior"
-          className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-primary hover:text-primary"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          العودة إلى سجل المخالفات
-        </Link>
-      </header>
+    <WsPage className="ws-rich">
+      <WsHeader
+        title={violation.studentName}
+        badge={`المخالفة ${violation.id.split('-')[0]}`}
+        actions={
+          <WsBtn icon={ChevronLeft} onClick={() => navigate('/admin/behavior')}>
+            العودة إلى السجل
+          </WsBtn>
+        }
+        facts={
+          <>
+            <WsFact icon={Clock} label="التاريخ والوقت">
+              {violation.date} · {violation.time || '—'}
+            </WsFact>
+            <WsFact icon={MapPin} label="الموقع">
+              {violation.location || 'غير محدد'}
+            </WsFact>
+            <WsFact icon={UserRoundCheck} label="المبلّغ">
+              {violation.reportedBy}
+            </WsFact>
+          </>
+        }
+      >
+        <ToneChip tone={statusTone}>{violation.status}</ToneChip>
+      </WsHeader>
 
-      <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
-        <div className="space-y-6">
-          <section className="glass-card space-y-4">
-            <header className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <ViolationBadge degree={violation.degree} />
-                <div>
-                  <p className="text-lg font-semibold text-slate-900">{violation.type}</p>
-                  <p className="text-sm text-muted">درجة المخالفة {violation.degree}</p>
-                </div>
+      <WsLayout>
+        <WsMain>
+          {/* بطاقة المخالفة — تلبس درجتها */}
+          <WsBlock padded>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <ViolationBadge degree={violation.degree} />
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <p style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>{violation.type}</p>
+                <p style={{ margin: '2px 0 0', fontSize: 12.5, color: 'var(--ws-text-2)' }}>
+                  درجة المخالفة {violation.degree} · رقم الطالب {violation.studentNumber}
+                </p>
               </div>
-              <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${statusClass}`}>
-                <ShieldAlert className="h-4 w-4" />
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '5px 12px',
+                  borderRadius: 999,
+                  border: `1px solid ${statusTone.bd}`,
+                  background: chip(statusTone),
+                  color: statusTone.tx,
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                }}
+              >
+                <ShieldAlert style={{ width: 14, height: 14 }} />
                 {violation.status}
               </span>
-            </header>
-
-            <div className="grid gap-4 text-sm text-muted md:grid-cols-2">
-              <InfoRow icon={<Clock className="h-4 w-4" />} label="التاريخ والوقت">
-                {violation.date} · {violation.time}
-              </InfoRow>
-              <InfoRow icon={<MapPin className="h-4 w-4" />} label="مكان المخالفة">
-                {violation.location || 'غير محدد'}
-              </InfoRow>
-              <InfoRow icon={<UserRoundCheck className="h-4 w-4" />} label="المبلّغ">
-                {violation.reportedBy}
-              </InfoRow>
-              <InfoRow icon={<FileText className="h-4 w-4" />} label="رقم الطالب">
-                {violation.studentNumber}
-              </InfoRow>
             </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm leading-relaxed text-slate-700 shadow-sm">
-              <p className="font-semibold text-slate-900">وصف الحالة</p>
-              <p className="mt-2 whitespace-pre-wrap text-slate-700">
+            <div
+              style={{
+                marginTop: 10,
+                borderRadius: 8,
+                border: '1px solid var(--ws-hairline)',
+                background: 'var(--ws-surface-2)',
+                padding: '10px 12px',
+              }}
+            >
+              <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: 'var(--ws-text-2)' }}>وصف الحالة</p>
+              <p style={{ margin: '4px 0 0', fontSize: 13.5, lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
                 {violation.description || 'لا توجد تفاصيل إضافية مسجلة لهذه المخالفة.'}
               </p>
             </div>
-          </section>
+          </WsBlock>
 
-          <section className="glass-card space-y-5">
-            <header className="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold text-primary-700">متابعة الإجراءات</p>
-                <h2 className="text-xl font-bold text-slate-900">الإجراءات التصحيحية</h2>
+          {/* الإجراءات التصحيحية */}
+          <WsBlock
+            fill
+            scroll
+            title="الإجراءات التصحيحية"
+            icon={ClipboardList}
+            count={completionLabel}
+            tools={
+              <b
+                style={{
+                  fontSize: 13.5,
+                  fontVariantNumeric: 'tabular-nums',
+                  color: completion.percent === 100 ? TONES.green.tx : 'var(--ws-text)',
+                }}
+              >
+                {completion.percent}%
+              </b>
+            }
+          >
+            <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {/* شريط الإنجاز */}
+              <div style={{ height: 7, borderRadius: 4, background: 'var(--ws-surface-2)', overflow: 'hidden' }}>
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${completion.percent}%`,
+                    background: completion.percent === 100 ? TONES.green.bd : TONES.sky.bd,
+                    transition: 'width .25s ease-out',
+                  }}
+                />
               </div>
-              <div className="text-right text-xs text-muted">
-                <p>نسبة الإنجاز</p>
-                <p className="text-sm font-semibold text-slate-900">
-                  {completion.percent}% <span className="text-xs text-muted">({completionLabel})</span>
-                </p>
-              </div>
-            </header>
 
-            <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
-              <div
-                className="h-full rounded-full bg-gradient-to-l from-primary to-primary/70 transition-all"
-                style={{ width: `${completion.percent}%` }}
-              />
-            </div>
-
-            <div className="space-y-4">
               {violation.procedures.map((procedure) => {
                 const procedureMutationKey = `${violation.id}-${procedure.step}`
                 const isProcedureMutating = Boolean(procedureMutations[procedureMutationKey])
@@ -341,83 +374,84 @@ export function AdminBehaviorDetailPage() {
                 return (
                   <article
                     key={procedure.step}
-                    className="rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm transition hover:border-primary/40"
+                    style={{
+                      borderRadius: 8,
+                      border: `1px solid ${procedure.completed ? TONES.green.bd : 'var(--ws-hairline)'}`,
+                      background: procedure.completed ? chip(TONES.green) : 'var(--ws-surface)',
+                      padding: 12,
+                    }}
                   >
-                    <header className="flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex items-start gap-3">
-                        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+                    <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, minWidth: 0 }}>
+                        <span
+                          style={{
+                            width: 30,
+                            height: 30,
+                            borderRadius: 8,
+                            flexShrink: 0,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 13.5,
+                            fontWeight: 800,
+                            background: 'var(--ws-surface)',
+                            border: `1px solid ${procedure.completed ? TONES.green.bd : TONES.sky.bd}`,
+                            color: procedure.completed ? TONES.green.tx : TONES.sky.tx,
+                          }}
+                        >
                           {procedure.step}
                         </span>
-                        <div className="space-y-1">
-                          <p className="font-semibold text-slate-900">{procedure.title}</p>
-                          <p className="text-xs text-muted">{procedure.description}</p>
-                          {procedure.mandatory ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-600">
-                              <AlertCircle className="h-3 w-3" /> إجراء إلزامي
-                            </span>
-                          ) : null}
+                        <div style={{ minWidth: 0 }}>
+                          <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 14, fontWeight: 700 }}>
+                            {procedure.title}
+                            {procedure.mandatory ? <ToneChip tone={TONES.red}>إجراء إلزامي</ToneChip> : null}
+                          </p>
+                          <p style={{ margin: '2px 0 0', fontSize: 12.5, color: 'var(--ws-text-2)' }}>{procedure.description}</p>
                         </div>
                       </div>
-                      <button
-                        type="button"
+                      <WsBtn
+                        size="sm"
+                        icon={isProcedureMutating ? Loader2 : procedure.completed ? CheckCircle2 : Circle}
                         onClick={() => {
                           void toggleProcedure(violation.id, procedure.step).catch(() => undefined)
                         }}
                         disabled={isProcedureMutating}
-                        className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${procedure.completed
-                          ? 'border-emerald-400 bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
-                          : 'border-slate-200 text-slate-500 hover:border-primary hover:text-primary'
-                          }`}
+                        style={
+                          procedure.completed
+                            ? { background: 'var(--ws-surface)', borderColor: TONES.green.bd, color: TONES.green.tx }
+                            : undefined
+                        }
                       >
-                        {isProcedureMutating ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : procedure.completed ? (
-                          <>
-                            <CheckCircle2 className="h-4 w-4" />
-                            مكتمل
-                          </>
-                        ) : (
-                          <>
-                            <Circle className="h-4 w-4" />
-                            تعليم كمكتمل
-                          </>
-                        )}
-                      </button>
+                        {procedure.completed ? 'مكتمل' : 'تعليم كمكتمل'}
+                      </WsBtn>
                     </header>
 
                     {procedure.tasks.length > 0 ? (
-                      <div className="mt-4 space-y-2">
-                        <p className="text-xs font-semibold text-slate-600">خطوات الإجراء</p>
-                        <ul className="space-y-2">
+                      <div style={{ marginTop: 10 }}>
+                        <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: 'var(--ws-text-2)' }}>خطوات الإجراء</p>
+                        <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
                           {procedure.tasks.map((task) => {
                             const taskKey = `${violation.id}-${procedure.step}-${task.id}`
                             const isTaskMutating = Boolean(procedureMutations[taskKey])
                             const isTaskDisabled = isTaskMutating || isProcedureMutating
-                            const toggleClasses = task.completed
-                              ? 'border-emerald-400 bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
-                              : 'border-slate-200 text-slate-500 hover:border-primary hover:text-primary'
                             const matchesGuardianInvitation =
                               task.actionType === 'guardian_invitation' ||
                               task.title.includes('دعوة ولي أمر') ||
                               task.title.includes('دعوة ولي الأمر') ||
                               task.title.includes('دعوة ولي الامر')
 
-                            // Debug log
-                            if (matchesGuardianInvitation) {
-                              console.log('Guardian invitation task found:', {
-                                title: task.title,
-                                actionType: task.actionType,
-                                procedureStep: procedure.step,
-                              })
-                            }
-
                             return (
                               <li
                                 key={task.id}
-                                className={`flex items-start gap-3 rounded-xl border px-3 py-2 text-sm transition ${task.completed
-                                  ? 'border-emerald-200 bg-emerald-50/70'
-                                  : 'border-slate-200 bg-white/80'
-                                  }`}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'flex-start',
+                                  gap: 10,
+                                  borderRadius: 8,
+                                  border: `1px solid ${task.completed ? TONES.green.bd : 'var(--ws-hairline)'}`,
+                                  background: 'var(--ws-surface)',
+                                  padding: '8px 10px',
+                                }}
                               >
                                 <button
                                   type="button"
@@ -429,133 +463,109 @@ export function AdminBehaviorDetailPage() {
                                     ).catch(() => undefined)
                                   }}
                                   disabled={isTaskDisabled}
-                                  className={`mt-1 flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${toggleClasses}`}
+                                  title={task.completed ? 'إلغاء الإكمال' : 'تعليم كمكتمل'}
+                                  style={{
+                                    width: 28,
+                                    height: 28,
+                                    borderRadius: 8,
+                                    flexShrink: 0,
+                                    marginTop: 2,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    border: `1px solid ${task.completed ? TONES.green.bd : 'var(--ws-border)'}`,
+                                    background: task.completed ? chip(TONES.green) : 'var(--ws-surface)',
+                                    color: task.completed ? TONES.green.tx : 'var(--ws-text-2)',
+                                    cursor: isTaskDisabled ? 'default' : 'pointer',
+                                    opacity: isTaskDisabled ? 0.6 : 1,
+                                  }}
                                 >
                                   {isTaskMutating ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    <Loader2 className="animate-spin" style={{ width: 14, height: 14 }} />
                                   ) : task.completed ? (
-                                    <CheckCircle2 className="h-4 w-4" />
+                                    <CheckCircle2 style={{ width: 14, height: 14 }} />
                                   ) : (
-                                    <Circle className="h-4 w-4" />
+                                    <Circle style={{ width: 14, height: 14 }} />
                                   )}
                                 </button>
-                                <div className="flex-1 space-y-1">
-                                  <p className="text-sm font-medium text-slate-800">{task.title}</p>
-                                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted">
-                                    <span
-                                      className={`rounded-full px-2 py-0.5 font-semibold ${task.mandatory
-                                        ? 'bg-rose-50 text-rose-600'
-                                        : 'bg-sky-50 text-sky-700'
-                                        }`}
-                                    >
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>{task.title}</p>
+                                  <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                                    <ToneChip tone={task.mandatory ? TONES.red : TONES.sky}>
                                       {task.mandatory ? 'إلزامية' : 'اختيارية'}
-                                    </span>
-                                    {task.roleLabel ? (
-                                      <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2 py-0.5 font-semibold text-purple-600">
-                                        <User className="h-3 w-3" />
-                                        {task.roleLabel}
-                                      </span>
-                                    ) : null}
+                                    </ToneChip>
+                                    {task.roleLabel ? <ToneChip tone={TONES.purple}>{task.roleLabel}</ToneChip> : null}
                                     {task.actionCategoryLabel ? (
-                                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 font-semibold text-blue-600">
-                                        <Tag className="h-3 w-3" />
-                                        {task.actionCategoryLabel}
-                                      </span>
+                                      <ToneChip tone={TONES.sky}>{task.actionCategoryLabel}</ToneChip>
                                     ) : null}
                                     {task.pointsToDeduct && task.pointsToDeduct > 0 ? (
-                                      <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 font-semibold text-red-600">
-                                        <Minus className="h-3 w-3" />
-                                        {task.pointsToDeduct} نقطة
+                                      <ToneChip tone={TONES.red}>خصم {task.pointsToDeduct} نقطة</ToneChip>
+                                    ) : null}
+                                    {task.systemTriggerLabel ? (
+                                      <span
+                                        style={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: 4,
+                                          padding: '1.5px 8px',
+                                          borderRadius: 999,
+                                          border: `1px solid ${TONES.amber.bd}`,
+                                          background: chip(TONES.amber),
+                                          color: TONES.amber.tx,
+                                          fontSize: 11,
+                                          fontWeight: 700,
+                                        }}
+                                      >
+                                        <Zap style={{ width: 11, height: 11 }} />
+                                        أتمتة: {task.systemTriggerLabel}
                                       </span>
                                     ) : null}
                                   </div>
-                                  {task.systemTriggerLabel ? (
-                                    <div className="mt-1 flex items-center gap-1.5">
-                                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200">
-                                        <Zap className="h-3 w-3" />
-                                        أتمتة: {task.systemTriggerLabel}
-                                      </span>
-                                    </div>
-                                  ) : null}
-                                  <div className="flex items-center gap-1 text-[10px] text-muted mt-1">
+                                  <p style={{ margin: '4px 0 0', fontSize: 11.5, color: 'var(--ws-text-2)', display: 'flex', alignItems: 'center', gap: 4 }}>
                                     {task.completedDate ? (
-                                      <span className="inline-flex items-center gap-1">
-                                        <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                                      <>
+                                        <CheckCircle2 style={{ width: 12, height: 12, color: TONES.green.tx }} />
                                         أُنجز بتاريخ {task.completedDate}
-                                      </span>
+                                      </>
                                     ) : task.completed ? (
-                                      <span className="inline-flex items-center gap-1">
-                                        <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                                      <>
+                                        <CheckCircle2 style={{ width: 12, height: 12, color: TONES.green.tx }} />
                                         تم التعليم كمكتمل
-                                      </span>
+                                      </>
                                     ) : task.mandatory ? (
-                                      <span className="inline-flex items-center gap-1 text-amber-600">
-                                        <Clock className="h-3 w-3" />
-                                        بانتظار التنفيذ
-                                      </span>
+                                      <>
+                                        <Clock style={{ width: 12, height: 12, color: TONES.amber.tx }} />
+                                        <span style={{ color: TONES.amber.tx }}>بانتظار التنفيذ</span>
+                                      </>
                                     ) : (
-                                      <span>خطوة اختيارية</span>
+                                      'خطوة اختيارية'
                                     )}
-                                  </div>
+                                  </p>
                                   {task.actionType === 'counselor_referral' ? (
-                                    <button
-                                      type="button"
-                                      onClick={handleOpenReferralForm}
-                                      className="mt-2 inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50/70 px-3 py-1 text-xs font-semibold text-sky-700 transition hover:border-sky-300 hover:bg-sky-100"
-                                    >
-                                      <svg
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        className="h-4 w-4"
-                                      >
-                                        <path
-                                          d="M15 12H9m3-3v6m8 0a9 9 0 11-18 0 9 9 0 0118 0z"
-                                          stroke="currentColor"
-                                          strokeWidth="1.8"
-                                          strokeLinecap="round"
-                                          strokeLinejoin="round"
-                                        />
-                                      </svg>
-                                      التحويل
-                                    </button>
+                                    <WsBtn size="sm" icon={FileText} onClick={handleOpenReferralForm} style={{ marginTop: 6 }}>
+                                      نموذج التحويل
+                                    </WsBtn>
                                   ) : matchesGuardianInvitation ? (
-                                    <button
-                                      type="button"
-                                      onClick={handleOpenGuardianInvitation}
-                                      className="mt-2 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50/70 px-3 py-1 text-xs font-semibold text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-100"
-                                    >
-                                      <svg
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        className="h-4 w-4"
-                                      >
-                                        <path
-                                          d="M18 8a4 4 0 10-4.875 3.875L9 17H7l-4 4h18l-4-4h-2l-2.344-5.468A4 4 0 0018 8z"
-                                          stroke="currentColor"
-                                          strokeWidth="1.8"
-                                          strokeLinecap="round"
-                                          strokeLinejoin="round"
-                                        />
-                                      </svg>
+                                    <WsBtn size="sm" icon={Users} onClick={handleOpenGuardianInvitation} style={{ marginTop: 6 }}>
                                       دعوة ولي الأمر
-                                    </button>
+                                    </WsBtn>
                                   ) : task.systemTrigger ? (
-                                    <AutomationTriggerButton
-                                      systemTrigger={task.systemTrigger as BehaviorSystemTrigger}
-                                      systemTriggerLabel={task.systemTriggerLabel ?? task.systemTrigger}
-                                      pointsToDeduct={task.pointsToDeduct}
-                                      disabled={task.completed}
-                                      onExecute={async () => {
-                                        await executeAutomation({
-                                          violationId: violation.id,
-                                          procedureStep: procedure.step,
-                                          taskId: task.id,
-                                          systemTrigger: task.systemTrigger as string,
-                                        })
-                                      }}
-                                    />
+                                    <div style={{ marginTop: 6 }}>
+                                      <AutomationTriggerButton
+                                        systemTrigger={task.systemTrigger as BehaviorSystemTrigger}
+                                        systemTriggerLabel={task.systemTriggerLabel ?? task.systemTrigger}
+                                        pointsToDeduct={task.pointsToDeduct}
+                                        disabled={task.completed}
+                                        onExecute={async () => {
+                                          await executeAutomation({
+                                            violationId: violation.id,
+                                            procedureStep: procedure.step,
+                                            taskId: task.id,
+                                            systemTrigger: task.systemTrigger as string,
+                                          })
+                                        }}
+                                      />
+                                    </div>
                                   ) : null}
                                 </div>
                               </li>
@@ -565,26 +575,24 @@ export function AdminBehaviorDetailPage() {
                       </div>
                     ) : null}
 
-                    <div className="mt-4 space-y-3 text-xs text-muted">
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4" />
-                        <span>
-                          {procedure.completed
-                            ? `أُنجز بتاريخ ${procedure.completedDate ?? 'غير محدد'}`
-                            : 'لم يتم التنفيذ بعد'}
-                        </span>
-                      </div>
+                    <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--ws-text-2)' }}>
+                        <Clock style={{ width: 13, height: 13 }} />
+                        {procedure.completed
+                          ? `أُنجز بتاريخ ${procedure.completedDate ?? 'غير محدد'}`
+                          : 'لم يتم التنفيذ بعد'}
+                      </p>
                       <div>
-                        <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
+                        <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700, color: 'var(--ws-text-2)' }}>
                           ملاحظات الإجراء
                         </p>
-                        <textarea
+                        <WsTextarea
                           value={procedure.notes ?? ''}
                           onChange={(event) =>
                             updateProcedureNotes(violation.id, procedure.step, event.target.value)
                           }
                           placeholder="أضف تحديثات أو تفاصيل حول تنفيذ الإجراء"
-                          className="h-24 w-full rounded-2xl border border-slate-200 bg-white/90 p-3 text-sm text-slate-700 transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                          rows={3}
                         />
                       </div>
                     </div>
@@ -592,139 +600,164 @@ export function AdminBehaviorDetailPage() {
                 )
               })}
             </div>
-          </section>
-        </div>
+          </WsBlock>
+        </WsMain>
 
-        <aside className="space-y-6">
-          <section className="glass-card space-y-4">
-            <header className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold text-primary-700">بيانات الطالب</p>
-                <h2 className="text-xl font-bold text-slate-900">{student?.name ?? violation.studentName}</h2>
-              </div>
-              <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+        {/* القسم الثاني: بطاقة الطالب وسجله */}
+        <WsSideCol side="end" title="بطاقة الطالب" icon={User} storageKey="ws:behavior-detail:sidecol" width={300}>
+          <WsBlock padded>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700 }}>
+                {student?.name ?? violation.studentName}
+              </span>
+              <span
+                style={{
+                  fontFamily: 'monospace',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  borderRadius: 6,
+                  background: chip(TONES.sky),
+                  border: `1px solid ${TONES.sky.bd}`,
+                  color: TONES.sky.tx,
+                }}
+              >
                 {student?.studentId ?? violation.studentNumber}
               </span>
-            </header>
-            <div className="grid gap-3 text-sm text-muted">
-              <InfoRow icon={<UserRoundCheck className="h-4 w-4" />} label="الصف">
-                {violation.grade}
-              </InfoRow>
-              <InfoRow icon={<UserRoundCheck className="h-4 w-4" />} label="الشعبة">
-                {violation.class}
-              </InfoRow>
-              <InfoRow icon={<ShieldAlert className="h-4 w-4" />} label="عدد المخالفات">
-                {student?.violationsCount ?? '—'}
-              </InfoRow>
-              <InfoRow icon={<ShieldAlert className="h-4 w-4" />} label="مؤشر السلوك">
-                {student?.behaviorScore ?? '—'} / 100
-              </InfoRow>
             </div>
-          </section>
-
-          <section className="glass-card space-y-4">
-            <header className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold text-primary-700">مخالفات مرتبطة</p>
-                <h2 className="text-lg font-bold text-slate-900">سجل الطالب</h2>
+            <WsFactsList>
+              <WsFactRow label="الصف">{violation.grade}</WsFactRow>
+              <WsFactRow label="الشعبة">{violation.class}</WsFactRow>
+              <WsFactRow label="عدد المخالفات">
+                <b style={{ fontVariantNumeric: 'tabular-nums' }}>{student?.violationsCount ?? '—'}</b>
+              </WsFactRow>
+            </WsFactsList>
+            {typeof behaviorScore === 'number' ? (
+              <div style={{ marginTop: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ws-text-2)' }}>مؤشر السلوك</span>
+                  <b style={{ fontSize: 14, fontVariantNumeric: 'tabular-nums', color: scoreTone(behaviorScore).tx }}>
+                    {behaviorScore} / 100
+                  </b>
+                </div>
+                <div style={{ height: 7, marginTop: 5, borderRadius: 4, background: 'var(--ws-surface-2)', overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      height: '100%',
+                      width: `${Math.min(100, Math.max(0, behaviorScore))}%`,
+                      background: scoreTone(behaviorScore).bd,
+                    }}
+                  />
+                </div>
               </div>
-              <span className="text-xs text-muted">
-                {relatedViolations.length > 0 ? `آخر ${relatedViolations.length} سجلات` : 'لا توجد سجلات إضافية'}
+            ) : null}
+          </WsBlock>
+
+          <WsBlock
+            title="سجل الطالب"
+            icon={ClipboardList}
+            count={relatedViolations.length || undefined}
+            fill
+            scroll
+          >
+            {relatedViolations.length === 0 ? (
+              <WsEmpty icon={ClipboardList}>لا توجد مخالفات أخرى مسجلة لهذا الطالب.</WsEmpty>
+            ) : (
+              <div>
+                {relatedViolations.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => navigate(`/admin/behavior/${item.id}`)}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      textAlign: 'start',
+                      padding: '8px 12px',
+                      border: 'none',
+                      borderBottom: '1px solid var(--ws-hairline)',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      font: 'inherit',
+                      color: 'var(--ws-text)',
+                    }}
+                  >
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          fontSize: 13.5,
+                          fontWeight: 700,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {item.type}
+                      </span>
+                      <ViolationBadge degree={item.degree} size="sm" />
+                    </span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                      <span style={{ flex: 1, fontSize: 12, color: 'var(--ws-text-2)', fontVariantNumeric: 'tabular-nums' }}>
+                        {item.date}
+                      </span>
+                      <ToneChip tone={STATUS_TONES[item.status] ?? TONES.gray}>{item.status}</ToneChip>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </WsBlock>
+        </WsSideCol>
+      </WsLayout>
+
+      {/* مودال النماذج الرسمية (إحالة / دعوة ولي أمر) */}
+      {documentModal ? (
+        <div className="ws-modal" onClick={handleCloseDocumentModal}>
+          <div
+            className="ws-modal__panel"
+            style={{ maxWidth: 900, display: 'flex', flexDirection: 'column', overflow: 'hidden', maxHeight: '90vh' }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="ws-modal__head" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+              <div>
+                <h3 className="ws-modal__title">{documentModal.title}</h3>
+                <p className="ws-modal__sub">راجع البيانات ثم اطبع النموذج الرسمي أو نزّله.</p>
+              </div>
+              <span style={{ display: 'inline-flex', gap: 6, flexShrink: 0 }}>
+                <WsBtn size="sm" icon={Download} onClick={handleDownloadDocument}>
+                  تنزيل
+                </WsBtn>
+                <WsBtn size="sm" variant="primary" icon={Printer} onClick={handlePrintDocument}>
+                  طباعة
+                </WsBtn>
               </span>
             </header>
-
-            {relatedViolations.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-8 text-center text-sm text-muted">
-                لا توجد مخالفات أخرى مسجلة لهذا الطالب.
-              </div>
-            ) : (
-              <ul className="space-y-3">
-                {relatedViolations.map((item) => (
-                  <li key={item.id} className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">{item.type}</p>
-                        <p className="text-xs text-muted">
-                          {item.date} · {item.status}
-                        </p>
-                      </div>
-                      <ViolationBadge degree={item.degree} size="sm" />
-                    </div>
-                    <Link
-                      to={`/admin/behavior/${item.id}`}
-                      className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary transition hover:text-primary/80"
-                    >
-                      عرض التفاصيل
-                      <ChevronLeft className="h-4 w-4" />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        </aside>
-      </div>
-
-      {documentModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
-          <div className="relative w-full max-w-4xl rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
-            <header className="mb-4 flex items-start justify-between gap-3 text-right">
-              <div className="space-y-1">
-                <h3 className="text-xl font-bold text-slate-900">{documentModal.title}</h3>
-                <p className="text-sm text-muted">
-                  راجع البيانات ثم استخدم خيارات الطباعة أو التنزيل لإصدار النموذج الرسمي.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleCloseDocumentModal}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100"
+            <div className="ws-modal__body" style={{ flex: 1, minHeight: 0, display: 'flex' }}>
+              <div
+                style={{
+                  flex: 1,
+                  minHeight: 0,
+                  border: '1px solid var(--ws-hairline)',
+                  borderRadius: 8,
+                  overflow: 'hidden',
+                  background: 'var(--ws-surface-2)',
+                }}
               >
-                <X className="h-5 w-5" />
-              </button>
-            </header>
-
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <button type="button" className="button-secondary text-xs" onClick={handleDownloadDocument}>
-                  <Download className="h-4 w-4" /> تنزيل النموذج
-                </button>
-                <button type="button" className="button-primary text-xs" onClick={handlePrintDocument}>
-                  <Printer className="h-4 w-4" /> طباعة النموذج
-                </button>
-              </div>
-
-              <div className="overflow-auto rounded-3xl border border-slate-200 bg-slate-100 p-2">
                 <iframe
                   title={documentModal.title}
                   srcDoc={documentModal.html}
-                  className="h-[70vh] w-full min-w-[520px] rounded-2xl bg-white shadow-inner"
+                  style={{ width: '100%', height: '68vh', border: 'none', background: '#FFFFFF' }}
                 />
               </div>
             </div>
+            <footer className="ws-modal__foot">
+              <WsBtn onClick={handleCloseDocumentModal}>إغلاق</WsBtn>
+            </footer>
           </div>
         </div>
       ) : null}
-    </section>
-  )
-}
-
-interface InfoRowProps {
-  icon: ReactNode
-  label: string
-  children: ReactNode
-}
-
-function InfoRow({ icon, label, children }: InfoRowProps) {
-  return (
-    <div className="flex items-start gap-3">
-      <span className="mt-1 flex h-8 w-8 items-center justify-center rounded-2xl bg-slate-100 text-primary">
-        {icon}
-      </span>
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">{label}</p>
-        <p className="text-sm text-slate-700">{children}</p>
-      </div>
-    </div>
+    </WsPage>
   )
 }
