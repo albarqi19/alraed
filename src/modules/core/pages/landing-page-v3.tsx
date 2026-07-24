@@ -19,6 +19,8 @@ import {
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { StorySkyline, type StorySkylineHandle } from './landing-story-skyline'
+import { StoryBirds, StoryClouds } from './landing-story-sky-life'
 
 /* ══════════════════════════════════════════════════════
    نسخة ٣ — «رحلة سماء» (Scroll Cinema)
@@ -186,11 +188,15 @@ const toArabicDigits = (value: string) => value.replace(/\d/g, (digit) => AR_DIG
 /** أوقات الفصول بالدقائق (٥:٤٠ ص → ١٢:٠٠ ليلاً) لحساب ساعة مستمرة من موضع التمرير */
 const TIME_WAYPOINTS = [340, 390, 435, 451, 580, 810, 870, 1440]
 
-function clockLabelAt(progress: number) {
+/** دقيقة اليوم عند موضع التمرير — تغذّي الساعة العلوية وعقارب برج المدرسة */
+function minutesAt(progress: number) {
   const segments = TIME_WAYPOINTS.length - 1
   const x = Math.min(0.9999, Math.max(0, progress)) * segments
   const i = Math.floor(x)
-  const minutes = Math.round(TIME_WAYPOINTS[i] + (TIME_WAYPOINTS[i + 1] - TIME_WAYPOINTS[i]) * (x - i))
+  return Math.round(TIME_WAYPOINTS[i] + (TIME_WAYPOINTS[i + 1] - TIME_WAYPOINTS[i]) * (x - i))
+}
+
+function formatClock(minutes: number) {
   const hour24 = Math.floor(minutes / 60) % 24
   const mins = minutes % 60
   const suffix = hour24 < 12 ? 'ص' : hour24 < 18 ? 'م' : 'ليلاً'
@@ -205,7 +211,7 @@ interface SkyRefs {
   clouds: RefObject<HTMLDivElement | null>
   birds: RefObject<HTMLDivElement | null>
   clock: RefObject<HTMLSpanElement | null>
-  skyline: RefObject<SVGSVGElement | null>
+  skyline: RefObject<StorySkylineHandle | null>
 }
 
 /** محرك المشهد: الشمس والقمر والنجوم والسحب والعصافير والساعة ونوافذ المدرسة — كلها تتبع كل بكسل تمرير */
@@ -219,12 +225,14 @@ function useScrollSky(refs: SkyRefs) {
       const progress = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0
 
       // الشمس: قوس شروق→ذروة→غروب يكتمل عند 85%، ثم تغرب خلف الأفق
+      const sunT = Math.min(1, progress / 0.85)
+      const sunRgb = sunColorAt(sunT)
+      const sunRightPct = 5 + sunT * 88
       const sun = refs.sun.current
       if (sun) {
-        const t = Math.min(1, progress / 0.85)
-        const [r, g, b] = sunColorAt(t)
-        sun.style.top = `${78 - Math.sin(t * Math.PI) * 66}%`
-        sun.style.right = `${5 + t * 88}%`
+        const [r, g, b] = sunRgb
+        sun.style.top = `${78 - Math.sin(sunT * Math.PI) * 66}%`
+        sun.style.right = `${sunRightPct}%`
         sun.style.background = `rgb(${r}, ${g}, ${b})`
         sun.style.boxShadow = `0 0 90px 40px rgba(${r}, ${g}, ${b}, 0.42)`
         sun.style.opacity = String(progress < 0.78 ? 1 : Math.max(0, 1 - (progress - 0.78) / 0.1))
@@ -246,12 +254,17 @@ function useScrollSky(refs: SkyRefs) {
         stars.style.opacity = String(Math.max(dawn, night))
       }
 
-      // السحب: نهارية فقط
+      // السحب: نهارية فقط، وتكتسب لون الشمس كلما انخفضت نحو الأفق
       const clouds = refs.clouds.current
       if (clouds) {
         const fadeIn = Math.min(1, Math.max(0, (progress - 0.06) / 0.08))
         const fadeOut = Math.min(1, Math.max(0, (0.8 - progress) / 0.08))
         clouds.style.opacity = String(Math.min(fadeIn, fadeOut))
+        const low = 1 - Math.sin(sunT * Math.PI) // ١ عند الأفق · ٠ عند الذروة
+        const [tr, tg, tb] = mixRgb([255, 255, 255], sunRgb, low * 0.52)
+        const [sr, sg, sb] = mixRgb([214, 228, 246], sunRgb, low * 0.64)
+        clouds.style.setProperty('--lp3-cloud-tint', `rgb(${tr},${tg},${tb})`)
+        clouds.style.setProperty('--lp3-cloud-shade', `rgb(${sr},${sg},${sb})`)
       }
 
       // العصافير: تحلّق في سماء الصباح ثم تغيب
@@ -263,15 +276,15 @@ function useScrollSky(refs: SkyRefs) {
       }
 
       // الساعة الحية: تتقدم دقيقة بدقيقة مع التمرير
+      const minutes = minutesAt(progress)
       const clock = refs.clock.current
       if (clock) {
-        const label = clockLabelAt(progress)
+        const label = formatClock(minutes)
         if (clock.textContent !== label) clock.textContent = label
       }
 
-      // نوافذ المدرسة: تُضاء بعد الغروب
-      const skyline = refs.skyline.current
-      if (skyline) skyline.classList.toggle('is-night', progress > 0.84)
+      // الأفق: هالة الغروب وحدّ الضوء والنوافذ وعقارب برج الساعة
+      refs.skyline.current?.update({ progress, sunRightPct, sunRgb, minutes })
     }
 
     const onScroll = () => {
@@ -531,7 +544,7 @@ export function LandingPageV3() {
   const cloudsRef = useRef<HTMLDivElement>(null)
   const birdsRef = useRef<HTMLDivElement>(null)
   const clockRef = useRef<HTMLSpanElement>(null)
-  const skylineRef = useRef<SVGSVGElement>(null)
+  const skylineRef = useRef<StorySkylineHandle>(null)
 
   useScrollSky({
     sun: sunRef,
@@ -573,15 +586,6 @@ export function LandingPageV3() {
         @keyframes lp3-arrow-bounce { 0%, 100% { transform: translateY(0); opacity: 0.5; } 50% { transform: translateY(4px); opacity: 1; } }
         @keyframes lp3-live-ping { 0%, 100% { box-shadow: 0 0 0 0 rgba(34,165,90,0.5); } 60% { box-shadow: 0 0 0 6px rgba(34,165,90,0); } }
         @keyframes lp3-scroll-hint { 0%, 100% { transform: translateY(0); opacity: 0.85; } 55% { transform: translateY(8px); opacity: 0.35; } }
-        @keyframes lp3-cloud-drift { from { margin-right: -26px; } to { margin-right: 30px; } }
-        @keyframes lp3-bird-fly { from { right: -12vw; } to { right: 110vw; } }
-        @keyframes lp3-bird-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(7px); } }
-        .lp3-cloud { position: absolute; width: 150px; height: 34px; border-radius: 40px; background: rgba(255,255,255,0.78); box-shadow: 42px -16px 0 4px rgba(255,255,255,0.7), 88px -6px 0 0 rgba(255,255,255,0.58); filter: blur(0.5px); animation-name: lp3-cloud-drift; animation-timing-function: ease-in-out; animation-iteration-count: infinite; animation-direction: alternate; }
-        .lp3-bird { position: absolute; animation-name: lp3-bird-fly; animation-timing-function: linear; animation-iteration-count: infinite; }
-        .lp3-bird svg { animation: lp3-bird-bob 1.5s ease-in-out infinite; }
-        .lp3-window { fill: rgba(255,255,255,0.14); transition: fill 1.4s ease, filter 1.4s ease; }
-        .lp3-skyline.is-night .lp3-window { fill: rgba(255,255,255,0.05); }
-        .lp3-skyline.is-night .lp3-window--lit { fill: #ffd76e; filter: drop-shadow(0 0 5px rgba(255,215,110,0.85)); }
         .lp3-stamp { animation: lp3-stamp 7.5s ease-in-out infinite; }
         .lp3-prep { animation: lp3-prep-in 8s ease-in-out infinite; }
         .lp3-queue { animation: lp3-queue-roll 12s linear infinite; }
@@ -592,7 +596,9 @@ export function LandingPageV3() {
         .lp3-live { animation: lp3-live-ping 2s ease-out infinite; }
         .lp3-star { animation: lp3-twinkle 3.2s ease-in-out infinite; }
         @media (prefers-reduced-motion: reduce) {
-          [class*="lp3-"] { animation: none !important; opacity: 1 !important; }
+          [class*="lp3-"] { animation: none !important; }
+          /* هذه وحدها يأتي ظهورها من الحركة — أما إضاءة نوافذ الأفق فتبقى تابعة للتمرير */
+          .lp3-stamp, .lp3-prep, .lp3-bubble, .lp3-assign, .lp3-star { opacity: 1 !important; }
         }
       `}</style>
 
@@ -643,101 +649,26 @@ export function LandingPageV3() {
         ))}
       </div>
 
-      {/* ══ السحب (نهارية) ══ */}
-      <div ref={cloudsRef} className="pointer-events-none fixed inset-0 z-0" style={{ opacity: 0, willChange: 'opacity' }}>
-        <div className="lp3-cloud" style={{ top: '13%', right: '16%', animationDuration: '9s' }} />
-        <div className="lp3-cloud" style={{ top: '24%', right: '58%', transform: 'scale(0.72)', animationDuration: '12s', animationDelay: '-4s' }} />
-        <div className="lp3-cloud" style={{ top: '8%', right: '76%', transform: 'scale(1.18)', animationDuration: '14s', animationDelay: '-8s' }} />
-        <div className="lp3-cloud" style={{ top: '32%', right: '34%', transform: 'scale(0.55)', animationDuration: '10s', animationDelay: '-2s' }} />
-      </div>
-
-      {/* ══ عصافير الصباح ══ */}
-      <div ref={birdsRef} className="pointer-events-none fixed inset-0 z-0" style={{ opacity: 0, willChange: 'opacity' }}>
-        {[
-          { top: '15%', duration: '44s', delay: '0s', scale: 1 },
-          { top: '21%', duration: '58s', delay: '-19s', scale: 0.7 },
-          { top: '11%', duration: '50s', delay: '-34s', scale: 0.85 },
-        ].map((bird, index) => (
-          <div key={index} className="lp3-bird" style={{ top: bird.top, animationDuration: bird.duration, animationDelay: bird.delay }}>
-            <svg width={30 * bird.scale} height={12 * bird.scale} viewBox="0 0 30 12" fill="none">
-              <path d="M2 9 Q8 2 15 9 Q22 2 28 9" stroke="#13253f" strokeWidth="2.2" strokeLinecap="round" opacity="0.7" />
-            </svg>
-          </div>
-        ))}
-      </div>
-
-      {/* ══ أفق المدرسة — الشمس تغرب خلفه وتضاء نوافذه ليلاً ══ */}
-      <svg
-        ref={skylineRef}
-        className="lp3-skyline pointer-events-none fixed inset-x-0 bottom-0 z-0 w-full"
-        style={{ height: 'clamp(76px, 13vw, 150px)' }}
-        viewBox="0 0 1200 160"
-        preserveAspectRatio="xMidYMax slice"
-        fill="none"
+      {/* ══ السحب (نهارية) — تنساب في اتجاه واحد وتتلوّن بلون الشمس ══ */}
+      <div
+        ref={cloudsRef}
+        className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
+        style={{ opacity: 0, willChange: 'opacity' }}
       >
-        <g fill="#0c1730" opacity="0.92">
-          {/* الأرض */}
-          <rect x="0" y="148" width="1200" height="12" />
-          {/* المسجد: مئذنة وقبة */}
-          <rect x="150" y="54" width="14" height="96" />
-          <rect x="143" y="46" width="28" height="8" rx="2" />
-          <circle cx="157" cy="38" r="6" />
-          <rect x="196" y="98" width="112" height="52" />
-          <path d="M196 98 Q252 60 308 98 Z" />
-          {/* شجرة */}
-          <ellipse cx="372" cy="112" rx="27" ry="22" />
-          <rect x="368" y="128" width="8" height="22" />
-          {/* سارية العلم */}
-          <rect x="432" y="50" width="3" height="100" />
-          {/* مبنى المدرسة الرئيسي */}
-          <rect x="470" y="58" width="300" height="92" />
-          <rect x="560" y="42" width="120" height="16" rx="3" />
-          {/* برج الساعة */}
-          <rect x="790" y="26" width="46" height="124" />
-          {/* مبنى جانبي */}
-          <rect x="858" y="94" width="150" height="56" />
-          {/* أشجار يسار */}
-          <ellipse cx="1052" cy="116" rx="30" ry="24" />
-          <rect x="1048" y="132" width="8" height="18" />
-          <ellipse cx="1112" cy="124" rx="22" ry="17" />
-          <rect x="1109" y="136" width="6" height="14" />
-        </g>
-        {/* العلم */}
-        <rect x="435" y="50" width="28" height="16" rx="2" fill="#2e6b4c" opacity="0.95" />
-        {/* ساعة البرج */}
-        <circle cx="813" cy="54" r="13" fill="#f4ecd8" opacity="0.92" />
-        <rect x="812" y="45" width="2" height="10" fill="#0c1730" />
-        <rect x="813" y="53" width="8" height="2" fill="#0c1730" />
-        {/* باب المدرسة */}
-        <path d="M602 150 L602 122 Q620 108 638 122 L638 150 Z" fill="rgba(255,255,255,0.12)" />
-        {/* نوافذ المدرسة */}
-        {[0, 1, 2, 3, 4, 5].map((i) => (
-          <rect key={`w1-${i}`} className="lp3-window" x={488 + i * 46} y={74} width="26" height="17" rx="2" />
-        ))}
-        {[0, 1, 2, 3, 4, 5].map((i) => (
-          <rect
-            key={`w2-${i}`}
-            className={`lp3-window${i === 4 ? ' lp3-window--lit' : ''}`}
-            x={488 + i * 46}
-            y={104}
-            width="26"
-            height="17"
-            rx="2"
-          />
-        ))}
-        {[0, 1, 2, 3].map((i) => (
-          <rect
-            key={`w3-${i}`}
-            className={`lp3-window${i === 1 ? ' lp3-window--lit' : ''}`}
-            x={874 + i * 34}
-            y={106}
-            width="22"
-            height="14"
-            rx="2"
-          />
-        ))}
-        <rect className="lp3-window lp3-window--lit" x="801" y="86" width="24" height="18" rx="2" />
-      </svg>
+        <StoryClouds />
+      </div>
+
+      {/* ══ عصافير الصباح — سرب بتشكيل V وأجنحة تخفق ══ */}
+      <div
+        ref={birdsRef}
+        className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
+        style={{ opacity: 0, willChange: 'opacity' }}
+      >
+        <StoryBirds />
+      </div>
+
+      {/* ══ أفق المدرسة — ثلاث طبقات عمق، الشمس تغرب خلفه وتُضاء نوافذه ليلاً ══ */}
+      <StorySkyline ref={skylineRef} />
 
       {/* ══ المحتوى فوق السماء ══ */}
       <div className="relative z-10">
