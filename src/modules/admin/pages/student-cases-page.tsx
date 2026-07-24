@@ -18,7 +18,6 @@ import {
 import {
   WsPage,
   WsHeader,
-  WsFact,
   WsToolbar,
   WsField,
   WsInput,
@@ -29,7 +28,10 @@ import {
   WsIconBtn,
   WsAlert,
   WsEmpty,
+  WsLayout,
+  WsMain,
 } from '@/shared/workspace'
+import { DayCard, chip } from './dashboard-ui'
 import { useAdminGuidanceCases, useAdminGuidanceStats, useAdminGuidanceCaseMutations } from '../api/guidance-hooks'
 import { TONES, SEVERITY_META, STATUS_META, categoryTone, ToneChip, SeverityBadge, InitialAvatar } from './student-cases-ui'
 import type { GuidanceCaseFilters } from '@/modules/guidance/types'
@@ -95,7 +97,7 @@ export function StudentCasesPage() {
 
   const pagination = casesData && casesData.last_page > 1 && (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-      <span style={{ fontSize: 11, color: 'var(--ws-text-2)' }}>
+      <span style={{ fontSize: 12, color: 'var(--ws-text-2)' }}>
         {((casesData.current_page - 1) * casesData.per_page) + 1}–{Math.min(casesData.current_page * casesData.per_page, casesData.total)} من {casesData.total}
       </span>
       <WsIconBtn
@@ -104,7 +106,7 @@ export function StudentCasesPage() {
         disabled={casesData.current_page === 1}
         onClick={() => updateFilter('page', Math.max(1, (filters.page || 1) - 1))}
       />
-      <b style={{ fontSize: 11.5 }}>{casesData.current_page} / {casesData.last_page}</b>
+      <b style={{ fontSize: 12.5, fontVariantNumeric: 'tabular-nums' }}>{casesData.current_page} / {casesData.last_page}</b>
       <WsIconBtn
         icon={ChevronLeft}
         label="الصفحة التالية"
@@ -115,32 +117,11 @@ export function StudentCasesPage() {
   )
 
   return (
-    <WsPage>
+    <WsPage className="ws-rich">
       <WsHeader
         title="الحالات الطلابية"
         badge="الإرشاد الطلابي"
         actions={<WsBtn variant="primary" icon={Plus} onClick={() => navigate('/admin/student-cases/new')}>حالة جديدة</WsBtn>}
-        facts={stats && (
-          <>
-            <WsFact icon={FolderOpen} label="مفتوحة">
-              <span style={{ color: TONES.sky.tx }}>{stats.open_cases}</span>
-            </WsFact>
-            <WsFact icon={Activity} label="قيد المعالجة">
-              <span style={{ color: TONES.purple.tx }}>{stats.by_status.in_progress || 0}</span>
-            </WsFact>
-            <WsFact icon={CalendarClock} label="متابعات متأخرة">
-              <span
-                className={stats.overdue_followups > 0 ? 'ws-soft-pulse' : undefined}
-                style={{ color: stats.overdue_followups > 0 ? TONES.red.tx : undefined }}
-              >
-                {stats.overdue_followups}
-              </span>
-            </WsFact>
-            <WsFact icon={CheckCircle2} label="مغلقة">
-              <span style={{ color: TONES.green.tx }}>{stats.by_status.closed || 0}</span>
-            </WsFact>
-          </>
-        )}
       />
 
       <WsToolbar>
@@ -236,7 +217,50 @@ export function StudentCasesPage() {
         )}
       </WsToolbar>
 
-      {error ? (
+      <WsLayout>
+        <WsMain>
+          {/* حصيلة الإرشاد — لغة الإغناء: باستيل + رقاقة بيضاء + علامة مائية */}
+          {stats && (
+            <WsBlock padded>
+              <div className="ws-dashboard-cards">
+                <DayCard
+                  icon={FolderOpen}
+                  label="حالات مفتوحة"
+                  value={stats.open_cases}
+                  tone={TONES.sky}
+                  hero
+                  context="بين يدي المرشد الآن"
+                  zeroContext="لا حالات مفتوحة"
+                />
+                <DayCard
+                  icon={Activity}
+                  label="قيد المعالجة"
+                  value={stats.by_status.in_progress || 0}
+                  tone={TONES.purple}
+                  context="خطتها تُنفَّذ الآن"
+                  zeroContext="لا حالات تحت المعالجة"
+                />
+                <DayCard
+                  icon={CalendarClock}
+                  label="متابعات متأخرة"
+                  value={stats.overdue_followups}
+                  tone={TONES.red}
+                  context="تجاوزت موعدها المحدد"
+                  zeroContext="كل المتابعات في وقتها"
+                />
+                <DayCard
+                  icon={CheckCircle2}
+                  label="مغلقة"
+                  value={stats.by_status.closed || 0}
+                  tone={TONES.green}
+                  context="أُنهيت وأُرشفت"
+                  zeroContext="لم تُغلق أي حالة بعد"
+                />
+              </div>
+            </WsBlock>
+          )}
+
+          {error ? (
         <WsBlock fill padded>
           <WsAlert tone="error" boxed>
             خطأ في تحميل البيانات: {error instanceof Error ? error.message : 'حدث خطأ غير متوقع'}
@@ -284,6 +308,11 @@ export function StudentCasesPage() {
                       key={caseItem.id}
                       className="is-clickable"
                       onClick={() => navigate(`/admin/student-cases/${caseItem.id}`)}
+                      style={
+                        caseItem.severity === 'critical' || caseItem.severity === 'high'
+                          ? { background: chip(SEVERITY_META[caseItem.severity].tone) }
+                          : undefined
+                      }
                     >
                       <td style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>{caseItem.case_number}</td>
                       <td>
@@ -343,26 +372,26 @@ export function StudentCasesPage() {
                       key={caseItem.id}
                       onClick={() => navigate(`/admin/student-cases/${caseItem.id}`)}
                       style={{
-                        border: '1px solid var(--ws-border)',
+                        border: `1px solid ${sev.tone.bd}`,
                         borderRadius: 10,
                         cursor: 'pointer',
                         overflow: 'hidden',
-                        /* غسلة علوية خفيفة بلون الأولوية بدل الشريط الجانبي */
-                        background: `linear-gradient(to bottom, ${sev.tone.bg}, var(--ws-surface) 34%)`,
-                        transition: 'border-color 0.12s, box-shadow 0.12s',
+                        /* البطاقة تلبس أولويتها — باستيل تينت-60 بلغة الإغناء */
+                        background: chip(sev.tone),
+                        transition: 'border-color 0.12s',
                       }}
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--ws-accent)' }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--ws-border)' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = sev.tone.tx }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = sev.tone.bd }}
                     >
                       <div style={{ padding: '10px 12px' }}>
                         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                             <InitialAvatar name={caseItem.student.name} tone={catTone} size={30} />
                             <span style={{ minWidth: 0 }}>
-                              <span style={{ display: 'block', fontWeight: 700, fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <span style={{ display: 'block', fontWeight: 700, fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {caseItem.student.name}
                               </span>
-                              <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ws-text-2)' }}>{caseItem.case_number}</span>
+                              <span style={{ display: 'block', fontSize: 11.5, color: 'var(--ws-text-2)' }}>{caseItem.case_number}</span>
                             </span>
                           </div>
                           <span style={{ display: 'inline-flex', gap: 2, flexShrink: 0 }}>
@@ -381,7 +410,7 @@ export function StudentCasesPage() {
                         <p
                           style={{
                             margin: '8px 0 8px',
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: 600,
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -408,7 +437,7 @@ export function StudentCasesPage() {
                             marginTop: 8,
                             paddingTop: 8,
                             borderTop: '1px solid var(--ws-hairline)',
-                            fontSize: 10.5,
+                            fontSize: 11.5,
                             color: 'var(--ws-text-2)',
                           }}
                         >
@@ -424,6 +453,8 @@ export function StudentCasesPage() {
           )}
         </WsBlock>
       )}
+        </WsMain>
+      </WsLayout>
     </WsPage>
   )
 }
