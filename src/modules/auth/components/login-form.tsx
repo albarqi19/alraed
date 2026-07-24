@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { AlertCircle, ArrowLeft, Eye, EyeOff, GraduationCap, KeyRound, Loader2, ShieldCheck, Building2 } from 'lucide-react'
 import { useLoginMutation } from '../hooks'
 
 interface LoginFormProps {
@@ -8,6 +9,27 @@ interface LoginFormProps {
   heading: string
   description: string
   submitLabel: string
+}
+
+/* هوية الرائد: أخضر عميق + كريمي دافئ — لا تركوازي ولا نيلي */
+const DEEP = '#24452F'
+const DEEP_HOVER = '#1D3826'
+const GREEN = '#2E7D46'
+const PASTEL = '#E9F5EC'
+const PASTEL_BD = '#BFE3C9'
+
+const ROLE_ICONS = {
+  teacher: GraduationCap,
+  admin: ShieldCheck,
+  super_admin: Building2,
+} as const
+
+const inputClass =
+  'w-full rounded-xl border px-4 py-3.5 text-slate-900 placeholder-slate-400 transition-all focus:outline-none'
+
+const inputStyle: React.CSSProperties = {
+  borderColor: '#E5E0D5',
+  background: '#FBFAF8',
 }
 
 export function LoginForm({ role, heading, description, submitLabel }: LoginFormProps) {
@@ -29,20 +51,22 @@ export function LoginForm({ role, heading, description, submitLabel }: LoginForm
   }
 
   const isLoading = loginMutation.isPending
-
-  const roleColor = role === 'super_admin' ? 'bg-indigo-600' : 'bg-teal-600'
+  const RoleIcon = ROLE_ICONS[role]
 
   return (
     <section className="mx-auto max-w-md">
       <div className="mb-8 text-center">
-        <div className={`mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl ${roleColor} shadow-xl`}>
-          <i className="bi bi-box-arrow-in-right text-4xl text-white"></i>
+        <div
+          className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
+          style={{ background: DEEP }}
+        >
+          <RoleIcon className="h-8 w-8" style={{ color: '#EAF3EC' }} />
         </div>
         <h1 className="mb-2 text-3xl font-bold text-slate-900">{heading}</h1>
         <p className="text-sm leading-relaxed text-slate-600">{description}</p>
       </div>
 
-      <div className="rounded-3xl bg-white p-8 shadow-xl border border-slate-100">
+      <div className="rounded-2xl bg-white p-8 shadow-sm" style={{ border: '1px solid #E8E3D9' }}>
         <form className="space-y-5" onSubmit={handleSubmit} noValidate>
           <div className="space-y-2">
             <label htmlFor={`${role}-national-id`} className="block text-sm font-semibold text-slate-700">
@@ -55,7 +79,18 @@ export function LoginForm({ role, heading, description, submitLabel }: LoginForm
               inputMode="numeric"
               autoComplete="username"
               placeholder="أدخل رقم الهوية"
-              className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3.5 text-slate-900 placeholder-slate-400 transition-all focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-teal-500/10"
+              className={inputClass}
+              style={inputStyle}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = GREEN
+                e.currentTarget.style.background = '#FFFFFF'
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(46, 125, 70, 0.12)'
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = '#E5E0D5'
+                e.currentTarget.style.background = '#FBFAF8'
+                e.currentTarget.style.boxShadow = 'none'
+              }}
               value={nationalId}
               onChange={(event) => setNationalId(event.target.value)}
               disabled={isLoading}
@@ -72,55 +107,74 @@ export function LoginForm({ role, heading, description, submitLabel }: LoginForm
                 name="password"
                 type={showPassword ? 'text' : 'password'}
                 inputMode="numeric"
-                autoComplete={role === 'teacher' ? 'current-password' : 'current-password'}
+                autoComplete="current-password"
                 placeholder="أدخل كلمة المرور"
-                className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3.5 pl-12 text-slate-900 placeholder-slate-400 transition-all focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-teal-500/10"
+                className={`${inputClass} pl-12`}
+                style={inputStyle}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = GREEN
+                  e.currentTarget.style.background = '#FFFFFF'
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(46, 125, 70, 0.12)'
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = '#E5E0D5'
+                  e.currentTarget.style.background = '#FBFAF8'
+                  e.currentTarget.style.boxShadow = 'none'
+                }}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 disabled={isLoading}
               />
               <button
                 type="button"
-                className="absolute left-3 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                aria-label={showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+                className="absolute left-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-400 transition-colors hover:text-slate-700"
                 onClick={() => setShowPassword((prev) => !prev)}
               >
-                {showPassword ? 'إخفاء' : 'إظهار'}
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
           </div>
 
           {formError ? (
-            <div className="flex items-center gap-2 rounded-xl bg-rose-50 border border-rose-200 px-4 py-3 text-sm font-medium text-rose-700">
-              <i className="bi bi-exclamation-circle-fill"></i>
+            <div
+              className="flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium"
+              style={{ background: '#FBEAEA', border: '1px solid #EFC5C5', color: '#C43D3D' }}
+            >
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
               <span>{formError}</span>
             </div>
           ) : null}
 
-          <button 
-            type="submit" 
-            className={`w-full rounded-xl ${roleColor} px-6 py-4 font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
+          <button
+            type="submit"
+            className="w-full rounded-xl px-6 py-4 font-semibold text-white shadow-md transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            style={{ background: DEEP }}
+            onMouseEnter={(e) => { if (!isLoading) e.currentTarget.style.background = DEEP_HOVER }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = DEEP }}
             disabled={isLoading}
           >
             {isLoading ? (
               <span className="flex items-center justify-center gap-2">
-                <i className="bi bi-arrow-clockwise animate-spin"></i>
+                <Loader2 className="h-4 w-4 animate-spin" />
                 جاري التحقق...
               </span>
             ) : (
               <span className="flex items-center justify-center gap-2">
                 {submitLabel}
-                <i className="bi bi-arrow-left"></i>
+                <ArrowLeft className="h-4 w-4" />
               </span>
             )}
           </button>
 
           {role === 'teacher' && (
-            <div className="text-center pt-2">
+            <div className="pt-2 text-center">
               <Link
                 to="/auth/forgot-password"
-                className="text-sm font-medium text-teal-600 hover:text-teal-700 transition"
+                className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-colors"
+                style={{ background: PASTEL, border: `1px solid ${PASTEL_BD}`, color: GREEN }}
               >
-                <i className="bi bi-key ml-1"></i>
+                <KeyRound className="h-3.5 w-3.5" />
                 نسيت كلمة المرور؟
               </Link>
             </div>

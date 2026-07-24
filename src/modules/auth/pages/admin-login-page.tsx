@@ -14,9 +14,10 @@ export function AdminLoginPage() {
       <div className="text-center">
         <p className="text-sm text-slate-600">
           هل تبحث عن لوحة المعلم؟{' '}
-          <Link 
-            to="/auth/teacher" 
-            className="font-semibold text-teal-600 transition-colors hover:text-teal-700 hover:underline"
+          <Link
+            to="/auth/teacher"
+            className="font-semibold transition-colors hover:underline"
+            style={{ color: '#2E7D46' }}
           >
             انتقل من هنا
           </Link>

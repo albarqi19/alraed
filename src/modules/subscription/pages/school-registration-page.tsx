@@ -1,10 +1,27 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import confetti from 'canvas-confetti'
+import {
+  ArrowLeft,
+  BookOpenCheck,
+  Check,
+  CheckCircle2,
+  Clock3,
+  Loader2,
+  MessageCircle,
+  Sparkles,
+} from 'lucide-react'
 import { usePublicSubscriptionPlansQuery, useRegisterSchoolMutation } from '../hooks'
 import { PlanCard } from '../components/plan-card'
 import type { RegisterSchoolPayload } from '../types'
+
+/* هوية الرائد للصفحات العامة: أخضر عميق + كريمي دافئ */
+const DEEP = '#24452F'
+const GREEN = '#2E7D46'
+const PASTEL = '#E9F5EC'
+const PASTEL_BD = '#BFE3C9'
+const WARM_BD = '#E8E3D9'
 
 const initialForm: RegisterSchoolPayload = {
   school_name: '',
@@ -23,6 +40,33 @@ const schoolLevelOptions = [
   { value: 'middle', label: 'متوسط' },
   { value: 'high', label: 'ثانوي' },
 ] as const
+
+const fieldInput =
+  'rounded-xl border px-4 py-3 text-sm font-normal text-slate-700 transition-colors focus:outline-none focus:ring-2'
+
+const fieldStyle: React.CSSProperties = {
+  borderColor: '#E5E0D5',
+  background: '#FBFAF8',
+  ['--tw-ring-color' as string]: 'rgba(46,125,70,0.15)',
+}
+
+function SectionTitle({ step, children }: { step: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <span
+        className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-sm font-extrabold"
+        style={{ background: PASTEL, border: `1px solid ${PASTEL_BD}`, color: GREEN }}
+      >
+        {step}
+      </span>
+      <h3 className="text-base font-bold text-slate-900">{children}</h3>
+    </div>
+  )
+}
+
+function RequiredHint() {
+  return <span className="text-xs font-normal" style={{ color: '#C43D3D' }}>هذا الحقل مطلوب</span>
+}
 
 export function SchoolRegistrationPage() {
   const [searchParams] = useSearchParams()
@@ -49,14 +93,14 @@ export function SchoolRegistrationPage() {
           angle: 60,
           spread: 55,
           origin: { x: 0 },
-          colors: ['#10b981', '#34d399', '#6ee7b7']
+          colors: ['#2E7D46', '#7FC894', '#BFE3C9']
         })
         confetti({
           particleCount: 3,
           angle: 120,
           spread: 55,
           origin: { x: 1 },
-          colors: ['#10b981', '#34d399', '#6ee7b7']
+          colors: ['#2E7D46', '#7FC894', '#BFE3C9']
         })
 
         if (Date.now() < end) {
@@ -84,102 +128,127 @@ export function SchoolRegistrationPage() {
   }
 
   return (
-    <section className="space-y-10">
+    <section className="space-y-8 pb-6">
+      {/* الصفحة بلا هيدر عام — شريط هوية خفيف يعيد الزائر للرئيسية */}
+      <div className="flex items-center justify-between pt-2">
+        <Link to="/" className="flex items-center gap-2.5">
+          <span
+            className="flex h-10 w-10 items-center justify-center rounded-xl shadow-sm"
+            style={{ background: DEEP }}
+          >
+            <BookOpenCheck className="h-5 w-5" style={{ color: '#EAF3EC' }} />
+          </span>
+          <span>
+            <span className="block text-sm font-bold text-slate-900">نظام الرائد</span>
+            <span className="block text-[11px] text-slate-500">للإدارة المدرسية</span>
+          </span>
+        </Link>
+        <Link
+          to="/"
+          className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-colors"
+          style={{ background: '#FFFFFF', border: `1px solid ${WARM_BD}`, color: GREEN }}
+        >
+          العودة للرئيسية
+          <ArrowLeft className="h-3.5 w-3.5" />
+        </Link>
+      </div>
+
       {/* شاشة التحميل الكاملة أثناء التسجيل */}
       {registerMutation.isPending ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
-          <div className="rounded-3xl bg-white p-8 shadow-2xl">
-            <div className="flex flex-col items-center gap-6">
-              {/* Spinner متحرك */}
-              <div className="relative h-20 w-20">
-                <div className="absolute inset-0 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600"></div>
-                <div className="absolute inset-2 animate-pulse rounded-full bg-emerald-50"></div>
-              </div>
-              
-              {/* نص التحميل */}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50">
+          <div className="rounded-2xl bg-white p-8 shadow-2xl" style={{ border: `1px solid ${WARM_BD}` }}>
+            <div className="flex flex-col items-center gap-5">
+              <span
+                className="flex h-16 w-16 items-center justify-center rounded-2xl"
+                style={{ background: PASTEL }}
+              >
+                <Loader2 className="h-8 w-8 animate-spin" style={{ color: GREEN }} />
+              </span>
               <div className="text-center">
                 <h3 className="text-xl font-bold text-slate-800">جارِ تسجيل مدرستك</h3>
                 <p className="mt-2 text-sm text-slate-600">يُرجى الانتظار قليلاً...</p>
               </div>
-              
-              {/* شريط تقدم متحرك */}
-              <div className="h-1 w-64 overflow-hidden rounded-full bg-slate-200">
-                <div className="h-full animate-progress bg-gradient-to-r from-emerald-500 to-teal-500"></div>
+              <div className="h-1.5 w-64 overflow-hidden rounded-full" style={{ background: '#EFEDE6' }}>
+                <div className="animate-progress h-full" style={{ background: GREEN }}></div>
               </div>
             </div>
           </div>
         </div>
       ) : null}
 
-      {/* صفحة النجاح الكاملة */}
+      {/* صفحة النجاح */}
       {registerMutation.isSuccess && registerMutation.data?.school ? (
-        <div className="glass-card mx-auto max-w-2xl">
-          <div className="rounded-2xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 to-teal-50 p-8 text-center shadow-lg">
-            {/* تأثير احتفالي */}
+        <div className="mx-auto max-w-2xl">
+          <div
+            className="rounded-2xl p-8 text-center shadow-sm"
+            style={{ background: '#F3F9F4', border: `1px solid ${PASTEL_BD}` }}
+          >
             <div className="mb-6 flex justify-center">
               <div className="relative">
-                <div className="absolute inset-0 animate-ping rounded-full bg-emerald-400 opacity-30"></div>
-                <div className="relative rounded-full bg-emerald-500 p-6 text-white shadow-xl">
-                  <svg className="h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
+                <div className="absolute inset-0 animate-ping rounded-full opacity-25" style={{ background: GREEN }}></div>
+                <div className="relative rounded-full p-5 text-white shadow-lg" style={{ background: GREEN }}>
+                  <CheckCircle2 className="h-14 w-14" />
                 </div>
               </div>
             </div>
 
-            {/* عنوان رئيسي */}
-            <h2 className="mb-3 text-3xl font-bold text-emerald-800">
-              🎉 مرحباً بك في نظام الرائد!
+            <h2 className="mb-2 text-3xl font-bold" style={{ color: DEEP }}>
+              مرحباً بك في نظام الرائد!
             </h2>
-            
-            {/* نص توضيحي */}
-            <p className="mb-6 text-lg font-medium text-emerald-700">
+            <p className="mb-6 text-lg font-semibold" style={{ color: GREEN }}>
               تم تسجيل مدرستك بنجاح
             </p>
 
-            {/* معلومات إضافية */}
-            <div className="mx-auto mb-6 max-w-md space-y-3 rounded-xl bg-white/80 p-5 text-right shadow-sm">
-              <div className="flex items-start gap-3">
-                <span className="text-2xl">📱</span>
-                <div>
-                  <p className="font-semibold text-slate-800">ستصلك بيانات الدخول عبر واتساب</p>
-                  <p className="text-sm text-slate-600">تحقق من رسائل واتساب على رقمك المسجل</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <span className="text-2xl">⏰</span>
-                <div>
-                  <p className="font-semibold text-slate-800">فترة تجريبية مجانية</p>
-                  <p className="text-sm text-slate-600">
-                    7 أيام للاستفادة من جميع المميزات
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <span className="text-2xl">🎯</span>
-                <div>
-                  <p className="font-semibold text-slate-800">وصول كامل</p>
-                  <p className="text-sm text-slate-600">جميع مميزات النظام متاحة لك الآن</p>
-                </div>
-              </div>
+            <div
+              className="mx-auto mb-6 max-w-md space-y-4 rounded-xl bg-white p-5 text-right shadow-sm"
+              style={{ border: `1px solid ${WARM_BD}` }}
+            >
+              {[
+                {
+                  icon: MessageCircle,
+                  title: 'ستصلك بيانات الدخول عبر واتساب',
+                  sub: 'تحقق من رسائل واتساب على رقمك المسجل',
+                },
+                {
+                  icon: Clock3,
+                  title: 'فترة تجريبية مجانية',
+                  sub: '7 أيام للاستفادة من جميع المميزات',
+                },
+                {
+                  icon: Sparkles,
+                  title: 'وصول كامل',
+                  sub: 'جميع مميزات النظام متاحة لك الآن',
+                },
+              ].map((item) => {
+                const Icon = item.icon
+                return (
+                  <div key={item.title} className="flex items-start gap-3">
+                    <span
+                      className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg"
+                      style={{ background: PASTEL }}
+                    >
+                      <Icon className="h-4.5 w-4.5" style={{ color: GREEN, width: 18, height: 18 }} />
+                    </span>
+                    <div>
+                      <p className="font-semibold text-slate-800">{item.title}</p>
+                      <p className="text-sm text-slate-600">{item.sub}</p>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
 
-            {/* زر الانتقال للدخول */}
             <a
               href="/auth/admin"
-              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-8 py-3 text-lg font-semibold text-white shadow-md transition hover:bg-emerald-700"
+              className="inline-flex items-center gap-2 rounded-xl px-8 py-3 text-lg font-semibold text-white shadow-md transition-colors"
+              style={{ background: DEEP }}
             >
               الانتقال لتسجيل الدخول
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
+              <ArrowLeft className="h-5 w-5" />
             </a>
 
-            {/* ملاحظة */}
             <p className="mt-6 text-xs text-slate-500">
-              💡 لم تستلم الرسالة؟ تواصل مع الدعم الفني
+              لم تستلم الرسالة؟ تواصل مع الدعم الفني.
             </p>
           </div>
         </div>
@@ -188,201 +257,218 @@ export function SchoolRegistrationPage() {
       {/* نموذج التسجيل */}
       {!registerMutation.isSuccess && (
         <>
-          <header className="glass-card">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-              <div className="space-y-4">
-                <span className="badge-soft">تسجيل مدرسة جديدة</span>
-                <h1 className="text-3xl font-bold text-slate-900 lg:text-4xl">ابدأ رحلتك مع نظام الرائد</h1>
-                <p className="max-w-2xl text-sm leading-relaxed text-muted">
-                  قم بتعبئة البيانات التالية لتفعيل حساب مدرستك مباشرة، سنقوم بإنشاء حساب لمدير المدرسة وإرسال بيانات الدخول فوراً.
-                </p>
-              </div>
-              {selectedPlan ? (
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
-                  <p className="text-xs font-semibold text-emerald-700">الباقة المختارة</p>
-                  <h2 className="text-xl font-bold text-slate-900">{selectedPlan.name}</h2>
-                  <p className="mt-1 text-xs text-emerald-700">
-                    يمكنك تعديل الباقة لاحقاً من لوحة الإدارة.
-                  </p>
-                </div>
-              ) : null}
-            </div>
+          <header className="mx-auto max-w-3xl space-y-3 text-center">
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold"
+              style={{ background: PASTEL, border: `1px solid ${PASTEL_BD}`, color: GREEN }}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              تسجيل مدرسة جديدة
+            </span>
+            <h1 className="text-3xl font-bold text-slate-900 lg:text-4xl">ابدأ رحلتك مع نظام الرائد</h1>
+            <p className="mx-auto max-w-2xl text-sm leading-relaxed text-slate-600">
+              عبّئ البيانات التالية لتفعيل حساب مدرستك مباشرة — سننشئ حساباً لمدير المدرسة ونرسل بيانات
+              الدخول فوراً عبر واتساب.
+            </p>
           </header>
 
-          <div className="grid gap-8 lg:grid-cols-[1fr,320px]">
+          <div className="grid gap-6 lg:grid-cols-[1fr,320px]">
             <form
               onSubmit={handleSubmit}
-              className="glass-card space-y-6"
+              className="space-y-6 rounded-2xl bg-white p-6 shadow-sm"
+              style={{ border: `1px solid ${WARM_BD}` }}
             >
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
-              اسم المدرسة
-              <input
-                type="text"
-                required
-                value={form.school_name}
-                onChange={(event) => handleChange('school_name', event.target.value)}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-normal text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
-              />
-              {hasSubmitted && !form.school_name ? (
-                <span className="text-xs font-normal text-rose-600">هذا الحقل مطلوب</span>
-              ) : null}
-            </label>
-            <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
-              المرحلة الدراسية
-              <select
-                required
-                value={form.school_level}
-                onChange={(event) => handleChange('school_level', event.target.value)}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-normal text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+              {/* ١ — بيانات المدرسة */}
+              <div className="space-y-4">
+                <SectionTitle step="١">بيانات المدرسة</SectionTitle>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+                    اسم المدرسة
+                    <input
+                      type="text"
+                      required
+                      value={form.school_name}
+                      onChange={(event) => handleChange('school_name', event.target.value)}
+                      className={fieldInput}
+                      style={fieldStyle}
+                    />
+                    {hasSubmitted && !form.school_name ? <RequiredHint /> : null}
+                  </label>
+                  <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+                    المرحلة الدراسية
+                    <select
+                      required
+                      value={form.school_level}
+                      onChange={(event) => handleChange('school_level', event.target.value)}
+                      className={fieldInput}
+                      style={fieldStyle}
+                    >
+                      {schoolLevelOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    {hasSubmitted && !form.school_level ? <RequiredHint /> : null}
+                  </label>
+                  <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+                    الرقم الوزاري للمدرسة
+                    <input
+                      type="text"
+                      required
+                      value={form.ministry_number ?? ''}
+                      onChange={(event) => handleChange('ministry_number', event.target.value)}
+                      placeholder="مثال: 12345678"
+                      className={fieldInput}
+                      style={fieldStyle}
+                    />
+                    {hasSubmitted && !form.ministry_number ? <RequiredHint /> : null}
+                  </label>
+                  <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+                    النطاق الفرعي (اختياري)
+                    <input
+                      type="text"
+                      value={form.subdomain ?? ''}
+                      onChange={(event) => handleChange('subdomain', event.target.value)}
+                      placeholder="مثال: alraed-school"
+                      className={fieldInput}
+                      style={fieldStyle}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* ٢ — بيانات مدير المدرسة */}
+              <div
+                className="space-y-4 rounded-xl p-4"
+                style={{ background: '#F7FBF8', border: `1px solid ${PASTEL_BD}` }}
               >
-                {schoolLevelOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              {hasSubmitted && !form.school_level ? (
-                <span className="text-xs font-normal text-rose-600">هذا الحقل مطلوب</span>
-              ) : null}
-            </label>
-            <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
-              الرقم الوزاري للمدرسة
-              <input
-                type="text"
-                required
-                value={form.ministry_number ?? ''}
-                onChange={(event) => handleChange('ministry_number', event.target.value)}
-                placeholder="مثال: 12345678"
-                className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-normal text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
-              />
-              {hasSubmitted && !form.ministry_number ? (
-                <span className="text-xs font-normal text-rose-600">هذا الحقل مطلوب</span>
-              ) : null}
-            </label>
-            <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
-              النطاق الفرعي (اختياري)
-              <input
-                type="text"
-                value={form.subdomain ?? ''}
-                onChange={(event) => handleChange('subdomain', event.target.value)}
-                placeholder="مثال: alraed-school"
-                className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-normal text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
-              />
-            </label>
-          </div>
+                <SectionTitle step="٢">بيانات مدير المدرسة — للدخول على النظام</SectionTitle>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+                    اسم مدير المدرسة
+                    <input
+                      type="text"
+                      required
+                      value={form.admin_name}
+                      onChange={(event) => handleChange('admin_name', event.target.value)}
+                      placeholder="الاسم الرباعي"
+                      className={fieldInput}
+                      style={{ ...fieldStyle, background: '#FFFFFF' }}
+                    />
+                    {hasSubmitted && !form.admin_name ? <RequiredHint /> : null}
+                  </label>
+                  <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+                    رقم جوال مدير المدرسة
+                    <input
+                      type="tel"
+                      required
+                      value={form.admin_phone ?? ''}
+                      onChange={(event) => handleChange('admin_phone', event.target.value)}
+                      placeholder="05xxxxxxxx"
+                      className={fieldInput}
+                      style={{ ...fieldStyle, background: '#FFFFFF' }}
+                    />
+                    {hasSubmitted && !form.admin_phone ? <RequiredHint /> : null}
+                  </label>
+                  <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+                    رقم الهوية (للدخول على النظام)
+                    <input
+                      type="text"
+                      required
+                      value={form.admin_national_id}
+                      onChange={(event) => handleChange('admin_national_id', event.target.value)}
+                      placeholder="رقم الهوية الوطنية"
+                      className={fieldInput}
+                      style={{ ...fieldStyle, background: '#FFFFFF' }}
+                    />
+                    {hasSubmitted && !form.admin_national_id ? <RequiredHint /> : null}
+                  </label>
+                  <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+                    البريد الإلكتروني (اختياري)
+                    <input
+                      type="email"
+                      value={form.admin_email ?? ''}
+                      onChange={(event) => handleChange('admin_email', event.target.value)}
+                      placeholder="example@school.com"
+                      className={fieldInput}
+                      style={{ ...fieldStyle, background: '#FFFFFF' }}
+                    />
+                  </label>
+                </div>
+                <p className="flex items-start gap-1.5 text-xs" style={{ color: GREEN }}>
+                  <Check className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                  سيُنشأ حساب دخول لمدير المدرسة تلقائياً باستخدام رقم الهوية وكلمة مرور مؤقتة.
+                </p>
+              </div>
 
-          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4">
-            <h3 className="text-sm font-semibold text-emerald-800 mb-3">بيانات مدير المدرسة (للدخول على النظام)</h3>
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
-                اسم مدير المدرسة
-                <input
-                  type="text"
-                  required
-                  value={form.admin_name}
-                  onChange={(event) => handleChange('admin_name', event.target.value)}
-                  placeholder="الاسم الرباعي"
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-normal text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
-                />
-                {hasSubmitted && !form.admin_name ? (
-                  <span className="text-xs font-normal text-rose-600">هذا الحقل مطلوب</span>
-                ) : null}
-              </label>
-              <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
-                رقم جوال مدير المدرسة
-                <input
-                  type="tel"
-                  required
-                  value={form.admin_phone ?? ''}
-                  onChange={(event) => handleChange('admin_phone', event.target.value)}
-                  placeholder="05xxxxxxxx"
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-normal text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
-                />
-                {hasSubmitted && !form.admin_phone ? (
-                  <span className="text-xs font-normal text-rose-600">هذا الحقل مطلوب</span>
-                ) : null}
-              </label>
-              <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
-                رقم الهوية (للدخول على النظام)
-                <input
-                  type="text"
-                  required
-                  value={form.admin_national_id}
-                  onChange={(event) => handleChange('admin_national_id', event.target.value)}
-                  placeholder="رقم الهوية الوطنية"
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-normal text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
-                />
-                {hasSubmitted && !form.admin_national_id ? (
-                  <span className="text-xs font-normal text-rose-600">هذا الحقل مطلوب</span>
-                ) : null}
-              </label>
-              <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
-                البريد الإلكتروني (اختياري)
-                <input
-                  type="email"
-                  value={form.admin_email ?? ''}
-                  onChange={(event) => handleChange('admin_email', event.target.value)}
-                  placeholder="example@school.com"
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-normal text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
-                />
-              </label>
-            </div>
-            <p className="mt-3 text-xs text-emerald-700">
-              💡 سيتم إنشاء حساب دخول لمدير المدرسة تلقائياً باستخدام رقم الهوية وكلمة مرور مؤقتة.
-            </p>
-          </div>
-
-
-
-          <div className="flex items-center justify-between gap-4">
-            <div className="text-xs text-muted">
-              بالضغط على زر التسجيل فأنت توافق على شروط الاستخدام وسياسة الخصوصية.
-            </div>
-            <button
-              type="submit"
-              disabled={registerMutation.isPending}
-              className="button-primary"
-            >
-              {registerMutation.isPending ? 'جاري تسجيل المدرسة...' : 'إكمال التسجيل'}
-            </button>
-          </div>
-        </form>
-
-        <aside className="space-y-6">
-          <div className="glass-card space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900">اختر الباقة المناسبة</h2>
-            {isPlansLoading ? (
-              <p className="text-sm text-muted">جاري تحميل الباقات...</p>
-            ) : null}
-            <div className="grid gap-3">
-              {plans.map((plan) => (
+              <div className="flex flex-wrap items-center justify-between gap-4 border-t pt-4" style={{ borderColor: '#F0ECE3' }}>
+                <p className="text-xs text-slate-500">
+                  بالضغط على زر التسجيل فأنت توافق على شروط الاستخدام وسياسة الخصوصية.
+                </p>
                 <button
-                  key={plan.id}
-                  type="button"
-                  onClick={() => handleChange('plan_code', plan.code)}
-                  className={`rounded-xl border px-4 py-3 text-right text-sm transition ${
-                    plan.code === form.plan_code
-                      ? 'border-emerald-400 bg-emerald-50/70 text-emerald-700'
-                      : 'border-slate-200 hover:border-emerald-200 hover:bg-emerald-50/30'
-                  }`}
+                  type="submit"
+                  disabled={registerMutation.isPending}
+                  className="rounded-xl px-8 py-3.5 text-sm font-bold text-white shadow-md transition-colors disabled:opacity-50"
+                  style={{ background: DEEP }}
                 >
-                  <p className="font-semibold text-slate-900">{plan.name}</p>
-                  {plan.description ? <p className="text-xs text-muted">{plan.description}</p> : null}
+                  {registerMutation.isPending ? 'جاري تسجيل المدرسة...' : 'إكمال التسجيل'}
                 </button>
-              ))}
-            </div>
-          </div>
+              </div>
+            </form>
 
-          {selectedPlan ? (
-            <div className="max-h-[60vh] overflow-y-auto rounded-2xl">
-              <PlanCard plan={selectedPlan} highlight current actionLabel="" badge="الباقة المختارة" />
-            </div>
-          ) : null}
-        </aside>
-      </div>
-    </>
-  )}
+            {/* ٣ — اختيار الباقة */}
+            <aside className="space-y-4">
+              <div
+                className="space-y-4 rounded-2xl bg-white p-5 shadow-sm"
+                style={{ border: `1px solid ${WARM_BD}` }}
+              >
+                <SectionTitle step="٣">اختر الباقة المناسبة</SectionTitle>
+                {isPlansLoading ? (
+                  <p className="flex items-center gap-2 text-sm text-slate-500">
+                    <Loader2 className="h-4 w-4 animate-spin" style={{ color: GREEN }} />
+                    جاري تحميل الباقات...
+                  </p>
+                ) : null}
+                <div className="grid gap-2.5">
+                  {plans.map((plan) => {
+                    const selected = plan.code === form.plan_code
+                    return (
+                      <button
+                        key={plan.id}
+                        type="button"
+                        onClick={() => handleChange('plan_code', plan.code)}
+                        className="flex items-start justify-between gap-3 rounded-xl border px-4 py-3 text-right text-sm transition-colors"
+                        style={
+                          selected
+                            ? { borderColor: PASTEL_BD, background: PASTEL }
+                            : { borderColor: '#EDE9DF', background: '#FFFFFF' }
+                        }
+                      >
+                        <span>
+                          <span className="block font-bold text-slate-900">{plan.name}</span>
+                          {plan.description ? (
+                            <span className="block text-xs text-slate-500">{plan.description}</span>
+                          ) : null}
+                        </span>
+                        {selected ? (
+                          <CheckCircle2 className="h-5 w-5 flex-shrink-0" style={{ color: GREEN }} />
+                        ) : null}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {selectedPlan ? (
+                <div className="max-h-[60vh] overflow-y-auto rounded-2xl">
+                  <PlanCard plan={selectedPlan} highlight current actionLabel="" badge="الباقة المختارة" />
+                </div>
+              ) : null}
+            </aside>
+          </div>
+        </>
+      )}
     </section>
   );
 };

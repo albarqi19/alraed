@@ -9,7 +9,10 @@ export function SuperAdminLoginPage() {
         description="الوصول إلى لوحة التحكم الشاملة لمتابعة المدارس والإيرادات وإدارة الباقات على مستوى المنصة."
         submitLabel="دخول لوحة المنصة"
       />
-      <div className="rounded-3xl border border-indigo-100 bg-indigo-50/60 p-5 text-sm text-indigo-700">
+      <div
+        className="mx-auto max-w-md rounded-2xl p-5 text-sm"
+        style={{ background: '#FCF3E1', border: '1px solid #EFD9AC', color: '#A8690A' }}
+      >
         <p className="font-semibold">ملاحظة مهمة</p>
         <p className="mt-2 leading-relaxed">
           بيانات تسجيل الدخول خاصة بالمدير العام للنظام، وتمنح صلاحيات كاملة على مستوى المنصة. برجاء الحفاظ عليها وعدم مشاركتها.

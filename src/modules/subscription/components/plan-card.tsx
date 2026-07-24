@@ -69,14 +69,17 @@ export function PlanCard({ plan, billingCycle = 'monthly', highlight = false, cu
     <article
       className={clsx(
         'flex flex-col rounded-2xl border bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg',
-        highlight ? 'border-teal-500/80 shadow-lg' : 'border-white/40',
-        current ? 'ring-2 ring-teal-500/70' : null,
+        highlight ? 'shadow-md' : '',
+        current ? 'ring-2 ring-[#2E7D46]/50' : null,
       )}
-      style={{ background: highlight ? 'linear-gradient(145deg, rgba(76, 175, 80, 0.08), rgba(244, 255, 248, 0.9))' : 'white' }}
+      style={{
+        background: highlight ? '#F3F9F4' : '#FFFFFF',
+        borderColor: highlight ? '#BFE3C9' : '#E8E3D9',
+      }}
     >
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+          <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold" style={{ background: '#E9F5EC', color: '#2E7D46' }}>
             {highlight ? <Sparkles className="h-4 w-4" /> : <Crown className="h-4 w-4 text-amber-500" />} {plan.name}
           </div>
           {plan.description ? <p className="text-sm text-slate-600">{plan.description}</p> : null}
@@ -88,13 +91,13 @@ export function PlanCard({ plan, billingCycle = 'monthly', highlight = false, cu
         {billingCycle === 'yearly' && yearlyPrice ? (
           <>
             <p className="text-2xl font-bold text-slate-900">{formatCurrency(yearlyPrice)}<span className="text-sm font-medium text-slate-500"> / سنوياً</span></p>
-            <p className="text-xs text-emerald-700">{formatCurrency(monthlyPrice)} <span className="font-medium">/ شهرياً</span></p>
+            <p className="text-xs font-semibold" style={{ color: '#2E7D46' }}>{formatCurrency(monthlyPrice)} <span className="font-medium">/ شهرياً</span></p>
           </>
         ) : (
           <>
             <p className="text-2xl font-bold text-slate-900">{formatCurrency(monthlyPrice)}<span className="text-sm font-medium text-slate-500"> / شهرياً</span></p>
             {yearlyPrice ? (
-              <p className="text-xs text-emerald-700">{formatCurrency(yearlyPrice)} <span className="font-medium">/ سنوياً</span></p>
+              <p className="text-xs font-semibold" style={{ color: '#2E7D46' }}>{formatCurrency(yearlyPrice)} <span className="font-medium">/ سنوياً</span></p>
             ) : null}
           </>
         )}
@@ -112,7 +115,7 @@ export function PlanCard({ plan, billingCycle = 'monthly', highlight = false, cu
                 <span
                   className={clsx(
                     'grid h-5 w-5 flex-shrink-0 place-items-center rounded-full text-white',
-                    enabled ? 'bg-emerald-500' : 'bg-slate-300',
+                    enabled ? 'bg-[#2E7D46]' : 'bg-slate-300',
                   )}
                 >
                   {enabled ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
@@ -132,7 +135,7 @@ export function PlanCard({ plan, billingCycle = 'monthly', highlight = false, cu
               <span
                 className={clsx(
                   'grid h-5 w-5 flex-shrink-0 place-items-center rounded-full text-white',
-                  enabled ? 'bg-emerald-500' : 'bg-slate-300',
+                  enabled ? 'bg-[#2E7D46]' : 'bg-slate-300',
                 )}
               >
                 {enabled ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
@@ -148,7 +151,7 @@ export function PlanCard({ plan, billingCycle = 'monthly', highlight = false, cu
             <button
               type="button"
               onClick={() => setShowAllFeatures(true)}
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50/50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100"
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#BFE3C9] bg-[#F3F9F4] px-3 py-2 text-xs font-semibold text-[#2E7D46] transition hover:bg-[#E9F5EC]"
             >
               <Eye className="h-4 w-4" />
               عرض جميع المميزات ({featuresList.length} ميزة)
@@ -159,12 +162,12 @@ export function PlanCard({ plan, billingCycle = 'monthly', highlight = false, cu
         {/* حدود الطلاب والمعلمين */}
         {plan.student_limit ? (
           <li className="flex items-center gap-2 text-xs text-slate-600">
-            <Check className="h-4 w-4 flex-shrink-0 text-emerald-500" /> حتى {plan.student_limit.toLocaleString('ar-SA')} طالب
+            <Check className="h-4 w-4 flex-shrink-0 text-[#2E7D46]" /> حتى {plan.student_limit.toLocaleString('ar-SA')} طالب
           </li>
         ) : null}
         {plan.teacher_limit ? (
           <li className="flex items-center gap-2 text-xs text-slate-600">
-            <Check className="h-4 w-4 flex-shrink-0 text-emerald-500" /> حتى {plan.teacher_limit.toLocaleString('ar-SA')} معلم
+            <Check className="h-4 w-4 flex-shrink-0 text-[#2E7D46]" /> حتى {plan.teacher_limit.toLocaleString('ar-SA')} معلم
           </li>
         ) : null}
       </ul>
@@ -178,10 +181,10 @@ export function PlanCard({ plan, billingCycle = 'monthly', highlight = false, cu
             className={clsx(
               'w-full rounded-xl px-4 py-3 text-sm font-semibold transition focus:outline-none focus-visible:ring-2',
               current
-                ? 'cursor-not-allowed bg-emerald-100 text-emerald-600'
+                ? 'cursor-not-allowed bg-[#E9F5EC] text-[#2E7D46]'
                 : highlight
-                  ? 'bg-emerald-500 text-white hover:bg-emerald-600 focus-visible:ring-emerald-400/50'
-                  : 'border border-emerald-200 text-emerald-600 hover:bg-emerald-50 focus-visible:ring-emerald-300/60',
+                  ? 'bg-[#24452F] text-white hover:bg-[#1D3826] focus-visible:ring-[#2E7D46]/40'
+                  : 'border border-[#BFE3C9] text-[#2E7D46] hover:bg-[#F3F9F4] focus-visible:ring-[#BFE3C9]',
             )}
           >
             {current ? 'الخطة الحالية' : actionLabel}
@@ -236,7 +239,7 @@ export function PlanCard({ plan, billingCycle = 'monthly', highlight = false, cu
                         <span
                           className={clsx(
                             'mt-0.5 grid h-6 w-6 flex-shrink-0 place-items-center rounded-full text-white',
-                            enabled ? 'bg-emerald-500' : 'bg-slate-300',
+                            enabled ? 'bg-[#2E7D46]' : 'bg-slate-300',
                           )}
                         >
                           {enabled ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
@@ -257,7 +260,7 @@ export function PlanCard({ plan, billingCycle = 'monthly', highlight = false, cu
                           <span
                             className={clsx(
                               'mt-0.5 grid h-6 w-6 flex-shrink-0 place-items-center rounded-full text-white',
-                              enabled ? 'bg-emerald-500' : 'bg-slate-300',
+                              enabled ? 'bg-[#2E7D46]' : 'bg-slate-300',
                             )}
                           >
                             {enabled ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
@@ -278,7 +281,7 @@ export function PlanCard({ plan, billingCycle = 'monthly', highlight = false, cu
                             <span
                               className={clsx(
                                 'mt-0.5 grid h-6 w-6 flex-shrink-0 place-items-center rounded-full text-white',
-                                enabled ? 'bg-emerald-500' : 'bg-slate-300',
+                                enabled ? 'bg-[#2E7D46]' : 'bg-slate-300',
                               )}
                             >
                               {enabled ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
@@ -303,7 +306,7 @@ export function PlanCard({ plan, billingCycle = 'monthly', highlight = false, cu
                   e.stopPropagation()
                   setShowAllFeatures(false)
                 }}
-                className="w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-600"
+                className="w-full rounded-xl bg-[#24452F] px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1D3826]"
               >
                 إغلاق
               </button>
