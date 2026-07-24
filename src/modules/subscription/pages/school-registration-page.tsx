@@ -13,7 +13,6 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { usePublicSubscriptionPlansQuery, useRegisterSchoolMutation } from '../hooks'
-import { PlanCard } from '../components/plan-card'
 import type { RegisterSchoolPayload } from '../types'
 
 /* هوية الرائد للصفحات العامة: أخضر عميق + كريمي دافئ */
@@ -70,16 +69,25 @@ function RequiredHint() {
 
 export function SchoolRegistrationPage() {
   const [searchParams] = useSearchParams()
-  const { data: plansData, isLoading: isPlansLoading } = usePublicSubscriptionPlansQuery()
+  const { data: plansData } = usePublicSubscriptionPlansQuery()
   const registerMutation = useRegisterSchoolMutation()
 
   const plans = plansData?.plans ?? []
-  const defaultPlanCode = searchParams.get('plan') ?? plans[0]?.code ?? ''
+  const defaultPlanCode = useMemo(
+    () => searchParams.get('plan') ?? plans[0]?.code ?? '',
+    [searchParams, plans],
+  )
 
   const [form, setForm] = useState<RegisterSchoolPayload>({ ...initialForm, plan_code: defaultPlanCode })
   const [hasSubmitted, setHasSubmitted] = useState(false)
 
-  const selectedPlan = useMemo(() => plans.find((plan) => plan.code === form.plan_code) ?? plans[0], [plans, form.plan_code])
+  /* لا اختيار باقة عند التسجيل — التجربة المجانية تبدأ فوراً، والاختيار بعدها.
+     الخادم ما زال يتوقع plan_code فنمرّر الافتراضية صامتةً فور تحميل الباقات. */
+  useEffect(() => {
+    if (defaultPlanCode) {
+      setForm((prev) => (prev.plan_code ? prev : { ...prev, plan_code: defaultPlanCode }))
+    }
+  }, [defaultPlanCode])
 
   // تفعيل Confetti عند نجاح التسجيل
   useEffect(() => {
@@ -267,17 +275,16 @@ export function SchoolRegistrationPage() {
             </span>
             <h1 className="text-2xl font-bold text-slate-900 lg:text-3xl">ابدأ رحلتك مع نظام الرائد</h1>
             <p className="mx-auto max-w-2xl text-sm leading-relaxed text-slate-600">
-              عبّئ البيانات التالية لتفعيل حساب مدرستك مباشرة — سننشئ حساباً لمدير المدرسة ونرسل بيانات
-              الدخول فوراً عبر واتساب.
+              عبّئ البيانات التالية وتبدأ تجربتك المجانية فوراً بكامل المميزات — سننشئ حساباً لمدير
+              المدرسة ونرسل بيانات الدخول عبر واتساب، وتختار باقتك بعد التجربة.
             </p>
           </header>
 
-          <div className="grid gap-5 lg:min-h-0 lg:flex-1 lg:grid-cols-[1fr,320px]">
-            <form
-              onSubmit={handleSubmit}
-              className="space-y-5 rounded-2xl bg-white p-5 shadow-sm lg:min-h-0 lg:overflow-y-auto"
-              style={{ border: `1px solid ${WARM_BD}` }}
-            >
+          <form
+            onSubmit={handleSubmit}
+            className="mx-auto w-full max-w-3xl space-y-5 rounded-2xl bg-white p-5 shadow-sm lg:min-h-0 lg:flex-1 lg:overflow-y-auto"
+            style={{ border: `1px solid ${WARM_BD}` }}
+          >
               {/* ١ — بيانات المدرسة */}
               <div className="space-y-4">
                 <SectionTitle step="١">بيانات المدرسة</SectionTitle>
@@ -415,58 +422,7 @@ export function SchoolRegistrationPage() {
                   {registerMutation.isPending ? 'جاري تسجيل المدرسة...' : 'إكمال التسجيل'}
                 </button>
               </div>
-            </form>
-
-            {/* ٣ — اختيار الباقة */}
-            <aside className="space-y-4 lg:min-h-0 lg:overflow-y-auto">
-              <div
-                className="space-y-4 rounded-2xl bg-white p-5 shadow-sm"
-                style={{ border: `1px solid ${WARM_BD}` }}
-              >
-                <SectionTitle step="٣">اختر الباقة المناسبة</SectionTitle>
-                {isPlansLoading ? (
-                  <p className="flex items-center gap-2 text-sm text-slate-500">
-                    <Loader2 className="h-4 w-4 animate-spin" style={{ color: GREEN }} />
-                    جاري تحميل الباقات...
-                  </p>
-                ) : null}
-                <div className="grid gap-2.5">
-                  {plans.map((plan) => {
-                    const selected = plan.code === form.plan_code
-                    return (
-                      <button
-                        key={plan.id}
-                        type="button"
-                        onClick={() => handleChange('plan_code', plan.code)}
-                        className="flex items-start justify-between gap-3 rounded-xl border px-4 py-3 text-right text-sm transition-colors"
-                        style={
-                          selected
-                            ? { borderColor: PASTEL_BD, background: PASTEL }
-                            : { borderColor: '#EDE9DF', background: '#FFFFFF' }
-                        }
-                      >
-                        <span>
-                          <span className="block font-bold text-slate-900">{plan.name}</span>
-                          {plan.description ? (
-                            <span className="block text-xs text-slate-500">{plan.description}</span>
-                          ) : null}
-                        </span>
-                        {selected ? (
-                          <CheckCircle2 className="h-5 w-5 flex-shrink-0" style={{ color: GREEN }} />
-                        ) : null}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {selectedPlan ? (
-                <div className="max-h-[60vh] overflow-y-auto rounded-2xl">
-                  <PlanCard plan={selectedPlan} highlight current actionLabel="" badge="الباقة المختارة" />
-                </div>
-              ) : null}
-            </aside>
-          </div>
+          </form>
         </>
       )}
     </section>
