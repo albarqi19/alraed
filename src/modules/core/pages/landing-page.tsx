@@ -23,7 +23,6 @@ import {
   Quote,
   ScanLine,
   Send,
-  ShieldCheck,
   Sparkles,
   Star,
   Sunrise,
@@ -43,21 +42,15 @@ type IconType = LucideIcon
    البيانات
    ───────────────────────────────────────────── */
 
-const navItems = [
+/* النوع مثبَّت صراحةً: كان يُستنتج من المحتوى، وعنصر «الأسعار» هو حامل
+   isRoute الوحيد — فبحذفه كان يسقط الحقل من النوع وينفجر item.isRoute
+   في شريط سطح المكتب وقائمة الجوال، ويفشل tsc -b قبل vite */
+const navItems: Array<{ label: string; href: string; isRoute?: boolean }> = [
   { label: 'الرئيسية', href: '#top' },
   { label: 'رحلة اليوم', href: '#journey' },
   { label: 'الواجهات', href: '#portals' },
   { label: 'المميزات', href: '#features' },
   { label: 'الأسئلة الشائعة', href: '#faq' },
-  { label: 'الأسعار', href: '/plans', isRoute: true },
-]
-
-const heroMetrics: Array<{ end?: number; suffix?: string; raw?: string; label: string }> = [
-  { end: 190, suffix: '+', label: 'ميزة تشغيلية' },
-  { end: 9, label: 'وحدات متكاملة' },
-  { end: 3, label: 'واجهات مستخدم' },
-  { raw: '24/7', label: 'متابعة مستمرة' },
-  { end: 99, suffix: '%', label: 'استقرار تشغيلي' },
 ]
 
 const systemModules: Array<{ name: string; icon: IconType }> = [
@@ -174,7 +167,7 @@ const featureGroups: Array<{
   {
     category: 'الطالب والسلوك',
     items: [
-      { title: 'البرنامج النقاطي المتكامل', icon: Star },
+      { title: 'برنامج نقاطي متكامل', icon: Star },
       { title: 'التوجيه الإرشادي والطلابي', icon: Fingerprint },
       { title: 'متابعة السلوك والمواظبة', icon: Trophy },
       { title: 'لوحات المعلومات التفاعلية', icon: BarChart3 },
@@ -203,12 +196,8 @@ const roleCards: Array<{ title: string; subtitle: string; icon: IconType }> = [
   { title: 'الإداري', subtitle: 'إدارة الأعمال الإدارية', icon: ClipboardList },
 ]
 
-const trustItems: Array<{ title: string; subtitle: string; icon: IconType }> = [
-  { title: 'تحديثات مستمرة', subtitle: 'تطوير النظام باستمرار', icon: Sparkles },
-  { title: 'أمان عالٍ للبيانات', subtitle: 'حماية مشددة ونسخ احتياطي', icon: ShieldCheck },
-  { title: 'دعم فني متميز', subtitle: 'فريق دعم جاهز لخدمتكم', icon: Headphones },
-  { title: 'سهولة الاستخدام', subtitle: 'واجهة بسيطة ومرنة', icon: MonitorSmartphone },
-]
+/* شرائح بشكل شرائح الهيرو نفسه — كانت أربع بطاقات بعنوان ووصف وأيقونة */
+const trustItems: string[] = ['تحديثات مستمرة', 'أمان عالٍ للبيانات', 'دعم فني متميز', 'سهولة الاستخدام']
 
 // الأسماء والصفات حقيقية بموافقة أصحابها، ونصوص الاقتباسات ما زالت تمثيلية
 // تُستبدل بأقوالهم الفعلية عند توفرها — فلا يُضاف اسم جديد هنا بلا إذن صاحبه
@@ -339,44 +328,6 @@ function Reveal({
     >
       {children}
     </div>
-  )
-}
-
-function CountUp({ end, suffix = '', duration = 1500 }: { end: number; suffix?: string; duration?: number }) {
-  const ref = useRef<HTMLSpanElement>(null)
-  const [value, setValue] = useState(0)
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    let raf = 0
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry.isIntersecting) return
-        observer.disconnect()
-        const start = performance.now()
-        const tick = (now: number) => {
-          const progress = Math.min(1, (now - start) / duration)
-          const eased = 1 - Math.pow(1 - progress, 3)
-          setValue(Math.round(eased * end))
-          if (progress < 1) raf = requestAnimationFrame(tick)
-        }
-        raf = requestAnimationFrame(tick)
-      },
-      { threshold: 0.4 },
-    )
-    observer.observe(el)
-    return () => {
-      observer.disconnect()
-      cancelAnimationFrame(raf)
-    }
-  }, [end, duration])
-
-  return (
-    <span ref={ref}>
-      {value}
-      {suffix}
-    </span>
   )
 }
 
@@ -1005,12 +956,6 @@ export function LandingPage() {
                     جرّب النظام مجاناً
                     <ChevronLeft className="h-4 w-4" />
                   </Link>
-                  <Link
-                    to="/plans"
-                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/[0.08] px-8 py-4 text-base font-bold text-white/90 backdrop-blur-sm transition hover:bg-white/[0.12]"
-                  >
-                    استعرض الباقات
-                  </Link>
                 </div>
               </Reveal>
 
@@ -1022,14 +967,14 @@ export function LandingPage() {
                   <span className="grid h-9 w-9 place-items-center rounded-full border border-[#d7a74a]/45 bg-[#d7a74a]/[0.12] ">
                     <Sunrise className="h-4 w-4" />
                   </span>
-                  عِش قصة يوم مدرسي كامل مع الرائد — من الفجر إلى الليل
+                  عش قصة يوم مع الرائد — من الفجر إلى الليل
                   <ChevronLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />
                 </Link>
               </Reveal>
 
               <Reveal delay={330} from="none">
                 <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[12px] font-bold text-white/75 lg:justify-start">
-                  {['إعداد خلال يوم واحد', 'بدون تعقيد تقني', 'دعم فني مستمر'].map((item) => (
+                  {['أكثر من 200 ميزة', 'إعداد خلال يوم واحد', 'بدون تعقيد تقني', 'دعم فني مستمر'].map((item) => (
                     <span key={item} className="flex items-center gap-1.5">
                       <CheckCircle2 className="h-3.5 w-3.5 text-[#d7a74a]" />
                       {item}
@@ -1045,22 +990,6 @@ export function LandingPage() {
             </Reveal>
           </div>
 
-          {/* ── شريط الأرقام (عدّادات) ── */}
-          <Reveal>
-            {/* الفواصل: كانت divide-x عند sm فقط، فتتلاصق الخانات على الجوال
-                بلا أي خط بينها. الآن divide-y رأسي للصفوف المكدّسة، ثم أفقي
-                عند التوسّع (divide-y يُلغى بـ divide-y-0) */}
-            <div className="lp-e-inset grid grid-cols-2 divide-x divide-y divide-white/10 rounded-2xl border border-white/[0.12] bg-white/[0.06] backdrop-blur-md sm:grid-cols-5 sm:divide-y-0 sm:divide-x-reverse">
-              {heroMetrics.map((item, index) => (
-                <div key={item.label} className={`px-4 py-5 text-center ${index === heroMetrics.length - 1 ? 'col-span-2 sm:col-span-1' : ''}`}>
-                  <div className="text-2xl font-black text-[#f3cf87] drop-shadow-[0_0_12px_rgba(215,167,74,0.4)] sm:text-3xl">
-                    {item.raw ?? <CountUp end={item.end!} suffix={item.suffix ?? ''} />}
-                  </div>
-                  <div className="mt-1 text-[11px] font-medium text-white/70">{item.label}</div>
-                </div>
-              ))}
-            </div>
-          </Reveal>
         </div>
 
         {/* موجة فاصلة نحو شريط الوحدات */}
@@ -1210,9 +1139,9 @@ export function LandingPage() {
         <div className="relative mx-auto max-w-[1400px] px-4 pb-24 pt-16 sm:px-6 lg:px-10 lg:pb-28 lg:pt-20">
           <SectionHeading
             light
-            eyebrow="18 ميزة أساسية"
-            title="كل تفاصيل المدرسة... مغطّاة"
-            subtitle="ثلاثة محاور تشغيلية تتكامل داخل منظومة واحدة — لا برامج متفرقة ولا نسخ بيانات بين الأنظمة."
+            eyebrow="18 ميزة من 26 منظومة"
+            title="يدقّ الجرس ويرصد في نور"
+            subtitle="الحضور والسلوك والمعلّمون والتواصل في منظومة واحدة بقاعدة بيانات واحدة، وبأربع بوابات: الإدارة والمعلّم ووليّ الأمر والتوجيه الطلابي — والتبادل مع نور ومدرستي وحضوري يجري بلا إدخال مزدوج ولا نقل يدوي."
           />
 
           <div className="mt-10 grid gap-5 lg:grid-cols-3">
@@ -1240,22 +1169,17 @@ export function LandingPage() {
             ))}
           </div>
 
-          {/* شريط الثقة */}
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {trustItems.map(({ title, subtitle, icon: Icon }, index) => (
-              <Reveal key={title} delay={index * 80}>
-                <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-3 transition-colors duration-300 hover:border-[#d7a74a]/25 hover:bg-white/[0.08]">
-                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#d7a74a]/15 text-[#f3cf87]">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <div className="text-[13px] font-black text-white">{title}</div>
-                    <div className="text-[11px] leading-5 text-white/70">{subtitle}</div>
-                  </div>
-                </div>
-              </Reveal>
-            ))}
-          </div>
+          {/* شريط الثقة — بشكل شرائح الهيرو: سطر واحد ملفوف بعلامة صحّ */}
+          <Reveal>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[12px] font-bold text-white/75">
+              {trustItems.map((item) => (
+                <span key={item} className="flex items-center gap-1.5">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-[#d7a74a]" />
+                  {item}
+                </span>
+              ))}
+            </div>
+          </Reveal>
         </div>
 
         {/* موجة فاصلة نحو قسم الآراء */}
@@ -1410,7 +1334,6 @@ export function LandingPage() {
               <li><a href="#portals" className="transition hover:text-[#f5d08b]">الواجهات</a></li>
               <li><a href="#features" className="transition hover:text-[#f5d08b]">المميزات</a></li>
               <li><a href="#faq" className="transition hover:text-[#f5d08b]">الأسئلة الشائعة</a></li>
-              <li><Link to="/plans" className="transition hover:text-[#f5d08b]">الباقات والأسعار</Link></li>
               <li><Link to="/register" className="transition hover:text-[#f5d08b]">تسجيل مدرسة جديدة</Link></li>
             </ul>
           </div>
@@ -1435,14 +1358,44 @@ export function LandingPage() {
                   <span className="block text-[11px] font-medium text-white/70">متاح على مدار الساعة طوال أيام الأسبوع</span>
                 </span>
               </li>
-              <li className="flex items-center gap-2.5">
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/[0.08] text-[#f3cf87]">
-                  <MessageCircle className="h-4 w-4" />
-                </span>
-                <span>
-                  تواصل واتساب
-                  <span className="block text-[11px] font-medium text-white/70">رد سريع خلال ساعات العمل الرسمية</span>
-                </span>
+              <li>
+                <a
+                  href="https://wa.me/966573767989"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex items-center gap-2.5 transition hover:text-[#f5d08b]"
+                >
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/[0.08] text-[#f3cf87] transition group-hover:bg-white/[0.14]">
+                    <MessageCircle className="h-4 w-4" />
+                  </span>
+                  <span>
+                    تواصل واتساب
+                    <span className="block font-bold tracking-wide text-[11px] text-white/80" dir="ltr">
+                      0573767989
+                    </span>
+                  </span>
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://x.com/alraed_app"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex items-center gap-2.5 transition hover:text-[#f5d08b]"
+                >
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/[0.08] text-[#f3cf87] transition group-hover:bg-white/[0.14]">
+                    {/* شعار منصّة X — lucide لا يوفّره: أيقونة X فيه علامة إغلاق وTwitter شعار الطائر القديم */}
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-[13px] w-[13px]">
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                    </svg>
+                  </span>
+                  <span>
+                    حساب النظام على X
+                    <span className="block font-bold text-[11px] text-white/80" dir="ltr">
+                      @alraed_app
+                    </span>
+                  </span>
+                </a>
               </li>
               <li className="flex items-center gap-2.5">
                 <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/[0.08] text-[#f3cf87]">
