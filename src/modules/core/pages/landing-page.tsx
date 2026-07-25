@@ -23,7 +23,7 @@ import {
   Quote,
   ScanLine,
   Send,
-  Sparkles,
+  RefreshCw,
   Star,
   Sunrise,
   Trophy,
@@ -172,7 +172,7 @@ const featureGroups: Array<{
       { title: 'متابعة السلوك والمواظبة', icon: Trophy },
       { title: 'لوحات المعلومات التفاعلية', icon: BarChart3 },
       { title: 'تقارير الطالب التفصيلية', icon: FileText },
-      { title: 'ربط وتكامل مع فارس', icon: Sparkles },
+      { title: 'ربط وتكامل مع فارس', icon: RefreshCw },
     ],
   },
   {
@@ -342,9 +342,10 @@ function BrandMark({ compact = false }: { compact?: boolean }) {
   if (compact) {
     return (
       <div className="flex items-center gap-2.5">
+        {/* الشعار نفسه المستعمل في صفحة التسجيل — كان حرف «ر» */}
         <div className="lp-e-ring relative grid h-10 w-10 place-items-center rounded-xl border border-[#d7a74a]/70 bg-[linear-gradient(150deg,#22432C,#132D1D)]">
           <div className="absolute inset-[3px] rounded-lg border border-[#d7a74a]/25" />
-          <span className="text-[15px] font-black leading-none text-[#f3cf87]">ر</span>
+          <BookOpenCheck className="h-[19px] w-[19px] text-[#f3cf87]" />
         </div>
         <div className="text-right">
           <div className="text-[15px] font-black leading-tight text-white">نظام الرائد</div>
@@ -500,7 +501,6 @@ function SiteHeader() {
                   onClick={closeMenu}
                   className="flex items-center justify-center gap-2 rounded-xl border border-[#d7a74a]/60 bg-[#d7a74a]/15 px-4 py-3 text-sm font-black text-[#f3cf87] transition hover:bg-[#d7a74a]/25"
                 >
-                  <Sparkles className="h-4 w-4" />
                   ابدأ تجربتك المجانية
                 </Link>
               </div>
@@ -690,7 +690,6 @@ function SectionHeading({
             : 'inline-flex items-center gap-2 rounded-full border border-[#e0cfa6] bg-[#fbf4e4] px-3.5 py-1 text-[11px] font-black tracking-wide text-[#856224]'
         }
       >
-        <Sparkles className="h-3 w-3" />
         {eyebrow}
       </span>
       <h2
@@ -921,7 +920,6 @@ export function LandingPage() {
             <div className="space-y-7 text-center lg:text-right">
               <Reveal from="none">
                 <div className="inline-flex items-center gap-2 rounded-full border border-[#d7a74a]/35 bg-[#d7a74a]/10 px-5 py-2 text-sm font-bold text-[#f8d690] backdrop-blur-sm">
-                  <Sparkles className="h-4 w-4 text-[#d7a74a]" />
                   نظام ERP متكامل للإدارة المدرسية
                 </div>
               </Reveal>
@@ -1247,9 +1245,6 @@ export function LandingPage() {
             <div className="border-b border-white/10 px-6 py-4 sm:px-10">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="grid h-9 w-9 place-items-center rounded-xl bg-[#d7a74a]/20 text-[#d7a74a]">
-                    <Sparkles className="h-4 w-4" />
-                  </div>
                   <span className="text-sm font-bold text-white/80">نظام الرائد — جاهزية تشغيلية من أول يوم</span>
                 </div>
                 <span className="rounded-lg border border-[#d7a74a]/30 bg-[#d7a74a]/10 px-3 py-1 text-xs font-bold text-[#f3cf87]">
