@@ -74,7 +74,14 @@ export function StudentsImportStep({ onComplete, onSkip, stats, isCompleting, is
   }
 
   const isLoading = previewStudentsMutation.isPending || importStudentsMutation.isPending
-  const canProceed = stats.students_count > 0 || (studentImportSummary && (studentImportSummary.new_count ?? 0) > 0)
+
+  // الباك يشترط وجود طالب واحد في المدرسة فحسب. الاكتفاء بـ new_count كان يحجز
+  // المدير في الخطوة إذا كان الاستيراد تحديثاً لطلاب موجودين (new_count = 0).
+  const importedAnyStudent =
+    studentImportSummary !== null &&
+    ((studentImportSummary.new_count ?? 0) > 0 || (studentImportSummary.updated_count ?? 0) > 0)
+
+  const canProceed = stats.students_count > 0 || importedAnyStudent
 
   return (
     <div className="space-y-4">
@@ -225,14 +232,14 @@ export function StudentsImportStep({ onComplete, onSkip, stats, isCompleting, is
 
       {/* Next Button */}
       <div className="flex items-center justify-between gap-3 border-t border-[var(--color-hairline)] pt-4">
-        {/* Skip Button (للتجربة) */}
+        {/* تخطي — الخطوات الإلزامية تمر بتأكيد من المعالج */}
         <button
           type="button"
           onClick={onSkip}
           disabled={isSkipping || isCompleting}
           className="text-[12px] text-[var(--color-text-secondary)] underline-offset-2 hover:text-[var(--color-text-primary)] hover:underline disabled:opacity-50"
         >
-          {isSkipping ? 'جاري التخطي...' : 'تخطي (للتجربة)'}
+          {isSkipping ? 'جاري التخطي...' : 'تخطي وإكمالها لاحقاً'}
         </button>
 
         <button

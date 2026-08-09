@@ -1,8 +1,9 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MutationCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useMemo, type ReactNode } from 'react'
 import { BrowserRouter, useLocation } from 'react-router-dom'
 import { DirectionProvider } from './direction-provider'
-import { Toaster } from 'sileo'
+import { Toaster, sileo } from 'sileo'
+import { getErrorMessage, getStatusCode } from '@/services/api/errors'
 import { AuthBootstrap } from './auth-bootstrap'
 import { ThemeProvider } from '@/shared/themes'
 import { BellManagerProvider } from '@/modules/admin/school-bell/context/bell-manager-context'
@@ -51,6 +52,35 @@ export function AppProviders({ children }: AppProvidersProps) {
   const queryClient = useMemo(
     () =>
       new QueryClient({
+        /**
+         * شبكة أمان لفشل الطفرات.
+         *
+         * ١٣٨ طفرة في الواجهة بلا onError خاص بها: المستخدم يضغط الزر، يفشل
+         * الطلب، **ولا يحدث شيء** — لا رسالة ولا مؤشّر. يظنّ أن ضغطته لم تُسجَّل
+         * فيعيد المحاولة، أو يظنّ العملية نجحت وهي لم تنجح.
+         *
+         * لا يُزاحم المعالجات الخاصة: الطفرة التي تتكفّل بخطئها تُستثنى، فلا
+         * تظهر رسالتان.
+         */
+        mutationCache: new MutationCache({
+          onError: (error, _variables, _context, mutation) => {
+            if (mutation.options.onError) {
+              return
+            }
+
+            // 401 يتكفّل به معترض apiClient (يمسح الجلسة ويعيد للدخول)،
+            // و402 يوجّه لصفحة الاشتراك — إظهار رسالة فوقهما تشويش
+            const status = getStatusCode(error)
+            if (status === 401 || status === 402) {
+              return
+            }
+
+            sileo.error({
+              title: getErrorMessage(error, 'تعذّر إتمام العملية'),
+              duration: 5000,
+            })
+          },
+        }),
         defaultOptions: {
           queries: {
             refetchOnWindowFocus: false,

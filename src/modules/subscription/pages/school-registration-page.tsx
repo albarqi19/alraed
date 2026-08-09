@@ -80,6 +80,7 @@ export function SchoolRegistrationPage() {
 
   const [form, setForm] = useState<RegisterSchoolPayload>({ ...initialForm, plan_code: defaultPlanCode })
   const [hasSubmitted, setHasSubmitted] = useState(false)
+  const [credentialsCopied, setCredentialsCopied] = useState(false)
 
   /* لا اختيار باقة عند التسجيل — التجربة المجانية تبدأ فوراً، والاختيار بعدها.
      الخادم ما زال يتوقع plan_code فنمرّر الافتراضية صامتةً فور تحميل الباقات. */
@@ -207,6 +208,53 @@ export function SchoolRegistrationPage() {
               تم تسجيل مدرستك بنجاح
             </p>
 
+            {/* بيانات الدخول تُعرض هنا مرة واحدة: رسالة الواتساب قد تتأخر أو
+                تتعذّر، ولا يجوز أن يتوقف دخول المدرسة على ذلك وحده. */}
+            {registerMutation.data.admin_credentials ? (
+              <div
+                className="mx-auto mb-6 max-w-md rounded-xl bg-white p-5 text-right shadow-sm"
+                style={{ border: `1px solid ${PASTEL_BD}` }}
+              >
+                <p className="mb-1 text-sm font-bold" style={{ color: DEEP }}>
+                  بيانات الدخول
+                </p>
+                <p className="mb-4 text-xs text-slate-500">
+                  احفظها الآن — لن تظهر مرة أخرى بعد مغادرة هذه الصفحة.
+                </p>
+
+                <dl className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2">
+                    <dt className="text-slate-600">اسم المستخدم</dt>
+                    <dd className="font-mono font-bold text-slate-800" dir="ltr">
+                      {registerMutation.data.admin_credentials.national_id}
+                    </dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2">
+                    <dt className="text-slate-600">كلمة المرور</dt>
+                    <dd className="font-mono font-bold text-slate-800" dir="ltr">
+                      {registerMutation.data.admin_credentials.password}
+                    </dd>
+                  </div>
+                </dl>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const creds = registerMutation.data?.admin_credentials
+                    if (!creds) return
+                    void navigator.clipboard
+                      ?.writeText(`اسم المستخدم: ${creds.national_id}\nكلمة المرور: ${creds.password}`)
+                      .then(() => setCredentialsCopied(true))
+                      .catch(() => undefined)
+                  }}
+                  className="mt-3 w-full rounded-lg border px-3 py-2 text-xs font-semibold transition-colors hover:bg-slate-50"
+                  style={{ borderColor: WARM_BD, color: DEEP }}
+                >
+                  {credentialsCopied ? '✓ تم النسخ' : 'نسخ بيانات الدخول'}
+                </button>
+              </div>
+            ) : null}
+
             <div
               className="mx-auto mb-6 max-w-md space-y-4 rounded-xl bg-white p-5 text-right shadow-sm"
               style={{ border: `1px solid ${WARM_BD}` }}
@@ -214,8 +262,8 @@ export function SchoolRegistrationPage() {
               {[
                 {
                   icon: MessageCircle,
-                  title: 'ستصلك بيانات الدخول عبر واتساب',
-                  sub: 'تحقق من رسائل واتساب على رقمك المسجل',
+                  title: 'وستصلك نسخة عبر واتساب',
+                  sub: 'على رقم الجوال المسجّل',
                 },
                 {
                   icon: Clock3,

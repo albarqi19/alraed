@@ -201,10 +201,15 @@ import type {
   TimeTableSubjectMapping,
   TimeTableClassMapping,
 } from './types'
+import { getErrorMessage as resolveApiErrorMessage } from '@/services/api/errors'
 
+/**
+ * كان يعيد error.message مباشرةً، وهي في أخطاء Axios نصٌّ إنجليزي عام
+ * («Request failed with status code 422») يحجب رسالة الباك العربية. صار يفوّض
+ * للمترجم المشترك الذي يقرأ جسم الاستجابة.
+ */
 function getErrorMessage(error: unknown, fallback: string) {
-  if (error instanceof Error) return error.message
-  return fallback
+  return resolveApiErrorMessage(error, fallback)
 }
 
 type AttendanceFilters = Record<string, string | number | boolean | undefined>

@@ -1727,6 +1727,12 @@ type SchedulePayload = {
   type: ScheduleType
   target_level?: string | null
   description?: string | null
+  /**
+   * تفعيل الجدول عند الإنشاء. الجدول غير المفعّل غير مرئي لبقية النظام
+   * (المتابعة المباشرة، الجرس، حضور الحصص تقرأ النشط فقط). عند الإغفال يُفعَّل
+   * أول جدول للمدرسة تلقائياً.
+   */
+  is_active?: boolean
   periods: Array<Omit<SchedulePeriod, 'id'>>
 }
 
@@ -2711,7 +2717,9 @@ export async function fetchWhatsappSettings(): Promise<WhatsappSettings> {
 }
 
 export async function updateWhatsappSettings(payload: Partial<WhatsappSettings>): Promise<WhatsappSettings> {
-  const { data } = await apiClient.put<ApiResponse<WhatsappSettings>>('/admin/whatsapp/settings', payload)
+  // الباك يسجّل POST لا PUT على هذا المسار (WhatsappController::saveSettings)؛
+  // كان الطلب يخرج بـ PUT فيرتد 405 لو وُصِل الزر بالواجهة.
+  const { data } = await apiClient.post<ApiResponse<WhatsappSettings>>('/admin/whatsapp/settings', payload)
   return unwrapResponse(data, 'تعذر تحديث إعدادات الواتساب')
 }
 

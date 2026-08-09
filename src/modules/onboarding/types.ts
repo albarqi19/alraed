@@ -13,7 +13,10 @@ export interface OnboardingStep {
   title: string
   description: string
   icon: string
+  /** خطوة تخطّيها يترك المدرسة بإعداد ناقص — تستوجب تأكيداً صريحاً */
+  is_mandatory: boolean
   is_completed: boolean
+  is_skipped: boolean
   completed_at: string | null
   metadata: Record<string, unknown> | null
 }
@@ -44,12 +47,15 @@ export interface CompleteStepResponse {
   next_step: OnboardingStepKey | null
   onboarding_completed: boolean
   progress: number
+  skipped: boolean
 }
 
 export interface StepComponentProps {
   onComplete: (metadata?: Record<string, unknown>) => void
+  /** يتكفّل المعالج بطلب التأكيد عند الخطوات الإلزامية */
   onSkip: () => void
   stats: OnboardingStats
+  stepInfo: OnboardingStep | null
   isCompleting: boolean
   isSkipping: boolean
 }

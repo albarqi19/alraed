@@ -185,7 +185,7 @@ export function ExtensionDownloadStep({ onComplete, onSkip, isCompleting, isSkip
         className="flex items-center justify-between border-t pt-4"
         style={{ borderColor: 'var(--color-hairline)' }}
       >
-        {/* Skip Button (للتجربة) */}
+        {/* تخطي — الخطوات الإلزامية تمر بتأكيد من المعالج */}
         <button
           type="button"
           onClick={onSkip}
@@ -193,7 +193,7 @@ export function ExtensionDownloadStep({ onComplete, onSkip, isCompleting, isSkip
           className="text-[13px] underline-offset-2 hover:underline disabled:opacity-50"
           style={{ color: 'var(--color-text-secondary)' }}
         >
-          {isSkipping ? 'جاري التخطي...' : 'تخطي (للتجربة)'}
+          {isSkipping ? 'جاري التخطي...' : 'تخطي — سأفعلها لاحقاً'}
         </button>
 
         <button

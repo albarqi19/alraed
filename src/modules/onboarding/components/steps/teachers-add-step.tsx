@@ -29,12 +29,14 @@ const ROLES = [
   { value: 'health_counselor', label: 'موجه صحي' },
 ]
 
+/** الباك يشترط هوية من عشر خانات رقمية بالضبط */
+const NATIONAL_ID_LENGTH = 10
+
 export function TeachersAddStep({ onComplete, onSkip, stats, isCompleting, isSkipping }: StepComponentProps) {
   const queryClient = useQueryClient()
   const toast = useToast()
 
   const [teacherForm, setTeacherForm] = useState<TeacherForm>(DEFAULT_TEACHER)
-  const [addedTeachers, setAddedTeachers] = useState<Array<{ name: string; national_id: string }>>([])
 
   // جلب المعلمين الحاليين
   const { data: teachers = [] } = useTeachersQuery()
@@ -42,34 +44,42 @@ export function TeachersAddStep({ onComplete, onSkip, stats, isCompleting, isSki
   // إنشاء معلم جديد
   const createMutation = useCreateTeacherMutation()
 
-  const handleAddTeacher = async () => {
-    if (!teacherForm.name.trim() || !teacherForm.national_id.trim()) {
-      toast({ title: 'يرجى إدخال الاسم ورقم الهوية', type: 'error' })
+  const trimmedName = teacherForm.name.trim()
+  const nationalId = teacherForm.national_id.trim()
+  const isNationalIdValid = new RegExp(`^\\d{${NATIONAL_ID_LENGTH}}$`).test(nationalId)
+  const canSubmit = trimmedName.length > 0 && isNationalIdValid
+
+  const handleAddTeacher = () => {
+    if (!trimmedName) {
+      toast({ title: 'أدخل اسم المعلم', type: 'error' })
+      return
+    }
+
+    // التحقق محلياً يوفّر رحلة للخادم ويوضّح الشرط قبل الضغط لا بعده
+    if (!isNationalIdValid) {
+      toast({ title: `رقم الهوية يجب أن يكون ${NATIONAL_ID_LENGTH} أرقام`, type: 'error' })
       return
     }
 
     createMutation.mutate(
       {
-        name: teacherForm.name.trim(),
-        national_id: teacherForm.national_id.trim(),
+        name: trimmedName,
+        national_id: nationalId,
         phone: teacherForm.phone.trim() || undefined,
         role: teacherForm.role,
       },
       {
         onSuccess: () => {
-          setAddedTeachers((prev) => [
-            ...prev,
-            { name: teacherForm.name.trim(), national_id: teacherForm.national_id.trim() },
-          ])
           setTeacherForm(DEFAULT_TEACHER)
-          queryClient.invalidateQueries({ queryKey: ['onboarding', 'stats'] })
-          toast({ title: 'تم إضافة المعلم بنجاح', type: 'success' })
+          // قائمة المعلمين هي مصدر الحقيقة الوحيد للعدّ — الاحتفاظ بعدّاد محلي
+          // موازٍ كان يُنتج رقماً مضاعفاً متى أُعيد جلب الحالة.
+          queryClient.invalidateQueries({ queryKey: ['onboarding'] })
         },
       },
     )
   }
 
-  const totalTeachers = stats.teachers_count + addedTeachers.length
+  const totalTeachers = Math.max(stats.teachers_count, teachers.length)
   const canProceed = totalTeachers > 0
 
   return (
@@ -127,12 +137,31 @@ export function TeachersAddStep({ onComplete, onSkip, stats, isCompleting, isSki
               </label>
               <input
                 type="text"
+                inputMode="numeric"
+                maxLength={NATIONAL_ID_LENGTH}
                 value={teacherForm.national_id}
-                onChange={(e) => setTeacherForm((f) => ({ ...f, national_id: e.target.value }))}
-                placeholder="أدخل رقم الهوية"
+                onChange={(e) =>
+                  setTeacherForm((f) => ({
+                    ...f,
+                    national_id: e.target.value.replace(/\D/g, '').slice(0, NATIONAL_ID_LENGTH),
+                  }))
+                }
+                placeholder={'٠'.repeat(NATIONAL_ID_LENGTH)}
                 className="ws-input w-full"
                 dir="ltr"
+                aria-invalid={nationalId.length > 0 && !isNationalIdValid}
               />
+              <span
+                className="text-[10.5px]"
+                style={{
+                  color:
+                    nationalId.length > 0 && !isNationalIdValid
+                      ? 'var(--ws-red)'
+                      : 'var(--color-text-secondary)',
+                }}
+              >
+                {NATIONAL_ID_LENGTH} أرقام — وهو أيضاً اسم المستخدم عند الدخول
+              </span>
             </div>
             <div className="ws-field">
               <label className="ws-label">رقم الجوال (اختياري)</label>
@@ -167,7 +196,7 @@ export function TeachersAddStep({ onComplete, onSkip, stats, isCompleting, isSki
             <button
               type="button"
               onClick={handleAddTeacher}
-              disabled={createMutation.isPending || !teacherForm.name.trim() || !teacherForm.national_id.trim()}
+              disabled={createMutation.isPending || !canSubmit}
               className="ws-btn ws-btn--primary"
             >
               {createMutation.isPending ? (
@@ -186,42 +215,20 @@ export function TeachersAddStep({ onComplete, onSkip, stats, isCompleting, isSki
         </div>
       </div>
 
-      {/* Added Teachers List */}
-      {addedTeachers.length > 0 && (
-        <div className="ws-panel">
-          <div className="ws-panel__head">
-            <span className="ws-panel__title">المعلمين المضافين في هذه الجلسة</span>
-            <span className="ws-count">{addedTeachers.length}</span>
-          </div>
-          <div className="ws-rows">
-            {addedTeachers.map((teacher, index) => (
-              <div key={`${teacher.national_id}-${index}`} className="ws-row">
-                <span className="flex min-w-0 items-center gap-2">
-                  <i className="bi bi-check-circle-fill" style={{ color: 'var(--ws-green)' }} />
-                  <span className="ws-row__name">{teacher.name}</span>
-                </span>
-                <span className="text-[11px]" style={{ color: 'var(--color-text-secondary)' }}>
-                  الهوية: {teacher.national_id}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Existing Teachers Preview */}
+      {/* المعلمون المسجّلون — قائمة الخادم وحدها، بلا عدّاد محلي موازٍ */}
       {teachers.length > 0 && (
         <div className="ws-panel">
           <div className="ws-panel__head">
-            <span className="ws-panel__title">المعلمين الحاليين ({teachers.length})</span>
+            <span className="ws-panel__title">المعلمون المسجّلون</span>
+            <span className="ws-count">{teachers.length}</span>
           </div>
           <div className="ws-panel__body flex flex-wrap gap-1.5">
-            {teachers.slice(0, 10).map((teacher) => (
+            {teachers.slice(0, 12).map((teacher) => (
               <span key={teacher.id} className="ws-chip">
                 {teacher.name}
               </span>
             ))}
-            {teachers.length > 10 && <span className="ws-chip">+{teachers.length - 10} آخرين</span>}
+            {teachers.length > 12 && <span className="ws-chip">+{teachers.length - 12} آخرين</span>}
           </div>
         </div>
       )}
@@ -231,7 +238,7 @@ export function TeachersAddStep({ onComplete, onSkip, stats, isCompleting, isSki
         className="flex items-center justify-between border-t pt-4"
         style={{ borderColor: 'var(--color-hairline)' }}
       >
-        {/* Skip Button (للتجربة) */}
+        {/* تخطي — الخطوات الإلزامية تمر بتأكيد من المعالج */}
         <button
           type="button"
           onClick={onSkip}
@@ -239,7 +246,7 @@ export function TeachersAddStep({ onComplete, onSkip, stats, isCompleting, isSki
           className="text-xs underline-offset-2 hover:underline disabled:opacity-50"
           style={{ color: 'var(--color-text-secondary)' }}
         >
-          {isSkipping ? 'جاري التخطي...' : 'تخطي (للتجربة)'}
+          {isSkipping ? 'جاري التخطي...' : 'تخطي وإكمالها لاحقاً'}
         </button>
 
         <button

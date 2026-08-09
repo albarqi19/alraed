@@ -1,13 +1,13 @@
-import { useNavigate } from 'react-router-dom'
 import type { StepComponentProps } from '../../types'
 
-export function CompletionStep({ onComplete, stats, isCompleting }: Omit<StepComponentProps, 'onSkip' | 'isSkipping'>) {
-  const navigate = useNavigate()
-
+export function CompletionStep({ onComplete, stats, isCompleting }: StepComponentProps) {
+  /**
+   * التوجيه يتكفّل به المعالج بعد أن يؤكّد الخادمُ الاكتمالَ ويُحدَّث مخزنُ
+   * المصادقة. التنقّل الفوري هنا كان يسبق ذلك، فيرى الحارسُ needs_onboarding
+   * قديماً ويعيد المدير إلى /onboarding في ارتدادة مرئية.
+   */
   const handleEnterDashboard = () => {
-    onComplete()
-    // سيتم التوجيه تلقائياً من الـ wizard بعد إكمال الخطوة
-    navigate('/admin')
+    void onComplete()
   }
 
   return (

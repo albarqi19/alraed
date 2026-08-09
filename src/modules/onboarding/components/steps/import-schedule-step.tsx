@@ -119,14 +119,14 @@ export function ImportScheduleStep({ onComplete, onSkip, isCompleting, isSkippin
 
       {/* Next Button */}
       <div className="flex items-center justify-between border-t border-[var(--color-hairline)] pt-4">
-        {/* Skip Button (للتجربة) */}
+        {/* تخطي — الخطوات الإلزامية تمر بتأكيد من المعالج */}
         <button
           type="button"
           onClick={onSkip}
           disabled={isSkipping || isCompleting}
           className="text-[12px] text-[var(--color-text-secondary)] underline-offset-2 hover:text-[var(--color-text-primary)] hover:underline disabled:opacity-50"
         >
-          {isSkipping ? 'جاري التخطي...' : 'تخطي (للتجربة)'}
+          {isSkipping ? 'جاري التخطي...' : 'تخطي — سأفعلها لاحقاً'}
         </button>
 
         <button

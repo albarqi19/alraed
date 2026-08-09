@@ -19,8 +19,10 @@ export function OnboardingProgressCard() {
     return localStorage.getItem('hide_onboarding_progress') === 'true'
   })
 
-  // إخفاء للمستخدمين غير المديرين
-  if (user?.role !== 'school_principal') {
+  // التسجيل العام يُنشئ الحساب بدور admin لا school_principal، فاشتراط الثاني
+  // وحده كان يُخفي بطاقةَ المتابعة عن كل مدرسة سجّلت من الموقع — أي عن كل
+  // المدارس التي قد تكون تخطّت خطوة.
+  if (user?.role !== 'school_principal' && user?.role !== 'admin') {
     return null
   }
 
@@ -92,9 +94,11 @@ export function OnboardingProgressCard() {
       icon: 'bi-clock',
       isComplete: stats.has_attendance_settings,
       link: '/admin/teacher-attendance',
-      description: stats.has_attendance_settings
-        ? `${stats.work_start_time || ''} - ${stats.work_end_time || ''}`
-        : 'لم يتم ضبط وقت الدوام',
+      description: !stats.has_attendance_settings
+        ? 'لم يتم ضبط وقت الدوام'
+        : stats.work_start_time && stats.work_end_time
+          ? `${stats.work_start_time} - ${stats.work_end_time}`
+          : 'تم الضبط',
     },
   ]
 

@@ -293,7 +293,7 @@ export function WhatsappSetupStep({ onComplete, onSkip, stats, isCompleting, isS
         className="flex items-center justify-between border-t pt-4"
         style={{ borderColor: 'var(--color-hairline)' }}
       >
-        {/* Skip Button (للتجربة) */}
+        {/* تخطي — الخطوات الإلزامية تمر بتأكيد من المعالج */}
         <button
           type="button"
           onClick={onSkip}
@@ -301,7 +301,7 @@ export function WhatsappSetupStep({ onComplete, onSkip, stats, isCompleting, isS
           className="text-[13px] underline-offset-2 hover:underline disabled:opacity-50"
           style={{ color: 'var(--color-text-secondary)' }}
         >
-          {isSkipping ? 'جاري التخطي...' : 'تخطي (للتجربة)'}
+          {isSkipping ? 'جاري التخطي...' : 'تخطي — سأربطه لاحقاً'}
         </button>
 
         <button

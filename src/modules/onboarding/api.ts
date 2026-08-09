@@ -16,10 +16,12 @@ export async function completeStep(
   step: OnboardingStepKey,
   metadata?: Record<string, unknown>,
   skip?: boolean,
+  /** تأكيد صريح مطلوب لتخطي الخطوات الإلزامية (الباك يرد 409 بدونه) */
+  confirmSkip?: boolean,
 ): Promise<CompleteStepResponse> {
   const response = await apiClient.post<{ success: boolean; data: CompleteStepResponse }>(
     `/admin/onboarding/steps/${step}/complete`,
-    { metadata, skip },
+    { metadata, skip, confirm_skip: confirmSkip },
   )
   return response.data.data
 }
