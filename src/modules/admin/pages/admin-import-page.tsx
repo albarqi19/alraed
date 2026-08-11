@@ -173,7 +173,7 @@ function StudentPreviewSummary({ preview }: { preview: ImportStudentsPreview }) 
       { label: 'في الملف', value: preview.total_students, tone: TONES.sky },
       { label: 'جدد', value: preview.new_students_count, tone: TONES.green },
       { label: 'تحديث', value: preview.students_with_changes, tone: TONES.amber },
-      { label: 'حذف', value: preview.to_be_deleted_count, tone: TONES.red },
+      { label: 'تعطيل', value: preview.to_be_deleted_count, tone: TONES.amber },
       { label: 'أخطاء', value: preview.errors_count, tone: preview.errors_count > 0 ? TONES.red : TONES.gray },
     ],
     [preview],
@@ -351,7 +351,7 @@ function StudentPreviewDetails({ preview }: { preview: ImportStudentsPreview }) 
 
       {preview.to_be_deleted_count > 0 && (
         <div>
-          <SectionTitle tone={TONES.red}>مرشحون للحذف ({ar(preview.to_be_deleted_count)})</SectionTitle>
+          <SectionTitle tone={TONES.amber}>مرشحون للتعطيل ({ar(preview.to_be_deleted_count)})</SectionTitle>
           <div style={tableWrap}>
             <WsTable>
               <thead>
@@ -394,7 +394,7 @@ function ImportSummaryCard({ summary, title }: { summary: ImportSummary; title: 
   const items = [
     summary.new_count !== undefined ? { label: 'سجلات جديدة', value: summary.new_count, tone: TONES.green } : null,
     summary.updated_count !== undefined ? { label: 'تم تحديثها', value: summary.updated_count, tone: TONES.amber } : null,
-    summary.deleted_count !== undefined ? { label: 'تم حذفها', value: summary.deleted_count, tone: TONES.red } : null,
+    summary.deleted_count !== undefined ? { label: 'تم تعطيلها', value: summary.deleted_count, tone: TONES.amber } : null,
     summary.skipped_count !== undefined ? { label: 'تم تجاهلها', value: summary.skipped_count, tone: TONES.gray } : null,
     summary.duplicates_in_file !== undefined && summary.duplicates_in_file > 0
       ? { label: 'مكررات في الملف', value: summary.duplicates_in_file, tone: TONES.amber }
@@ -478,7 +478,7 @@ function ImportSummaryCard({ summary, title }: { summary: ImportSummary; title: 
           <header style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <Trash2 style={{ width: 14, height: 14, color: TONES.red.tx }} />
             <h4 style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>
-              طلاب تم حذفهم ({ar(summary.deleted_students.length)})
+              طلاب غادروا — عُطِّلوا وسجلّهم محفوظ ({ar(summary.deleted_students.length)})
             </h4>
           </header>
           <div style={tableWrap}>
