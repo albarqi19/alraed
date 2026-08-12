@@ -1,5 +1,10 @@
 import axios from 'axios'
+import { sileo } from 'sileo'
 import { useAuthStore } from '@/modules/auth/store/auth-store'
+// الاستيراد من ملف المخزن مباشرةً لا من بوابة الوحدة: البوابة تصدّر مكوّنات
+// React، وسحبها إلى طبقة الشبكة يجعل كل ملفٍ يستورد `apiClient` يجرّ معه شجرة
+// واجهةٍ لا يحتاجها — وقد يعقد حلقة استيراد مع مخزن المصادقة.
+import { activeArchiveYearId } from '@/modules/admin/academic-years/archive-store'
 
 // Updated to use Cloudflare Tunnel instead of ngrok
 const FALLBACK_API_BASE_URL = 'https://api.brqq.site/api'
@@ -92,6 +97,20 @@ export function getActivityReportPrintUrl(
 let _lastSubscriptionRedirect = 0
 const _SUBSCRIPTION_REDIRECT_DEBOUNCE = 10_000
 
+/**
+ * الترويسة التي تطلب بها الواجهة سنةً غير الجارية
+ * (`App\Http\Middleware\ResolveAcademicYear::HEADER`).
+ */
+const ACADEMIC_YEAR_HEADER = 'X-Academic-Year'
+
+/** رسالة قفل الكتابة — واحدة في كل النظام كي يتعلّمها المستخدم مرة */
+const ARCHIVE_READ_ONLY_MESSAGE = 'لا يمكن التعديل أثناء تصفّح الأرشيف — عُد إلى السنة الجارية أولاً'
+
+// كبحُ تكرار تنبيه القفل: شاشةٌ واحدة قد تُطلق حفظاً متوازياً لعدة طلبات،
+// فيرتدّ 423 عن كلٍّ منها — والمستخدم يستحق تفسيراً واحداً لا أربعة.
+let _lastArchiveLockToast = 0
+const _ARCHIVE_LOCK_TOAST_DEBOUNCE = 4_000
+
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -106,6 +125,16 @@ apiClient.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+
+  // وضع تصفّح الأرشيف: الترويسة تُحقن هنا لا في كل استدعاء، فلا تنجو شاشةٌ
+  // نسيَها مطوّرها فتعرض أرقام اليوم تحت شريطٍ يقول إنها أرقام سنةٍ مضت.
+  // `activeArchiveYearId` تُرجع null — وتمسح الاختيار — إن لم يكن الاختيار
+  // لهذه الجلسة، فلا تتسرّب سنةُ مستخدمٍ سابق إلى مستخدمٍ جديد.
+  const archiveYearId = activeArchiveYearId()
+  if (archiveYearId !== null) {
+    config.headers[ACADEMIC_YEAR_HEADER] = String(archiveYearId)
+  }
+
   return config
 })
 
@@ -119,6 +148,33 @@ apiClient.interceptors.response.use(
       clearAuth()
     }
     
+    // معالجة خطأ 423 - كتابة مرفوضة لأننا في وضع تصفّح الأرشيف
+    //
+    // الرسالة تُكتب فوق جسم الاستجابة أيضاً لا فوق `error.message` وحده:
+    // معظم الشاشات تعرض `getErrorMessage(error, 'فشل الحفظ')` وهي تقرأ
+    // `data.message` أوّلاً. ورسالة الوسيط هناك تصف الحالة («أنت تتصفّح
+    // أرشيف… — القراءة فقط») ولا تقول للمستخدم ما يفعله. التوحيد هنا يضمن أن
+    // كل زرٍّ في النظام يعطي التعليمة نفسها: عُد إلى السنة الجارية.
+    if (error.response?.status === 423) {
+      error.message = ARCHIVE_READ_ONLY_MESSAGE
+
+      if (error.response.data && typeof error.response.data === 'object') {
+        (error.response.data as { message?: string }).message = ARCHIVE_READ_ONLY_MESSAGE
+      }
+
+      const now = Date.now()
+      if (now - _lastArchiveLockToast > _ARCHIVE_LOCK_TOAST_DEBOUNCE) {
+        _lastArchiveLockToast = now
+        // الاستدعاء مباشرٌ لا عبر `useToast`: المعترض يعمل خارج شجرة React
+        // فلا خطّافات فيه. والوجهة واحدة — `sileo` هي ما يغلّفه الخطّاف.
+        sileo.error({
+          id: 'archive-read-only',
+          title: ARCHIVE_READ_ONLY_MESSAGE,
+          duration: 6000,
+        })
+      }
+    }
+
     // معالجة خطأ 402 - انتهاء الاشتراك
     if (error.response?.status === 402) {
       const currentPath = window.location.pathname

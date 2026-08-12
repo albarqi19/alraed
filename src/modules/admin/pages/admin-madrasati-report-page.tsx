@@ -12,6 +12,7 @@ import {
   VolumeX,
   X,
 } from 'lucide-react'
+import { ArchiveGuard } from '../academic-years'
 import { useMadrasatiSchoolMetrics } from '../madrasati/hooks'
 import type { MadrasatiTeacherRanking } from '../madrasati/types'
 import {
@@ -46,7 +47,27 @@ import {
 
 type StatusFilter = 'all' | 'has_silent' | 'no_homework'
 
+/**
+ * مثالٌ تطبيقيّ للحارس على مستوى الشاشة.
+ *
+ * «إحصاءات مدرستي» تقرأ `madrasati_teacher_stats` و`madrasati_subject_stats`،
+ * وكلاهما في مجموعةٍ تُنقل صفوفها إلى توائم `archive_*` عند الترحيل. فالشاشة
+ * في وضع الأرشيف لا تعجز عن العرض، بل تعرض مدرسةً بلا معلّمين صامتين وبلا
+ * واجبات — صورةَ مدرسةٍ مثالية لم توجد قط.
+ *
+ * والحارسان — قائمةُ المسارات في `AdminShell` وهذا الغلاف — مقصودان معاً:
+ * الأول يحمي الشاشات كلها من النسيان، وهذا يبقى مع الملف إن أُعيدت تسمية
+ * مساره يوماً.
+ */
 export function AdminMadrasatiReportPage() {
+  return (
+    <ArchiveGuard screen="إحصاءات مدرستي">
+      <MadrasatiReportContent />
+    </ArchiveGuard>
+  )
+}
+
+function MadrasatiReportContent() {
   const { teacherId } = useParams<{ teacherId?: string }>()
   const navigate = useNavigate()
 

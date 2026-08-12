@@ -9,6 +9,13 @@ import { primaryAdminNavGroups, secondaryAdminNav, settingsAdminNav } from '../c
 import { getCurrentAcademicWeek } from '../constants/academic-calendar-data'
 import { AIAssistantWidget } from '../components/ai-assistant-widget'
 import { SubscriptionExpiryAlert } from '@/modules/subscription/components/subscription-expiry-alert'
+import {
+  AcademicYearSwitcher,
+  ArchiveModeBanner,
+  ArchiveUnsupported,
+  routeSupportsArchive,
+  useArchiveMode,
+} from '../academic-years'
 import { TONES } from '@/shared/workspace'
 import { chip } from '../pages/dashboard-ui'
 
@@ -102,6 +109,7 @@ export function AdminShell() {
   const location = useLocation()
   const navigate = useNavigate()
   const { hasPermission } = usePermissions()
+  const { isArchiveMode } = useArchiveMode()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   // طي القائمة الجانبية على الديسكتوب إلى عمود أيقونات — الحالة محفوظة
   const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(
@@ -275,6 +283,14 @@ export function AdminShell() {
   } catch {
     todayLabel = new Intl.DateTimeFormat('ar-SA-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())
   }
+
+  /**
+   * الصراحة على الشاشة لا في وثيقة: في وضع الأرشيف تُستبدل كل شاشةٍ لا يبلغها
+   * الأرشيف ببطاقةٍ تعترف بذلك. الحكم مركزيّ هنا — عند نقطة تركيب الصفحات
+   * كلها — كي لا يعتمد صدق النظام على أن يتذكّر كاتبُ كل شاشةٍ جديدة أن يحرسها.
+   */
+  const archiveBlocksScreen = isArchiveMode && !routeSupportsArchive(location.pathname)
+  const routedContent = archiveBlocksScreen ? <ArchiveUnsupported /> : <Outlet />
 
   const currentAcademicWeek = getCurrentAcademicWeek(new Date())
   const weekLabel = currentAcademicWeek
@@ -697,7 +713,13 @@ export function AdminShell() {
           isWorkspaceRoute && 'lg:h-screen lg:max-h-screen lg:overflow-hidden',
         )}
       >
-        <header className="sticky top-0 z-20 flex-shrink-0 border-b shadow-sm" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+        {/* الشريط الأحمر والترويسة في غلافٍ لاصقٍ واحد.
+            لو تُرك الشريط خارج اللصق لانزلق مع التمرير بعد بضعة أسطر — وشريطُ
+            تحذيرٍ يختفي بالتمرير أسوأ من غيابه، لأن من رآه أوّل مرة يظنّ أنه
+            ما زال هناك. */}
+        <div className="sticky top-0 z-30 flex-shrink-0">
+        <ArchiveModeBanner />
+        <header className="flex-shrink-0 border-b shadow-sm" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
           <div className="flex w-full items-center justify-between gap-3 px-4 py-2.5 lg:px-6">
             <div className="flex items-center gap-2">
               {/* زر القائمة للجوال */}
@@ -730,6 +752,7 @@ export function AdminShell() {
               )}
             </div>
             <div className="flex items-center gap-2">
+              <AcademicYearSwitcher />
               {todayLabel && (
                 <div
                   className="hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold md:flex"
@@ -759,6 +782,7 @@ export function AdminShell() {
             </div>
           </div>
         </header>
+        </div>
         <main className={clsx('flex flex-1 flex-col', isWorkspaceRoute && 'lg:min-h-0 lg:overflow-hidden')}>
           {/* صفحات بدون فراغات لعرض أكبر قدر من البيانات */}
           {isWorkspaceRoute ? (
@@ -777,11 +801,11 @@ export function AdminShell() {
                   />
                 </div>
               )}
-              <Outlet />
+              {routedContent}
             </div>
           ) : location.pathname === '/admin/live-tracker' || location.pathname === '/admin/notebook' || location.pathname.startsWith('/admin/guides/') ? (
             <div className="w-full flex-1">
-              <Outlet />
+              {routedContent}
             </div>
           ) : (
             <div className="w-full flex-1 px-6 py-8 lg:px-10 xl:px-14 2xl:px-18">
@@ -792,7 +816,7 @@ export function AdminShell() {
                     status={subscriptionStatus ?? undefined}
                   />
                 )}
-                <Outlet />
+                {routedContent}
               </div>
             </div>
           )}
