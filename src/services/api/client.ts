@@ -167,8 +167,10 @@ apiClient.interceptors.response.use(
         _lastArchiveLockToast = now
         // الاستدعاء مباشرٌ لا عبر `useToast`: المعترض يعمل خارج شجرة React
         // فلا خطّافات فيه. والوجهة واحدة — `sileo` هي ما يغلّفه الخطّاف.
+        // بلا `id`: واجهة `SileoOptions` لا تحمله (title · description ·
+        // position · duration · icon · styles · fill · roundness · autopilot ·
+        // button). ومنعُ التكرار مضبوطٌ بالمؤقّت أعلاه لا بمعرّف التنبيه.
         sileo.error({
-          id: 'archive-read-only',
           title: ARCHIVE_READ_ONLY_MESSAGE,
           duration: 6000,
         })
