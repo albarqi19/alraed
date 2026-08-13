@@ -47,7 +47,15 @@ export function GuardianFormsPage() {
     return forms.find((form) => form.id === selectedFormId) ?? forms[0]
   }, [forms, selectedFormId])
 
+  /**
+   * النموذج الذي لا يقبل ردّاً ثانياً يختفي من القائمة فور إرساله — والبوّابة لا
+   * تعرض ردود وليّ الأمر السابقة إطلاقاً (لا مسار في الخادم يعيدها). فبلا هذا
+   * السطر يرى وليُّ الأمر نموذجه وقد تبخّر، ولا يدري أوصل ردُّه أم ضاع.
+   */
+  const [lastSubmittedTitle, setLastSubmittedTitle] = useState<string | null>(null)
+
   const handleFormSubmitted = () => {
+    setLastSubmittedTitle(selectedForm?.title ?? null)
     formsQuery.refetch().catch(() => {
       toast({ type: 'error', title: 'تعذر تحديث قائمة النماذج بعد الإرسال' })
     })
@@ -81,6 +89,19 @@ export function GuardianFormsPage() {
       {formsQuery.isError && (
         <div className="rounded-2xl border border-rose-200 bg-rose-50 dark:bg-rose-950 p-4 text-center text-sm text-rose-700 dark:text-rose-400">
           {resolveErrorMessage(formsQuery.error, 'تعذر تحميل النماذج. يرجى المحاولة لاحقاً.')}
+        </div>
+      )}
+
+      {/* إيصال الاستلام — يبقى ما دامت الصفحة مفتوحة لأن النموذج نفسه قد اختفى */}
+      {lastSubmittedTitle && (
+        <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950 p-4 text-sm text-emerald-800 dark:text-emerald-200">
+          <CheckCircle className="mt-0.5 h-5 w-5 shrink-0" />
+          <div className="space-y-1">
+            <p className="font-bold">تم استلام ردك على «{lastSubmittedTitle}»</p>
+            <p className="text-xs">
+              لم يعد النموذج معروضاً لأن ردك وصل إلى المدرسة. للاستفسار عن رد سابق يرجى التواصل مع إدارة المدرسة.
+            </p>
+          </div>
         </div>
       )}
 
@@ -166,8 +187,10 @@ export function GuardianFormsPage() {
           <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
             لا توجد نماذج مطلوبة حالياً
           </p>
+          {/* وعدٌ لا يفي به النظام: لا إشعار يُرسَل عند نشر نموذج — لا واتساب ولا
+              غيره. فالنصّ يقول ما يحدث فعلاً: النماذج تظهر هنا متى نشرتها المدرسة. */}
           <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-            سيتم إشعارك عند وجود نماذج جديدة
+            تظهر النماذج هنا فور نشرها من المدرسة — تفقّد الصفحة من حين لآخر
           </p>
         </div>
       )}

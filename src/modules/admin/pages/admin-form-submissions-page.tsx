@@ -1,6 +1,58 @@
-import clsx from 'classnames'
+import cx from 'classnames'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCheck,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  Download,
+  ExternalLink,
+  Eye,
+  FileSpreadsheet,
+  FileText,
+  GraduationCap,
+  ImageIcon,
+  Inbox,
+  MessageCircle,
+  Paperclip,
+  Percent,
+  Printer,
+  RefreshCw,
+  Search,
+  Settings2,
+  Trash2,
+  UserCheck,
+  UserX,
+  Users,
+  X,
+  XCircle,
+  ZoomIn,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import {
+  WsAlert,
+  WsBlock,
+  WsBtn,
+  WsChip,
+  WsEmpty,
+  WsFact,
+  WsFactRow,
+  WsFactsList,
+  WsField,
+  WsHeader,
+  WsIconBtn,
+  WsInput,
+  WsModal,
+  WsProgress,
+  WsSpinner,
+  WsTable,
+  WsToolbar,
+  type WsChipTone,
+} from '@/shared/workspace'
 import { useToast } from '@/shared/feedback/use-toast'
 import {
   useAdminForm,
@@ -10,8 +62,15 @@ import {
   useReviewAdminSubmissionMutation,
 } from '@/modules/forms/hooks'
 import { fetchAdminFormSubmissions } from '@/modules/forms/api'
-import { FORM_SUBMISSION_STATUS_LABELS } from '@/modules/forms/constants'
-import type { FormSubmission, FormSubmissionAnswer, FormSummary } from '@/modules/forms/types'
+import { FORM_SUBMISSION_STATUS_LABELS, isAttachmentFieldType } from '@/modules/forms/constants'
+import type {
+  FormFieldSettings,
+  FormFieldType,
+  FormSubmission,
+  FormSubmissionAnswer,
+  FormSubmissionFile,
+  FormSummary,
+} from '@/modules/forms/types'
 import type { StudentRecord } from '@/modules/admin/types'
 import { useStudentsQuery } from '@/modules/admin/hooks'
 
@@ -28,22 +87,46 @@ const REVIEWABLE_STATUSES: Array<Extract<FormSubmission['status'], 'approved' | 
 
 type StatusFilter = FormSubmission['status'] | 'all'
 
-type AggregateState = {
-  loading: boolean
-  error: unknown | null
-  data: FormSubmission[]
-  lastFetched: number
+const STATUS_FILTERS: StatusFilter[] = ['all', ...STATUS_ORDER]
+
+/** الرمادي (بلا tone) للمسودّة عمداً: حالةٌ محايدة لا تستدعي انتباهاً */
+const SUBMISSION_STATUS_TONE: Record<FormSubmission['status'], WsChipTone | undefined> = {
+  approved: 'green',
+  reviewed: 'sky',
+  rejected: 'red',
+  submitted: 'amber',
+  draft: undefined,
 }
 
-export interface FormFieldWithSection {
+const FORM_STATUS_LABELS: Record<FormSummary['status'], string> = {
+  draft: 'مسودة',
+  published: 'منشور',
+  archived: 'مؤرشف',
+}
+
+const FORM_STATUS_TONE: Record<FormSummary['status'], WsChipTone | undefined> = {
+  draft: undefined,
+  published: 'green',
+  archived: 'amber',
+}
+
+/** كلُّ الردود بلا صفحات — قاعدةُ الإحصائيات وحدها، لا مصدر الجدول المُصفَّى */
+type AggregateState = {
+  loading: boolean
+  data: FormSubmission[]
+}
+
+interface FormFieldWithSection {
   id: number
   field_key: string
-  type: string
+  type: FormFieldType
   label: string
   sectionTitle: string | null
   sort_order: number
-  settings?: Record<string, unknown>
+  settings?: FormFieldSettings
 }
+
+const nf = (value: number): string => value.toLocaleString('ar-SA-u-nu-latn')
 
 function formatDateTime(value?: string | null): string {
   if (!value) return '—'
@@ -59,9 +142,76 @@ function formatDateTime(value?: string | null): string {
   }
 }
 
+function formatFileSize(bytes?: number | null): string {
+  if (!bytes || bytes <= 0) return ''
+  const units = ['بايت', 'ك.ب', 'م.ب']
+  let value = bytes
+  let unit = 0
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024
+    unit += 1
+  }
+  return `${value.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`
+}
+
+/**
+ * تسطيح قيمة `value_json` إلى نصٍّ صالحٍ للعرض والتصدير والطباعة.
+ *
+ * إجابةُ حقل المرفق تُخزَّن مصفوفةَ كائنات `{id, filename, path}`
+ * (FormPublicController::storeAnswers)، وإجابةُ المصفوفة والمكرِّر كائناتٍ كذلك —
+ * و`String(كائن)` عليها يطبع `[object Object]`. كان ذلك يقع في أربعة مواضع
+ * (التصدير والطباعة ودرج التفاصيل والمُنسِّق)، فجُعل التسطيح هنا وحده كي يرثه
+ * الأربعة صحيحاً بدل أن يُرقَّع كلٌّ منها على حدة فينشقّ.
+ */
+function stringifyJsonValue(value: unknown): string {
+  if (value === null || value === undefined) {
+    return ''
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => stringifyJsonValue(item))
+      .filter((part) => part.length > 0)
+      .join('، ')
+  }
+
+  if (typeof value === 'object') {
+    const record = value as Record<string, unknown>
+    // اسمُ الملفّ هو كلُّ ما يعني الأدمن من كائن المرفق؛ وما دونه (id/path) ضجيجٌ داخلي
+    if (typeof record.filename === 'string' && record.filename.length > 0) {
+      return record.filename
+    }
+    return Object.entries(record)
+      .map(([key, item]) => {
+        const part = stringifyJsonValue(item)
+        return part.length > 0 ? `${key}: ${part}` : ''
+      })
+      .filter((part) => part.length > 0)
+      .join(' · ')
+  }
+
+  if (typeof value === 'boolean') {
+    return value ? 'نعم' : 'لا'
+  }
+
+  return String(value)
+}
+
 function resolveSubmissionAnswerValue(answer?: FormSubmissionAnswer | null): string {
   if (!answer) {
     return '—'
+  }
+
+  /*
+   * `value_json` يسبق `value_text` عمداً: حين يكتب الباك الأوّل يكون الثاني مجرّد
+   * `json_encode` له (FormPublicController::buildAnswerPayload)، فقراءةُ النصّ أوّلاً
+   * كانت تعرض على الأدمن `["أ","ب"]` خاماً بدل «أ، ب».
+   */
+  if (answer.value_json !== null && answer.value_json !== undefined && typeof answer.value_json === 'object') {
+    const flattened = stringifyJsonValue(answer.value_json)
+    if (flattened.length > 0) {
+      return flattened
+    }
   }
 
   if (answer.value_text !== null && answer.value_text !== undefined) {
@@ -85,19 +235,7 @@ function resolveSubmissionAnswerValue(answer?: FormSubmissionAnswer | null): str
   }
 
   if (answer.value_json !== null && answer.value_json !== undefined) {
-    if (Array.isArray(answer.value_json)) {
-      return answer.value_json.map((item) => String(item)).join('، ')
-    }
-
-    if (typeof answer.value_json === 'object') {
-      try {
-        return JSON.stringify(answer.value_json)
-      } catch {
-        return String(answer.value_json)
-      }
-    }
-
-    return String(answer.value_json)
+    return stringifyJsonValue(answer.value_json) || '—'
   }
 
   return '—'
@@ -117,7 +255,7 @@ function mapFormFields(form?: FormSummary | null): FormFieldWithSection[] {
       label: field.label,
       sectionTitle: section.title ?? null,
       sort_order: field.sort_order ?? 0,
-      settings: field.settings ?? undefined,
+      settings: field.settings,
     })),
   )
 
@@ -128,7 +266,7 @@ function mapFormFields(form?: FormSummary | null): FormFieldWithSection[] {
     label: field.label,
     sectionTitle: null,
     sort_order: field.sort_order ?? 0,
-    settings: field.settings ?? undefined,
+    settings: field.settings,
   }))
 
   return [...sectionFields, ...standaloneFields].sort((a, b) => a.sort_order - b.sort_order)
@@ -142,20 +280,25 @@ function buildFieldMap(definitions: FormFieldWithSection[]): Map<number, FormFie
   return map
 }
 
-function createStatusTone(status: FormSubmission['status']): string {
-  switch (status) {
-    case 'approved':
-      return 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-    case 'reviewed':
-      return 'bg-sky-50 text-sky-700 border border-sky-200'
-    case 'rejected':
-      return 'bg-rose-50 text-rose-700 border border-rose-200'
-    case 'draft':
-      return 'bg-slate-100 text-slate-600 border border-slate-200'
-    case 'submitted':
-    default:
-      return 'bg-amber-50 text-amber-700 border border-amber-200'
+function fieldLabelOf(field: FormFieldWithSection): string {
+  return field.sectionTitle ? `${field.sectionTitle} — ${field.label}` : field.label
+}
+
+/**
+ * قيمة الإجابة معروضةً في سياق حقلها.
+ *
+ * التقييم وحده يحتاج سياقاً اليوم: «٣» مجرَّدةً لا تقول شيئاً حتى يُذكر سقفها،
+ * والسقف في `settings.max_rating` بافتراض خمس. وتمرُّ من هنا المواضعُ الثلاثة
+ * (التصدير والطباعة والدرج) كي لا يختلف رقمُ الملفّ عن رقم الشاشة.
+ */
+function formatAnswerForField(field: FormFieldWithSection, answer?: FormSubmissionAnswer | null): string {
+  const value = resolveSubmissionAnswerValue(answer)
+
+  if (field.type === 'rating' && value !== '—') {
+    return `${value} / ${field.settings?.max_rating ?? 5}`
   }
+
+  return value
 }
 
 function sanitizeForExcel(value: string): string {
@@ -184,14 +327,14 @@ function buildExcelWorkbook(
     'هاتف ولي الأمر',
     'الحالة',
     'تاريخ الإرسال',
-    ...fieldDefinitions.map((field) => (field.sectionTitle ? `${field.sectionTitle} - ${field.label}` : field.label)),
+    ...fieldDefinitions.map((field) => fieldLabelOf(field)),
   ]
 
   const tbody = submissions
     .map((submission, index) => {
       const answers = fieldDefinitions.map((field) => {
         const answer = submission.answers?.find((item) => item.field_id === field.id)
-        return escapeHtml(sanitizeForExcel(resolveSubmissionAnswerValue(answer)))
+        return escapeHtml(sanitizeForExcel(formatAnswerForField(field, answer)))
       })
 
       const studentName = submission.student?.name ?? '—'
@@ -235,7 +378,10 @@ function buildExcelWorkbook(
     </html>
   `
 
-  const blob = new Blob([`\ufeff${tableHtml}`], {
+  // U+FEFF علامةُ ترتيب البايتات: بدونها يقرأ إكسل الملفَّ بترميز النظام
+  // فتصير العربية طلاسم. وتُكتب هروباً لا حرفاً منظوراً — الحرفُ المنظور مسافةٌ
+  // شاذّة لا تُرى في المحرّر ويرفضها `no-irregular-whitespace`.
+  const blob = new Blob([`\uFEFF${tableHtml}`], {
     type: 'application/vnd.ms-excel;charset=utf-8;',
   })
 
@@ -257,11 +403,10 @@ function buildPrintableMarkup(
   const answers = fieldDefinitions
     .map((field) => {
       const answer = submission.answers?.find((item) => item.field_id === field.id)
-      const value = resolveSubmissionAnswerValue(answer)
-      const label = field.sectionTitle ? `${field.sectionTitle} — ${field.label}` : field.label
+      const value = formatAnswerForField(field, answer)
       return `
         <div class="answer-row">
-          <div class="label">${escapeHtml(label)}</div>
+          <div class="label">${escapeHtml(fieldLabelOf(field))}</div>
           <div class="value">${escapeHtml(value)}</div>
         </div>
       `
@@ -274,17 +419,17 @@ function buildPrintableMarkup(
         <meta charset="utf-8" />
         <title>${escapeHtml(form.title)} - رد رقم ${submission.id}</title>
         <style>
-          body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 24px; }
-          .header { text-align: center; margin-bottom: 24px; }
-          .answers { margin-top: 24px; display: flex; flex-direction: column; gap: 12px; }
-          .answer-row { border: 1px solid #d1d5db; border-radius: 12px; padding: 12px 16px; }
-          .label { font-weight: 600; color: #1f2937; margin-bottom: 6px; }
-          .value { color: #334155; white-space: pre-line; }
-          .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
-          .meta-card { background-color: #f1f5f9; border-radius: 12px; padding: 12px 16px; }
-          .meta-card .title { font-size: 12px; color: #475569; }
-          .meta-card .data { font-size: 14px; font-weight: 600; color: #0f172a; }
-          .section-title { font-size: 18px; font-weight: 700; margin: 24px 0 12px; color: #0f172a; }
+          body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 24px; color: #1f2937; }
+          .header { text-align: center; margin-bottom: 20px; }
+          .answers { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+          .answer-row { border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 12px; }
+          .label { font-weight: 600; font-size: 12px; color: #4b5563; margin-bottom: 4px; }
+          .value { font-size: 13px; color: #111827; white-space: pre-line; }
+          .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+          .meta-card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; }
+          .meta-card .title { font-size: 11px; color: #6b7280; }
+          .meta-card .data { font-size: 13px; font-weight: 600; }
+          .section-title { font-size: 15px; font-weight: 700; margin: 20px 0 8px; }
         </style>
       </head>
       <body>
@@ -308,18 +453,61 @@ function buildPrintableMarkup(
   `
 }
 
-function collectTargetedStudents(form: FormSummary | undefined, students: StudentRecord[]): StudentRecord[] {
-  if (!form || !students.length) {
-    return []
+interface AudienceResolution {
+  /** الطلاب الذين يبلغهم النموذج فعلاً وفق منطق الباك نفسه */
+  students: StudentRecord[]
+  /** لا يبلغ أحداً: جمهوره ليس «جميع الطلاب» ولا فيه إسنادٌ واحدٌ قابلٌ للمطابقة */
+  unreachable: boolean
+}
+
+/**
+ * مَن يبلغهم النموذج — بمرآةِ `FormPublicController::applyAudienceFilter` حرفياً.
+ *
+ * كان الفراغ يُقرأ «كلُّ الطلاب»، وهي قراءةٌ مقلوبة: الباك يُظهر النموذج للطالب
+ * إن كان `forms.target_audience = all_students` **أو** طابقه إسنادٌ ما. فنموذجٌ
+ * جمهوره «صف» بلا إسنادٍ واحد لا يراه أحد، وكانت الصفحة تسرد له كلَّ طلّاب
+ * المدرسة «غير مستجيبين» وتحسب نسبة استجابةٍ على قاعدةٍ كاذبة، فيطارد المرشدُ
+ * أولياءَ أمورٍ لم يصلهم شيءٌ أصلاً.
+ *
+ * ولذلك أيضاً لا يُقرأ `metadata.student_ids` إلا في نطاق `group` وحده: نطاق
+ * `student` يطابقه الباك بعمود `student_id` لا بالبيانات الملحقة.
+ */
+function resolveTargetedStudents(form: FormSummary | undefined, students: StudentRecord[]): AudienceResolution {
+  if (!form) {
+    return { students: [], unreachable: false }
+  }
+
+  const assignments = form.assignments ?? []
+
+  if (form.target_audience === 'all_students' || assignments.some((item) => item.scope === 'all_students')) {
+    return { students, unreachable: false }
+  }
+
+  /*
+   * الحكم على «بلا مستهدَفين» من شكل الإسنادات لا من نتيجتها: قائمةُ الطلاب قد
+   * تكون لم تصل بعد، فالنتيجة الفارغة حينها ليست دليل فساد.
+   */
+  const hasReachableAssignment = assignments.some((assignment) => {
+    switch (assignment.scope) {
+      case 'grade':
+        return Boolean(assignment.grade)
+      case 'class':
+        // الباك يطابق الصفَّ واسمَ الفصل بشرطين معاً — فأحدهما وحده إسنادٌ ميّت
+        return Boolean(assignment.grade && assignment.class_name)
+      case 'student':
+        return Boolean(assignment.student_id)
+      case 'group':
+        return (assignment.metadata?.student_ids?.length ?? 0) > 0
+      default:
+        return false
+    }
+  })
+
+  if (!hasReachableAssignment) {
+    return { students: [], unreachable: true }
   }
 
   const selected = new Map<number, StudentRecord>()
-  const assignments = form.assignments ?? []
-
-  const includeStudent = (student: StudentRecord | undefined | null) => {
-    if (!student) return
-    selected.set(student.id, student)
-  }
 
   const includeByPredicate = (predicate: (student: StudentRecord) => boolean) => {
     students.forEach((student) => {
@@ -329,16 +517,15 @@ function collectTargetedStudents(form: FormSummary | undefined, students: Studen
     })
   }
 
-  if (!assignments.length) {
-    students.forEach((student) => selected.set(student.id, student))
-    return Array.from(selected.values())
+  const includeById = (id: number) => {
+    const student = students.find((item) => item.id === id)
+    if (student) {
+      selected.set(student.id, student)
+    }
   }
 
   assignments.forEach((assignment) => {
     switch (assignment.scope) {
-      case 'all_students':
-        students.forEach((student) => selected.set(student.id, student))
-        break
       case 'grade':
         if (assignment.grade) {
           includeByPredicate((student) => student.grade === assignment.grade)
@@ -353,59 +540,25 @@ function collectTargetedStudents(form: FormSummary | undefined, students: Studen
         break
       case 'student':
         if (assignment.student_id) {
-          includeStudent(students.find((student) => student.id === assignment.student_id))
-        }
-        if (Array.isArray(assignment.metadata?.student_ids)) {
-          assignment.metadata.student_ids.forEach((id) => {
-            const numericId = Number(id)
-            if (Number.isFinite(numericId)) {
-              includeStudent(students.find((student) => student.id === numericId))
-            }
-          })
+          includeById(assignment.student_id)
         }
         break
-      case 'group':
-        if (Array.isArray(assignment.metadata?.student_ids)) {
-          assignment.metadata.student_ids.forEach((id) => {
-            const numericId = Number(id)
-            if (Number.isFinite(numericId)) {
-              includeStudent(students.find((student) => student.id === numericId))
-            }
-          })
-        }
-        if (Array.isArray(assignment.metadata?.grades)) {
-          assignment.metadata.grades.forEach((grade) => {
-            includeByPredicate((student) => student.grade === grade)
-          })
-        }
-        if (Array.isArray(assignment.metadata?.classes)) {
-          assignment.metadata.classes.forEach((item) => {
-            if (typeof item?.grade === 'string' && typeof item?.class_name === 'string') {
-              includeByPredicate(
-                (student) => student.grade === item.grade && student.class_name === item.class_name,
-              )
-            }
-          })
-        }
+      case 'group': {
+        const groupIds = assignment.metadata?.student_ids ?? []
+        groupIds.forEach((id) => {
+          const numericId = Number(id)
+          if (Number.isFinite(numericId)) {
+            includeById(numericId)
+          }
+        })
         break
+      }
       default:
         break
     }
   })
 
-  return Array.from(selected.values())
-}
-
-function buildFileUrl(path?: string | null): string | null {
-  if (!path) return null
-  if (path.startsWith('http://') || path.startsWith('https://')) {
-    return path
-  }
-
-  const apiBase = import.meta.env.VITE_API_BASE_URL ?? ''
-  const normalizedApi = apiBase.replace(/\/?api\/?$/, '')
-  const storageBase = import.meta.env.VITE_STORAGE_BASE_URL ?? `${normalizedApi}/storage`
-  return `${storageBase.replace(/\/$/, '')}/${path.replace(/^\//, '')}`
+  return { students: Array.from(selected.values()), unreachable: false }
 }
 
 export function AdminFormSubmissionsPage() {
@@ -428,7 +581,7 @@ export function AdminFormSubmissionsPage() {
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<number | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
-  const [aggregate, setAggregate] = useState<AggregateState>({ loading: false, error: null, data: [], lastFetched: 0 })
+  const [aggregate, setAggregate] = useState<AggregateState>({ loading: false, data: [] })
 
   useEffect(() => {
     if (invalidFormId) {
@@ -459,7 +612,7 @@ export function AdminFormSubmissionsPage() {
   const loadAllSubmissions = useCallback(async () => {
     if (!Number.isFinite(formId)) return
 
-    setAggregate((current) => ({ ...current, loading: true, error: null }))
+    setAggregate((current) => ({ ...current, loading: true }))
     try {
       const aggregated: FormSubmission[] = []
       let currentPage = 1
@@ -475,10 +628,10 @@ export function AdminFormSubmissionsPage() {
         currentPage += 1
       } while (currentPage <= lastPage)
 
-      setAggregate({ loading: false, error: null, data: aggregated, lastFetched: Date.now() })
+      setAggregate({ loading: false, data: aggregated })
     } catch (error) {
       console.error(error)
-      setAggregate((current) => ({ ...current, loading: false, error }))
+      setAggregate((current) => ({ ...current, loading: false }))
       const notify = toastRef.current
       notify?.({
         type: 'error',
@@ -492,10 +645,15 @@ export function AdminFormSubmissionsPage() {
     loadAllSubmissions()
   }, [loadAllSubmissions])
 
-  const targetedStudents = useMemo(
-    () => collectTargetedStudents(formQuery.data, studentsQuery.data ?? []),
+  const audience = useMemo(
+    () => resolveTargetedStudents(formQuery.data, studentsQuery.data ?? []),
     [formQuery.data, studentsQuery.data],
   )
+
+  const targetedStudents = audience.students
+
+  /** لا تُعرض نِسَبٌ ولا قوائم قبل وصول الطلاب أو فوق جمهورٍ فاسد — الشرطة أصدق من صفر */
+  const audienceMeasurable = studentsQuery.isSuccess && !audience.unreachable
 
   const respondedStudentIds = useMemo(() => {
     const ids = new Set<number>()
@@ -508,17 +666,21 @@ export function AdminFormSubmissionsPage() {
     return ids
   }, [aggregate.data])
 
-  const respondedStudents = useMemo(() => {
-    return targetedStudents
-      .filter((student) => respondedStudentIds.has(student.id))
-      .sort((a, b) => a.name.localeCompare(b.name, 'ar'))
-  }, [targetedStudents, respondedStudentIds])
+  const respondedStudents = useMemo(
+    () =>
+      targetedStudents
+        .filter((student) => respondedStudentIds.has(student.id))
+        .sort((a, b) => a.name.localeCompare(b.name, 'ar')),
+    [targetedStudents, respondedStudentIds],
+  )
 
-  const pendingStudents = useMemo(() => {
-    return targetedStudents
-      .filter((student) => !respondedStudentIds.has(student.id))
-      .sort((a, b) => a.name.localeCompare(b.name, 'ar'))
-  }, [targetedStudents, respondedStudentIds])
+  const pendingStudents = useMemo(
+    () =>
+      targetedStudents
+        .filter((student) => !respondedStudentIds.has(student.id))
+        .sort((a, b) => a.name.localeCompare(b.name, 'ar')),
+    [targetedStudents, respondedStudentIds],
+  )
 
   const responseRate = useMemo(() => {
     if (!targetedStudents.length) return 0
@@ -560,24 +722,15 @@ export function AdminFormSubmissionsPage() {
   const submissions = submissionsQuery.data?.data ?? []
   const meta = submissionsQuery.data?.meta
 
-  const requiresApproval = Boolean(
-    formQuery.data?.requires_approval ??
-    (formQuery.data?.settings as Record<string, unknown> | undefined)?.requires_approval ??
-      (formQuery.data?.settings as Record<string, unknown> | undefined)?.requiresApproval ??
-      (formQuery.data?.settings as Record<string, unknown> | undefined)?.require_approval ??
-      (formQuery.data?.settings as Record<string, unknown> | undefined)?.requireApproval ??
-      false,
-  )
-
   const reviewMutation = useReviewAdminSubmissionMutation(formId)
+  const deleteMutation = useDeleteAdminSubmissionMutation(formId)
 
   const handleStatusFilterChange = (nextStatus: StatusFilter) => {
     setStatusFilter(nextStatus)
     setPage(1)
   }
 
-  const handleGuardianFilterSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const applyGuardianFilter = () => {
     const trimmed = guardianPhoneInput.trim()
     setGuardianPhoneFilter(trimmed.length ? trimmed : undefined)
     setPage(1)
@@ -631,7 +784,7 @@ export function AdminFormSubmissionsPage() {
         refetchSubmissions()
         loadAllSubmissions()
       } catch {
-        // toast already handled inside mutation hook
+        // الإشعار يُطلقه الـhook — ولا يُكرَّر هنا
       }
     },
     [loadAllSubmissions, refetchSelectedSubmission, refetchSubmissions, reviewMutation],
@@ -645,7 +798,6 @@ export function AdminFormSubmissionsPage() {
       try {
         setExporting(true)
 
-  const perPage = MAX_FETCH_PAGE_SIZE
         const aggregated: FormSubmission[] = []
         let currentPage = 1
         let lastPage = 1
@@ -653,7 +805,7 @@ export function AdminFormSubmissionsPage() {
         do {
           const { data, meta: pagination } = await fetchAdminFormSubmissions(formId, {
             page: currentPage,
-            per_page: perPage,
+            per_page: MAX_FETCH_PAGE_SIZE,
             status: options.filtered && statusFilter !== 'all' ? statusFilter : undefined,
             guardian_phone: options.filtered ? guardianPhoneFilter : undefined,
           })
@@ -699,12 +851,10 @@ export function AdminFormSubmissionsPage() {
     [fieldDefinitions, formQuery.data, toast],
   )
 
-  const deleteMutation = useDeleteAdminSubmissionMutation(formId)
-
   const handleDeleteSubmission = useCallback(
     async (submissionId: number) => {
       const confirmed = window.confirm(
-        '⚠️ تحذير!\n\nهل أنت متأكد من حذف هذا الرد؟\n\nسيتم حذف الرد وجميع البيانات المرتبطة به بشكل نهائي.\n\nلا يمكن التراجع عن هذا الإجراء.'
+        'حذف هذا الرد نهائياً؟\n\nسيُحذف الرد وإجاباته ومرفقاته، ولا يمكن التراجع.',
       )
       if (!confirmed) return
 
@@ -714,7 +864,7 @@ export function AdminFormSubmissionsPage() {
         setSelectedSubmissionId(null)
         loadAllSubmissions()
       } catch {
-        // toast handled in hook
+        // الإشعار يُطلقه الـhook
       }
     },
     [deleteMutation, loadAllSubmissions],
@@ -726,379 +876,325 @@ export function AdminFormSubmissionsPage() {
 
   if (formQuery.isLoading) {
     return (
-      <section className="space-y-4">
-        <div className="h-20 animate-pulse rounded-3xl bg-slate-100" />
-        <div className="h-32 animate-pulse rounded-3xl bg-slate-100" />
-        <div className="h-96 animate-pulse rounded-3xl bg-slate-100" />
+      <section className="ws-panel" dir="rtl">
+        <div className="ws-panel__body">
+          <WsEmpty loading>جارٍ تحميل النموذج...</WsEmpty>
+        </div>
       </section>
     )
   }
 
   if (formQuery.isError || !formQuery.data) {
     return (
-      <section className="space-y-4 text-center">
-        <p className="text-lg font-semibold text-rose-600">تعذر تحميل بيانات النموذج.</p>
-        <Link
-          to="/admin/forms"
-          className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-400 hover:text-slate-700"
-        >
-          العودة إلى قائمة النماذج
-        </Link>
+      <section className="ws-panel" dir="rtl">
+        <div className="ws-panel__body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <WsAlert tone="error" boxed>
+            تعذر تحميل بيانات النموذج.
+          </WsAlert>
+          <Link to="/admin/forms" className="ws-btn" style={{ alignSelf: 'flex-start' }}>
+            <ArrowRight />
+            العودة إلى قائمة النماذج
+          </Link>
+        </div>
       </section>
     )
   }
 
   const form = formQuery.data
-
+  const requiresApproval = form.requires_approval
   const pendingMessageTargetIds = pendingStudents.slice(0, 200).map((student) => student.id).join(',')
+  const totalCount = meta?.total ?? submissions.length
+  const lastPage = meta?.last_page ?? 1
 
   return (
-    <section className="space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900">ردود نموذج: {form.title}</h1>
-          <p className="text-sm text-muted">
-            تتبع الردود، اعتمد الطلبات، وصدّر النتائج كملف Excel مع إحصائيات تفصيلية حسب الصف.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-          <Link
-            to={`/admin/forms/${form.id}`}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
-          >
-            <i className="bi bi-pencil-square" /> إعدادات النموذج
-          </Link>
-          <button
-            type="button"
-            onClick={() => handleExportExcel({ filtered: true })}
-            className="inline-flex items-center gap-2 rounded-full border border-emerald-300 bg-emerald-50 px-4 py-2 text-emerald-700 transition hover:border-emerald-400 hover:text-emerald-800"
-            disabled={exporting}
-          >
-            {exporting ? (
-              <span className="flex items-center gap-2">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                جاري التصدير...
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                <i className="bi bi-file-earmark-spreadsheet" />
-                تصدير (حسب الفلتر)
-              </span>
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => handleExportExcel({ filtered: false })}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-slate-600 transition hover:border-slate-300"
-            disabled={exporting}
-          >
-            <i className="bi bi-download" /> تصدير كل الردود
-          </button>
-          <button
-            type="button"
-            onClick={loadAllSubmissions}
-            className="inline-flex items-center gap-2 rounded-full border border-sky-300 bg-sky-50 px-4 py-2 text-sky-700 transition hover:border-sky-400 hover:text-sky-800"
-            disabled={aggregate.loading}
-          >
-            {aggregate.loading ? (
-              <span className="flex items-center gap-2">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                تحديث الإحصائيات
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                <i className="bi bi-arrow-repeat" /> تحديث الإحصائيات
-              </span>
-            )}
-          </button>
-        </div>
-      </header>
-
-      <section className="grid gap-4 xl:grid-cols-4">
-        <StatsCard title="إجمالي المستهدفين" value={targetedStudents.length} tone="slate" subtitle="عدد الطلاب المطلوب منهم الرد" />
-        <StatsCard
-          title="الردود المستلمة"
-          value={respondedStudents.length}
-          tone="emerald"
-          subtitle={`تمثل ${responseRate.toLocaleString('ar-SA-u-nu-latn')}٪ من المستهدفين`}
-        />
-        <StatsCard
-          title="ردود قيد المتابعة"
-          value={pendingStudents.length}
-          tone="amber"
-          subtitle="طلاب لم يكملوا النموذج بعد"
-        />
-        <StatsCard
-          title="إجمالي الردود"
-          value={aggregate.data.length}
-          tone="sky"
-          subtitle="بصرف النظر عن الحالة الحالية"
-        />
-      </section>
-
-      <section className="glass-card space-y-4">
-        <header className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-semibold text-slate-900">إحصائيات حسب الحالة</h2>
-            <p className="text-xs text-muted">راقب تقدّم الاعتماد والتدقيق بسهولة.</p>
-          </div>
-        </header>
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-          {STATUS_ORDER.map((status) => {
-            const total = statusSummary.get(status) ?? 0
-            const percent = aggregate.data.length ? Math.round((total / aggregate.data.length) * 100) : 0
-            return (
-              <div key={status} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold text-slate-500">{FORM_SUBMISSION_STATUS_LABELS[status]}</p>
-                  <span className={clsx('rounded-full px-2 py-0.5 text-[11px] font-semibold', createStatusTone(status))}>
-                    {percent.toLocaleString('ar-SA-u-nu-latn')}٪
-                  </span>
-                </div>
-                <p className="mt-3 text-2xl font-bold text-slate-900">{total.toLocaleString('ar-SA-u-nu-latn')}</p>
-              </div>
-            )
-          })}
-        </div>
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-slate-700">حسب الصف</h3>
-          <div className="space-y-2">
-            {gradeSummary.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-xs text-muted">
-                لا تتوفر بيانات للصفوف حتى الآن.
-              </div>
-            ) : (
-              gradeSummary.map((entry) => (
-                <div key={entry.grade} className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                  <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-3">
-                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-100 font-semibold text-indigo-700">
-                        {entry.grade}
-                      </span>
-                      <div>
-                        <p className="text-sm font-semibold text-slate-800">{entry.responded.toLocaleString('ar-SA-u-nu-latn')} رد</p>
-                        <p className="text-[11px] text-muted">
-                          من أصل {entry.total.toLocaleString('ar-SA-u-nu-latn')} طالب | نسبة الاستجابة {entry.rate.toLocaleString('ar-SA-u-nu-latn')}٪
-                        </p>
-                      </div>
-                    </div>
-                    <div className="h-2 w-full rounded-full bg-slate-100 md:w-48">
-                      <div
-                        className="h-2 rounded-full bg-indigo-500"
-                        style={{ width: `${Math.min(entry.rate, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </section>
-
-      <section className="grid gap-4 lg:grid-cols-2">
-        <ResponseList
-          title="المستجيبون"
-          description="الطلاب الذين أكملوا النموذج"
-          emptyMessage="لم يصل أي رد حتى الآن."
-          students={respondedStudents}
-          tone="emerald"
-        />
-        <div className="space-y-3">
-          <ResponseList
-            title="غير المستجيبين"
-            description="يمكنك إرسال تذكير لهم عبر واتساب"
-            emptyMessage="جميع الطلاب أكملوا النموذج."
-            students={pendingStudents}
-            tone="rose"
-          />
-          {pendingStudents.length > 0 ? (
-            <Link
-              to={pendingMessageTargetIds ? `/admin/whatsapp/send?source=form&studentIds=${pendingMessageTargetIds}` : '/admin/whatsapp/send'}
-              className="flex items-center justify-center gap-2 rounded-3xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 transition hover:border-emerald-400 hover:text-emerald-800"
-            >
-              <i className="bi bi-whatsapp" />
-              إرسال تذكير للطلاب غير المستجيبين ({pendingStudents.length.toLocaleString('ar-SA-u-nu-latn')})
+    /*
+     * لوحٌ في التدفّق الطبيعي لا مساحةَ عملٍ ملتصقة: مسار
+     * `/admin/forms/:formId/submissions` ليس مسجَّلاً في WORKSPACE_ROUTES بـ
+     * admin-shell.tsx، فيسقط داخل حاويةٍ بحشوةٍ وبتمريرٍ خارجي وبلا ارتفاعٍ
+     * محدَّد — و`flex:1` مع `overflow:hidden` هناك يقصّ الصفحة بلا مَخرج. فنُبقي
+     * كلاس `ws-page` (لتَرِث الصفحةُ مفرداته وأشرطةَ تمريره) ونعطّل تمدّده
+     * بـ`flex:none`. يوم يُسجَّل المسار: تُحذف هذه الأنماط ويُستبدل الوسم بـ
+     * `WsPage`، ويُعطى بلوكُ الجدول `fill` و`scroll` ليتمرّر داخلياً.
+     */
+    <section
+      dir="rtl"
+      className="ws-page"
+      style={{
+        flex: 'none',
+        border: '1px solid var(--ws-border)',
+        borderRadius: 10,
+        overflow: 'hidden',
+        background: 'var(--ws-surface)',
+      }}
+    >
+      <WsHeader
+        title={`ردود: ${form.title}`}
+        actions={
+          <>
+            <Link to="/admin/forms" className="ws-btn">
+              <ArrowRight />
+              النماذج
             </Link>
-          ) : null}
-        </div>
-      </section>
-
-      <section className="glass-card space-y-4">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-xl font-semibold text-slate-900">قائمة الردود</h2>
-            <p className="text-xs text-muted">استخدم الفلاتر للبحث عن ردود محددة أو مراجعة حالة كل ولي أمر.</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            {(['all', 'submitted', 'reviewed', 'approved', 'rejected', 'draft'] as StatusFilter[]).map((status) => {
-              const active = statusFilter === status
-              return (
-                <button
-                  key={status}
-                  type="button"
-                  onClick={() => handleStatusFilterChange(status)}
-                  className={clsx(
-                    'rounded-full border px-4 py-2 transition',
-                    active
-                      ? 'border-indigo-400 bg-indigo-50 text-indigo-600'
-                      : 'border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-600',
-                  )}
-                >
-                  {status === 'all' ? 'الكل' : FORM_SUBMISSION_STATUS_LABELS[status]}
-                </button>
-              )
-            })}
-          </div>
-        </header>
-
-        <form onSubmit={handleGuardianFilterSubmit} className="flex flex-wrap items-center gap-3">
-          <label className="text-xs font-semibold text-slate-500" htmlFor="guardian-phone-filter">
-            رقم ولي الأمر
-          </label>
-          <input
-            id="guardian-phone-filter"
-            type="tel"
-            value={guardianPhoneInput}
-            onChange={(event) => setGuardianPhoneInput(event.target.value)}
-            placeholder="ابحث برقم الجوال"
-            className="w-full max-w-xs rounded-full border border-slate-200 px-4 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-          />
-          <button
-            type="submit"
-            className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
-          >
-            تطبيق الفلتر
-          </button>
-          {guardianPhoneFilter ? (
-            <button
-              type="button"
-              onClick={handleClearGuardianFilter}
-              className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-rose-500 transition hover:border-rose-300 hover:text-rose-600"
+            <Link to={`/admin/forms/${form.id}`} className="ws-btn">
+              <Settings2 />
+              إعداد النموذج
+            </Link>
+            <WsBtn
+              icon={RefreshCw}
+              onClick={loadAllSubmissions}
+              disabled={aggregate.loading}
+              title="إعادة حساب الإحصائيات من كل الردود"
             >
-              إعادة التعيين
-            </button>
-          ) : null}
-        </form>
+              {aggregate.loading ? 'جارٍ التحديث...' : 'تحديث الإحصائيات'}
+            </WsBtn>
+            <WsBtn icon={FileSpreadsheet} onClick={() => handleExportExcel({ filtered: true })} disabled={exporting}>
+              {exporting ? 'جارٍ التصدير...' : 'تصدير المعروض'}
+            </WsBtn>
+            <WsBtn icon={Download} onClick={() => handleExportExcel({ filtered: false })} disabled={exporting}>
+              تصدير الكل
+            </WsBtn>
+          </>
+        }
+        facts={
+          <>
+            <WsFact icon={Users} label="المستهدفون:">
+              {audienceMeasurable ? nf(targetedStudents.length) : '—'}
+            </WsFact>
+            <WsFact icon={UserCheck} label="استجابوا:">
+              {audienceMeasurable ? nf(respondedStudents.length) : '—'}
+            </WsFact>
+            <WsFact icon={UserX} label="لم يستجيبوا:">
+              {audienceMeasurable ? nf(pendingStudents.length) : '—'}
+            </WsFact>
+            <WsFact icon={Percent} label="نسبة الاستجابة:">
+              {audienceMeasurable ? `${nf(responseRate)}٪` : '—'}
+            </WsFact>
+            <WsFact icon={Inbox} label="إجمالي الردود:">
+              {aggregate.loading ? <WsSpinner /> : nf(aggregate.data.length)}
+            </WsFact>
+          </>
+        }
+      >
+        <WsChip tone={FORM_STATUS_TONE[form.status]}>{FORM_STATUS_LABELS[form.status]}</WsChip>
+        {requiresApproval ? <WsChip tone="sky">يتطلب اعتماداً</WsChip> : null}
+      </WsHeader>
 
-        {submissionsQuery.isLoading ? (
-          <div className="space-y-2">
-            {[...Array(6)].map((_, index) => (
-              <div key={index} className="h-16 animate-pulse rounded-2xl bg-slate-100" />
+      {audience.unreachable ? (
+        <WsAlert tone="warn">
+          هذا النموذج لا يبلغ أحداً: جمهوره ليس «جميع الطلاب» ولا يحمل إسناداً واحداً صالحاً، فلا يظهر لأيّ وليّ
+          أمر. لذلك لا تُعرض هنا نسبةُ استجابةٍ ولا قائمةُ متبقّين — لا قاعدة تُقاس عليها حتى يُسنَد من{' '}
+          <Link to={`/admin/forms/${form.id}`} style={{ fontWeight: 700, textDecoration: 'underline' }}>
+            صفحة إعداد النموذج
+          </Link>
+          .
+        </WsAlert>
+      ) : null}
+
+      <WsToolbar>
+        <WsField label="حالة الرد">
+          <div className="ws-seg">
+            {STATUS_FILTERS.map((status) => (
+              <button
+                key={status}
+                type="button"
+                className={cx('ws-seg__btn', statusFilter === status && 'is-active')}
+                onClick={() => handleStatusFilterChange(status)}
+              >
+                {status === 'all' ? 'الكل' : FORM_SUBMISSION_STATUS_LABELS[status]}
+                <span className="ws-count">
+                  {nf(status === 'all' ? aggregate.data.length : statusSummary.get(status) ?? 0)}
+                </span>
+              </button>
             ))}
           </div>
-        ) : submissions.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/70 p-8 text-center text-sm text-muted">
-            لا توجد ردود مطابقة للفلتر الحالي.
+        </WsField>
+
+        <WsField label="رقم ولي الأمر" htmlFor="ws-fs-phone" grow>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <WsInput
+              id="ws-fs-phone"
+              type="tel"
+              inputMode="numeric"
+              value={guardianPhoneInput}
+              onChange={(event) => setGuardianPhoneInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  applyGuardianFilter()
+                }
+              }}
+              placeholder="ابحث برقم الجوال"
+              style={{ maxWidth: 220 }}
+            />
+            <WsBtn icon={Search} onClick={applyGuardianFilter}>
+              بحث
+            </WsBtn>
+            {guardianPhoneFilter ? (
+              <WsIconBtn icon={X} label="إلغاء فلتر الجوال" onClick={handleClearGuardianFilter} />
+            ) : null}
           </div>
+        </WsField>
+      </WsToolbar>
+
+      <WsBlock
+        title="قائمة الردود"
+        icon={FileText}
+        count={nf(totalCount)}
+        tools={
+          <>
+            <span style={{ fontSize: 11, color: 'var(--ws-text-2)' }}>
+              صفحة {nf(meta?.current_page ?? page)} من {nf(lastPage)}
+            </span>
+            <WsIconBtn
+              icon={ChevronRight}
+              label="الصفحة السابقة"
+              onClick={() => handlePageChange('prev')}
+              disabled={page <= 1}
+            />
+            <WsIconBtn
+              icon={ChevronLeft}
+              label="الصفحة التالية"
+              onClick={() => handlePageChange('next')}
+              disabled={page >= lastPage}
+            />
+          </>
+        }
+      >
+        {submissionsQuery.isLoading ? (
+          <WsEmpty loading>جارٍ تحميل الردود...</WsEmpty>
+        ) : submissions.length === 0 ? (
+          <WsEmpty icon={Inbox}>لا توجد ردود مطابقة للفلتر الحالي.</WsEmpty>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50 text-xs text-slate-500">
-                <tr>
-                  <th scope="col" className="px-4 py-3 text-right font-semibold">
-                    الطالب
-                  </th>
-                  <th scope="col" className="px-4 py-3 text-right font-semibold">
-                    ولي الأمر
-                  </th>
-                  <th scope="col" className="px-4 py-3 text-right font-semibold">
-                    الحالة
-                  </th>
-                  <th scope="col" className="px-4 py-3 text-right font-semibold">
-                    تاريخ الإرسال
-                  </th>
-                  <th scope="col" className="px-4 py-3 text-right font-semibold">
-                    خيارات
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
-                {submissions.map((submission) => {
-                  const student = submission.student
-                  const guardianName = submission.guardian_name ?? student?.parent_name ?? '—'
-                  const guardianPhone = submission.guardian_phone ?? student?.parent_phone ?? '—'
-                  return (
-                    <tr key={submission.id} className="transition hover:bg-slate-50">
-                      <td className="px-4 py-3">
-                        <div className="space-y-1">
-                          <p className="font-semibold text-slate-900">{student?.name ?? '—'}</p>
-                          <p className="text-xs text-muted">
-                            {student?.grade ?? '—'} | {student?.class_name ?? '—'}
-                          </p>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="space-y-1">
-                          <p className="font-semibold text-slate-800">{guardianName}</p>
-                          <p className="text-xs text-muted">{guardianPhone}</p>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={clsx('inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold', createStatusTone(submission.status))}>
-                          <span className="h-2 w-2 rounded-full bg-current" />
-                          {FORM_SUBMISSION_STATUS_LABELS[submission.status]}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-muted">{formatDateTime(submission.submitted_at)}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap items-center gap-2 text-xs">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenDetail(submission.id)}
-                            className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
-                          >
-                            <i className="bi bi-eye" /> عرض
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handlePrintSubmission(submission)}
-                            className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600 transition hover:border-slate-300"
-                          >
-                            <i className="bi bi-printer" /> طباعة
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+          <WsTable>
+            <thead>
+              <tr>
+                <th scope="col">الطالب</th>
+                <th scope="col">ولي الأمر</th>
+                <th scope="col">الحالة</th>
+                <th scope="col">تاريخ الإرسال</th>
+                <th scope="col" style={{ width: 92 }}>
+                  خيارات
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {submissions.map((submission) => {
+                const student = submission.student
+                const guardianName = submission.guardian_name ?? student?.parent_name ?? '—'
+                const guardianPhone = submission.guardian_phone ?? student?.parent_phone ?? '—'
+                return (
+                  <tr
+                    key={submission.id}
+                    className={cx('is-clickable', selectedSubmissionId === submission.id && 'is-selected')}
+                    onClick={() => handleOpenDetail(submission.id)}
+                  >
+                    <td>
+                      {student?.name ?? '—'}
+                      <span className="ws-cell-sub">
+                        {student?.grade ?? '—'} · {student?.class_name ?? '—'}
+                      </span>
+                    </td>
+                    <td>
+                      {guardianName}
+                      <span className="ws-cell-sub">{guardianPhone}</span>
+                    </td>
+                    <td>
+                      <WsChip tone={SUBMISSION_STATUS_TONE[submission.status]}>
+                        {FORM_SUBMISSION_STATUS_LABELS[submission.status]}
+                      </WsChip>
+                    </td>
+                    <td>{formatDateTime(submission.submitted_at)}</td>
+                    <td onClick={(event) => event.stopPropagation()}>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <WsIconBtn icon={Eye} label="عرض الرد" onClick={() => handleOpenDetail(submission.id)} />
+                        <WsIconBtn
+                          icon={Printer}
+                          label="طباعة الرد"
+                          onClick={() => handlePrintSubmission(submission)}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </WsTable>
+        )}
+      </WsBlock>
+
+      <WsBlock title="الاستجابة حسب الصف" icon={GraduationCap} count={nf(gradeSummary.length)}>
+        {!audienceMeasurable ? (
+          <WsEmpty icon={GraduationCap}>
+            {audience.unreachable ? 'لا مستهدَفين لهذا النموذج.' : 'جارٍ تحديد المستهدفين...'}
+          </WsEmpty>
+        ) : gradeSummary.length === 0 ? (
+          <WsEmpty icon={GraduationCap}>لا صفوف ضمن المستهدفين.</WsEmpty>
+        ) : (
+          <div className="ws-rows">
+            {gradeSummary.map((entry) => (
+              <div className="ws-row" key={entry.grade}>
+                <span className="ws-row__name">{entry.grade}</span>
+                <WsProgress
+                  value={entry.rate}
+                  label={`${nf(entry.responded)} / ${nf(entry.total)} · ${nf(entry.rate)}٪`}
+                  style={{ maxWidth: 340, width: '100%' }}
+                />
+              </div>
+            ))}
           </div>
         )}
+      </WsBlock>
 
-        <footer className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
-          <p>
-            صفحة {meta?.current_page ?? 1} من {meta?.last_page ?? 1} | إجمالي {meta?.total?.toLocaleString('ar-SA-u-nu-latn') ?? submissions.length.toLocaleString('ar-SA-u-nu-latn')} رد
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => handlePageChange('prev')}
-              className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600 transition hover:border-slate-300"
-              disabled={!meta || page <= 1}
+      <WsBlock
+        title="متابعة الطلاب"
+        icon={Users}
+        tools={
+          audienceMeasurable && pendingStudents.length > 0 ? (
+            <Link
+              to={
+                pendingMessageTargetIds
+                  ? `/admin/whatsapp/send?source=form&studentIds=${pendingMessageTargetIds}`
+                  : '/admin/whatsapp/send'
+              }
+              className="ws-btn ws-btn--sm"
             >
-              <i className="bi bi-arrow-right" /> السابق
-            </button>
-            <button
-              type="button"
-              onClick={() => handlePageChange('next')}
-              className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600 transition hover:border-slate-300"
-              disabled={!meta || !meta.last_page || page >= meta.last_page}
-            >
-              التالي <i className="bi bi-arrow-left" />
-            </button>
+              <MessageCircle />
+              تذكير غير المستجيبين ({nf(pendingStudents.length)})
+            </Link>
+          ) : null
+        }
+      >
+        {!audienceMeasurable ? (
+          <WsEmpty icon={Users}>
+            {audience.unreachable
+              ? 'لا مستهدَفين — أسنِد النموذج أولاً لتظهر متابعة الطلاب.'
+              : 'جارٍ تحميل الطلاب...'}
+          </WsEmpty>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
+            <StudentColumn
+              title="استجابوا"
+              icon={UserCheck}
+              students={respondedStudents}
+              emptyMessage="لم يصل أي رد حتى الآن."
+            />
+            <StudentColumn
+              title="لم يستجيبوا"
+              icon={UserX}
+              students={pendingStudents}
+              emptyMessage="جميع المستهدفين أكملوا النموذج."
+            />
           </div>
-        </footer>
-      </section>
+        )}
+      </WsBlock>
 
       {detailOpen ? (
-        <SubmissionDetailDrawer
-          open={detailOpen}
+        <SubmissionDetail
           onClose={handleCloseDetail}
           submission={detailQuery.data ?? submissions.find((item) => item.id === selectedSubmissionId) ?? null}
           loading={detailQuery.isLoading}
           requiresApproval={requiresApproval}
+          reviewing={reviewMutation.isPending}
           onReview={handleReviewAction}
           onPrint={handlePrintSubmission}
           onDelete={handleDeleteSubmission}
@@ -1109,82 +1205,37 @@ export function AdminFormSubmissionsPage() {
   )
 }
 
-function StatsCard({
+function StudentColumn({
   title,
-  value,
-  subtitle,
-  tone,
-}: {
-  title: string
-  value: number
-  subtitle?: string
-  tone: 'slate' | 'emerald' | 'amber' | 'sky'
-}) {
-  const toneClasses: Record<typeof tone, string> = {
-    slate: 'from-slate-500 to-slate-600',
-    emerald: 'from-emerald-500 to-emerald-600',
-    amber: 'from-amber-500 to-amber-600',
-    sky: 'from-sky-500 to-sky-600',
-  }
-
-  return (
-    <article className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs font-semibold text-slate-500">{title}</p>
-          <p className="mt-3 text-3xl font-bold text-slate-900">{value.toLocaleString('ar-SA-u-nu-latn')}</p>
-          {subtitle ? <p className="mt-1 text-[11px] text-muted">{subtitle}</p> : null}
-        </div>
-        <div className={clsx('flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br text-white', toneClasses[tone])}>
-          <i className="bi bi-graph-up" />
-        </div>
-      </div>
-    </article>
-  )
-}
-
-function ResponseList({
-  title,
-  description,
-  emptyMessage,
+  icon: Icon,
   students,
-  tone,
+  emptyMessage,
 }: {
   title: string
-  description: string
-  emptyMessage: string
+  icon: LucideIcon
   students: StudentRecord[]
-  tone: 'emerald' | 'rose'
+  emptyMessage: string
 }) {
-  const accent = tone === 'emerald' ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : 'text-rose-600 bg-rose-50 border-rose-200'
-
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-      <header className="mb-4 flex items-center justify-between gap-3">
-        <div>
-          <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-          <p className="text-xs text-muted">{description}</p>
-        </div>
-        <span className={clsx('inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold', accent)}>
-          <span className="h-2 w-2 rounded-full bg-current" />
-          {students.length.toLocaleString('ar-SA-u-nu-latn')}
+    <div>
+      <div className="ws-block__head">
+        <span className="ws-block__title">
+          <Icon />
+          {title}
+          <span className="ws-count">{nf(students.length)}</span>
         </span>
-      </header>
+      </div>
       {students.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-xs text-muted">
-          {emptyMessage}
-        </div>
+        <WsEmpty icon={Icon}>{emptyMessage}</WsEmpty>
       ) : (
-        <div className="max-h-64 space-y-2 overflow-y-auto">
+        <div className="ws-rows" style={{ maxHeight: 264, overflowY: 'auto' }}>
           {students.map((student) => (
-            <div key={student.id} className="rounded-2xl border border-slate-200 px-4 py-3">
-              <p className="text-sm font-semibold text-slate-800">{student.name}</p>
-              <p className="text-[11px] text-muted">
-                {student.grade} | {student.class_name}
-              </p>
-              {student.parent_phone ? (
-                <p className="text-[11px] text-muted">جوال ولي الأمر: {student.parent_phone}</p>
-              ) : null}
+            <div className="ws-row" key={student.id}>
+              <span className="ws-row__name">{student.name}</span>
+              <span style={{ flexShrink: 0, fontSize: 11, color: 'var(--ws-text-2)' }}>
+                {student.grade} · {student.class_name}
+                {student.parent_phone ? ` · ${student.parent_phone}` : ''}
+              </span>
             </div>
           ))}
         </div>
@@ -1193,180 +1244,355 @@ function ResponseList({
   )
 }
 
-function SubmissionDetailDrawer({
-  open,
+function SubmissionDetail({
   onClose,
   submission,
   loading,
   requiresApproval,
+  reviewing,
   onReview,
   onPrint,
   onDelete,
   fieldMap,
 }: {
-  open: boolean
   onClose: () => void
   submission: FormSubmission | null
   loading: boolean
   requiresApproval: boolean
+  reviewing: boolean
   onReview: (submissionId: number, status: (typeof REVIEWABLE_STATUSES)[number]) => void
   onPrint: (submission: FormSubmission) => void
   onDelete: (submissionId: number) => void
   fieldMap: Map<number, FormFieldWithSection>
 }) {
-  if (!open) return null
+  const [zoomed, setZoomed] = useState<FormSubmissionFile | null>(null)
+
+  /** المرفقات مبوّبةٌ بحقلها كي تُعرض تحت سؤالها لا في كومةٍ في آخر الدرج */
+  const filesByField = useMemo(() => {
+    const map = new Map<number, FormSubmissionFile[]>()
+    ;(submission?.files ?? []).forEach((file) => {
+      const bucket = map.get(file.field_id)
+      if (bucket) {
+        bucket.push(file)
+      } else {
+        map.set(file.field_id, [file])
+      }
+    })
+    return map
+  }, [submission])
+
+  const answers = submission?.answers ?? []
+
+  /*
+   * مرفقاتٌ لا سؤال لها في النموذج الحالي (حُذف الحقل بعد الإرسال مثلاً): تُعرض
+   * وحدها بدل أن تختفي — والملفّ محفوظٌ على القرص فإخفاؤه كذبٌ على الأدمن.
+   */
+  const claimedFieldIds = new Set(
+    answers
+      .map((answer) => fieldMap.get(answer.field_id))
+      .filter((field): field is FormFieldWithSection => Boolean(field && isAttachmentFieldType(field.type)))
+      .map((field) => field.id),
+  )
+  const orphanFiles = (submission?.files ?? []).filter((file) => !claimedFieldIds.has(file.field_id))
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-end bg-slate-900/40 p-4" onClick={onClose}>
-      <div
-        className="h-full w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-6 shadow-xl"
-        onClick={(event) => event.stopPropagation()}
-      >
-        {loading ? (
-          <div className="space-y-3">
-            <div className="h-6 w-48 animate-pulse rounded-full bg-slate-200" />
-            <div className="h-4 w-64 animate-pulse rounded-full bg-slate-100" />
-            <div className="h-96 animate-pulse rounded-3xl bg-slate-100" />
-          </div>
-        ) : submission ? (
-          <>
-            <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 className="text-2xl font-semibold text-slate-900">تفاصيل رد ولي الأمر</h3>
-                <p className="text-xs text-muted">أُرسل بتاريخ {formatDateTime(submission.submitted_at)}</p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-                <span className={clsx('inline-flex items-center gap-2 rounded-full px-3 py-1', createStatusTone(submission.status))}>
-                  <span className="h-2 w-2 rounded-full bg-current" />
-                  {FORM_SUBMISSION_STATUS_LABELS[submission.status]}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => onPrint(submission)}
-                  className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 text-slate-600 transition hover:border-slate-300"
-                >
-                  <i className="bi bi-printer" /> طباعة
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onDelete(submission.id)}
-                  className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-rose-600 transition hover:border-rose-300 hover:bg-rose-100"
-                >
-                  <i className="bi bi-trash" /> حذف
-                </button>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 text-slate-600 transition hover:border-slate-300"
-                >
-                  إغلاق
-                </button>
-              </div>
-            </header>
-
-            <section className="grid gap-3 sm:grid-cols-2">
-              <InfoCard label="اسم الطالب" value={submission.student?.name ?? '—'} />
-              <InfoCard label="الصف" value={submission.student?.grade ?? '—'} />
-              <InfoCard label="الفصل" value={submission.student?.class_name ?? '—'} />
-              <InfoCard label="رقم هوية الطالب" value={submission.student?.national_id ?? '—'} />
-              <InfoCard label="اسم ولي الأمر" value={submission.guardian_name ?? submission.student?.parent_name ?? '—'} />
-              <InfoCard label="هاتف ولي الأمر" value={submission.guardian_phone ?? submission.student?.parent_phone ?? '—'} />
-            </section>
-
-            {requiresApproval ? (
-              <section className="mt-5 space-y-3 rounded-3xl border border-indigo-100 bg-indigo-50/60 p-4">
-                <h4 className="text-sm font-semibold text-indigo-700">إجراءات الاعتماد</h4>
-                <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-                  <button
-                    type="button"
+    <>
+      <WsModal
+        open
+        onClose={onClose}
+        maxWidth={880}
+        title="تفاصيل رد ولي الأمر"
+        sub={submission ? `أُرسل بتاريخ ${formatDateTime(submission.submitted_at)}` : undefined}
+        footer={
+          submission ? (
+            <>
+              {requiresApproval ? (
+                <>
+                  <WsBtn
+                    variant="primary"
+                    icon={CheckCheck}
+                    disabled={reviewing}
                     onClick={() => onReview(submission.id, 'approved')}
-                    className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-emerald-700 transition hover:border-emerald-400 hover:text-emerald-800"
                   >
-                    <i className="bi bi-check-circle" /> اعتماد الرد
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onReview(submission.id, 'reviewed')}
-                    className="inline-flex items-center gap-1 rounded-full border border-sky-300 bg-sky-50 px-3 py-1 text-sky-700 transition hover:border-sky-400 hover:text-sky-800"
-                  >
-                    <i className="bi bi-hourglass-split" /> قيد المراجعة
-                  </button>
-                  <button
-                    type="button"
+                    اعتماد
+                  </WsBtn>
+                  <WsBtn icon={Clock3} disabled={reviewing} onClick={() => onReview(submission.id, 'reviewed')}>
+                    قيد المراجعة
+                  </WsBtn>
+                  <WsBtn
+                    variant="danger"
+                    icon={XCircle}
+                    disabled={reviewing}
                     onClick={() => onReview(submission.id, 'rejected')}
-                    className="inline-flex items-center gap-1 rounded-full border border-rose-300 bg-rose-50 px-3 py-1 text-rose-700 transition hover:border-rose-400 hover:text-rose-800"
                   >
-                    <i className="bi bi-x-circle" /> رفض الرد
-                  </button>
-                </div>
-                {submission.review_notes ? (
-                  <div className="rounded-2xl border border-slate-200 bg-white p-3 text-xs text-slate-600">
-                    <p className="font-semibold text-slate-700">ملاحظات سابقة:</p>
-                    <p className="mt-1 whitespace-pre-line">{submission.review_notes}</p>
-                  </div>
-                ) : null}
-              </section>
+                    رفض
+                  </WsBtn>
+                </>
+              ) : null}
+              <WsBtn icon={Printer} onClick={() => onPrint(submission)}>
+                طباعة
+              </WsBtn>
+              <WsBtn icon={Trash2} onClick={() => onDelete(submission.id)}>
+                حذف
+              </WsBtn>
+              <WsBtn onClick={onClose}>إغلاق</WsBtn>
+            </>
+          ) : (
+            <WsBtn onClick={onClose}>إغلاق</WsBtn>
+          )
+        }
+      >
+        {loading && !submission ? (
+          <WsEmpty loading>جارٍ تحميل الرد...</WsEmpty>
+        ) : !submission ? (
+          <WsAlert tone="error" boxed>
+            تعذر تحميل بيانات الرد.
+          </WsAlert>
+        ) : (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <WsChip tone={SUBMISSION_STATUS_TONE[submission.status]}>
+                {FORM_SUBMISSION_STATUS_LABELS[submission.status]}
+              </WsChip>
+              {submission.reviewed_at ? (
+                <span style={{ fontSize: 11, color: 'var(--ws-text-2)' }}>
+                  رُوجع في {formatDateTime(submission.reviewed_at)}
+                </span>
+              ) : null}
+            </div>
+
+            <WsFactsList>
+              <WsFactRow label="اسم الطالب">{submission.student?.name ?? '—'}</WsFactRow>
+              <WsFactRow label="الصف والفصل">
+                {submission.student?.grade ?? '—'} · {submission.student?.class_name ?? '—'}
+              </WsFactRow>
+              <WsFactRow label="رقم هوية الطالب">{submission.student?.national_id ?? '—'}</WsFactRow>
+              <WsFactRow label="ولي الأمر">
+                {submission.guardian_name ?? submission.student?.parent_name ?? '—'}
+              </WsFactRow>
+              <WsFactRow label="هاتف ولي الأمر">
+                {submission.guardian_phone ?? submission.student?.parent_phone ?? '—'}
+              </WsFactRow>
+            </WsFactsList>
+
+            {submission.review_notes ? (
+              <WsAlert tone="info" boxed>
+                ملاحظات المراجعة: {submission.review_notes}
+              </WsAlert>
             ) : null}
 
-            <section className="mt-6 space-y-3">
-              <h4 className="text-sm font-semibold text-slate-700">الإجابات</h4>
-              <div className="space-y-2">
-                {(submission.answers ?? []).map((answer) => {
-                  const field = fieldMap.get(answer.field_id)
-                  if (!field) return null
-                  return (
-                    <div key={answer.id} className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3">
-                      <p className="text-xs font-semibold text-slate-500">
-                        {field.sectionTitle ? `${field.sectionTitle} — ${field.label}` : field.label}
-                      </p>
-                      <p className="mt-2 text-sm text-slate-800 whitespace-pre-line">{resolveSubmissionAnswerValue(answer)}</p>
-                    </div>
-                  )
-                })}
+            <div>
+              <div className="ws-block__head" style={{ marginInline: -16 }}>
+                <span className="ws-block__title">
+                  <FileText />
+                  الإجابات
+                  <span className="ws-count">{nf(answers.length)}</span>
+                </span>
               </div>
-            </section>
-
-            {submission.files && submission.files.length ? (
-              <section className="mt-6 space-y-3">
-                <h4 className="text-sm font-semibold text-slate-700">المرفقات</h4>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {submission.files.map((file) => {
-                    const url = buildFileUrl(file.path)
+              {answers.length === 0 ? (
+                <WsEmpty icon={FileText}>لا إجابات في هذا الرد.</WsEmpty>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {answers.map((answer) => {
+                    const field = fieldMap.get(answer.field_id)
+                    if (!field) return null
+                    const attachments = filesByField.get(field.id) ?? []
                     return (
-                      <a
-                        key={file.id}
-                        href={url ?? '#'}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center justify-between rounded-3xl border border-slate-200 bg-white px-4 py-3 text-xs font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
+                      <div
+                        key={answer.id}
+                        style={{ padding: '8px 0', borderBottom: '1px solid var(--ws-hairline)' }}
                       >
-                        <span className="flex items-center gap-2">
-                          <i className="bi bi-paperclip text-base" />
-                          {file.filename}
-                        </span>
-                        <i className="bi bi-box-arrow-up-right" />
-                      </a>
+                        <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: 'var(--ws-text-2)' }}>
+                          {fieldLabelOf(field)}
+                        </p>
+                        {isAttachmentFieldType(field.type) ? (
+                          attachments.length > 0 ? (
+                            <AttachmentGrid files={attachments} onZoom={setZoomed} />
+                          ) : (
+                            <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--ws-text-2)' }}>
+                              لم يُرفع مرفق.
+                            </p>
+                          )
+                        ) : (
+                          <p style={{ margin: '4px 0 0', fontSize: 12.5, whiteSpace: 'pre-line' }}>
+                            {formatAnswerForField(field, answer)}
+                          </p>
+                        )}
+                      </div>
                     )
                   })}
                 </div>
-              </section>
+              )}
+            </div>
+
+            {orphanFiles.length > 0 ? (
+              <div>
+                <div className="ws-block__head" style={{ marginInline: -16 }}>
+                  <span className="ws-block__title">
+                    <Paperclip />
+                    مرفقات بلا سؤالٍ قائم
+                    <span className="ws-count">{nf(orphanFiles.length)}</span>
+                  </span>
+                </div>
+                <AttachmentGrid files={orphanFiles} onZoom={setZoomed} />
+              </div>
             ) : null}
           </>
-        ) : (
-          <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-muted">
-            تعذر تحميل بيانات الرد.
-          </div>
         )}
-      </div>
+      </WsModal>
+
+      {/* المكبِّر شقيقُ المودال لا ابنُه: `position:fixed` داخل لوحٍ متحرّكٍ بـtransform يُحبس فيه */}
+      {zoomed?.url ? (
+        <div
+          role="presentation"
+          onClick={() => setZoomed(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 60,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 24,
+            background: 'rgba(0, 0, 0, 0.82)',
+          }}
+        >
+          <img
+            src={zoomed.url}
+            alt={zoomed.filename}
+            style={{ maxWidth: '100%', maxHeight: '84vh', objectFit: 'contain', borderRadius: 8 }}
+          />
+          <div
+            onClick={(event) => event.stopPropagation()}
+            style={{ position: 'absolute', top: 16, insetInlineStart: 16, display: 'flex', gap: 6 }}
+          >
+            <a href={zoomed.url} target="_blank" rel="noreferrer" className="ws-btn ws-btn--sm">
+              <ExternalLink />
+              فتح الأصل
+            </a>
+            <WsBtn size="sm" icon={X} onClick={() => setZoomed(null)}>
+              إغلاق
+            </WsBtn>
+          </div>
+        </div>
+      ) : null}
+    </>
+  )
+}
+
+function AttachmentGrid({
+  files,
+  onZoom,
+}: {
+  files: FormSubmissionFile[]
+  onZoom: (file: FormSubmissionFile) => void
+}) {
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
+        gap: 8,
+        marginTop: 6,
+      }}
+    >
+      {files.map((file) => (
+        <AttachmentCard key={file.id} file={file} onZoom={onZoom} />
+      ))}
     </div>
   )
 }
 
-function InfoCard({ label, value }: { label: string; value: string }) {
+const attachmentCardStyle: CSSProperties = {
+  display: 'block',
+  overflow: 'hidden',
+  border: '1px solid var(--ws-border)',
+  borderRadius: 8,
+  background: 'var(--ws-surface)',
+}
+
+const attachmentCaptionStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: '6px 8px',
+  fontSize: 11,
+  color: 'var(--ws-text-2)',
+  minWidth: 0,
+}
+
+const attachmentNameStyle: CSSProperties = {
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+  color: 'var(--ws-text)',
+  fontWeight: 600,
+}
+
+/**
+ * بطاقة مرفق واحد.
+ *
+ * الرابط يصل موقَّعاً ومؤقّتاً من `FormSubmissionFileResource` ولا تبنيه الواجهة:
+ * كانت تركّبه من `VITE_STORAGE_BASE_URL` والمسار، والمرفقات تنزل على قرص `local`
+ * الخاصّ فكان كلُّ مرفقٍ ٤٠٤. و`is_image` يحسمه الباك من الامتداد، فما كان صورةً
+ * يُعرض صورةً — لا اسمَ ملفٍّ يفتحه الأدمن ليرى ما كان يستطيع رؤيته في مكانه.
+ */
+function AttachmentCard({ file, onZoom }: { file: FormSubmissionFile; onZoom: (file: FormSubmissionFile) => void }) {
+  const sizeLabel = formatFileSize(file.size)
+
+  if (!file.url) {
+    return (
+      <div style={{ ...attachmentCardStyle, padding: '8px' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--ws-red)' }}>
+          <AlertTriangle style={{ width: 13, height: 13, flexShrink: 0 }} />
+          تعذّر توليد رابطٍ لهذا المرفق
+        </span>
+        <span style={{ ...attachmentNameStyle, display: 'block', marginTop: 4, fontSize: 11 }}>{file.filename}</span>
+      </div>
+    )
+  }
+
+  if (file.is_image) {
+    return (
+      <figure style={{ ...attachmentCardStyle, margin: 0 }}>
+        <button
+          type="button"
+          onClick={() => onZoom(file)}
+          title="عرض بالحجم الكامل"
+          style={{
+            display: 'block',
+            width: '100%',
+            padding: 0,
+            border: 'none',
+            background: 'var(--ws-sunken)',
+            cursor: 'zoom-in',
+          }}
+        >
+          <img
+            src={file.url}
+            alt={file.filename}
+            loading="lazy"
+            style={{ display: 'block', width: '100%', height: 118, objectFit: 'cover' }}
+          />
+        </button>
+        <figcaption style={attachmentCaptionStyle}>
+          <ImageIcon style={{ width: 13, height: 13, flexShrink: 0 }} />
+          <span style={attachmentNameStyle}>{file.filename}</span>
+          {sizeLabel ? <span style={{ flexShrink: 0 }}>{sizeLabel}</span> : null}
+          <ZoomIn style={{ width: 13, height: 13, flexShrink: 0, marginInlineStart: 'auto' }} />
+        </figcaption>
+      </figure>
+    )
+  }
+
   return (
-    <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3">
-      <p className="text-xs font-semibold text-slate-500">{label}</p>
-      <p className="mt-2 text-sm font-semibold text-slate-800">{value || '—'}</p>
-    </div>
+    <a href={file.url} target="_blank" rel="noreferrer" style={attachmentCardStyle}>
+      <span style={attachmentCaptionStyle}>
+        <Paperclip style={{ width: 13, height: 13, flexShrink: 0 }} />
+        <span style={attachmentNameStyle}>{file.filename}</span>
+        {sizeLabel ? <span style={{ flexShrink: 0 }}>{sizeLabel}</span> : null}
+        <ExternalLink style={{ width: 13, height: 13, flexShrink: 0, marginInlineStart: 'auto' }} />
+      </span>
+    </a>
   )
 }

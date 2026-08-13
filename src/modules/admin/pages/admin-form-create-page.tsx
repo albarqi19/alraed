@@ -3,7 +3,7 @@ import { ArrowRight } from 'lucide-react'
 import { FormDesigner } from '@/modules/forms/components/form-designer'
 import { useCreateAdminFormMutation } from '@/modules/forms/hooks'
 import type { FormUpsertPayload } from '@/modules/forms/types'
-import { WsPage, WsHeader, WsLayout, WsMain, WsBlock, WsBtn } from '@/shared/workspace'
+import { WsPage, WsHeader, WsBtn } from '@/shared/workspace'
 
 export function AdminFormCreatePage() {
   const navigate = useNavigate()
@@ -28,18 +28,13 @@ export function AdminFormCreatePage() {
           </WsBtn>
         }
       />
-      <WsLayout>
-        <WsMain>
-          <WsBlock fill scroll padded>
-            <FormDesigner
-              mode="create"
-              onSubmit={handleSubmit}
-              submitting={createMutation.isPending}
-              onCancel={() => navigate('/admin/forms')}
-            />
-          </WsBlock>
-        </WsMain>
-      </WsLayout>
+      {/* المصمّم يملك أعمدته الثلاثة بنفسه — لا يُغلَّف ببلوكٍ يتمرّر تحته */}
+      <FormDesigner
+        mode="create"
+        onSubmit={handleSubmit}
+        submitting={createMutation.isPending}
+        onCancel={() => navigate('/admin/forms')}
+      />
     </WsPage>
   )
 }

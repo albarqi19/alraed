@@ -1,5 +1,13 @@
 export type FormStatus = 'draft' | 'published' | 'archived'
 
+/**
+ * أنواع الحقول العشرون. الترتيب هنا هو ترتيب العقد نفسه، ويطابق
+ * `FormController::FIELD_TYPES` في الباك — فلا يُعاد ترتيبه في طرفٍ دون الآخر.
+ *
+ * `image` يخزَّن ويُرفع كـ`file` تماماً (نفس جدول form_submission_files ونفس
+ * المسار)، ولا يفارقه إلا في ثلاثة: افتراضاتُ الإعدادات، ومعاينةٌ مصغّرة في
+ * واجهة وليّ الأمر مع accept="image/*"، وعرضُ الأدمن له صورةً لا رابطاً.
+ */
 export type FormFieldType =
   | 'text'
   | 'textarea'
@@ -15,8 +23,9 @@ export type FormFieldType =
   | 'checkbox'
   | 'yesno'
   | 'rating'
-  | 'signature'
   | 'file'
+  | 'image'
+  | 'signature'
   | 'section_break'
   | 'repeater'
   | 'matrix'
@@ -29,16 +38,31 @@ export interface FormFieldOption {
   description?: string | null
 }
 
+/**
+ * إعدادات الحقل كما تُخزَّن في `form_fields.settings` وكما يقرؤها الباك حرفياً
+ * (`FormPublicController::validateFiles` يقرأ max_size_kb/allowed_types/max_files).
+ * المفاتيح **snake_case بلا استثناء**: كانت الواجهة تكتب maxSizeKb/allowedTypes/
+ * maxFiles فلا يراها الباك أصلاً، فتسقط كلُّ الحدود إلى الافتراضات صامتةً.
+ *
+ * ولا نُبقي `[key: string]: unknown`: فتحُ الشكل هو ما سمح بالانشقاق ابتداءً،
+ * وإغلاقه يجعل المترجم يكشف كلّ مفتاحٍ مخالف.
+ */
 export interface FormFieldSettings {
+  /** خيارات select/multi_select/radio — الباك يطابق الإجابة بقيم هذه الخيارات */
   options?: FormFieldOption[]
-  maxLength?: number | null
-  minLength?: number | null
-  maxValue?: number | null
-  minValue?: number | null
-  maxSizeKb?: number | null
-  allowedTypes?: string[]
-  maxFiles?: number | null
-  [key: string]: unknown
+  /** حدود طول النصّ — تُطبَّق في الواجهة (الباك لا يفرضها بعد) */
+  min_length?: number | null
+  max_length?: number | null
+  /** حدود الرقم وخطوته */
+  min?: number | null
+  max?: number | null
+  step?: number | null
+  /** أقصى درجات التقييم، وافتراضه خمس */
+  max_rating?: number | null
+  /** امتدادات مسموحة بلا نقطة وبحروفٍ صغيرة — للمرفقات (file/image) */
+  allowed_types?: string[]
+  max_size_kb?: number | null
+  max_files?: number | null
 }
 
 export interface FormFieldValidationRules {
@@ -77,9 +101,13 @@ export interface FormSection {
   fields: FormField[]
 }
 
+/**
+ * البيانات الملحقة بالإسناد. الباك يقرأ منها مفتاحاً واحداً فقط
+ * (`whereJsonContains('metadata->student_ids', …)` لنطاق `group`)، فلا نُبقي
+ * الشكل مفتوحاً على مفاتيح لا يقرؤها أحد.
+ */
 export interface FormAssignmentMetadata {
   student_ids?: number[]
-  [key: string]: unknown
 }
 
 export interface FormAssignment {
@@ -172,15 +200,25 @@ export interface FormSubmissionAnswer {
   value_boolean?: boolean | null
 }
 
+/**
+ * مورد الملفّ كما يُصدِّره `FormSubmissionFileResource`.
+ *
+ * `disk` و`path` حُذفا عمداً: كانت الواجهة تبني الرابط بيدها من المسار
+ * (`${VITE_STORAGE_BASE_URL}/${path}`) وهو رابطٌ لا يعمل إلا لو فُتح قرص local
+ * للعالم — وفتحُه يكشف معه الأعذار ووثائق الحالات والإحالات. فالرابط اليوم
+ * يولّده الباك موقَّعاً ومؤقّتاً (ثلاثين دقيقة)، ولا تبنيه الواجهة أبداً.
+ */
 export interface FormSubmissionFile {
   id: number
   field_id: number
-  disk: string
-  path: string
   filename: string
-  extension?: string | null
-  mime_type?: string | null
-  size?: number | null
+  extension: string | null
+  mime_type: string | null
+  size: number | null
+  /** أهو صورةٌ تُعرض <img>؟ يحسبه الباك من الامتداد (jpg/jpeg/png/webp/heic/gif) */
+  is_image: boolean
+  /** رابطٌ موقَّعٌ مؤقّت، و`null` إن تعذّر توليده (قرصٌ لا يدعم التوقيع مثلاً) */
+  url: string | null
 }
 
 export interface FormSubmissionStudentSummary {

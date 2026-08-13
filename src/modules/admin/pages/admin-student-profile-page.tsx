@@ -166,7 +166,26 @@ export function AdminStudentProfilePage() {
     // إذا كانت الفترة هي الفصل الدراسي
     if (period === 'semester') {
       if (currentSemester) {
+        const semesterStart = new Date(currentSemester.start_date)
         const semesterEnd = new Date(currentSemester.end_date)
+
+        // الفصل الجاري قد يكون **مستقبلياً**.
+        //
+        // `AcademicSemester::current()` تُرجّح الفصل القادم فيما بين فصلين —
+        // فبين العامين (أغسطس مثلاً) تكون بدايته بعد اليوم. وهذا الكود كان
+        // يقصّ النهاية عند اليوم ولا يقصّ البداية، فينتج مدىً مقلوباً
+        // (start = 2026-08-23 بينما end = 2026-08-13) يردّه الخادم بـ422
+        // ويظهر للمستخدم «تعذّر تحميل بيانات الحضور».
+        //
+        // ولا معنى لعرض «حضور هذا الفصل» قبل أن يبدأ: لا صفّ واحد فيه. فبدل
+        // مدىً مقلوب أو صفرٍ صامت، نسقط إلى آخر ثلاثين يوماً — وهي نافذةٌ
+        // فيها بياناتٌ حقيقية من الفصل المنصرم.
+        if (semesterStart > today) {
+          const recentStart = new Date()
+          recentStart.setDate(recentStart.getDate() - 29)
+          return { start: toISODate(recentStart), end }
+        }
+
         const effectiveEnd = semesterEnd > today ? today : semesterEnd
         return {
           start: currentSemester.start_date,
@@ -183,10 +202,14 @@ export function AdminStudentProfilePage() {
     }
 
     if (period === 'custom') {
-      return {
-        start: customRange.start || end,
-        end: customRange.end || end,
-      }
+      // المدى المخصَّص يأتي من حقلَي تاريخ لا يمنعان قلبه: يكفي أن يختار
+      // المستخدم النهاية قبل البداية ليرتدّ 422 برسالةٍ لا تدلّه على شيء.
+      const rawStart = customRange.start || end
+      const rawEnd = customRange.end || end
+
+      return rawStart > rawEnd
+        ? { start: rawEnd, end: rawStart }
+        : { start: rawStart, end: rawEnd }
     }
 
     const periodDays: Record<'7d' | '30d' | '90d', number> = {
