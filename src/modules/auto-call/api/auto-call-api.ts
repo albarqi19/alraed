@@ -73,6 +73,12 @@ export async function enqueueAutoCall(payload: EnqueueAutoCallPayload): Promise<
     guardian_phone: payload.guardianPhone ?? null,
     notes: payload.notes ?? null,
     requested_by: payload.requestedBy,
+    // كان الثلاثة محذوفين من الجسم فيصلان الخادمَ `null` دائماً: الحظر لا
+    // يُفحص لأن لا مفتاح له، والسياج الجغرافيّ لا يُفرَض لأن الخادم لا يجد
+    // إحداثيّةً يقيس بها. حذف حقلٍ من الحمولة هنا يُلغي حارساً كاملاً هناك.
+    guardian_national_id: payload.guardianNationalId ?? null,
+    latitude: payload.latitude ?? null,
+    longitude: payload.longitude ?? null,
   }
   const response = await apiClient.post<ApiResponse<ApiRawData>>('/admin/auto-call/queue', apiPayload)
   return normalizeQueueEntryFromApi(response.data.data)

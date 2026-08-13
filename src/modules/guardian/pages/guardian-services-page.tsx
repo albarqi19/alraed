@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, type FormEvent } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import {
     ClipboardCheck,
     Megaphone,
@@ -16,8 +17,14 @@ import {
     Bell,
     BookOpenCheck,
     Download,
+    Loader2,
+    MapPin,
 } from 'lucide-react'
+import { useToast } from '@/shared/feedback/use-toast'
+import { getErrorMessage, getStatusCode } from '@/services/api/errors'
 import { useGuardianContext } from '../context/guardian-context'
+import { requestGuardianAutoCall } from '../auto-call-api'
+import { useAutoCallGate, type AutoCallGatePhase } from '../hooks/use-auto-call-gate'
 import {
     useGuardianLeaveRequestSubmissionMutation,
     useGuardianLeaveRequestsQuery,
@@ -385,10 +392,94 @@ function LeaveRequestSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () =
 }
 
 // ============ Auto Call Sheet ============
+/**
+ * ألوان سطر الشرح تحت الزرّ.
+ *
+ * الحالات ليست متساوية: «تبعد ٨٤٠ متراً» إرشادٌ قابل للتنفيذ، و«الخدمة غير
+ * مفعَّلة» جدارٌ لا حيلة فيه، و«أنت عند المدرسة» تطمين. لونٌ واحد لها جميعاً
+ * يجعل وليَّ الأمر يقرأ السطر كلَّه ليعرف أيَّها حاله.
+ */
+const AUTO_CALL_PHASE_TONE: Record<AutoCallGatePhase, string> = {
+    loading: 'text-slate-500 dark:text-slate-400',
+    'settings-unavailable': 'text-amber-600 dark:text-amber-400',
+    disabled: 'text-slate-500 dark:text-slate-400',
+    'outside-hours': 'text-amber-600 dark:text-amber-400',
+    'needs-permission': 'text-sky-600 dark:text-sky-400',
+    locating: 'text-sky-600 dark:text-sky-400',
+    'permission-denied': 'text-rose-600 dark:text-rose-400',
+    'location-failed': 'text-rose-600 dark:text-rose-400',
+    'too-far': 'text-amber-600 dark:text-amber-400',
+    ready: 'text-emerald-600 dark:text-emerald-500',
+}
+
 function AutoCallSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-    const { studentSummary } = useGuardianContext()
+    const { studentSummary, currentNationalId } = useGuardianContext()
+    const toast = useToast()
+
+    // البوّابة تُفعَّل بفتح اللوحة فقط: جلب الإعدادات وطلب الموقع خلف لوحةٍ
+    // مغلقة استهلاكٌ لبطّارية الجهاز وإذنٌ يُطلب بلا سبب ظاهر للمستخدم.
+    const gate = useAutoCallGate(isOpen)
+
+    const [serverRejection, setServerRejection] = useState<string | null>(null)
+
+    const requestMutation = useMutation({
+        mutationFn: requestGuardianAutoCall,
+        onSuccess: () => {
+            setServerRejection(null)
+            toast({
+                type: 'success',
+                title: 'تم إرسال طلب المناداة',
+                description: 'سيظهر اسم الطالب على شاشة الاستقبال.',
+            })
+            onClose()
+        },
+        onError: (error: unknown) => {
+            // رسائل الرفض من الخادم عربيّةٌ دقيقة وموجَّهة للواقف عند البوّابة:
+            // «تبعد ٨٤٠ متراً والمسموح ٥٠٠»، «حسابك موقوف عن النداء حتى ١٣:٢٠»،
+            // «يوجد نداء نشط بالفعل لهذا الطالب». استبدالها برسالةٍ عامّة يمحو
+            // الإرشاد الوحيد الذي يملكه.
+            //
+            // ٤٠١ وحدها تُستثنى: رسالتها من Laravel إنجليزيّة («Unauthenticated.»)
+            // ولا تصف الحال. جلسة وليّ الأمر تنتهي بانتهاء الرمز، والفعل المطلوب
+            // إعادة الدخول لا إعادة الضغط.
+            const message =
+                getStatusCode(error) === 401
+                    ? 'انتهت جلستك — أعد الدخول إلى البوابة ثم حاول مرة أخرى.'
+                    : getErrorMessage(error, 'تعذّر إرسال طلب المناداة، حاول مرة أخرى.')
+            setServerRejection(message)
+            toast({ type: 'error', title: message })
+        },
+    })
 
     if (!isOpen) return null
+
+    const isSending = requestMutation.isPending
+    const canSubmit = gate.canRequest && Boolean(currentNationalId && studentSummary) && !isSending
+
+    const handleClick = () => {
+        setServerRejection(null)
+
+        // الزرّ نفسه يحمل فعلين حسب الحالة: يطلب الإذن حين ينقص، ويرسل النداء
+        // حين يكتمل. زرّان منفصلان يجعلان أحدهما ميّتاً دائماً في شاشةٍ ضيّقة.
+        if (gate.isLocationAction) {
+            gate.measureLocation()
+            return
+        }
+
+        if (!canSubmit || !currentNationalId || !studentSummary) {
+            return
+        }
+
+        requestMutation.mutate({
+            studentNationalId: currentNationalId,
+            studentName: studentSummary.name,
+            classLabel: `${studentSummary.grade} - ${studentSummary.class_name}`,
+            latitude: gate.coords?.latitude ?? null,
+            longitude: gate.coords?.longitude ?? null,
+        })
+    }
+
+    const isButtonDisabled = isSending || (gate.isBlocked && !gate.isLocationAction)
 
     return (
         <BottomSheet title="النداء الآلي" onClose={onClose}>
@@ -408,14 +499,42 @@ function AutoCallSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
 
                 <button
                     type="button"
-                    className="w-full rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white transition hover:bg-emerald-700"
+                    onClick={handleClick}
+                    disabled={isButtonDisabled}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-slate-600 dark:disabled:text-slate-400"
                 >
-                    طلب المناداة الآن
+                    {(isSending || gate.phase === 'locating' || gate.phase === 'loading') && (
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                    )}
+                    {gate.phase === 'needs-permission' && !isSending && (
+                        <MapPin className="h-4 w-4" aria-hidden />
+                    )}
+                    {isSending ? 'جارٍ الإرسال…' : gate.actionLabel}
                 </button>
 
-                <p className="text-center text-xs text-slate-400 dark:text-slate-500">
-                    * يجب أن تكون بالقرب من المدرسة لتفعيل هذه الخدمة
+                {/* الشرح تحت الزرّ لا داخله: نصّ الزرّ فعلٌ، والسبب جملةٌ لا تتّسع لها. */}
+                <p className={`text-center text-xs font-medium ${AUTO_CALL_PHASE_TONE[gate.phase]}`}>
+                    {gate.explanation}
                 </p>
+
+                {/* إعادة قياسٍ للبعيد: قد يكون قاس وهو في السيارة ثم وصل البوّابة،
+                    وبلا هذا يبقى الزرّ مقفلاً حتى يُغلق اللوحة ويفتحها. */}
+                {gate.phase === 'too-far' && !isSending && (
+                    <button
+                        type="button"
+                        onClick={() => gate.measureLocation()}
+                        className="mx-auto block text-xs font-semibold text-emerald-600 underline underline-offset-4 transition hover:text-emerald-700 dark:text-emerald-500"
+                    >
+                        تحديث موقعي
+                    </button>
+                )}
+
+                {serverRejection && (
+                    <div className="flex items-start gap-2 rounded-xl bg-rose-50 dark:bg-rose-950 p-3 text-xs text-rose-700 dark:text-rose-300">
+                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                        <span>{serverRejection}</span>
+                    </div>
+                )}
             </div>
         </BottomSheet>
     )

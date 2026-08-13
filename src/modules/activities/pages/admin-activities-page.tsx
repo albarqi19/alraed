@@ -127,6 +127,31 @@ export function AdminActivitiesPage() {
   const targetGrades = details?.target_grades ?? []
   const detailStats = details?.stats
 
+  /**
+   * مكان التنفيذ نصّاً — مهما أرسل الخادم.
+   *
+   * `ActivityReport` يحمل عموداً اسمه `execution_location` وعلاقةً اسمها
+   * `executionLocation`، و`toArray()` في لارافيل يدمج العلاقات بعد الأعمدة —
+   * فالعلاقة المحمَّلة مسبقاً تدهس النصّ بكائن. وتصييرُ كائنٍ في JSX يرمي
+   * React #31 ويُفرغ الصفحة كلّها لا هذا السطر وحده.
+   *
+   * أُصلح الجذر في الخادم (ActivityController يُرجع نصّاً دائماً ويوفّر
+   * `execution_location_name`)، وهذا حارسٌ لأن ثمن الخطأ هنا غير متناسب:
+   * حقلٌ واحد يُسقط شاشة المراجعة كاملة.
+   */
+  const locationText = (report: { execution_location_name?: string | null; execution_location?: unknown }): string => {
+    if (typeof report.execution_location_name === 'string') return report.execution_location_name
+    if (typeof report.execution_location === 'string') return report.execution_location
+
+    // كائنٌ وصل رغم كل ما سبق: نقرأ منه الاسم العربي بدل أن ننهار
+    const raw = report.execution_location
+    if (raw && typeof raw === 'object' && 'name_ar' in raw && typeof (raw as { name_ar: unknown }).name_ar === 'string') {
+      return (raw as { name_ar: string }).name_ar
+    }
+
+    return ''
+  }
+
   /* التقرير المعروض في عمود المراجعة + اسم معلمه وصفه */
   const selectedReport = useMemo(() => {
     if (!selectedReportId || !activity?.reports) return null
@@ -563,7 +588,7 @@ export function AdminActivitiesPage() {
                     <p className="ws-label" style={{ marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
                       <MapPin style={{ width: 11, height: 11 }} /> مكان التنفيذ
                     </p>
-                    <p style={{ margin: 0, fontSize: 12, fontWeight: 600 }}>{selectedReport.execution_location || '—'}</p>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 600 }}>{locationText(selectedReport) || '—'}</p>
                   </div>
                   <div style={{ border: '1px solid var(--ws-border)', borderRadius: 8, padding: 8 }}>
                     <p className="ws-label" style={{ marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>

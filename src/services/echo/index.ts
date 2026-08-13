@@ -19,7 +19,54 @@ const REVERB_SCHEME = import.meta.env.VITE_REVERB_SCHEME || 'http'
 
 // API configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
-const AUTH_ENDPOINT = API_BASE_URL.replace(/\/api\/?$/, '') + '/broadcasting/auth'
+
+/**
+ * نقطة توثيق القنوات الخاصة.
+ *
+ * كان البناء يحذف `/api` ثم يُلحق `/broadcasting/auth`، فيصيب مساراً مسجّلاً
+ * بوسيط `web` أي بحارس الجلسات والكوكيز — بينما Echo يرسل `Bearer` من
+ * localStorage. جلسةٌ لا كوكي لها ⇒ 403 على كل قناة خاصة، والعرَض ليس خطأً
+ * ظاهراً بل صمتٌ تام: الاشتراك يفشل والمستمعون لا يُستدعون أبداً.
+ *
+ * المسار الصحيح هو المسجَّل في `routes/api.php` بـ`Broadcast::routes(['middleware'
+ * => ['auth:api,guardian']])`، وملفُّ مسارات الـAPI كله تحت بادئة `api`، فوجهته
+ * `{API_BASE}/broadcasting/auth` **مع** `/api` لا بحذفها. وهو الوحيد الذي يقبل
+ * حاملَ الرمز، ويقبل حارسَي الموظّف ووليّ الأمر معاً.
+ *
+ * الشرطة المائلة الزائدة في آخر `VITE_API_BASE_URL` تُقلَّم حتى لا يصير المسار
+ * `//broadcasting/auth`.
+ */
+const AUTH_ENDPOINT = API_BASE_URL.replace(/\/+$/, '') + '/broadcasting/auth'
+
+/**
+ * أسماء أحداث النداء الآلي على السلك — المصدر الواحد لها في الواجهة.
+ *
+ * هذه الأسماء عقدٌ حرفيّ مع `broadcastAs()` في أحداث الخادم الأربعة
+ * (`app/Events/AutoCall/*`). وقد انكسر العقد فعلاً قبل هذا الإصلاح: الخادم كان
+ * يبثّ `call.enqueued` و`call.status_updated` و`settings.updated`، والواجهة
+ * تستمع إلى `auto-call.enqueued` و`auto-call.status-updated`. أربعة أسماء
+ * مكتوبة في موضعين، فافترقت — والانكسار **صامت** تماماً: القناة موثَّقة،
+ * والحدث مبثوث، والمستمع مشترك، ولا شيء يُستدعى ولا خطأ في أيّ سجلّ.
+ *
+ * جمعها في ثابتٍ واحد لا يمنع افتراق الطرفين، لكنه يجعل للواجهة موضعاً واحداً
+ * يُقارَن بالخادم ويُصلَح فيه — بدل اسمٍ متناثر في كل مستمع جديد يُضاف.
+ */
+export const AUTO_CALL_EVENTS = {
+  enqueued: 'auto-call.enqueued',
+  statusUpdated: 'auto-call.status-updated',
+  acknowledged: 'auto-call.acknowledged',
+  settingsUpdated: 'auto-call.settings-updated',
+} as const
+
+/**
+ * النقطة البادئة في `channel.listen('.foo')` ليست جزءاً من اسم الحدث: هي إشارة
+ * إلى Echo بأن الاسم خامٌّ فلا يُسبق بمساحة أسماء التطبيق (`App\Events\...`).
+ * لذلك تُكتب الأسماء أعلاه بلا نقطة —كما في `broadcastAs()` حرفاً بحرف— وتُضاف
+ * النقطة هنا وحدها. خلطُ الاثنين هو ما يجعل مقارنة الطرفين تخدع العين.
+ */
+function rawEventName(event: string): string {
+  return `.${event}`
+}
 
 let echoInstance: Echo<'reverb'> | null = null
 
@@ -100,19 +147,19 @@ export function subscribeToAutoCallChannel(
   const channel = echo.private(channelName)
 
   if (callbacks.onEnqueued) {
-    channel.listen('.auto-call.enqueued', callbacks.onEnqueued)
+    channel.listen(rawEventName(AUTO_CALL_EVENTS.enqueued), callbacks.onEnqueued)
   }
 
   if (callbacks.onStatusUpdated) {
-    channel.listen('.auto-call.status-updated', callbacks.onStatusUpdated)
+    channel.listen(rawEventName(AUTO_CALL_EVENTS.statusUpdated), callbacks.onStatusUpdated)
   }
 
   if (callbacks.onAcknowledged) {
-    channel.listen('.auto-call.acknowledged', callbacks.onAcknowledged)
+    channel.listen(rawEventName(AUTO_CALL_EVENTS.acknowledged), callbacks.onAcknowledged)
   }
 
   if (callbacks.onSettingsUpdated) {
-    channel.listen('.auto-call.settings-updated', callbacks.onSettingsUpdated)
+    channel.listen(rawEventName(AUTO_CALL_EVENTS.settingsUpdated), callbacks.onSettingsUpdated)
   }
 
   // إرجاع دالة لإلغاء الاشتراك

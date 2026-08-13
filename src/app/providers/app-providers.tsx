@@ -14,10 +14,28 @@ interface AppProvidersProps {
   children: ReactNode
 }
 
-/** المسارات التي تحتاج AutoCallProvider */
+/**
+ * المسارات التي تحتاج AutoCallProvider.
+ *
+ * تحذير بنيويّ: هذه قائمةٌ بيضاء تُطابَق بالنصّ عبر `startsWith`، ولا رابط بينها
+ * وبين تعريفات المسارات في `app-router.tsx`. فأوّل إعادة تسمية أو نقلٍ لمسار
+ * تكسرها **صامتةً**: لا خطأ في البناء ولا في المتصفّح، بل يُمرَّر `disabled=true`
+ * فيُفرَّغ الطابور ويُلغى الاشتراك — والعرَض شاشةٌ فارغة تبدو «لا نداءات اليوم».
+ * وهذا ما حصل مرّتين هنا: `/admin/auto-call` والمسار الفعليّ
+ * `/admin/school-tools/auto-call`، و`/auto-call` والمسار الفعليّ
+ * `/display/auto-call` — أي أن لوحة الأدمن وشاشة العرض كلتيهما كانتا معطَّلتين.
+ *
+ * القيم أدناه مأخوذةٌ من `app-router.tsx` مباشرةً؛ أيّ تعديلٍ هناك يلزمه تعديلٌ
+ * هنا.
+ *
+ * و`/guardian` مُبقًى وإن كان المزوّد خاملاً فيه: كلّ أفعاله محروسةٌ بـ`token`
+ * من مخزن مصادقة الموظّفين، ووليّ الأمر لا يملكه — بوّابته تخاطب الخادم مباشرةً
+ * عبر `modules/guardian/auto-call-api`. إبقاؤه لا يكلّف طلباً واحداً، وحذفه
+ * يكسر أيّ صفحةٍ تستدعي `useAutoCall()` تحت هذا المسار.
+ */
 const AUTO_CALL_ENABLED_PATHS = [
-  '/admin/auto-call',
-  '/auto-call',
+  '/admin/school-tools/auto-call',
+  '/display/auto-call',
   '/guardian',
 ]
 
