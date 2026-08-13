@@ -134,20 +134,14 @@ export function AdminFormDetailPage() {
         }
       />
 
-      <WsLayout>
-        <WsMain>
-          <WsBlock fill scroll padded>
-            {/* المصمّم مكوّن مستقل بحاويته — يُغلَّف بلا لمس منطقه */}
-            <FormDesigner
-              mode="edit"
-              initialForm={form}
-              submitting={updateMutation.isPending}
-              onSubmit={handleSubmit}
-              onCancel={() => navigate('/admin/forms')}
-            />
-          </WsBlock>
-        </WsMain>
-      </WsLayout>
+      {/* المصمّم يملك أعمدته الثلاثة بنفسه — لا يُغلَّف ببلوكٍ يتمرّر تحته */}
+      <FormDesigner
+        mode="edit"
+        initialForm={form}
+        submitting={updateMutation.isPending}
+        onSubmit={handleSubmit}
+        onCancel={() => navigate('/admin/forms')}
+      />
 
       {/* مودال الحذف — بدل window.confirm الخام */}
       {pendingDelete && (

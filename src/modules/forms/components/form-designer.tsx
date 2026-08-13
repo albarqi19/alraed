@@ -1,14 +1,54 @@
+/* ======================================================
+   مصمّم النموذج — ثلاثة أعمدة ملتصقة، لا تمريرَ طويل
+   ------------------------------------------------------
+   كان ٨٦٢ سطراً يفتح كلَّ حقلٍ بالكامل داخل تمريرةٍ واحدة، فنموذجٌ
+   بعشرة أسئلة لا تُرى بنيتُه أبداً. صار: لوحةُ أنواعٍ يميناً، ولوحُ
+   صفوفٍ مطويّة وسطاً، وخصائصُ السؤال المحدَّد يساراً — وثلاثةُ
+   تبويبات تفصل البنية عن الإعدادات عن المعاينة.
+
+   المسؤولية هنا: الحالة والتحقّق وبناء الحمولة. أمّا الرسمُ فمقسومٌ
+   على مكوّناتٍ مجاورة في نفس المجلّد.
+   ====================================================== */
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import type {
-  FormAssignmentScope,
-  FormFieldInput,
-  FormFieldOption,
-  FormFieldType,
-  FormStatus,
-  FormSummary,
-  FormUpsertPayload,
-} from '@/modules/forms/types'
+import { useNavigate } from 'react-router-dom'
+import {
+  AlertTriangle,
+  Eye,
+  LayoutList,
+  ListChecks,
+  Lock,
+  Save,
+  Settings2,
+  SlidersHorizontal,
+  X,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import { prepareAssignmentPayload } from '@/modules/forms/api'
+import { fieldTypeStoresAnswer } from '@/modules/forms/constants'
+import type { FormFieldSettings, FormFieldType, FormSummary, FormUpsertPayload } from '@/modules/forms/types'
+import { WsAlert, WsBtn, WsChip, WsLayout, WsMain, WsSideCol, WsToolbar } from '@/shared/workspace'
+import { FieldCanvas } from './field-canvas'
+import { FieldPropertiesPanel } from './field-properties-panel'
+import { FieldTypePalette } from './field-type-palette'
+import { FormPreview } from './form-preview'
+import { FormSettingsPanel } from './form-settings-panel'
+import {
+  buildAssignmentInputs,
+  buildFieldsPayload,
+  createDraftField,
+  duplicateDraftField,
+  getDefaultGeneralState,
+  mapAssignmentsToSelection,
+  mapFormToDraftFields,
+  retypeDraftField,
+  slugifyKey,
+  structureUnchanged,
+  toISOStringFromLocal,
+  validateDraft,
+} from './designer-model'
+import type { AudienceSelection, DraftField, FieldError, GeneralError, GeneralState } from './designer-model'
+
+type DesignerTab = 'fields' | 'settings' | 'preview'
 
 interface FormDesignerProps {
   mode: 'create' | 'edit'
@@ -18,386 +58,196 @@ interface FormDesignerProps {
   onCancel?: () => void
 }
 
-interface GeneralState {
-  title: string
-  description: string
-  status: FormStatus
-  target_audience: FormAssignmentScope
-  category: string
-  max_responses: string
-  allow_multiple_submissions: boolean
-  allow_edit_after_submit: boolean
-  requires_approval: boolean
-  start_at: string
-  end_at: string
+/** بصمةٌ للمقارنة وحدها — تكشف «هل تغيّر شيء منذ آخر حفظ؟» */
+function snapshotOf(general: GeneralState, fields: DraftField[], selection: AudienceSelection): string {
+  return JSON.stringify({ general, fields: buildFieldsPayload(fields), selection })
 }
-
-type DraftField = FormFieldInput & {
-  localId: string
-  autoKey: boolean
-  optionsText?: string
-}
-
-type FieldError = Partial<Record<'label' | 'field_key', string>>
-
-type FieldTypeOption = {
-  value: FormFieldType
-  label: string
-  description?: string
-}
-
-const FIELD_TYPE_OPTIONS: FieldTypeOption[] = [
-  { value: 'text', label: 'نص قصير', description: 'إجابة نصية حتى 255 حرفاً' },
-  { value: 'textarea', label: 'نص طويل', description: 'إجابة نصية موسعة' },
-  { value: 'number', label: 'رقم', description: 'أرقام فقط مع إمكانية تحديد الحدود' },
-  { value: 'phone', label: 'رقم هاتف', description: 'يتحقق من صيغة رقم الجوال' },
-  { value: 'email', label: 'بريد إلكتروني', description: 'يتحقق من صيغة البريد' },
-  { value: 'date', label: 'تاريخ', description: 'اختيار تاريخ فقط' },
-  { value: 'time', label: 'وقت', description: 'اختيار وقت فقط' },
-  { value: 'datetime', label: 'تاريخ ووقت', description: 'اختيار تاريخ ووقت معاً' },
-  { value: 'select', label: 'قائمة اختيار', description: 'اختيار عنصر واحد من قائمة' },
-  { value: 'multi_select', label: 'قائمة متعددة', description: 'اختيار عدة عناصر من قائمة' },
-  { value: 'radio', label: 'أزرار اختيار', description: 'اختيار عنصر واحد عبر أزرار' },
-  { value: 'checkbox', label: 'خانة اختيار', description: 'خيار ثنائي نعم/لا' },
-  { value: 'yesno', label: 'نعم / لا', description: 'سؤال بنعم أو لا' },
-  { value: 'rating', label: 'تقييم', description: 'تقييم عددي بسرعة' },
-  { value: 'file', label: 'رفع ملف', description: 'استقبال ملفات مرفقة' },
-  { value: 'signature', label: 'توقيع رقمي', description: 'التقاط توقيع ولي الأمر أو الطالب' },
-]
-
-const STATUS_OPTIONS: Array<{ value: FormStatus; label: string }> = [
-  { value: 'draft', label: 'مسودة' },
-  { value: 'published', label: 'منشور' },
-  { value: 'archived', label: 'مؤرشف' },
-]
-
-const AUDIENCE_OPTIONS: Array<{ value: FormAssignmentScope; label: string }> = [
-  { value: 'all_students', label: 'جميع الطلاب' },
-  { value: 'grade', label: 'صف محدد' },
-  { value: 'class', label: 'فصل محدد' },
-  { value: 'student', label: 'طالب محدد' },
-  { value: 'group', label: 'مجموعة مخصصة' },
-]
-
-function slugifyKey(value: string): string {
-  const normalized = value
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '_')
-    .replace(/[^a-z0-9_]/g, '_')
-  const cleaned = normalized.replace(/_+/g, '_').replace(/^_|_$/g, '')
-  if (!cleaned) {
-    return `field_${Math.random().toString(36).slice(2, 6)}`
-  }
-  if (/^[0-9]/.test(cleaned)) {
-    return `f_${cleaned}`
-  }
-  return cleaned
-}
-
-function toDateTimeLocal(value?: string | null): string {
-  if (!value) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  const offsetMs = date.getTimezoneOffset() * 60_000
-  const local = new Date(date.getTime() - offsetMs)
-  return local.toISOString().slice(0, 16)
-}
-
-function toISOStringFromLocal(value: string): string | null {
-  if (!value) return null
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return null
-  return date.toISOString()
-}
-
-function readRequiresApproval(form?: FormSummary | null): boolean {
-  if (!form) return false
-
-  const direct = (form as { requires_approval?: unknown }).requires_approval
-  if (typeof direct === 'boolean') {
-    return direct
-  }
-
-  const settings = ((form.settings ?? {}) as Record<string, unknown>) || {}
-  const candidates: Array<keyof typeof settings> = [
-    'requires_approval',
-    'requiresApproval',
-    'require_approval',
-    'requireApproval',
-  ]
-
-  for (const key of candidates) {
-    const value = settings[key]
-    if (typeof value === 'boolean') {
-      return value
-    }
-  }
-
-  return false
-}
-
-function parseOptions(text: string): FormFieldOption[] {
-  return text
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0)
-    .map((line, index) => {
-      const [labelPart, valuePart] = line.split('|').map((part) => part.trim())
-      const label = labelPart || `خيار ${index + 1}`
-      const value = valuePart || slugifyKey(label)
-      return { label, value }
-    })
-}
-
-function buildOptionsText(options: FormFieldOption[] | undefined): string {
-  if (!options || options.length === 0) return ''
-  return options.map((option) => `${option.label} | ${option.value}`).join('\n')
-}
-
-function mapFormToDraftFields(form?: FormSummary | null): DraftField[] {
-  if (!form) return []
-  const baseFields = form.fields ?? []
-  const sectionFields = (form.sections ?? []).flatMap((section) =>
-    section.fields.map((field) => ({ ...field, section_id: section.id ?? null })),
-  )
-  const allFields = [...baseFields, ...sectionFields]
-  return allFields
-    .sort((a, b) => a.sort_order - b.sort_order)
-    .map((field) => ({
-      ...field,
-      localId: `field-${field.id ?? Math.random().toString(36).slice(2, 8)}`,
-      autoKey: false,
-      section_id: null,
-      optionsText: buildOptionsText(field.settings?.options),
-    }))
-}
-
-function getDefaultGeneralState(mode: 'create' | 'edit', initialForm?: FormSummary | null): GeneralState {
-  if (mode === 'edit' && initialForm) {
-    return {
-      title: initialForm.title,
-      description: initialForm.description ?? '',
-      status: initialForm.status,
-      target_audience: initialForm.target_audience ?? 'all_students',
-      category: initialForm.category ?? '',
-      max_responses: initialForm.max_responses ? String(initialForm.max_responses) : '',
-      allow_multiple_submissions: Boolean(initialForm.allow_multiple_submissions),
-      allow_edit_after_submit: Boolean(initialForm.allow_edit_after_submit),
-      requires_approval: readRequiresApproval(initialForm),
-      start_at: toDateTimeLocal(initialForm.start_at),
-      end_at: toDateTimeLocal(initialForm.end_at),
-    }
-  }
-
-  return {
-    title: '',
-    description: '',
-    status: 'draft',
-    target_audience: 'all_students',
-    category: '',
-    max_responses: '',
-    allow_multiple_submissions: false,
-    allow_edit_after_submit: false,
-    requires_approval: false,
-    start_at: '',
-    end_at: '',
-  }
-}
-
-const selectionTypes: FormFieldType[] = ['select', 'multi_select', 'radio', 'checkbox']
 
 export function FormDesigner({ mode, initialForm, submitting = false, onSubmit, onCancel }: FormDesignerProps) {
   const navigate = useNavigate()
+
   const [general, setGeneral] = useState<GeneralState>(() => getDefaultGeneralState(mode, initialForm))
   const [fields, setFields] = useState<DraftField[]>(() => mapFormToDraftFields(initialForm))
-  const [generalErrors, setGeneralErrors] = useState<Partial<Record<'title' | 'fields', string>>>({})
+  const [selection, setSelection] = useState<AudienceSelection>(() =>
+    mapAssignmentsToSelection(initialForm?.assignments ?? []),
+  )
+  const [baseline, setBaseline] = useState('')
+
+  const [tab, setTab] = useState<DesignerTab>('fields')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [focusLabelKey, setFocusLabelKey] = useState<string | null>(null)
+  const [generalErrors, setGeneralErrors] = useState<GeneralError>({})
   const [fieldErrors, setFieldErrors] = useState<Record<string, FieldError>>({})
 
+  // إعادةُ التزامن مع الخادم: تتبع المعرّف و`updated_at` معاً، فيرتدّ خطُّ الأساس
+  // بعد كلّ حفظٍ ناجح ولا يبقى المصمّم يزعم أن هناك تغييراتٍ غير محفوظة.
   useEffect(() => {
-    if (mode === 'edit' && initialForm) {
-      setGeneral(getDefaultGeneralState('edit', initialForm))
-      setFields(mapFormToDraftFields(initialForm))
-    }
-  }, [initialForm?.id, mode])
+    const nextGeneral = getDefaultGeneralState(mode, initialForm)
+    const nextFields = mapFormToDraftFields(initialForm)
+    const nextSelection = mapAssignmentsToSelection(initialForm?.assignments ?? [])
 
-  const isSelectionType = useMemo(() => {
-    const selectionSet = new Set(selectionTypes)
-    return (type: FormFieldType) => selectionSet.has(type)
-  }, [])
+    setGeneral(nextGeneral)
+    setFields(nextFields)
+    setSelection(nextSelection)
+    setBaseline(snapshotOf(nextGeneral, nextFields, nextSelection))
+    setGeneralErrors({})
+    setFieldErrors({})
+    // التبعيّة على قيمتين لا على الكائن عمداً: استعلامُ التفاصيل يعيد كائناً
+    // جديداً مع كل إعادة جلب، فلو تعلّق الأثر به لمسح ما يكتبه المصمّم كلّما
+    // ركّز نافذته. المعرّف و`updated_at` وحدهما يعنيان «وصلت نسخةٌ أخرى فعلاً».
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, initialForm?.id, initialForm?.updated_at])
 
+  /** ردٌّ واحدٌ يقفل البنية: الخادم يمسح الحقول ويعيدها عند أي مزامنة، والإجابات تتبعها حذفاً */
+  const structureLocked = mode === 'edit' && (initialForm?.submissions_count ?? 0) > 0
+  const storedSections = initialForm?.sections ?? []
+  const editingDisabled = submitting || structureLocked
+
+  const selectedField = fields.find((field) => field.localId === selectedId) ?? null
+  const questionCount = fields.filter((field) => fieldTypeStoresAnswer(field.type)).length
+  const errorCount = Object.keys(fieldErrors).length + Object.keys(generalErrors).length
+  const isDirty = baseline !== '' && snapshotOf(general, fields, selection) !== baseline
+
+  const assignments = useMemo(
+    () => prepareAssignmentPayload(buildAssignmentInputs(general.target_audience, selection)),
+    [general.target_audience, selection],
+  )
+
+  /* ── تحرير الحالة ── */
+
+  /** كل تحريرٍ يمسح الخطأ الذي يخصّه وحده — لا يمسح أخطاء غيره فتختفي بلا إصلاح */
   const handleGeneralChange = <K extends keyof GeneralState>(key: K, value: GeneralState[K]) => {
-    setGeneral((prev) => ({
-      ...prev,
-      [key]: value,
-    }))
-    setGeneralErrors((prev) => ({ ...prev, [key]: undefined }))
+    setGeneral((previous) => ({ ...previous, [key]: value }))
+    setGeneralErrors((previous) => {
+      const next = { ...previous }
+      if (key === 'title') delete next.title
+      if (key === 'target_audience') delete next.assignments
+      if (key === 'start_at' || key === 'end_at') delete next.dates
+      return next
+    })
   }
 
-  const handleAddField = () => {
-    const newFieldIndex = fields.length + 1
-    const newField: DraftField = {
-      localId: `field-${Date.now()}-${newFieldIndex}`,
-      autoKey: true,
-      field_key: `field_${newFieldIndex}`,
-      type: 'text',
-      label: `حقل جديد ${newFieldIndex}`,
-      description: '',
-      placeholder: '',
-      helper_text: '',
-      is_required: false,
-      settings: {},
-      validation: {},
-      visibility_rules: [],
-      sort_order: newFieldIndex - 1,
-      optionsText: '',
-    }
-    setFields((prev) => [...prev, newField])
+  const handleAdd = (type: FormFieldType) => {
+    if (editingDisabled) return
+
+    const created = createDraftField(type, fields)
+    setFields((previous) => [...previous, created])
+    setSelectedId(created.localId)
+    setFocusLabelKey(created.localId)
+    setGeneralErrors((previous) => {
+      const next = { ...previous }
+      delete next.fields
+      return next
+    })
   }
 
-  const handleRemoveField = (localId: string) => {
-    setFields((prev) => prev.filter((field) => field.localId !== localId))
-    setFieldErrors((prev) => {
-      const next = { ...prev }
+  const handleSelect = (localId: string) => {
+    setSelectedId(localId)
+    setFocusLabelKey(null)
+  }
+
+  /** الخطأ يُنزَع لا يُفرَّغ: مفتاحٌ بقيمةٍ فارغة يبقى معدوداً في «كم خطأ يمنع الحفظ» */
+  const clearFieldError = (localId: string) => {
+    setFieldErrors((previous) => {
+      if (!previous[localId]) return previous
+      const next = { ...previous }
       delete next[localId]
       return next
     })
   }
 
-  const handleMoveField = (localId: string, direction: 'up' | 'down') => {
-    setFields((prev) => {
-      const index = prev.findIndex((field) => field.localId === localId)
-      if (index === -1) return prev
-      const next = [...prev]
-      const targetIndex = direction === 'up' ? index - 1 : index + 1
-      if (targetIndex < 0 || targetIndex >= next.length) return prev
-      const [moved] = next.splice(index, 1)
-      next.splice(targetIndex, 0, moved)
+  const patchField = (localId: string, patch: Partial<DraftField>) => {
+    setFields((previous) =>
+      previous.map((field) => {
+        if (field.localId !== localId) return field
+
+        const next = { ...field, ...patch }
+
+        // المفتاح يتبع التسمية ما دام تلقائياً. والتسميةُ العربية لا تُنتج حرفاً
+        // لاتينياً، فلو ولّدنا مفتاحاً عند كل ضغطةٍ لتغيّر المفتاح عشوائياً مع كل
+        // حرف — لذلك نُبقي السابق حين لا يبقى من النصّ ما يُشتق منه.
+        if (patch.label !== undefined && field.autoKey) {
+          const derived = slugifyKey(patch.label)
+          if (derived) next.field_key = derived
+        }
+
+        return next
+      }),
+    )
+    clearFieldError(localId)
+  }
+
+  const handleRetype = (localId: string, type: FormFieldType) => {
+    setFields((previous) =>
+      previous.map((field) => (field.localId === localId ? retypeDraftField(field, type) : field)),
+    )
+  }
+
+  const handleSettings = (localId: string, patch: FormFieldSettings) => {
+    setFields((previous) =>
+      previous.map((field) =>
+        field.localId === localId ? { ...field, settings: { ...(field.settings ?? {}), ...patch } } : field,
+      ),
+    )
+    clearFieldError(localId)
+  }
+
+  const handleDuplicate = (localId: string) => {
+    const index = fields.findIndex((field) => field.localId === localId)
+    if (index === -1) return
+
+    const copy = duplicateDraftField(fields[index], fields)
+    setFields((previous) => [...previous.slice(0, index + 1), copy, ...previous.slice(index + 1)])
+    setSelectedId(copy.localId)
+    setFocusLabelKey(null)
+  }
+
+  const handleRemove = (localId: string) => {
+    setFields((previous) => previous.filter((field) => field.localId !== localId))
+    clearFieldError(localId)
+    setSelectedId((previous) => (previous === localId ? null : previous))
+  }
+
+  const handleMove = (from: number, to: number) => {
+    setFields((previous) => {
+      if (from === to || from < 0 || to < 0 || from >= previous.length || to >= previous.length) {
+        return previous
+      }
+      const next = [...previous]
+      const [moved] = next.splice(from, 1)
+      next.splice(to, 0, moved)
       return next
     })
   }
 
-  const updateField = <K extends keyof DraftField>(localId: string, key: K, value: DraftField[K]) => {
-    setFields((prev) =>
-      prev.map((field) => {
-        if (field.localId !== localId) return field
+  /* ── الحفظ ── */
 
-        if (key === 'label') {
-          const nextLabel = (value as string) ?? ''
-          const nextFieldKey = field.autoKey ? slugifyKey(nextLabel) : field.field_key
-          return {
-            ...field,
-            label: nextLabel,
-            field_key: nextFieldKey,
-          }
-        }
-
-        if (key === 'field_key') {
-          const nextValue = (value as string).trim()
-          return {
-            ...field,
-            field_key: nextValue,
-            autoKey: false,
-          }
-        }
-
-        if (key === 'type') {
-          const nextType = value as FormFieldType
-          const isSelection = isSelectionType(nextType)
-          const nextOptionsText = isSelection ? field.optionsText ?? 'خيار 1 | option_1\nخيار 2 | option_2' : ''
-          return {
-            ...field,
-            type: nextType,
-            optionsText: nextOptionsText,
-            settings: isSelection ? { ...(field.settings ?? {}), options: parseOptions(nextOptionsText) } : {},
-          }
-        }
-
-        if (key === 'optionsText') {
-          const textValue = String(value ?? '')
-          return {
-            ...field,
-            optionsText: textValue,
-            settings: {
-              ...(field.settings ?? {}),
-              options: parseOptions(textValue),
-            },
-          }
-        }
-
-        if (key === 'is_required') {
-          return {
-            ...field,
-            is_required: Boolean(value),
-          }
-        }
-
-        return {
-          ...field,
-          [key]: value,
-        }
-      }),
-    )
-
-    setFieldErrors((prev) => ({ ...prev, [localId]: {} }))
-  }
-
-  const validate = (): boolean => {
-    const nextGeneralErrors: Partial<Record<'title' | 'fields', string>> = {}
-    const nextFieldErrors: Record<string, FieldError> = {}
-
-    if (!general.title.trim()) {
-      nextGeneralErrors.title = 'أدخل عنواناً واضحاً للنموذج'
-    }
-
-    if (fields.length === 0) {
-      nextGeneralErrors.fields = 'أضف على الأقل حقلاً واحداً قبل الحفظ'
-    }
-
-    const seenKeys = new Map<string, string>()
-
-    fields.forEach((field) => {
-      const errors: FieldError = {}
-
-      if (!field.label.trim()) {
-        errors.label = 'العنوان مطلوب'
-      }
-
-      const trimmedKey = field.field_key.trim()
-      if (!trimmedKey) {
-        errors.field_key = 'مفتاح الحقل مطلوب'
-      } else if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(trimmedKey)) {
-        errors.field_key = 'استخدم أحرفاً لاتينية وأرقاماً وشرطة سفلية فقط، ولا تبدأ برقم'
-      } else if (seenKeys.has(trimmedKey)) {
-        errors.field_key = 'المفتاح مستخدم في حقل آخر'
-      } else {
-        seenKeys.set(trimmedKey, field.localId)
-      }
-
-      if (Object.keys(errors).length > 0) {
-        nextFieldErrors[field.localId] = errors
-      }
-    })
-
-    setGeneralErrors(nextGeneralErrors)
-    setFieldErrors(nextFieldErrors)
-
-    return Object.keys(nextGeneralErrors).length === 0 && Object.keys(nextFieldErrors).length === 0
-  }
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const handleSubmit = async () => {
     if (submitting) return
 
-    if (!validate()) {
+    const result = validateDraft(general, fields, selection)
+    setGeneralErrors(result.general)
+    setFieldErrors(result.fields)
+
+    if (!result.ok) {
+      // ننقل المصمّم إلى موضع الخطأ بدل أن نتركه يبحث عنه بين التبويبات
+      const firstBadField = fields.find((field) => result.fields[field.localId])
+      if (firstBadField) {
+        setTab('fields')
+        setSelectedId(firstBadField.localId)
+      } else {
+        setTab('settings')
+      }
       return
     }
 
     const previousSettings = (initialForm?.settings as Record<string, unknown> | null) ?? null
-    const mergedSettings = {
-      ...(previousSettings ?? {}),
-      requires_approval: general.requires_approval,
-    }
+
+    // البنية لا تُرسَل إلا إذا تغيّرت فعلاً — انظر `structureSignature` في
+    // designer-model: إرسالها بلا تغييرٍ كان يرتدّ ٤٢٢ على كل نموذجٍ وصله ردّ.
+    // والمقفولُ لا يُرسل بنيةً أصلاً: التحرير معطّلٌ فيه فلا تغيير ممكن، وحملُها
+    // يفتح باب رفضٍ لا سبب له (نموذجٌ بأقسامٍ يسطّحها المصمّم مثلاً).
+    const sendStructure = mode === 'create' || (!structureLocked && !structureUnchanged(initialForm, fields))
 
     const payload: FormUpsertPayload = {
       title: general.title.trim(),
@@ -411,24 +261,9 @@ export function FormDesigner({ mode, initialForm, submitting = false, onSubmit, 
       requires_approval: general.requires_approval,
       start_at: toISOStringFromLocal(general.start_at),
       end_at: toISOStringFromLocal(general.end_at),
-      settings: mergedSettings,
-      sections: [],
-      fields: fields.map((field, index) => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { localId: _localId, autoKey: _autoKey, optionsText: _optionsText, ...rest } = field
-        return {
-          ...rest,
-          field_key: rest.field_key.trim(),
-          description: rest.description?.trim() || null,
-          placeholder: rest.placeholder?.trim() || null,
-          helper_text: rest.helper_text?.trim() || null,
-          settings: rest.settings && Object.keys(rest.settings).length > 0 ? rest.settings : undefined,
-          validation: rest.validation && Object.keys(rest.validation).length > 0 ? rest.validation : undefined,
-          sort_order: index,
-          section_id: null,
-        }
-      }),
-      assignments: [],
+      settings: { ...(previousSettings ?? {}), requires_approval: general.requires_approval },
+      assignments,
+      ...(sendStructure ? { sections: [], fields: buildFieldsPayload(fields) } : {}),
     }
 
     try {
@@ -446,417 +281,130 @@ export function FormDesigner({ mode, initialForm, submitting = false, onSubmit, 
     navigate('/admin/forms')
   }
 
+  /* ── الرسم ── */
+
+  const tabs: Array<{ value: DesignerTab; label: string; icon: LucideIcon; count?: number }> = [
+    { value: 'fields', label: 'الأسئلة', icon: ListChecks, count: questionCount },
+    { value: 'settings', label: 'الإعدادات', icon: Settings2 },
+    { value: 'preview', label: 'المعاينة', icon: Eye },
+  ]
+
   return (
-    <form className="space-y-6" onSubmit={handleSubmit} noValidate>
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wider">
-            {mode === 'create' ? 'إنشاء نموذج جديد' : 'تعديل النموذج'}
-          </p>
-          <h1 className="text-3xl font-bold text-slate-900">
-            {mode === 'create' ? 'صمم النموذج الإلكتروني ووزعه على الفئات المستهدفة' : general.title || initialForm?.title || 'تعديل النموذج'}
-          </h1>
-          <p className="text-sm text-muted">
-            حدّد الحقول المطلوبة، المواعيد، والخيارات المتقدمة قبل نشر النموذج.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleCancel}
-            className="rounded-full border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-400 hover:text-slate-700"
-            disabled={submitting}
-          >
-            إلغاء والعودة
-          </button>
-          <button
-            type="submit"
-            className="rounded-full bg-indigo-600 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-300"
-            disabled={submitting}
-          >
-            {submitting ? 'جاري الحفظ...' : mode === 'create' ? 'حفظ النموذج' : 'تحديث النموذج'}
-          </button>
-        </div>
-      </header>
+    <WsLayout>
+      {tab === 'fields' && (
+        <WsSideCol
+          side="start"
+          title="أنواع الأسئلة"
+          icon={LayoutList}
+          storageKey="ws:form-designer:palette"
+          width={300}
+        >
+          <FieldTypePalette disabled={editingDisabled} onAdd={handleAdd} />
+        </WsSideCol>
+      )}
 
-      <section className="glass-card space-y-4">
-        <header>
-          <h2 className="text-xl font-semibold text-slate-900">معلومات عامة</h2>
-          <p className="text-xs text-muted">املأ تفاصيل النموذج الأساسية التي تظهر للمديرين والأولياء.</p>
-        </header>
+      <WsMain>
+        <WsToolbar>
+          <div className="ws-seg">
+            {tabs.map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                className={`ws-seg__btn ${tab === item.value ? 'is-active' : ''}`}
+                onClick={() => setTab(item.value)}
+              >
+                <item.icon style={{ width: 13, height: 13 }} />
+                {item.label}
+                {item.count != null && <span className="ws-count">{item.count}</span>}
+              </button>
+            ))}
+          </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-600" htmlFor="form-title">
-              عنوان النموذج *
-            </label>
-            <input
-              id="form-title"
-              type="text"
-              value={general.title}
-              onChange={(event) => handleGeneralChange('title', event.target.value)}
-              className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${generalErrors.title ? 'border-rose-300' : 'border-slate-200'}`}
-              placeholder="مثال: استبيان الزيارات الطبية"
-              disabled={submitting}
-            />
-            {generalErrors.title ? <p className="text-xs text-rose-600">{generalErrors.title}</p> : null}
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-600" htmlFor="form-category">
-              التصنيف (اختياري)
-            </label>
-            <input
-              id="form-category"
-              type="text"
-              value={general.category}
-              onChange={(event) => handleGeneralChange('category', event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              placeholder="مثال: الصحة المدرسية"
-              disabled={submitting}
-            />
-          </div>
-        </div>
+          {isDirty && <WsChip tone="amber">تغييرات غير محفوظة</WsChip>}
+          {errorCount > 0 && (
+            <WsChip tone="red" icon={AlertTriangle}>
+              {errorCount === 1 ? 'خطأ واحد يمنع الحفظ' : `${errorCount} أخطاء تمنع الحفظ`}
+            </WsChip>
+          )}
 
-        <div className="space-y-2">
-          <label className="text-xs font-semibold text-slate-600" htmlFor="form-description">
-            وصف مختصر
-          </label>
-          <textarea
-            id="form-description"
-            value={general.description}
-            onChange={(event) => handleGeneralChange('description', event.target.value)}
-            rows={4}
-            className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            placeholder="اشرح الهدف من هذا النموذج وأي تعليمات مهمة."
-            disabled={submitting}
-          />
-        </div>
+          <div style={{ marginInlineStart: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <WsBtn icon={X} onClick={handleCancel} disabled={submitting}>
+              إلغاء
+            </WsBtn>
+            <WsBtn variant="primary" icon={Save} onClick={handleSubmit} disabled={submitting}>
+              {submitting ? 'جارٍ الحفظ…' : mode === 'create' ? 'حفظ النموذج' : 'حفظ التعديلات'}
+            </WsBtn>
+          </div>
+        </WsToolbar>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-600" htmlFor="form-status">
-              حالة النموذج
-            </label>
-            <select
-              id="form-status"
-              value={general.status}
-              onChange={(event) => handleGeneralChange('status', event.target.value as FormStatus)}
-              className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              disabled={submitting}
-            >
-              {STATUS_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-600" htmlFor="form-target">
-              الجمهور المستهدف
-            </label>
-            <select
-              id="form-target"
-              value={general.target_audience}
-              onChange={(event) => handleGeneralChange('target_audience', event.target.value as FormAssignmentScope)}
-              className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              disabled={submitting}
-            >
-              {AUDIENCE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-600" htmlFor="form-max-responses">
-              حد الردود (اختياري)
-            </label>
-            <input
-              id="form-max-responses"
-              type="number"
-              min="0"
-              value={general.max_responses}
-              onChange={(event) => handleGeneralChange('max_responses', event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              placeholder="اتركه فارغاً لعدد غير محدود"
-              disabled={submitting}
-            />
-          </div>
-        </div>
-      </section>
-
-      <section className="glass-card space-y-4">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-xl font-semibold text-slate-900">مدة التوافر</h2>
-            <p className="text-xs text-muted">حدد تاريخ البداية والنهاية لعرض النموذج للمستفيدين.</p>
-          </div>
-          <button
-            type="button"
-            className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
-            onClick={() => {
-              handleGeneralChange('start_at', '')
-              handleGeneralChange('end_at', '')
-            }}
-            disabled={submitting}
-          >
-            مسح التاريخين
-          </button>
-        </header>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-600" htmlFor="form-start">
-              تاريخ البداية
-            </label>
-            <input
-              id="form-start"
-              type="datetime-local"
-              value={general.start_at}
-              onChange={(event) => handleGeneralChange('start_at', event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              disabled={submitting}
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-600" htmlFor="form-end">
-              تاريخ الانتهاء
-            </label>
-            <input
-              id="form-end"
-              type="datetime-local"
-              value={general.end_at}
-              onChange={(event) => handleGeneralChange('end_at', event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              disabled={submitting}
-            />
-          </div>
-        </div>
-      </section>
-
-      <section className="glass-card space-y-4">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-xl font-semibold text-slate-900">الحقول والأسئلة</h2>
-            <p className="text-xs text-muted">رتب الحقول كما ستظهر للمستفيد واضبط إعداد كل حقل على حدة.</p>
-          </div>
-          <button
-            type="button"
-            onClick={handleAddField}
-            className="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-600"
-            disabled={submitting}
-          >
-            <i className="bi bi-plus-circle" /> إضافة حقل
-          </button>
-        </header>
-
-        {generalErrors.fields ? (
-          <p className="text-xs text-rose-600">{generalErrors.fields}</p>
-        ) : null}
-
-        {fields.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-8 text-center text-sm text-muted">
-            لم تتم إضافة أي حقول بعد. ابدأ بإضافة حقل جديد وتحديد نوعه.
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {fields.map((field, index) => {
-              const errors = fieldErrors[field.localId] ?? {}
-              const selectionMode = isSelectionType(field.type)
-              return (
-                <article key={field.localId} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
-                    <div>
-                      <p className="text-xs font-semibold text-slate-500">الحقل #{index + 1}</p>
-                      <h3 className="text-lg font-bold text-slate-900">{field.label || `حقل بدون عنوان`}</h3>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs font-semibold">
-                      <button
-                        type="button"
-                        className="rounded-full border border-slate-200 px-3 py-1 text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
-                        onClick={() => handleMoveField(field.localId, 'up')}
-                        disabled={index === 0 || submitting}
-                      >
-                        <i className="bi bi-arrow-up" />
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-full border border-slate-200 px-3 py-1 text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
-                        onClick={() => handleMoveField(field.localId, 'down')}
-                        disabled={index === fields.length - 1 || submitting}
-                      >
-                        <i className="bi bi-arrow-down" />
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-full border border-rose-200 px-3 py-1 text-rose-500 transition hover:border-rose-300 hover:text-rose-600"
-                        onClick={() => handleRemoveField(field.localId)}
-                        disabled={submitting}
-                      >
-                        <i className="bi bi-trash" />
-                      </button>
-                    </div>
-                  </header>
-
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <label className="text-xs font-semibold text-slate-600">عنوان الحقل *</label>
-                      <input
-                        type="text"
-                        value={field.label}
-                        onChange={(event) => updateField(field.localId, 'label', event.target.value)}
-                        className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${errors.label ? 'border-rose-300' : 'border-slate-200'}`}
-                        placeholder="مثال: سبب الطلب"
-                        disabled={submitting}
-                      />
-                      {errors.label ? <p className="text-xs text-rose-600">{errors.label}</p> : null}
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-semibold text-slate-600">مفتاح الحقل *</label>
-                      <input
-                        type="text"
-                        value={field.field_key}
-                        onChange={(event) => updateField(field.localId, 'field_key', event.target.value)}
-                        className={`w-full rounded-2xl border px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${errors.field_key ? 'border-rose-300' : 'border-slate-200'}`}
-                        placeholder="مثال: request_reason"
-                        disabled={submitting}
-                      />
-                      {errors.field_key ? <p className="text-xs text-rose-600">{errors.field_key}</p> : null}
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-semibold text-slate-600">نوع الحقل</label>
-                      <select
-                        value={field.type}
-                        onChange={(event) => updateField(field.localId, 'type', event.target.value as FormFieldType)}
-                        className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                        disabled={submitting}
-                      >
-                        {FIELD_TYPE_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="text-[11px] text-muted">{FIELD_TYPE_OPTIONS.find((opt) => opt.value === field.type)?.description}</p>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-semibold text-slate-600">نص مساعد (اختياري)</label>
-                      <input
-                        type="text"
-                        value={field.helper_text ?? ''}
-                        onChange={(event) => updateField(field.localId, 'helper_text', event.target.value)}
-                        className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                        placeholder="مثال: اذكر التفاصيل إن وجدت"
-                        disabled={submitting}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-semibold text-slate-600">نص بديل (placeholder)</label>
-                      <input
-                        type="text"
-                        value={field.placeholder ?? ''}
-                        onChange={(event) => updateField(field.localId, 'placeholder', event.target.value)}
-                        className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                        placeholder="مثال: أدخل السبب هنا"
-                        disabled={submitting}
-                      />
-                    </div>
-                    <div className="flex items-center gap-2 pt-6">
-                      <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600">
-                        <input
-                          type="checkbox"
-                          checked={field.is_required}
-                          onChange={(event) => updateField(field.localId, 'is_required', event.target.checked)}
-                          className="h-4 w-4 rounded border border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                          disabled={submitting}
-                        />
-                        هذا الحقل إجباري
-                      </label>
-                    </div>
-                  </div>
-
-                  {selectionMode ? (
-                    <div className="mt-4 space-y-2">
-                      <label className="text-xs font-semibold text-slate-600">
-                        خيارات القائمة (اكتب كل خيار في سطر، ويمكنك استخدام "label | value")
-                      </label>
-                      <textarea
-                        value={field.optionsText ?? ''}
-                        onChange={(event) => updateField(field.localId, 'optionsText', event.target.value)}
-                        rows={4}
-                        className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                        placeholder={'مثال:\nموافق | yes\nغير موافق | no'}
-                        disabled={submitting}
-                      />
-                      <p className="text-[11px] text-muted">
-                        سيتم إنشاء القيم تلقائياً إذا تركت الجزء بعد الخط العمودي فارغاً.
-                      </p>
-                    </div>
-                  ) : null}
-                </article>
-              )
-            })}
-          </div>
+        {structureLocked && (
+          <WsAlert tone="warn" icon={Lock}>
+            وصل هذا النموذج {initialForm?.submissions_count} ردّاً، فالأسئلة مقفلة: الإجابات المحفوظة مرتبطة
+            بالأسئلة نفسها وتُحذف بحذفها. ويبقى مسموحاً تعديل العنوان والوصف والمواعيد وسقف الردود والجمهور.
+          </WsAlert>
         )}
-      </section>
 
-      <section className="glass-card space-y-4">
-        <header>
-          <h2 className="text-xl font-semibold text-slate-900">خيارات الردود</h2>
-          <p className="text-xs text-muted">تحكم في عدد مرات الإرسال وإمكانية تعديل الردود بعد الإرسال.</p>
-        </header>
+        {storedSections.length > 0 && (
+          <WsAlert tone="warn">
+            هذا النموذج يحتوي {storedSections.length} قسماً، والمصمّم يعرض أسئلتها في قائمةٍ واحدة — فحفظُه من هنا
+            يدمج الأقسام ويُلغيها.
+          </WsAlert>
+        )}
 
-        <div className="flex flex-wrap items-center gap-4">
-          <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              checked={general.allow_multiple_submissions}
-              onChange={(event) => handleGeneralChange('allow_multiple_submissions', event.target.checked)}
-              className="h-4 w-4 rounded border border-slate-300 text-indigo-600 focus:ring-indigo-500"
-              disabled={submitting}
+        {generalErrors.fields && <WsAlert tone="error">{generalErrors.fields}</WsAlert>}
+        {tab !== 'settings' && generalErrors.assignments && (
+          <WsAlert tone="error">
+            {generalErrors.assignments}
+            <WsBtn size="sm" onClick={() => setTab('settings')}>
+              فتح الإعدادات
+            </WsBtn>
+          </WsAlert>
+        )}
+
+        <div className="ws-block__scroll">
+          {tab === 'fields' && (
+            <FieldCanvas
+              fields={fields}
+              selectedId={selectedId}
+              errors={fieldErrors}
+              locked={editingDisabled}
+              onSelect={handleSelect}
+              onDuplicate={handleDuplicate}
+              onRemove={handleRemove}
+              onMove={handleMove}
             />
-            السماح بأكثر من رد واحد لكل مستخدم
-          </label>
-          <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              checked={general.allow_edit_after_submit}
-              onChange={(event) => handleGeneralChange('allow_edit_after_submit', event.target.checked)}
-              className="h-4 w-4 rounded border border-slate-300 text-indigo-600 focus:ring-indigo-500"
+          )}
+
+          {tab === 'settings' && (
+            <FormSettingsPanel
+              general={general}
+              selection={selection}
+              errors={generalErrors}
               disabled={submitting}
+              onGeneralChange={handleGeneralChange}
+              onSelectionChange={setSelection}
             />
-            السماح بتعديل الرد بعد الإرسال
-          </label>
-          <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              checked={general.requires_approval}
-              onChange={(event) => handleGeneralChange('requires_approval', event.target.checked)}
-              className="h-4 w-4 rounded border border-slate-300 text-indigo-600 focus:ring-indigo-500"
-              disabled={submitting}
-            />
-            يتطلب اعتماد الإدارة قبل قبول الرد
-          </label>
+          )}
+
+          {tab === 'preview' && (
+            <FormPreview general={general} fields={fields} formId={initialForm?.id ?? 0} />
+          )}
         </div>
-      </section>
+      </WsMain>
 
-      <footer className="flex flex-wrap items-center justify-end gap-2">
-        <Link
-          to="/admin/forms"
-          className="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
-        >
-          العودة للقائمة
-        </Link>
-        <button
-          type="submit"
-          className="rounded-full bg-indigo-600 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-300"
-          disabled={submitting}
-        >
-          {submitting ? 'جاري الحفظ...' : mode === 'create' ? 'حفظ النموذج' : 'تحديث النموذج'}
-        </button>
-      </footer>
-    </form>
+      {tab === 'fields' && (
+        <WsSideCol title="خصائص السؤال" icon={SlidersHorizontal} storageKey="ws:form-designer:props">
+          <FieldPropertiesPanel
+            field={selectedField}
+            errors={selectedField ? fieldErrors[selectedField.localId] : undefined}
+            disabled={editingDisabled}
+            focusLabelKey={focusLabelKey}
+            onPatch={(patch) => selectedField && patchField(selectedField.localId, patch)}
+            onRetype={(type) => selectedField && handleRetype(selectedField.localId, type)}
+            onSettings={(patch) => selectedField && handleSettings(selectedField.localId, patch)}
+          />
+        </WsSideCol>
+      )}
+    </WsLayout>
   )
 }
