@@ -874,11 +874,21 @@ export interface ImportStudentsPreview {
   students_with_changes: number
   to_be_deleted_count: number
   errors_count: number
-  total_students: number
+
+  // العقد كان معكوساً: `total_students` إلزامي وهو **غير موجود** في استجابة
+  // المعاينة إطلاقاً (مفتاحُ استجابة التنفيذ)، بينما الموجودان فعلاً كانا
+  // اختياريَّين. فصدّقت TypeScript الوعد ولم تعترض، ووصل undefined إلى
+  // مُنسّق الأرقام فأفرغ الصفحة بعد «جاري المعالجة».
+  //
+  // ImportController سطور 404–408: to_be_deleted_count · total_in_file ·
+  // total_in_database — هذه هي المفاتيح الحقيقية.
+
   /** عدد الأسماء في السجل — مقام «الغِطاء» الثابت */
-  total_in_database?: number
+  total_in_database: number
   /** عدد الصفوف في الملف المرفوع */
-  total_in_file?: number
+  total_in_file: number
+  /** لا تُرجعه المعاينة — يبقى للتوافق مع مستدعين قدامى */
+  total_students?: number
   new_students: StudentRecord[]
   existing_students: Array<{
     id: number

@@ -46,7 +46,21 @@ import {
 } from '@/shared/workspace'
 import { chip } from './dashboard-ui'
 
-const ar = (n: number) => n.toLocaleString('ar-SA-u-nu-latn')
+/**
+ * مُنسّقُ عرضٍ لا يُسقط الصفحة.
+ *
+ * كان `(n: number) => n.toLocaleString(...)`، والنوع يَعِد بعددٍ دائماً — لكن
+ * العقد مع الخادم كان يكذب: بطاقة «في الملف» تقرأ `total_students` والمعاينة
+ * لا تُرجعه (تُرجع `total_in_file`). فيصل `undefined` إلى دالةٍ نوعُها يقول إنه
+ * مستحيل، فترتطم بـ«Cannot read properties of undefined» وتُفرغ الصفحة كلَّها
+ * بعد «جاري المعالجة» — بلا رسالة ولا أثر يدلّ المستخدم على شيء.
+ *
+ * والحارس هنا ليس بديلاً عن إصلاح العقد (أُصلح)، بل لأن رقماً ناقصاً في بطاقة
+ * إحصاء لا يجوز بحالٍ أن يُخفي نتيجة استيرادٍ اكتمل. الشرطة تقول «لا رقم»
+ * وتُبقي الباقي مرئياً.
+ */
+const ar = (n: number | null | undefined) =>
+  typeof n === 'number' && Number.isFinite(n) ? n.toLocaleString('ar-SA-u-nu-latn') : '—'
 
 // ─── بطاقة الرفع ───────────────────────────────────────────────────────────
 function UploadCard({
@@ -170,7 +184,9 @@ function MiniStat({ label, value, tone }: { label: string; value: number; tone: 
 function StudentPreviewSummary({ preview }: { preview: ImportStudentsPreview }) {
   const stats = useMemo(
     () => [
-      { label: 'في الملف', value: preview.total_students, tone: TONES.sky },
+      // المعاينة تُرجع `total_in_file`؛ و`total_students` مفتاحُ استجابة
+      // **التنفيذ** لا المعاينة. قراءته هنا كانت تعطي undefined دائماً.
+      { label: 'في الملف', value: preview.total_in_file ?? preview.total_students, tone: TONES.sky },
       { label: 'جدد', value: preview.new_students_count, tone: TONES.green },
       { label: 'تحديث', value: preview.students_with_changes, tone: TONES.amber },
       { label: 'تعطيل', value: preview.to_be_deleted_count, tone: TONES.amber },
