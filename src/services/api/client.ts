@@ -5,6 +5,13 @@ import { useAuthStore } from '@/modules/auth/store/auth-store'
 // React، وسحبها إلى طبقة الشبكة يجعل كل ملفٍ يستورد `apiClient` يجرّ معه شجرة
 // واجهةٍ لا يحتاجها — وقد يعقد حلقة استيراد مع مخزن المصادقة.
 import { activeArchiveYearId } from '@/modules/admin/academic-years/archive-store'
+import {
+  BREADCRUMB_HEADER,
+  encodeBreadcrumbHeader,
+  readIncidentId,
+  recordNetworkFailure,
+  withIncident,
+} from '@/shared/diagnostics'
 
 // Updated to use Cloudflare Tunnel instead of ngrok
 const FALLBACK_API_BASE_URL = 'https://api.brqq.site/api'
@@ -111,6 +118,28 @@ const ARCHIVE_READ_ONLY_MESSAGE = 'لا يمكن التعديل أثناء تص�
 let _lastArchiveLockToast = 0
 const _ARCHIVE_LOCK_TOAST_DEBOUNCE = 4_000
 
+/**
+ * عدد أحداث الفتات المرافقة لطلبات GET.
+ *
+ * الجلب هو جُلّ حركة الشبكة (عشرات الطلبات في فتح لوحةٍ واحدة)، وإرسال عشرين
+ * حدثاً مع كلٍّ منها يحمّل شبكة المدرسة بلا مقابل. وذيلٌ من ستّة أحداث يكفي
+ * لقصّة فشل الجلب: «ضغط زرّاً، فانتقل إلى صفحة، فانفجر أوّل طلبٍ فيها».
+ * أمّا الطلبات التي تُغيّر البيانات فتأخذ السجلّ كاملاً — هناك يقع الضرر.
+ */
+const GET_BREADCRUMB_EVENTS = 6
+
+/**
+ * أجسامٌ ثنائيّة (رفع ملفّات) — لا نرافقها بالفتات.
+ * رفع كشف طلاب قد يبلغ ميغابايتات، وإضافة كيلوبايتٍ من التشخيص إلى طلبٍ بطيءٍ
+ * أصلاً على شبكة مدرسةٍ ريفيّة مقايضةٌ خاسرة.
+ */
+function isBinaryBody(data: unknown): boolean {
+  if (typeof FormData !== 'undefined' && data instanceof FormData) return true
+  if (typeof Blob !== 'undefined' && data instanceof Blob) return true
+  if (typeof ArrayBuffer !== 'undefined' && data instanceof ArrayBuffer) return true
+  return false
+}
+
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -135,12 +164,71 @@ apiClient.interceptors.request.use((config) => {
     config.headers[ACADEMIC_YEAR_HEADER] = String(archiveYearId)
   }
 
+  // فتات المسار يُرسل **مع** الطلب لا بعد فشله: الخادم يحتاجه في اللحظة التي
+  // يكتب فيها سطر الاستثناء. وأيّ إرسالٍ لاحق يعني نداءً ثانياً — قد يفشل هو
+  // الآخر، وقد يصل بعد أن يكون السطر كُتب ناقصاً.
+  try {
+    if (!isBinaryBody(config.data)) {
+      const isRead = (config.method ?? 'get').toLowerCase() === 'get'
+      const trail = encodeBreadcrumbHeader(isRead ? GET_BREADCRUMB_EVENTS : undefined)
+      if (trail) {
+        config.headers[BREADCRUMB_HEADER] = trail
+      }
+    }
+  } catch {
+    // جامع التشخيص لا يمنع طلباً بحال — بلا هذه المِصْيدة يصير عطلٌ في
+    // الترميز عطلاً في كلّ نداءٍ في النظام.
+  }
+
   return config
 })
 
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // ─── التشخيص: يسبق كلّ معالجةٍ أخرى كي يُسجَّل الفشل ولو غيّرت المعالجات
+    // أدناه الرسالة أو أعادت التوجيه.
+    const incidentId = readIncidentId(error.response?.headers)
+
+    if (!axios.isCancel(error)) {
+      // الفشل يُقيَّد في الحلقة فيظهر في ترويسة الطلب **التالي**. وهذا مقصود:
+      // القصّة المفيدة هي «ماذا سبق هذا الطلب»، وسلسلة الإخفاقات المتتابعة
+      // (توكن سقط ⇐ كلّ نداءٍ بعده يرتدّ) تُقرأ عندها كنمطٍ لا كحادثةٍ مفردة.
+      recordNetworkFailure({
+        method: error.config?.method ?? 'get',
+        url: error.config?.url ?? '',
+        // `0` تعني: لم يصل ردٌّ أصلاً — انقطاع شبكةٍ أو مهلة، لا خطأ خادم.
+        status: error.response?.status ?? 0,
+        ref: incidentId,
+      })
+    }
+
+    // رقم البلاغ داخل الرسالة نفسها.
+    //
+    // لماذا هنا لا في كلّ شاشة؟ لأن ١٣٨ طفرةً في الواجهة تعرض خطأها عبر
+    // `getErrorMessage(error, …)` وهي تقرأ `data.message` أوّلاً. فحقنُ الرقم
+    // في هذا الموضع الواحد يجعله يظهر في كلّ شاشةٍ منها بلا تعديل سطرٍ فيها.
+    //
+    // ولماذا 5xx وحدها؟ لأن رسالة تحقّقٍ تقول «الاسم مطلوب» فعلٌ يملكه
+    // المستخدم، وإلحاق رقم بلاغٍ بها يوهمه أن عليه الاتّصال بالدعم. رقم البلاغ
+    // لعطل النظام لا لخطأ الإدخال.
+    if (incidentId && (error.response?.status ?? 0) >= 500) {
+      const body = error.response?.data
+      const serverMessage = typeof body?.message === 'string' ? body.message : ''
+
+      // ردّ لارافيل في الإنتاج عند 500 هو «Server Error» — نصٌّ إنجليزيّ لا
+      // يفهمه مدير المدرسة. نُبقي رسالة الخادم إن كانت عربيّةً (فهي مكتوبةٌ
+      // له)، ونستبدلها إن لم تكن.
+      const isArabic = /[\u0600-\u06FF]/.test(serverMessage)
+      const base = isArabic ? serverMessage : 'تعذّر إتمام العملية — عُطلٌ في الخادم'
+      const message = withIncident(base, incidentId)
+
+      error.message = message
+      if (body && typeof body === 'object') {
+        (body as { message?: string }).message = message
+      }
+    }
+
     // معالجة خطأ 401 - غير مصرح
     if (error.response?.status === 401) {
       window.localStorage.removeItem('auth_token')

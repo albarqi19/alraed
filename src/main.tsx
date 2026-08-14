@@ -1,8 +1,14 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
+import { installBreadcrumbCollectors } from './shared/diagnostics'
 import './styles/index.css'
 import './styles/workspace.css'
+
+// فتات المسار: يُركَّب قبل تركيب شجرة React عمداً، كي يلتقط أوّل نقرةٍ في شاشة
+// الدخول — وهي أكثر الشاشات بلاغاتٍ وأقلّها سياقاً. جامعان اثنان على
+// `document` بالتفويض، بلا تخزينٍ دائم، وكلّ ما فيه مقنَّعٌ من المنبع.
+installBreadcrumbCollectors()
 
 // ✅ تسجيل Firebase Service Worker فقط للإشعارات
 if ('serviceWorker' in navigator) {
