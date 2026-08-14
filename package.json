@@ -9,7 +9,14 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "e2e": "playwright test",
+    "e2e:install": "playwright install chromium",
+    "e2e:build": "vite build --mode e2e",
+    "e2e:serve": "vite preview --port 3000 --strictPort --host 127.0.0.1",
+    "e2e:routes": "node e2e/extract/cli.mjs",
+    "e2e:report": "node e2e/open-report.mjs",
+    "e2e:typecheck": "tsc -p e2e/tsconfig.json --noEmit"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.11",
@@ -69,6 +76,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/forms": "^0.5.10",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^24.6.0",

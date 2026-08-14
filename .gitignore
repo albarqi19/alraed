@@ -22,3 +22,14 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# ── عدّة الزحف (Playwright) ──
+# المخرجات والأسرار لا تُرفع: التقارير تُولَّد عند كل تشغيل،
+# وحالات المصادقة تحوي توكنات جلسات حيّة.
+e2e/.env
+e2e/.auth/
+e2e/report/
+e2e/generated/
+e2e/.artifacts/
+playwright-report/
+test-results/

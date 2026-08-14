@@ -1,0 +1,27 @@
+{
+  /* ملفٌّ مستقلٌّ عمداً — غير مُشارٍ إليه من tsconfig.json الجذر.
+     السبب: `npm run build` يشغّل `tsc -b` على مراجع الجذر. ولو أُدخل مجلّد
+     e2e فيها لصار خطأُ نوعٍ في أداة فحصٍ سبباً في فشل نشر المنتج — وهذا
+     خلطٌ بين طبقتين. الفرونت يُبنى، والعدّة تُفحص، كلٌّ على حدة.
+
+     هذا الملفّ يخدم المحرّر (إكمال ومراجعة أنواع) و`npm run e2e:typecheck`. */
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["node"],
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "moduleDetection": "force",
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true
+  },
+  "include": ["**/*.ts", "**/*.mts", "**/*.mjs", "../playwright.config.ts"],
+  "exclude": ["report", "generated", ".auth", ".artifacts"]
+}
