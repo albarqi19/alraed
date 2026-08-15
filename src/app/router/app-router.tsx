@@ -39,6 +39,8 @@ const PaymentFailedPage = lazyNamed(() => import('@/modules/subscription/pages/p
 const OnboardingWizardPage = lazyNamed(() => import('@/modules/onboarding/pages/onboarding-wizard-page'), 'OnboardingWizardPage')
 const AccountSuspendedPage = lazyNamed(() => import('@/modules/core/pages/account-suspended-page'), 'AccountSuspendedPage')
 const PrivacyPolicyPage = lazyNamed(() => import('@/modules/core/pages/privacy-policy-page'), 'PrivacyPolicyPage')
+const TermsOfUsePage = lazyNamed(() => import('@/modules/core/pages/terms-of-use-page'), 'TermsOfUsePage')
+const CredentialsPage = lazyNamed(() => import('@/modules/core/pages/credentials-page'), 'CredentialsPage')
 const ExcuseSubmissionPage = lazyNamed(() => import('@/modules/excuse'), 'ExcuseSubmissionPage')
 const ReplySubmissionPage = lazyNamed(() => import('@/modules/reply'), 'ReplySubmissionPage')
 const AutoCallDisplayPage = lazyNamed(() => import('@/modules/auto-call/pages/auto-call-display-page'), 'AutoCallDisplayPage')
@@ -410,6 +412,12 @@ const appRoutes = [
         path: 'display/auto-call',
         element: <AutoCallDisplayPage />,
       },
+      /* بيانات الدخول التي يفتحها رابطُ بريد الترحيب — عامّةٌ بلا جلسة:
+         صاحبُها لم يدخل النظام بعد، وهذه الصفحة هي ما يُدخله. */
+      {
+        path: 'credentials/:token',
+        element: <CredentialsPage />,
+      },
       {
         path: 'guidance',
         children: [
@@ -427,6 +435,10 @@ const appRoutes = [
       {
         path: 'privacy-policy',
         element: <PrivacyPolicyPage />,
+      },
+      {
+        path: 'terms',
+        element: <TermsOfUsePage />,
       },
       {
         path: 'account-suspended',

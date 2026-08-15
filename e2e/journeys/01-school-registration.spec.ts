@@ -32,6 +32,7 @@ import { countRows, firstRow } from './_support/php-bridge'
 import { installSession } from './_support/session'
 import {
   uniqueAdminName,
+  uniqueEmail,
   uniqueMinistryNumber,
   uniqueNationalId,
   uniquePhone,
@@ -74,7 +75,14 @@ test.describe('الرحلة ١ — تسجيل مدرسة جديدة', () => {
         'يُثبت أنّ نموذج التسجيل يُنشئ مدرسةً واحدةً وحساباً يعمل فعلاً، ' +
         'وأنّ معالج التهيئة يتقدّم بخطوةٍ حين يضغط صاحبُه الزرّ.',
     })
-    journey.expectQueued('whatsapp', 1, 'رسالةُ الترحيب ببيانات الدخول — تصطفّ ولا تُنفَّذ')
+    /* أثران يخرجان من زرّ التسجيل، وكلاهما مُعلَنٌ هنا بمقداره — «أثرٌ لم يُعلن
+       أثرٌ لم يُلاحَظ»، والفارقُ يُسقط الرحلة عمداً.
+
+       والفصلُ بين الطابورين ليس تفصيلاً: البريد يحمل بيانات الدخول والواتساب
+       تحيّةٌ لا غير. فلو اصطفّ في «whatsapp» اثنان بدل واحد، فتلك عودةُ بيانات
+       الدخول إلى القناة الهشّة من حيث لا نشعر — وهذا السطرُ يمسكها. */
+    journey.expectQueued('whatsapp', 1, 'رسالةُ الترحيب باسم المدرسة — بلا بيانات دخول')
+    journey.expectQueued('notifications', 1, 'بريدُ الترحيب ببيانات الدخول — المصدر الرسميّ')
 
     const schoolName = uniqueSchoolName()
     const subdomain = uniqueSubdomain()
@@ -82,6 +90,7 @@ test.describe('الرحلة ١ — تسجيل مدرسة جديدة', () => {
     const adminName = uniqueAdminName()
     const adminNationalId = uniqueNationalId()
     const adminPhone = uniquePhone()
+    const adminEmail = uniqueEmail()
 
     let api: ApiBridge | null = null
 
@@ -106,6 +115,9 @@ test.describe('الرحلة ١ — تسجيل مدرسة جديدة', () => {
         await field(page, 'اسم مدير المدرسة').fill(adminName)
         await field(page, 'رقم جوال مدير المدرسة').fill(adminPhone)
         await field(page, 'رقم الهوية').fill(adminNationalId)
+        /* البريد إلزاميّ منذ صار مصدرَ بيانات الدخول: تركُه فارغاً يوقف
+           الإرسال عند تحقّق المتصفّح، فلا يصل النموذج إلى الخادم أصلاً. */
+        await field(page, 'البريد الإلكتروني').fill(adminEmail)
       })
 
       /* ── الإرسال ──
@@ -150,14 +162,14 @@ test.describe('الرحلة ١ — تسجيل مدرسة جديدة', () => {
       /* ── التحقّق الأوّل: الواجهة ── */
       await journey.step('شاشةُ النجاح تعرض بيانات الدخول', async () => {
         await expect(
-          page.getByText('تم تسجيل مدرستك بنجاح'),
+          page.getByRole('heading', { name: 'تم تسجيل مدرستك' }),
           'الخادم أنشأ المدرسة لكنّ الصفحة لم تُظهر شاشةَ النجاح — الواجهة لا تقرأ الاستجابة',
         ).toBeVisible()
 
-        /* بطاقةُ الاعتماد قائمةُ تعريفٍ `<dl>` وحيدةٌ في الشاشة. والالتقاطُ بها
-           لا بنصٍّ حرّ: «بيانات الدخول» يظهر أيضاً على زرّ «نسخ بيانات الدخول»،
-           فالنصُّ الحرّ يلتقط عنصرين ويسقط التأكيد بلا سببٍ حقيقيّ. */
-        const credentialsCard = page.locator('dl').first()
+        /* الالتقاطُ بمعرّفِ اختبارٍ لا بوسمٍ ولا بنصٍّ حرّ: كان `<dl>` ثمّ زال
+           مع إعادة تصميم الشاشة، و«بيانات الدخول» نصٌّ يظهر أيضاً على زرّ
+           «نسخ بيانات الدخول» فيلتقط عنصرين. المعرّفُ وحده لا يتبدّل بالشكل. */
+        const credentialsCard = page.getByTestId('admin-credentials')
         await expect(credentialsCard, 'شاشةُ النجاح بلا بطاقة بيانات دخول').toBeVisible()
         await expect(
           credentialsCard,

@@ -14,7 +14,10 @@ const FULLSCREEN_ROUTES = ['/display/auto-call']
    قالب التسويق — هيدر «الرائد/الدخول» فوق مدير سجّل دخوله للتو، وفوتر
    ثانٍ، وحصرٌ في max-w-6xl مع py-10 بينما القالب الداخلي min-h-screen
    فينتج هيدران وفوتران وارتفاعٌ يتجاوز الشاشة. */
-const FULLSCREEN_PREFIXES = ['/excuse', '/reply', '/payment', '/account-suspended', '/onboarding']
+/* `/credentials` تحكم شاشتها بالكامل: خلفيّتها الكريميّة وترويسة هويّتها
+   مأخوذتان من صفحة الهبوط، وحشرُها في قالب التسويق يُنتج ترويستين وفوترين
+   فوق صفحةٍ لا تحتاج إلّا بطاقةً واحدةً في وسط الشاشة. */
+const FULLSCREEN_PREFIXES = ['/excuse', '/reply', '/payment', '/account-suspended', '/onboarding', '/credentials']
 const GUARDIAN_PORTAL_PREFIXES = ['/guardian']
 const NO_HEADER_ROUTES = ['/register']
 

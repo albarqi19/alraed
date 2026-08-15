@@ -269,6 +269,9 @@ export function AdminShell() {
   const isOnSubscriptionPage = location.pathname.includes('/admin/subscription')
   const subscriptionEndsAt = admin?.school?.subscription_ends_at ?? null
   const subscriptionStatus = admin?.school?.subscription_status ?? null
+  /* يقيّد مفتاحَ إخفاء إنذار الاشتراك بالمدرسة: على جهازٍ تتناوب عليه مدرستان
+     لا يُخفي إنذارُ إحداهما إنذارَ الأخرى. */
+  const subscriptionSchoolId = admin?.school?.id ?? null
 
   const planLabel = admin?.school?.plan?.toUpperCase() ?? null
 
@@ -798,6 +801,7 @@ export function AdminShell() {
                   <SubscriptionExpiryAlert
                     endsAt={subscriptionEndsAt}
                     status={subscriptionStatus ?? undefined}
+                    schoolId={subscriptionSchoolId}
                   />
                 </div>
               )}
@@ -814,6 +818,7 @@ export function AdminShell() {
                   <SubscriptionExpiryAlert
                     endsAt={subscriptionEndsAt}
                     status={subscriptionStatus ?? undefined}
+                    schoolId={subscriptionSchoolId}
                   />
                 )}
                 {routedContent}

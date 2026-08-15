@@ -120,7 +120,14 @@ export interface RegisterSchoolPayload {
   admin_name: string
   admin_national_id: string
   admin_phone: string
-  admin_email?: string | null
+  /**
+   * البريد إلزاميّ منذ صار **مصدر** بيانات الدخول لا نسخةً منها.
+   *
+   * كان اختيارياً حين كان الواتساب هو القناة؛ والواتساب بوّابةٌ غير رسميّة
+   * مربوطةٌ بجلسة جوّال تنقطع وتُحظَر — فالاعتمادُ عليه وحده يعني مدرسةً
+   * مسجَّلةً لا تعرف كيف تدخل. فصار البريد هو الطريق، والواتساب ترحيباً.
+   */
+  admin_email: string
   plan_code?: string | null
 }
 

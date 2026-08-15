@@ -81,6 +81,17 @@ export function uniqueAdminName(): string {
   return `مدير تجريبي ${uniqueSuffix()}`
 }
 
+/**
+ * بريدٌ مميَّزٌ للجولة — على نطاق `example.com` المحجوز للتوثيق (RFC 2606).
+ *
+ * النطاقُ محجوزٌ عمداً: التسجيل يُدرج رسالةَ بريدٍ حقيقيّةً في الطابور، وبريدٌ
+ * على نطاقٍ يملكه أحدٌ يعني إزعاجَ غريبٍ في كلّ تشغيل — أو ارتداداً يُسيء إلى
+ * سمعة نطاق الإرسال.
+ */
+export function uniqueEmail(): string {
+  return `e2e-${uniqueSuffix()}@example.com`.toLowerCase()
+}
+
 /** رقمٌ وزاريٌّ مميَّز — ثمانيةُ أرقام كما في المثال داخل النموذج */
 export function uniqueMinistryNumber(): string {
   let digits = ''
