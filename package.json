@@ -12,6 +12,7 @@
     "format": "prettier --write .",
     "e2e": "playwright test",
     "e2e:all": "node e2e/run-all.mjs",
+    "e2e:journeys": "node e2e/journeys/_support/run-journeys.mjs",
     "e2e:install": "playwright install chromium",
     "e2e:build": "vite build --mode e2e",
     "e2e:serve": "vite preview --port 3000 --strictPort --host 127.0.0.1",

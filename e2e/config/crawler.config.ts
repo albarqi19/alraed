@@ -89,8 +89,24 @@ export const crawlerConfig = {
 
   /* ── التقرير ── */
 
-  /** مجلّد مخرجات التقرير */
-  reportDir: env('E2E_REPORT_DIR', path.join(E2E_ROOT, 'report')),
+  /**
+   * مجلّد مخرجات التقرير.
+   *
+   * ولوضع الرحلات مجلّدٌ فرعيٌّ **افتراضاً** لا بإعدادٍ من المُشغِّل: لولا ذلك
+   * لكتب مُبلِّغُ الرحلات ملفّاتِه بين ملفّات الزحف. وقد وقع: نداءٌ واحدٌ بـ
+   * `E2E_JOURNEYS=1 npx playwright test --list` ترك في مجلّد الزحف «تقرير
+   * رحلات» فارغاً يقول «٠ رحلة · ٠ رسالة» — تقريرٌ يطمئن بلا أن يفحص شيئاً،
+   * وهو أسوأ ما يُترك في مجلّد نتائج.
+   *
+   * فالمشغّل `run-journeys.mjs` يضبط المتغيّر صراحةً، وهذا الافتراضُ يحمي من
+   * يستدعي playwright مباشرةً.
+   */
+  reportDir: env(
+    'E2E_REPORT_DIR',
+    ['1', 'true', 'yes', 'نعم'].includes((process.env.E2E_JOURNEYS ?? '').toLowerCase())
+      ? path.join(E2E_ROOT, 'report', 'journeys')
+      : path.join(E2E_ROOT, 'report'),
+  ),
 
   /** مجلّد اللقطات (داخل مجلّد التقرير) */
   get screenshotDir() {

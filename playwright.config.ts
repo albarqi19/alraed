@@ -21,6 +21,20 @@ const BASE_URL = process.env.E2E_BASE_URL ?? 'http://localhost:4173'
 const REPORT_DIR = process.env.E2E_REPORT_DIR ?? path.join(E2E, 'report')
 
 /**
+ * وضعُ الرحلات — طبقةٌ ثانيةٌ فوق الزحف، لا امتدادٌ له.
+ *
+ * الزحفُ يقرأ الصفحات ويضغط الآمنَ من أزرارها فيجيب «هل تُفتح؟». والرحلاتُ
+ * **تكتب** بياناً حقيقياً ثم تتحقّق من أثره فتجيب «هل تعمل الميزة؟». وهما
+ * لا يجتمعان في تشغيلٍ واحد لثلاثة أسباب:
+ *   · التوازي: قياسُ «كان ٧ فصار ٨» يفسد إن أضاف عاملٌ آخرُ صفّاً في أثنائه.
+ *   · الإعادة: إعادةُ رحلةٍ فاشلة تكتب مرّةً ثانية؛ فالرحلات بلا إعادة.
+ *   · التقرير: لكلٍّ مُبلِّغُه وملفُّه — وخلطُهما يُنتج تقريراً يكذب في عدده.
+ *
+ * فيُختار الوضعُ بمتغيّرٍ واحد، ومدخلُه المدعوم هو `npm run e2e:journeys`.
+ */
+const JOURNEYS = ['1', 'true', 'yes', 'نعم'].includes((process.env.E2E_JOURNEYS ?? '').toLowerCase())
+
+/**
  * التوازي محدود عمداً: الزاحف يضرب باكاً محلّياً واحداً على SQLite/MySQL
  * تطويريّ. رفعُ العمّال يحوّل الفحصَ إلى اختبار حِمل، فتظهر مهلاتٌ منتهية
  * تُقرأ أعطالاً وهي ليست أعطالاً.
@@ -80,16 +94,20 @@ export default defineConfig({
 
   /** مهلة الاختبار الواحد: تحميل الصفحة + استقرارها + تجربة أزرارها */
   timeout: Number(process.env.E2E_TEST_TIMEOUT ?? 70_000),
-  expect: { timeout: 8_000 },
+  // الرحلات تنتظر إعادةَ جلبٍ بعد كلّ كتابة على باكٍ متسلسل — ثمانِ ثوانٍ تضيق بها
+  expect: { timeout: JOURNEYS ? 20_000 : 8_000 },
 
-  fullyParallel: true,
-  workers: WORKERS,
+  // تسلسلٌ صارمٌ في الرحلات: القياسُ قبل/بعد لا معنى له إن كتب عاملٌ آخرُ بينهما
+  fullyParallel: !JOURNEYS,
+  workers: JOURNEYS ? 1 : WORKERS,
 
   /**
    * محاولةٌ ثانيةٌ واحدة: فشلُ الشبكة العابر (باكٌ يعيد تشغيل عاملَه، قفلُ
    * قاعدةٍ لحظيّ) لا يستحقّ سطراً في تقرير المالك. وما يفشل مرّتين عطلٌ حقيقيّ.
    */
-  retries: Number(process.env.E2E_RETRIES ?? 1),
+  // ولا إعادةَ في الرحلات: إعادةُ رحلةٍ كتبت نصفَ ما تكتب تُنشئ الصفَّ مرّتين،
+  // ويصير التقرير عن قاعدةٍ لوّثتها العدّة لا عن النظام.
+  retries: JOURNEYS ? 0 : Number(process.env.E2E_RETRIES ?? 1),
 
   /** لا نُسقط التشغيل عند أوّل عطل: التقرير الكامل هو الهدف */
   maxFailures: 0,
@@ -97,7 +115,11 @@ export default defineConfig({
 
   reporter: [
     ['list'],
-    [path.join(E2E, 'reporter', 'crawler-reporter.ts')],
+    [
+      JOURNEYS
+        ? path.join(E2E, 'journeys', '_support', 'journey-reporter.ts')
+        : path.join(E2E, 'reporter', 'crawler-reporter.ts'),
+    ],
     ['html', { outputFolder: path.join(REPORT_DIR, 'playwright'), open: 'never' }],
   ],
 
@@ -117,10 +139,26 @@ export default defineConfig({
       testMatch: /auth\.setup\.ts/,
       use: arabicContext,
     },
-    roleProject('public', 'زائر'),
-    roleProject('admin', 'الإدارة'),
-    roleProject('teacher', 'المعلم'),
-    roleProject('super-admin', 'المشرف العام'),
-    roleProject('guardian', 'وليّ الأمر'),
+    ...(JOURNEYS
+      ? [
+          {
+            /**
+             * مشروعٌ واحدٌ لكلّ الرحلات لا مشروعٌ لكلّ دور: الرحلة الواحدة قد
+             * تبدأ زائراً وتنتهي مديراً (كرحلة التسجيل)، فالدورُ خاصّيةُ رحلةٍ
+             * لا خاصّيةُ مشروع. وكلُّ ملفٍّ يعلن جلستَه بـ`test.use({ storageState })`.
+             */
+            name: 'الرحلات',
+            testMatch: /journeys[\\/].*\.spec\.ts$/,
+            dependencies: ['تهيئة المصادقة'],
+            use: arabicContext,
+          },
+        ]
+      : [
+          roleProject('public', 'زائر'),
+          roleProject('admin', 'الإدارة'),
+          roleProject('teacher', 'المعلم'),
+          roleProject('super-admin', 'المشرف العام'),
+          roleProject('guardian', 'وليّ الأمر'),
+        ]),
   ],
 })

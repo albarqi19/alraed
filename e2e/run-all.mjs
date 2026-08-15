@@ -13,11 +13,13 @@
  *   --skip-seed     لا تُعد بذر القاعدة (أسرع حين تكرّر التشغيل)
  *   --skip-build    لا تُعد بناء الفرونت (أسرع حين لم يتغيّر src)
  *   --no-buttons    زحفُ تحميلٍ فقط بلا ضغط أزرار — أسرع بكثير
+ *   --journeys      وبعد الزحف: شغّل رحلات الميزات على الخادمين نفسِهما
+ *                   (تكتب بياناتٍ حقيقية، فهي بطلبٍ صريح لا افتراضاً)
  *   --open          افتح التقرير عند الانتهاء
  *   --headed        أظهر المتصفّح وهو يعمل
  */
 
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -122,23 +124,91 @@ async function waitFor(url, { timeoutMs = 90_000, name }) {
   )
 }
 
+/**
+ * قتلٌ بالشجرة **متزامن**.
+ * `spawn` غيرُ المتزامن كان لا يلحق أن يبدأ قبل `process.exit`، فيُطبع «أُوقف»
+ * والخادمُ حيّ. (وقع فعلاً: بقي الباك والواجهة قائمين بعد كلّ تشغيل.)
+ */
+function killTree(pid) {
+  if (!pid) return
+  try {
+    if (process.platform === 'win32') {
+      spawnSync('taskkill', ['/pid', String(pid), '/T', '/F'], { stdio: 'ignore', shell: true })
+    } else {
+      process.kill(-pid, 'SIGTERM')
+    }
+  } catch {
+    // الخادم مات أصلاً — لا شيء نفعله
+  }
+}
+
+/**
+ * يحرّر منفذاً شغّلناه نحن بقتل ما يستمع عليه.
+ *
+ * `php artisan serve` يحجز المنفذ بحفيده (`php -S`)، وسلسلةُ الأبوّة تنقطع عبر
+ * غلاف `cmd` فلا يبلغه القتلُ بالشجرة دائماً. وخادمٌ متروكٌ ليس إزعاجاً: التشغيل
+ * التالي يموت خادمُه الجديد صامتاً ويستجيب القديم — بقاعدةٍ مجهولة قد تكون
+ * قاعدة التطوير.
+ */
+function freePort(port) {
+  if (process.platform !== 'win32') return
+  const result = spawnSync('netstat', ['-ano'], { encoding: 'utf8', shell: true, windowsHide: true })
+  for (const line of (result.stdout ?? '').split('\n')) {
+    const match = line.match(/TCP\s+\S+:(\d+)\s+\S+\s+LISTENING\s+(\d+)/i)
+    if (match && Number(match[1]) === Number(port)) killTree(match[2])
+  }
+}
+
 function cleanup() {
   if (cleaned) return
   cleaned = true
   for (const { child, name } of children) {
-    try {
-      if (process.platform === 'win32') {
-        // القتل بالشجرة: الخادم يعمل تحت shell، وقتلُ الأب وحده يترك الحفيد حيّاً
-        // محتجزاً المنفذ — فيفشل التشغيل التالي برسالةٍ لا تدلّ على السبب.
-        spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore', shell: true })
-      } else {
-        process.kill(-child.pid, 'SIGTERM')
-      }
-    } catch {
-      // الخادم مات أصلاً — لا شيء نفعله
-    }
+    killTree(child.pid)
     console.log(c.dim(`    أُوقف: ${name}`))
   }
+  // المنافذُ التي شغّلنا عليها خوادمَنا وحدها — لا نمسّ سواها
+  for (const port of [API_PORT, WEB_PORT]) freePort(port)
+}
+
+/**
+ * ينتظر حتى **يهدأ** الباك، لا حتى يستجيب فقط.
+ *
+ * ══ لماذا لا يكفي «استجاب» ══
+ * `php artisan serve` خادمٌ **متسلسل**: طلبٌ واحدٌ في المرّة. وبعد زحفٍ بثلاثة
+ * عمّالٍ على ١٤٥ صفحة يبقى مشغولاً عشراتِ الثواني يُصرّف ما بقي، فيستجيب —
+ * لكن بعد عشرين ثانية. ومهلةُ نداء الدخول في تهيئة المصادقة عشرون ثانية.
+ *
+ * وهذا وقع فعلاً في أوّل تشغيلٍ مشترك: نجح الزحف، ثمّ **انتهت مهلة** نداءَي
+ * دخول «admin» و«teacher»، فكُتبت لهما حالتان فارغتان، فسقطت سبعُ رحلاتٍ
+ * برسالة «جلسةٌ محفوظةٌ بلا توكن» — والعلّةُ ليست في الرحلات ولا في المصادقة
+ * ولا في التطبيق، بل في أنّنا سألنا خادماً ما يزال يلهث.
+ *
+ * فننتظر ثلاثَ استجاباتٍ **سريعةٍ متتالية** قبل أن نبدأ الطبقة التالية.
+ */
+async function waitUntilCalm(url, { name, needed = 3, budgetMs = 120_000, fastMs = 2500 }) {
+  const deadline = Date.now() + budgetMs
+  let streak = 0
+  let slowest = 0
+  while (Date.now() < deadline) {
+    const startedAt = Date.now()
+    let responded = false
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(15_000) })
+      responded = response.status > 0
+    } catch {
+      responded = false
+    }
+    const took = Date.now() - startedAt
+    slowest = Math.max(slowest, took)
+    if (responded && took <= fastMs) {
+      streak += 1
+      if (streak >= needed) return { calm: true, slowest }
+    } else {
+      streak = 0
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500))
+  }
+  return { calm: false, slowest }
 }
 
 for (const sig of ['SIGINT', 'SIGTERM']) {
@@ -161,9 +231,20 @@ if (!TEST_DB.endsWith('_test')) {
 // ١) قاعدة الاختبار
 if (!flag('--skip-seed')) {
   step('تهيئة قاعدة الاختبار وبذرها')
-  await run('php', ['artisan', 'test:setup-database'], {
-    cwd: backRoot, env: { DB_DATABASE: TEST_DB }, label: 'test:setup-database',
+  // ⚠ بلا DB_DATABASE عمداً: الأمر يشتقّ اسم قاعدة الاختبار من phpunit.xml ثمّ
+  // يرفض العمل إن ساوى الاسمُ قاعدةَ التطبيق. فحقنُ اسم قاعدة الاختبار يجعلهما
+  // واحدةً في عينه فيسقط بـ«اسم قاعدة الاختبار غير آمن» — وهي رسالةٌ تقول عكس
+  // الحقيقة. (وقعنا فيها فعلاً: `--seed` كان يسقط في خطوته الأولى دائماً.)
+  const setupOut = await run('php', ['artisan', 'test:setup-database'], {
+    cwd: backRoot, capture: true, label: 'test:setup-database',
   })
+  process.stdout.write(setupOut)
+  if (!setupOut.includes(TEST_DB)) {
+    fail(
+      `«test:setup-database» بنى قاعدةً غير «${TEST_DB}»`,
+      'وفّق بين DB_DATABASE في phpunit.xml وE2E_DB — وإلا بُنيت قاعدةٌ وبُذرت أخرى.',
+    )
+  }
   const json = await run('php', ['artisan', 'e2e:seed', '--quiet-seeders'], {
     cwd: backRoot, env: { DB_DATABASE: TEST_DB }, capture: true, label: 'e2e:seed',
   })
@@ -235,10 +316,62 @@ const crawl = spawn('npx', crawlArgs, {
   stdio: 'inherit',
 })
 
-const exitCode = await new Promise((resolve) => crawl.on('close', resolve))
+const crawlExit = await new Promise((resolve) => crawl.on('close', resolve))
 
-// ٦) الختام
+/* ٦) الرحلات — طبقةٌ ثانيةٌ اختيارية على الخادمين نفسِهما.
+   ══ لماذا اختياريةٌ لا افتراضية ══
+   الزحفُ يقرأ ويضغط الآمن، والرحلاتُ **تكتب**. وخلطُهما في أمرٍ واحدٍ افتراضيّ
+   يجعل كلَّ من نادى `npm run e2e:all` ليرى صفحاته يكتب بياناتٍ لم يطلبها.
+   فالكتابةُ تُطلَب صراحةً. ولا يُشغَّلان معاً في عمليةٍ واحدة: لكلٍّ مشاريعُه
+   ومُبلِّغُه وعددُ عمّاله (الرحلاتُ بعاملٍ واحدٍ إلزاماً، وإلّا فسد القياس
+   «قبل/بعد» بكتابةِ عاملٍ آخر بينهما). فهما تشغيلان متتاليان، وخادمان مشتركان. */
+let journeysExit = 0
+if (flag('--journeys')) {
+  step('انتظارُ هدوء الباك بعد الزحف')
+  const calm = await waitUntilCalm(`${apiBase}/public/subscription-plans`, { name: 'الباك' })
+  if (!calm.calm) {
+    fail(
+      'الباك لم يهدأ بعد الزحف خلال دقيقتين',
+      [
+        `أبطأُ استجابةٍ قِيست: ${Math.round(calm.slowest / 1000)} ثانية.`,
+        'تشغيلُ الرحلات الآن يعني انتهاءَ مهلة نداء الدخول، فتُكتب حالاتُ أدوارٍ فارغة',
+        'وتسقط الرحلاتُ كلُّها برسالةٍ عن «جلسةٍ بلا توكن» — وهي رسالةٌ تخفي السبب.',
+        'شغّل الرحلات وحدها بعد قليل:  npm run e2e:journeys -- --serve',
+      ].join('\n    '),
+    )
+  }
+  console.log(c.green(`    ✔ هدأ (أبطأُ ما قِيس ${Math.round(calm.slowest / 1000)}ث)`))
+
+  step('الرحلات — إثباتُ أنّ الميزة تعمل (لا أنّ الصفحة تُفتح)')
+  const journeys = spawn('npx', ['playwright', 'test'], {
+    cwd: frontRoot,
+    env: {
+      ...process.env,
+      ...crawlEnv,
+      E2E_JOURNEYS: '1',
+      E2E_DB: TEST_DB,
+      // مجلّدٌ منفصل: لولاه لدهس تقريرُ الرحلات تقريرَ الزحف ولقطاتِه
+      E2E_REPORT_DIR: path.join(here, 'report', 'journeys'),
+    },
+    shell: true,
+    stdio: 'inherit',
+  })
+  journeysExit = await new Promise((resolve) => journeys.on('close', resolve))
+}
+
+// ٧) الختام
 cleanup()
+
+const exitCode = crawlExit || journeysExit
+
+if (flag('--journeys')) {
+  const journeyHtml = path.join(here, 'report', 'journeys', 'تقرير-الرحلات.html')
+  if (existsSync(journeyHtml)) {
+    console.log('')
+    console.log(c.bold('  تقرير الرحلات:'))
+    console.log(`  ${journeyHtml}`)
+  }
+}
 
 const reportHtml = path.join(here, 'report', 'تقرير-الزحف.html')
 console.log('')

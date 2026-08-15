@@ -10,7 +10,7 @@
  *   • تقرير-الزحف.html  — ذاتيّ الاحتواء، اللقطات مضمَّنة، يُفتح بالنقر
  */
 
-import type { FullConfig, FullResult, Reporter, TestCase, TestResult } from '@playwright/test/reporter'
+import type { Reporter, TestCase, TestResult } from '@playwright/test/reporter'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { crawlerConfig } from '../config/crawler.config'
@@ -49,7 +49,7 @@ export default class CrawlerReporter implements Reporter {
   private flaky = new Set<string>()
   private startedAt = new Date()
 
-  onBegin(_config: FullConfig): void {
+  onBegin(): void {
     this.startedAt = new Date()
   }
 
@@ -67,7 +67,7 @@ export default class CrawlerReporter implements Reporter {
     }
   }
 
-  async onEnd(_result: FullResult): Promise<void> {
+  async onEnd(): Promise<void> {
     mkdirSync(crawlerConfig.reportDir, { recursive: true })
 
     const inventory = loadInventory()
