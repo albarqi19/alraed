@@ -4,6 +4,7 @@ import { Home, Wrench, FileText, MessageSquare, ShoppingCart, LogOut, Users, Use
 import clsx from 'classnames'
 import { GuardianProvider, useGuardianContext } from '../context/guardian-context'
 import { GuardianStoreModal } from '../components/guardian-store-modal'
+import { GuardianAutoCallOutstandingBanner } from '../components/auto-call-outstanding-banner'
 import { useGuardianDarkMode } from '../hooks/use-guardian-dark-mode'
 
 const navItems = [
@@ -312,6 +313,11 @@ function GuardianShellContent() {
                         </div>
                     </div>
                 </header>
+
+                {/* نداءٌ قائم بانتظار تأكيد الاستلام — تحت الترويسة مباشرةً
+                    وفوق كلّ صفحة، لأن تركه بلا تأكيد يُحتسب مخالفةً على وليّ
+                    الأمر. ولا يظهر شيءٌ حين لا نداء. */}
+                <GuardianAutoCallOutstandingBanner />
 
                 {/* Main content */}
                 <main className="flex-1 overflow-y-auto pb-20">

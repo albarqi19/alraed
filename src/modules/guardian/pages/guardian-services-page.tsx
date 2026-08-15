@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect, type FormEvent } from 'react'
-import { useMutation } from '@tanstack/react-query'
 import {
     ClipboardCheck,
     Megaphone,
@@ -23,7 +22,8 @@ import {
 import { useToast } from '@/shared/feedback/use-toast'
 import { getErrorMessage, getStatusCode } from '@/services/api/errors'
 import { useGuardianContext } from '../context/guardian-context'
-import { requestGuardianAutoCall } from '../auto-call-api'
+import { AutoCallAcknowledgeCard } from '../components/auto-call-acknowledge-card'
+import { useGuardianAutoCallRequestMutation } from '../hooks/use-guardian-auto-call'
 import { useAutoCallGate, type AutoCallGatePhase } from '../hooks/use-auto-call-gate'
 import {
     useGuardianLeaveRequestSubmissionMutation,
@@ -400,6 +400,7 @@ function LeaveRequestSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () =
  * يجعل وليَّ الأمر يقرأ السطر كلَّه ليعرف أيَّها حاله.
  */
 const AUTO_CALL_PHASE_TONE: Record<AutoCallGatePhase, string> = {
+    'awaiting-acknowledgement': 'text-amber-600 dark:text-amber-400',
     loading: 'text-slate-500 dark:text-slate-400',
     'settings-unavailable': 'text-amber-600 dark:text-amber-400',
     disabled: 'text-slate-500 dark:text-slate-400',
@@ -416,40 +417,52 @@ function AutoCallSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     const { studentSummary, currentNationalId } = useGuardianContext()
     const toast = useToast()
 
-    // البوّابة تُفعَّل بفتح اللوحة فقط: جلب الإعدادات وطلب الموقع خلف لوحةٍ
-    // مغلقة استهلاكٌ لبطّارية الجهاز وإذنٌ يُطلب بلا سبب ظاهر للمستخدم.
-    const gate = useAutoCallGate(isOpen)
+    // البوّابة تُفعَّل بفتح اللوحة فقط: طلب الموقع خلف لوحةٍ مغلقة استهلاكٌ
+    // لبطّارية الجهاز وإذنٌ يُطلب بلا سبب ظاهر للمستخدم.
+    const gate = useAutoCallGate(isOpen, currentNationalId)
 
     const [serverRejection, setServerRejection] = useState<string | null>(null)
+    /** اسم من أُقرّ استلامه للتوّ — يبقى ثوانيَ ثم تعود اللوحة إلى «يمكنك النداء». */
+    const [acknowledgedName, setAcknowledgedName] = useState<string | null>(null)
 
-    const requestMutation = useMutation({
-        mutationFn: requestGuardianAutoCall,
-        onSuccess: () => {
-            setServerRejection(null)
-            toast({
-                type: 'success',
-                title: 'تم إرسال طلب المناداة',
-                description: 'سيظهر اسم الطالب على شاشة الاستقبال.',
-            })
-            onClose()
-        },
-        onError: (error: unknown) => {
-            // رسائل الرفض من الخادم عربيّةٌ دقيقة وموجَّهة للواقف عند البوّابة:
-            // «تبعد ٨٤٠ متراً والمسموح ٥٠٠»، «حسابك موقوف عن النداء حتى ١٣:٢٠»،
-            // «يوجد نداء نشط بالفعل لهذا الطالب». استبدالها برسالةٍ عامّة يمحو
-            // الإرشاد الوحيد الذي يملكه.
-            //
-            // ٤٠١ وحدها تُستثنى: رسالتها من Laravel إنجليزيّة («Unauthenticated.»)
-            // ولا تصف الحال. جلسة وليّ الأمر تنتهي بانتهاء الرمز، والفعل المطلوب
-            // إعادة الدخول لا إعادة الضغط.
-            const message =
-                getStatusCode(error) === 401
-                    ? 'انتهت جلستك — أعد الدخول إلى البوابة ثم حاول مرة أخرى.'
-                    : getErrorMessage(error, 'تعذّر إرسال طلب المناداة، حاول مرة أخرى.')
-            setServerRejection(message)
-            toast({ type: 'error', title: message })
-        },
-    })
+    // التطمين لا يُقيم: بعده تعود اللوحة إلى حالتها الطبيعيّة، فمن له ابنٌ
+    // آخر يجد زرَّ النداء حيث اعتاده بلا أن يُغلق اللوحة ويفتحها.
+    useEffect(() => {
+        if (!acknowledgedName) return
+        const timer = window.setTimeout(() => setAcknowledgedName(null), 8_000)
+        return () => window.clearTimeout(timer)
+    }, [acknowledgedName])
+
+    const requestMutation = useGuardianAutoCallRequestMutation()
+
+    const handleRequestSuccess = () => {
+        setServerRejection(null)
+        setAcknowledgedName(null)
+        toast({
+            type: 'success',
+            title: 'تم إرسال طلب المناداة',
+            description: 'سيظهر اسم الطالب على شاشة الاستقبال — وبعد استلامه أكّد ذلك من هنا.',
+        })
+        // اللوحة تبقى مفتوحة عمداً: كانت تُغلق فور الإرسال فيبقى وليُّ الأمر
+        // بلا موضعٍ يُقرّ فيه استلامه، وهو نصف سبب المخالفات التي تُسجَّل بلا ذنب.
+    }
+
+    const handleRequestError = (error: unknown) => {
+        // رسائل الرفض من الخادم عربيّةٌ دقيقة وموجَّهة للواقف عند البوّابة:
+        // «تبعد ٨٤٠ متراً والمسموح ٥٠٠»، «حسابك موقوف عن النداء حتى ١٣:٢٠»،
+        // «يوجد نداء نشط بالفعل لهذا الطالب». استبدالها برسالةٍ عامّة يمحو
+        // الإرشاد الوحيد الذي يملكه.
+        //
+        // ٤٠١ وحدها تُستثنى: رسالتها من Laravel إنجليزيّة («Unauthenticated.»)
+        // ولا تصف الحال. جلسة وليّ الأمر تنتهي بانتهاء الرمز، والفعل المطلوب
+        // إعادة الدخول لا إعادة الضغط.
+        const message =
+            getStatusCode(error) === 401
+                ? 'انتهت جلستك — أعد الدخول إلى البوابة ثم حاول مرة أخرى.'
+                : getErrorMessage(error, 'تعذّر إرسال طلب المناداة، حاول مرة أخرى.')
+        setServerRejection(message)
+        toast({ type: 'error', title: message })
+    }
 
     if (!isOpen) return null
 
@@ -470,63 +483,124 @@ function AutoCallSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
             return
         }
 
-        requestMutation.mutate({
-            studentNationalId: currentNationalId,
-            studentName: studentSummary.name,
-            classLabel: `${studentSummary.grade} - ${studentSummary.class_name}`,
-            latitude: gate.coords?.latitude ?? null,
-            longitude: gate.coords?.longitude ?? null,
-        })
+        requestMutation.mutate(
+            {
+                studentNationalId: currentNationalId,
+                studentName: studentSummary.name,
+                classLabel: `${studentSummary.grade} - ${studentSummary.class_name}`,
+                latitude: gate.coords?.latitude ?? null,
+                longitude: gate.coords?.longitude ?? null,
+            },
+            { onSuccess: handleRequestSuccess, onError: handleRequestError },
+        )
     }
 
     const isButtonDisabled = isSending || (gate.isBlocked && !gate.isLocationAction)
+    const isAwaitingAcknowledgement = gate.phase === 'awaiting-acknowledgement' && gate.activeCall !== null
 
     return (
         <BottomSheet title="النداء الآلي" onClose={onClose}>
             <div className="space-y-4">
-                <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-950 p-4 text-center">
-                    <Megaphone className="mx-auto mb-2 h-12 w-12 text-emerald-500" />
-                    <p className="font-semibold text-emerald-700 dark:text-emerald-300">طلب مناداة فورية</p>
-                    <p className="mt-1 text-sm text-emerald-600 dark:text-emerald-500">
-                        سيتم عرض اسم الطالب على شاشة الاستقبال
-                    </p>
-                </div>
+                {/* الترويسة تتبع الحال: قبل النداء تَعِد، وبعده تقول ما بقي
+                    على وليّ الأمر — لا تظلّ تعرض عليه ما فعله للتوّ. */}
+                {isAwaitingAcknowledgement ? (
+                    <div className="rounded-2xl bg-amber-50 p-4 text-center dark:bg-amber-950">
+                        <Megaphone className="mx-auto mb-2 h-12 w-12 text-amber-500" />
+                        <p className="font-semibold text-amber-800 dark:text-amber-200">نداؤك مُرسَل</p>
+                        <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">
+                            بقي أن تؤكّد الاستلام حين يصل إليك الطالب
+                        </p>
+                    </div>
+                ) : (
+                    <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-950 p-4 text-center">
+                        <Megaphone className="mx-auto mb-2 h-12 w-12 text-emerald-500" />
+                        <p className="font-semibold text-emerald-700 dark:text-emerald-300">طلب مناداة فورية</p>
+                        <p className="mt-1 text-sm text-emerald-600 dark:text-emerald-500">
+                            سيتم عرض اسم الطالب على شاشة الاستقبال
+                        </p>
+                    </div>
+                )}
 
                 <div className="rounded-xl bg-slate-50 dark:bg-slate-700 p-4">
                     <p className="text-sm text-slate-600 dark:text-slate-400">الطالب: <strong>{studentSummary?.name}</strong></p>
                     <p className="text-sm text-slate-600 dark:text-slate-400">الصف: <strong>{studentSummary?.grade} - {studentSummary?.class_name}</strong></p>
                 </div>
 
-                <button
-                    type="button"
-                    onClick={handleClick}
-                    disabled={isButtonDisabled}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-slate-600 dark:disabled:text-slate-400"
-                >
-                    {(isSending || gate.phase === 'locating' || gate.phase === 'loading') && (
-                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                    )}
-                    {gate.phase === 'needs-permission' && !isSending && (
-                        <MapPin className="h-4 w-4" aria-hidden />
-                    )}
-                    {isSending ? 'جارٍ الإرسال…' : gate.actionLabel}
-                </button>
+                {/* ما بعد الضغط: تطميناً لا صمتاً. يبقى ثوانيَ ثمّ تعود اللوحة
+                    إلى «يمكنك النداء» لمن بقي له ابنٌ آخر. */}
+                {acknowledgedName && (
+                    <div className="flex items-start gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                        <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500" aria-hidden />
+                        <span>
+                            <strong>تمّ — نتمنّى لكم يوماً طيباً.</strong>
+                            <span className="block text-xs opacity-90">أُغلق طلب مناداة {acknowledgedName}.</span>
+                        </span>
+                    </div>
+                )}
 
-                {/* الشرح تحت الزرّ لا داخله: نصّ الزرّ فعلٌ، والسبب جملةٌ لا تتّسع لها. */}
-                <p className={`text-center text-xs font-medium ${AUTO_CALL_PHASE_TONE[gate.phase]}`}>
-                    {gate.explanation}
-                </p>
+                {/* نداءٌ قائم ⇒ الزرّ الوحيد المعروض هو «استلمتُ ابني». وإخفاء
+                    زرّ النداء هنا مقصود: نداءٌ ثانٍ للطالب نفسه يرفضه الخادم،
+                    والمطلوب من وليّ الأمر الآن إغلاقُ ما بدأه لا بدءُ غيره. */}
+                {isAwaitingAcknowledgement && gate.activeCall ? (
+                    <AutoCallAcknowledgeCard
+                        entry={gate.activeCall}
+                        onAcknowledged={(entry) => {
+                            setServerRejection(null)
+                            setAcknowledgedName(entry.studentName || studentSummary?.name || 'ابنك')
+                        }}
+                    />
+                ) : (
+                    <>
+                        <button
+                            type="button"
+                            onClick={handleClick}
+                            disabled={isButtonDisabled}
+                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-slate-600 dark:disabled:text-slate-400"
+                        >
+                            {(isSending || gate.phase === 'locating' || gate.phase === 'loading') && (
+                                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                            )}
+                            {gate.phase === 'needs-permission' && !isSending && (
+                                <MapPin className="h-4 w-4" aria-hidden />
+                            )}
+                            {isSending ? 'جارٍ الإرسال…' : gate.actionLabel}
+                        </button>
 
-                {/* إعادة قياسٍ للبعيد: قد يكون قاس وهو في السيارة ثم وصل البوّابة،
-                    وبلا هذا يبقى الزرّ مقفلاً حتى يُغلق اللوحة ويفتحها. */}
-                {gate.phase === 'too-far' && !isSending && (
-                    <button
-                        type="button"
-                        onClick={() => gate.measureLocation()}
-                        className="mx-auto block text-xs font-semibold text-emerald-600 underline underline-offset-4 transition hover:text-emerald-700 dark:text-emerald-500"
-                    >
-                        تحديث موقعي
-                    </button>
+                        {/* الشرح تحت الزرّ لا داخله: نصّ الزرّ فعلٌ، والسبب جملةٌ لا تتّسع لها. */}
+                        <p className={`text-center text-xs font-medium ${AUTO_CALL_PHASE_TONE[gate.phase]}`}>
+                            {gate.explanation}
+                        </p>
+
+                        {/* إعادة قياسٍ للبعيد: قد يكون قاس وهو في السيارة ثم وصل البوّابة،
+                            وبلا هذا يبقى الزرّ مقفلاً حتى يُغلق اللوحة ويفتحها. */}
+                        {gate.phase === 'too-far' && !isSending && (
+                            <button
+                                type="button"
+                                onClick={() => gate.measureLocation()}
+                                className="mx-auto block text-xs font-semibold text-emerald-600 underline underline-offset-4 transition hover:text-emerald-700 dark:text-emerald-500"
+                            >
+                                تحديث موقعي
+                            </button>
+                        )}
+                    </>
+                )}
+
+                {/* نداءات إخوته: اللوحة تتبع الابن المُختار، ولو أخفينا نداء
+                    أخيه لبقي بلا تأكيدٍ حتى تنتهي مهلته فتُسجَّل المخالفة نفسها. */}
+                {gate.otherActiveCalls.length > 0 && (
+                    <div className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-900/40">
+                        <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                            نداءات أخرى تخصّك ولم تؤكّد استلامها
+                        </p>
+                        {gate.otherActiveCalls.map((call) => (
+                            <AutoCallAcknowledgeCard
+                                key={call.id}
+                                entry={call}
+                                variant="slim"
+                                onAcknowledged={(entry) => setAcknowledgedName(entry.studentName || 'ابنك')}
+                            />
+                        ))}
+                    </div>
                 )}
 
                 {serverRejection && (

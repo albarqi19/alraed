@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { fetchGuardianAutoCallSettings, type GuardianAutoCallSettings } from '../auto-call-api'
+import type { GuardianAutoCallEntry, GuardianAutoCallSettings } from '../auto-call-api'
+import { useGuardianAutoCallQueueQuery, useGuardianAutoCallSettingsQuery } from './use-guardian-auto-call'
 
 /**
  * بوّابة زرّ «طلب المناداة الآن».
@@ -17,6 +17,16 @@ import { fetchGuardianAutoCallSettings, type GuardianAutoCallSettings } from '..
  */
 
 export type AutoCallGatePhase =
+  /**
+   * نداءٌ قائمٌ لهذا الطالب ينتظر إقرار الاستلام.
+   *
+   * تسبق هذه الحالة كلَّ ما عداها في الترتيب لأنها الوحيدة التي يترتّب على
+   * إهمالها عقوبة: النداء الذي تنتهي مهلته بلا إقرار يُسجَّل مخالفةً على
+   * وليّه، وثلاثٌ منها تحجب الخدمة عنه يوماً كاملاً. فلا يجوز أن تحجبها عنه
+   * «الخدمة مطفأة» ولا «انتهت النافذة» ولا «أنت بعيد» — كلُّ أولئك تمنع نداءً
+   * جديداً، ولا واحدة منها تلغي واجبَ إقرارِ نداءٍ ماضٍ.
+   */
+  | 'awaiting-acknowledgement'
   /** إعدادات المدرسة لم تصل بعد. */
   | 'loading'
   /** تعذّر جلب الإعدادات — نسمح بالمحاولة ونترك الحكم للخادم. */
@@ -64,6 +74,17 @@ export interface AutoCallGate {
   measureLocation: () => void
   /** هل للمدرسة سياجٌ أصلاً؟ يفيد لإظهار «إعادة القياس». */
   hasGeofence: boolean
+  /** النداء القائم للطالب المعروض — هو مصدر زرّ «استلمتُ ابني». */
+  activeCall: GuardianAutoCallEntry | null
+  /**
+   * نداءاتٌ قائمةٌ لأبناءٍ آخرين لهذا الوليّ.
+   *
+   * تُعرض ولا تُهمل: اللوحة تتبع الابن المُختار وحده، ولو أخفينا نداء أخيه
+   * لظلّ بلا إقرارٍ حتى تنتهي مهلته — وهي المخالفة نفسها التي جئنا نمنعها.
+   */
+  otherActiveCalls: GuardianAutoCallEntry[]
+  /** هل ما زال الطابور يُقرأ من الخادم لأوّل مرّة؟ */
+  isQueueLoading: boolean
 }
 
 /** المسافة بالأمتار بصيغة هافرساين — نفس ما يحسبه الخادم فلا يختلف الحكمان. */
@@ -124,20 +145,31 @@ function isWithinOpenHours(settings: GuardianAutoCallSettings, now: Date = new D
 
 type PermissionPhase = 'unknown' | 'prompt' | 'granted' | 'denied'
 
-export function useAutoCallGate(isActive: boolean): AutoCallGate {
-  const settingsQuery = useQuery({
-    queryKey: ['guardian', 'auto-call', 'settings'],
-    queryFn: fetchGuardianAutoCallSettings,
-    enabled: isActive,
-    // الإعدادات تتغيّر من لوحة الأدمن أثناء اليوم (إطفاء الخدمة، تضييق
-    // النافذة)، ووليّ الأمر يفتح اللوحة مرّةً ويتركها مفتوحة. دقيقةٌ واحدة
-    // تُبقيها حيّةً بلا إغراق.
-    staleTime: 60_000,
-    retry: 1,
-  })
+/**
+ * @param isActive  هل اللوحة مفتوحة؟ (الجلب وطلب الموقع خلف لوحةٍ مغلقة عبث)
+ * @param studentNationalId  هويّة الابن المعروض — بها نميّز نداءه من نداء أخيه
+ */
+export function useAutoCallGate(isActive: boolean, studentNationalId?: string | null): AutoCallGate {
+  const settingsQuery = useGuardianAutoCallSettingsQuery(isActive)
+
+  // الطابور يُقرأ ما دامت اللوحة مفتوحة، ويشارك مفتاحَه مع الشريط المقيم في
+  // هيكل البوّابة — فنسخةٌ واحدة تخدمهما ولا يتضاربان.
+  const queueQuery = useGuardianAutoCallQueueQuery(isActive)
 
   const settings = settingsQuery.data ?? null
   const geofence = settings?.geofence ?? null
+
+  const activeCalls = queueQuery.data ?? []
+  const trackedNationalId = (studentNationalId ?? '').trim()
+
+  // بلا هويّةِ طالبٍ نأخذ أوّل نداءٍ قائم: عرضُ زرِّ استلامٍ لنداءٍ لا نعرف
+  // صاحبه أفضل من إخفائه، فالبديل مخالفةٌ صامتة.
+  const activeCall =
+    (trackedNationalId
+      ? activeCalls.find((call) => call.studentNationalId === trackedNationalId)
+      : activeCalls[0]) ?? null
+
+  const otherActiveCalls = activeCalls.filter((call) => call.id !== activeCall?.id)
 
   const [permission, setPermission] = useState<PermissionPhase>('unknown')
   const [isLocating, setIsLocating] = useState(false)
@@ -244,6 +276,7 @@ export function useAutoCallGate(isActive: boolean): AutoCallGate {
       : null
 
   const gate = resolveGate({
+    activeCall,
     isSettingsLoading: settingsQuery.isLoading,
     isSettingsError: settingsQuery.isError,
     settings,
@@ -261,10 +294,14 @@ export function useAutoCallGate(isActive: boolean): AutoCallGate {
     coords,
     hasGeofence: Boolean(geofence),
     measureLocation,
+    activeCall,
+    otherActiveCalls,
+    isQueueLoading: queueQuery.isLoading,
   }
 }
 
 interface GateInput {
+  activeCall: GuardianAutoCallEntry | null
   isSettingsLoading: boolean
   isSettingsError: boolean
   settings: GuardianAutoCallSettings | null
@@ -289,12 +326,16 @@ type GateShape = Pick<
 /**
  * ترتيب الفحوص هو ترتيب ما يستطيع وليّ الأمر فعله حياله.
  *
- * الخدمة المطفأة أو النافذة المغلقة لا حيلة له فيهما، فتُقال أوّلاً ولا يُطلب
- * موقعه بلا فائدة. ثم الإذن، ثم القياس، ثم المسافة — وكلٌّ منها يُظهر الفعل
- * التالي المطلوب منه لا وصفَ العطل.
+ * النداء القائم أوّلاً: هو الفعل الوحيد الذي يترتّب على إهماله عقوبة، ولا
+ * يُلغيه إطفاءُ الخدمة ولا انقضاءُ النافذة ولا بُعدُ المسافة.
+ *
+ * ثم الخدمة المطفأة أو النافذة المغلقة — لا حيلة له فيهما، فتُقالان قبل أن
+ * يُطلب موقعه بلا فائدة. ثم الإذن، ثم القياس، ثم المسافة — وكلٌّ منها يُظهر
+ * الفعل التالي المطلوب منه لا وصفَ العطل.
  */
 function resolveGate(input: GateInput): GateShape {
   const {
+    activeCall,
     isSettingsLoading,
     isSettingsError,
     settings,
@@ -304,6 +345,24 @@ function resolveGate(input: GateInput): GateShape {
     locationError,
     measuredDistance,
   } = input
+
+  // نداءٌ قائم ⇒ زرُّ «نادِ» يختفي وزرُّ «استلمت» يحلّ محلّه. وإخفاؤه لا
+  // تعطيله: زرٌّ معطَّلٌ يوحي بأن على وليّ الأمر انتظار شيء، والحقيقة أن
+  // المطلوب منه فعلٌ آخر ظاهرٌ تحته.
+  if (activeCall) {
+    const student = activeCall.studentName || 'ابنك'
+    return {
+      phase: 'awaiting-acknowledgement',
+      explanation:
+        activeCall.announcedCount > 0
+          ? `نُودي على ${student} — أكّد استلامك حين يصل إليك.`
+          : `طلبك في الطابور، وسيُنادى على ${student} — أكّد استلامك حين يصل إليك.`,
+      actionLabel: 'بانتظار استلامك',
+      canRequest: false,
+      isLocationAction: false,
+      isBlocked: true,
+    }
+  }
 
   if (isSettingsLoading) {
     return {
