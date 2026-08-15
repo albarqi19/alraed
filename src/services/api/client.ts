@@ -5,6 +5,7 @@ import { useAuthStore } from '@/modules/auth/store/auth-store'
 // React، وسحبها إلى طبقة الشبكة يجعل كل ملفٍ يستورد `apiClient` يجرّ معه شجرة
 // واجهةٍ لا يحتاجها — وقد يعقد حلقة استيراد مع مخزن المصادقة.
 import { activeArchiveYearId } from '@/modules/admin/academic-years/archive-store'
+import { guardianPhoneLast4For } from '@/modules/guardian/session-lookup'
 import {
   BREADCRUMB_HEADER,
   encodeBreadcrumbHeader,
@@ -162,6 +163,32 @@ apiClient.interceptors.request.use((config) => {
   const archiveYearId = activeArchiveYearId()
   if (archiveYearId !== null) {
     config.headers[ACADEMIC_YEAR_HEADER] = String(archiveYearId)
+  }
+
+  // المميّز الثاني لهويّة وليّ الأمر — يُحقن هنا لا في كل دالّة.
+  //
+  // بوّابة وليّ الأمر عامّة بلا توكن: تُعرَّف بهويّة الطالب. ورقمُ هويّةٍ من عشر
+  // خاناتٍ وحده يُخمَّن، فيقرأ المخمِّن حضورَ طالبٍ وسلوكَه ورسائله. لذلك يفرض
+  // الخادم مميّزاً ثانياً — آخر أربعة من جوال الوليّ — فيصير التخمين عشرة
+  // ملايين احتمالٍ مع حدٍّ للمعدّل، أي غير عمليّ.
+  //
+  // وكانت تسع دوالٍّ في modules/guardian/api.ts تمرّر national_id وحده، فردّ
+  // الخادم 422 على كل نداءٍ في البوّابة. وإصلاحُها واحدةً واحدة يُفلت واحدةً
+  // حتماً، ويُفلت كلَّ دالّةٍ تُكتب غداً. فالحقن هنا:
+  //   • يشمل الحاضر والقادم بلا أن يتذكّره أحد،
+  //   • ولا يلمس طلباً لا يحمل national_id أصلاً،
+  //   • ولا يدهس قيمةً مرّرها المستدعي صراحةً (تسجيل الدخول يمرّرها بنفسه).
+  try {
+    const params = config.params as Record<string, unknown> | undefined
+    if (params && params.national_id && !params.phone_last4) {
+      const last4 = guardianPhoneLast4For(String(params.national_id))
+      if (last4) {
+        params.phone_last4 = last4
+      }
+    }
+  } catch {
+    // جلسةٌ تالفة أو تخزينٌ معطَّل: نمضي بلا حقن فيردّ الخادم رسالته الواضحة،
+    // بدل أن ينكسر الطلب هنا بخطأٍ لا يفهمه أحد.
   }
 
   // فتات المسار يُرسل **مع** الطلب لا بعد فشله: الخادم يحتاجه في اللحظة التي
