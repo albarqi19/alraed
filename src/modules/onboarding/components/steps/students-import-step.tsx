@@ -94,8 +94,8 @@ export function StudentsImportStep({ onComplete, onSkip, stats, isCompleting, is
           </h4>
           <ol className="list-inside list-decimal space-y-0.5 text-[12px] font-normal">
             <li>ادخل على نظام نور</li>
-            <li>اذهب إلى "التقارير" ثم "تقارير الطلاب"</li>
-            <li>اختر "كشف بأسماء الطلاب"</li>
+            <li>اذهب إلى "التقارير" ثم "التقارير الإحصائية"</li>
+            <li>اختر "البيانات الخاصة بالإرشاد الطلابي"</li>
             <li>صدّر الملف بصيغة Excel</li>
             <li>ارفع الملف هنا</li>
           </ol>
