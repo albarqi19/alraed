@@ -29,6 +29,7 @@ export const FORM_SUBMISSION_STATUS_LABELS: Record<FormSubmission['status'], str
   reviewed: 'قيد المراجعة',
   approved: 'معتمد',
   rejected: 'مرفوض',
+  returned: 'مُعاد للتعديل',
 }
 
 /** مجموعات لوحة الأنواع في المصمّم */

@@ -22,6 +22,7 @@ import {
   Paperclip,
   Percent,
   Printer,
+  RotateCcw,
   RefreshCw,
   Search,
   Settings2,
@@ -80,10 +81,15 @@ const MAX_FETCH_PAGE_SIZE = 100
 
 const STATUS_ORDER: FormSubmission['status'][] = ['submitted', 'reviewed', 'approved', 'rejected', 'draft']
 
-const REVIEWABLE_STATUSES: Array<Extract<FormSubmission['status'], 'approved' | 'rejected' | 'reviewed'>> = [
+const REVIEWABLE_STATUSES: Array<
+  Extract<FormSubmission['status'], 'approved' | 'rejected' | 'reviewed' | 'returned'>
+> = [
   'approved',
   'rejected',
   'reviewed',
+  // الإعادةُ ليست رفضاً: تفتح النموذجَ لوليّ الأمر محمَّلاً بإجاباته ومعه سببُ
+  // الإعادة، فيصحّح ما نُبّه إليه وحده
+  'returned',
 ]
 
 type StatusFilter = FormSubmission['status'] | 'all'
@@ -96,6 +102,9 @@ const SUBMISSION_STATUS_TONE: Record<FormSubmission['status'], WsChipTone | unde
   reviewed: 'sky',
   rejected: 'red',
   submitted: 'amber',
+  // المُعاد سماويٌّ لا أحمر: الكرةُ في ملعب وليّ الأمر لا في ملعب الإدارة،
+  // فهو حالةُ انتظارٍ لا حالةُ رفض
+  returned: 'sky',
   draft: undefined,
 }
 
@@ -120,6 +129,8 @@ type AggregateState = {
 interface FormFieldWithSection {
   id: number
   field_key: string
+  /** مفتاحُ السمة إن كان الحقل مربوطاً بملفّ الطالب — تعرف منه الطباعةُ الصورةَ الشخصية */
+  maps_to?: string | null
   type: FormFieldType
   label: string
   sectionTitle: string | null
@@ -264,6 +275,7 @@ function mapFormFields(form?: FormSummary | null): FormFieldWithSection[] {
     (section.fields ?? []).map<FormFieldWithSection>((field) => ({
       id: field.id,
       field_key: field.field_key,
+      maps_to: field.maps_to ?? null,
       type: field.type,
       label: field.label,
       sectionTitle: section.title ?? null,
@@ -275,6 +287,7 @@ function mapFormFields(form?: FormSummary | null): FormFieldWithSection[] {
   const standaloneFields = standalone.map<FormFieldWithSection>((field) => ({
     id: field.id,
     field_key: field.field_key,
+    maps_to: field.maps_to ?? null,
     type: field.type,
     label: field.label,
     sectionTitle: null,
@@ -305,6 +318,27 @@ function fieldLabelOf(field: FormFieldWithSection): string {
  * (التصدير والطباعة والدرج) كي لا يختلف رقمُ الملفّ عن رقم الشاشة.
  */
 function formatAnswerForField(field: FormFieldWithSection, answer?: FormSubmissionAnswer | null): string {
+  if (answer?.is_redacted) {
+    return REDACTED_LABEL
+  }
+
+  /*
+   * البوليانيّ يُقرأ بنوع حقله لا بترتيب الأعمدة.
+   *
+   * `resolveSubmissionAnswerValue` تبدأ بـ`value_json` ثمّ `value_text`، ولا تصل
+   * إلى `value_boolean` أبداً حين يكون النصّ مملوءاً. وكان الخادم يكتب فيه
+   * `"true"/"false"` — فتقرأ الإدارةُ «false» تحت سؤالٍ عربيّ. أُصلح التخزين،
+   * ويبقى في الإنتاج صفوفٌ قديمةٌ بالحرفَين الإنجليزيَّين وأخرى بـ`["1"]` من يوم
+   * كان `checkbox` مصنَّفاً متعدّدَ الاختيار — فنقرأها كلَّها هنا صحيحةً.
+   */
+  if (field.type === 'yesno' || field.type === 'checkbox') {
+    const decided = decideBoolean(answer)
+    if (decided !== null) {
+      return field.type === 'checkbox' ? (decided ? 'موافق' : 'غير موافق') : decided ? 'نعم' : 'لا'
+    }
+    return '—'
+  }
+
   const value = resolveSubmissionAnswerValue(answer)
 
   if (field.type === 'rating' && value !== '—') {
@@ -312,6 +346,29 @@ function formatAnswerForField(field: FormFieldWithSection, answer?: FormSubmissi
   }
 
   return value
+}
+
+/** يستخرج البوليانيّ من أيٍّ من صيغ التخزين الثلاث — الحاليةِ والقديمتَين. */
+function decideBoolean(answer?: FormSubmissionAnswer | null): boolean | null {
+  if (!answer) return null
+
+  if (typeof answer.value_boolean === 'boolean') {
+    return answer.value_boolean
+  }
+
+  // `checkbox` القديم: `["1"]` أو `["0"]`
+  if (Array.isArray(answer.value_json) && answer.value_json.length > 0) {
+    const first = String(answer.value_json[0]).trim().toLowerCase()
+    return first === '1' || first === 'true' || first === 'نعم'
+  }
+
+  if (typeof answer.value_text === 'string' && answer.value_text.trim() !== '') {
+    const text = answer.value_text.trim().toLowerCase()
+    if (['true', '1', 'نعم', 'موافق', '["1"]'].includes(text)) return true
+    if (['false', '0', 'لا', 'غير موافق', '["0"]'].includes(text)) return false
+  }
+
+  return null
 }
 
 /**
@@ -452,15 +509,53 @@ function buildPrintableMarkup(
   // ولا يُذكر أنه كان
   const fieldDefinitions = withoutRedactedColumns(allFieldDefinitions, [submission])
 
-  const answers = fieldDefinitions
-    .map((field) => {
-      const answer = submission.answers?.find((item) => item.field_id === field.id)
-      const value = formatAnswerForField(field, answer)
+  /*
+   * الصورةُ الشخصية تُرفع إلى الترويسة ولا تُترك سطراً في القائمة.
+   *
+   * كانت تُطبع كأيّ جواب: عنوانٌ تحته اسمُ ملفّ لا يقول شيئاً. والورقةُ المطبوعة
+   * تُقرأ بالعين قبل النصّ — فالوجهُ في صدرها يعرّف بصاحبها في لمحة، ويوفّر على
+   * الموجّه مطابقةَ اسمٍ برقم.
+   */
+  const photoFile = submission.files?.find((file) => {
+    if (!file.is_image || !file.url) return false
+    const field = allFieldDefinitions.find((item) => item.id === file.field_id)
+    return field?.maps_to === 'profile.photo' || field?.type === 'image'
+  })
+
+  const printableFields = fieldDefinitions.filter((field) => field.id !== photoFile?.field_id)
+
+  /* الأجوبةُ مجموعةٌ بأقسامها: ورقةٌ من أربعين سؤالاً بلا عناوينَ كتلةٌ لا تُقرأ */
+  const grouped = new Map<string, FormFieldWithSection[]>()
+
+  printableFields.forEach((field) => {
+    const key = field.sectionTitle ?? ''
+    const bucket = grouped.get(key)
+    if (bucket) bucket.push(field)
+    else grouped.set(key, [field])
+  })
+
+  const answers = [...grouped.entries()]
+    .map(([sectionTitle, sectionFields]) => {
+      const rows = sectionFields
+        .map((field) => {
+          const answer = submission.answers?.find((item) => item.field_id === field.id)
+          const value = formatAnswerForField(field, answer)
+          const long = value.length > 60
+
+          return `
+            <div class="answer-row${long ? ' answer-row--wide' : ''}">
+              <div class="label">${escapeHtml(field.label)}</div>
+              <div class="value">${escapeHtml(value)}</div>
+            </div>
+          `
+        })
+        .join('')
+
       return `
-        <div class="answer-row">
-          <div class="label">${escapeHtml(fieldLabelOf(field))}</div>
-          <div class="value">${escapeHtml(value)}</div>
-        </div>
+        <section class="answer-section">
+          ${sectionTitle ? `<h3 class="answer-section__title">${escapeHtml(sectionTitle)}</h3>` : ''}
+          <div class="answers-grid">${rows}</div>
+        </section>
       `
     })
     .join('')
@@ -471,24 +566,110 @@ function buildPrintableMarkup(
         <meta charset="utf-8" />
         <title>${escapeHtml(form.title)} - رد رقم ${submission.id}</title>
         <style>
-          body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 24px; color: #1f2937; }
-          .header { text-align: center; margin-bottom: 20px; }
-          .answers { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
-          .answer-row { border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 12px; }
-          .label { font-weight: 600; font-size: 12px; color: #4b5563; margin-bottom: 4px; }
-          .value { font-size: 13px; color: #111827; white-space: pre-line; }
-          .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
-          .meta-card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; }
-          .meta-card .title { font-size: 11px; color: #6b7280; }
-          .meta-card .data { font-size: 13px; font-weight: 600; }
-          .section-title { font-size: 15px; font-weight: 700; margin: 20px 0 8px; }
+          @page { size: A4; margin: 14mm 12mm; }
+
+          body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            margin: 0;
+            color: #1f2937;
+            font-size: 12px;
+            line-height: 1.7;
+          }
+
+          /* ── الترويسة: الصورةُ يميناً والتعريفُ يسارها ── */
+          .sheet-head {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #1f2937;
+            margin-bottom: 14px;
+          }
+          .sheet-head__photo {
+            width: 84px;
+            height: 104px;
+            object-fit: cover;
+            border: 1px solid #9ca3af;
+            border-radius: 4px;
+            flex-shrink: 0;
+            background: #f3f4f6;
+          }
+          .sheet-head__text { flex: 1; min-width: 0; }
+          .sheet-head__text h1 { margin: 0 0 2px; font-size: 17px; }
+          .sheet-head__text .who { font-size: 14px; font-weight: 700; }
+          .sheet-head__text .sub { font-size: 11.5px; color: #6b7280; }
+
+          /* ── بطاقات التعريف ── */
+          .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            margin-bottom: 6px;
+          }
+          .meta-card { border: 1px solid #e5e7eb; border-radius: 6px; padding: 5px 9px; }
+          .meta-card .title { font-size: 10px; color: #6b7280; }
+          .meta-card .data { font-size: 12px; font-weight: 600; }
+
+          /* ── الأجوبة: عمودان، والطويلُ يمتدّ عرضاً ── */
+          .answer-section { margin-top: 12px; break-inside: auto; }
+          .answer-section__title {
+            font-size: 13px;
+            font-weight: 800;
+            margin: 0 0 6px;
+            padding: 3px 8px;
+            background: #f3f4f6;
+            border-inline-start: 3px solid #1f2937;
+            /* العنوانُ لا يُترك وحيداً في ذيل الصفحة */
+            break-after: avoid;
+          }
+          .answers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+          .answer-row {
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            padding: 5px 9px;
+            /* الجوابُ لا يُقصّ بين صفحتين */
+            break-inside: avoid;
+          }
+          .answer-row--wide { grid-column: 1 / -1; }
+          .label { font-weight: 700; font-size: 10.5px; color: #4b5563; margin-bottom: 1px; }
+          .value { font-size: 12px; color: #111827; white-space: pre-line; word-break: break-word; }
+
+          .section-title { font-size: 14px; font-weight: 800; margin: 16px 0 6px; }
+
+          /* ── مكانُ التوقيع: ورقةٌ تُحفظ في ملفّ الطالب ── */
+          .sign-row {
+            display: flex;
+            gap: 28px;
+            margin-top: 22px;
+            padding-top: 10px;
+            border-top: 1px dashed #9ca3af;
+            break-inside: avoid;
+          }
+          .sign-row div { flex: 1; font-size: 11px; color: #4b5563; }
+          .sign-row .line { margin-top: 26px; border-bottom: 1px solid #6b7280; }
+
+          @media print {
+            .meta-grid { grid-template-columns: repeat(4, 1fr); }
+          }
         </style>
       </head>
       <body>
-        <div class="header">
-          <h1>${escapeHtml(form.title)}</h1>
-          <p>رد رقم ${submission.id.toString()}</p>
-        </div>
+        <header class="sheet-head">
+          ${
+            photoFile?.url
+              ? `<img class="sheet-head__photo" src="${escapeHtml(photoFile.url)}" alt="" />`
+              : ''
+          }
+          <div class="sheet-head__text">
+            <h1>${escapeHtml(form.title)}</h1>
+            <div class="who">${escapeHtml(submission.student?.name ?? '—')}</div>
+            <div class="sub">
+              ${escapeHtml(submission.student?.grade ?? '—')} · ${escapeHtml(submission.student?.class_name ?? '—')}
+              &nbsp;|&nbsp; رد رقم ${submission.id.toString()}
+            </div>
+          </div>
+        </header>
+
         <div class="meta-grid">
           <div class="meta-card"><div class="title">اسم الطالب</div><div class="data">${escapeHtml(submission.student?.name ?? '—')}</div></div>
           <div class="meta-card"><div class="title">الصف</div><div class="data">${escapeHtml(submission.student?.grade ?? '—')}</div></div>
@@ -498,8 +679,13 @@ function buildPrintableMarkup(
           <div class="meta-card"><div class="title">ولي الأمر</div><div class="data">${escapeHtml(submission.guardian_name ?? submission.student?.parent_name ?? '—')}</div></div>
           <div class="meta-card"><div class="title">هاتف ولي الأمر</div><div class="data">${escapeHtml(submission.guardian_phone ?? submission.student?.parent_phone ?? '—')}</div></div>
         </div>
-        <h2 class="section-title">الإجابات</h2>
-        <div class="answers">${answers}</div>
+        ${answers}
+
+        <div class="sign-row">
+          <div>توقيع ولي الأمر<div class="line"></div></div>
+          <div>الموجّه الطلابي<div class="line"></div></div>
+          <div>التاريخ<div class="line"></div></div>
+        </div>
       </body>
     </html>
   `
@@ -828,6 +1014,21 @@ export function AdminFormSubmissionsPage() {
         }
         const trimmed = input.trim()
         reviewNotes = trimmed.length ? trimmed : undefined
+      }
+
+      // سببُ الإعادة إلزاميٌّ لا اختياريّ: وليُّ الأمر سيقرؤه ليعرف ما يصحّح،
+      // وإعادةٌ صامتةٌ تُرجعه إلى نموذجٍ لا يدري ما العيب فيه
+      if (status === 'returned') {
+        const input = window.prompt('ما الذي يجب على ولي الأمر تصحيحه؟ (يظهر له نصّاً)', '')
+        if (input === null) {
+          return
+        }
+        const trimmed = input.trim()
+        if (!trimmed.length) {
+          toast({ type: 'warning', title: 'يلزم ذكرُ سبب الإعادة' })
+          return
+        }
+        reviewNotes = trimmed
       }
 
       try {
@@ -1370,6 +1571,13 @@ function SubmissionDetail({
                   </WsBtn>
                   <WsBtn icon={Clock3} disabled={reviewing} onClick={() => onReview(submission.id, 'reviewed')}>
                     قيد المراجعة
+                  </WsBtn>
+                  <WsBtn
+                    icon={RotateCcw}
+                    disabled={reviewing}
+                    onClick={() => onReview(submission.id, 'returned')}
+                  >
+                    إعادة للتعديل
                   </WsBtn>
                   <WsBtn
                     variant="danger"

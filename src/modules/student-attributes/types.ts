@@ -45,6 +45,13 @@ export interface StudentAttributeValue {
   sensitivity: AttributeSensitivity
   /** `null` دائماً حين `is_redacted` — الخادم لم يرسلها، لا الواجهة أخفتها */
   value: unknown
+  /**
+   * مرفقٌ برابطٍ موقَّتٍ يولّده الخادم — `null` للمحجوب وللسمات غير المرفَقة.
+   *
+   * الرابطُ لا تبنيه الواجهة أبداً: قرصُ المرفقات خاصّ، وبناؤه يدوياً يرتدّ 404
+   * أو يفتح ما لا يجوز فتحه.
+   */
+  file?: { url: string | null; filename: string | null } | null
   is_redacted: boolean
   source?: string
   updated_at?: string | null

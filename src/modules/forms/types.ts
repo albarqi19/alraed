@@ -247,7 +247,19 @@ export interface FormSubmissionStudentSummary {
   parent_phone?: string | null
 }
 
-export type FormSubmissionStatus = 'draft' | 'submitted' | 'reviewed' | 'approved' | 'rejected'
+/**
+ * `returned` = أعادته الإدارةُ لوليّ الأمر ليصحّح.
+ *
+ * يفتح له النموذجَ من جديد محمَّلاً بإجاباته ومعه سببُ الإعادة، فيصحّح ما نُبّه
+ * إليه بدل أن يبدأ من الصفر — وحين يُعيد الإرسال تعود الحالةُ `submitted`.
+ */
+export type FormSubmissionStatus =
+  | 'draft'
+  | 'submitted'
+  | 'reviewed'
+  | 'approved'
+  | 'rejected'
+  | 'returned'
 
 export interface FormSubmission {
   id: number
@@ -292,6 +304,22 @@ export interface PublicFormDetails {
   allow_edit_after_submit: boolean
   sections: FormSection[]
   fields: FormField[]
+  /**
+   * ردٌّ سابقٌ مفتوحٌ للتعديل — بإجاباته وسببِ إعادته إن كانت الإدارةُ أعادته.
+   *
+   * وجودُه يعني أنّ الاستمارة تُفتح **محمَّلة** لا فارغة: وليُّ الأمر يصحّح
+   * حقلاً نُبّه إليه بدل أن يُعيد كتابة أربعين حقلاً.
+   */
+  existing_submission?: PublicFormExistingSubmission | null
+}
+
+export interface PublicFormExistingSubmission {
+  id: number
+  status: FormSubmissionStatus
+  /** سببُ الإعادة كما كتبه الموجّه — يُعرَض فوق النموذج، و`null` لغير المُعاد */
+  review_notes?: string | null
+  submitted_at?: string | null
+  answers: Record<string, FormResponseValue>
 }
 
 export interface PublicFormsResponse {
