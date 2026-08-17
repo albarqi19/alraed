@@ -9,6 +9,7 @@ import { useTodayMoodQuery, useSubmitMoodMutation } from '../mood/hooks'
 import type { MoodType } from '../mood/types'
 import { useTeacherDarkMode } from '../hooks/use-teacher-dark-mode'
 import { AndroidAppBanner } from '../components/android-app-banner'
+import { AnnouncementHost } from '@/modules/announcements/components/announcement-host'
 
 const navItems = [
   { to: '/teacher/dashboard', label: 'الرئيسية', exact: true, icon: 'bi-house' },
@@ -72,6 +73,9 @@ export function TeacherShell() {
     <div className="flex min-h-screen flex-col bg-slate-100 pb-16 sm:pb-0 transition-colors duration-200 dark:bg-slate-900">
 
       <nav className="sticky top-0 z-50 shadow-sm backdrop-blur-lg">
+        {/* داخل `nav` اللاصق وأعلى كلِّ شيء: إعلانُ المنصّة يُقرأ قبل اسم
+            الصفحة نفسه، ولا يهرب مع التمرير. ويُرجع null حين لا إعلان. */}
+        <AnnouncementHost />
         <div className="border-b border-slate-200/60 bg-white/90 dark:border-slate-700/60 dark:bg-slate-800/90">
           <div className="flex w-full flex-col gap-4 px-5 py-4 sm:px-6 lg:px-10">
             <div className="flex items-center justify-between gap-4">

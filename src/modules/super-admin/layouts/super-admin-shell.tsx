@@ -5,6 +5,7 @@ import { Menu, X } from 'lucide-react'
 import { primaryPlatformNav, secondaryPlatformNav } from '../constants/navigation'
 import { useAuthStore } from '@/modules/auth/store/auth-store'
 import { useLogoutMutation } from '@/modules/auth/hooks'
+import { AnnouncementHost } from '@/modules/announcements/components/announcement-host'
 
 export function SuperAdminShell() {
   const user = useAuthStore((state) => state.user)
@@ -119,6 +120,11 @@ export function SuperAdminShell() {
       </aside>
 
       <div className="flex min-h-screen flex-1 flex-col lg:mr-72">
+        {/* الناشرُ يرى إعلانَه كما يراه الناس.
+            وليست زينةً: من نشر إعلاناً ولم يره على شاشته ظنَّ النشرَ فاشلاً
+            وأعاده — فيصير إعلانان. وهذا الشريطُ هو تأكيدُ النشر الحقيقيّ،
+            أصدقُ من أيِّ رسالةِ نجاحٍ في نموذج. */}
+        <AnnouncementHost />
         <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 shadow-sm backdrop-blur">
           <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
             {/* زر القائمة للشاشات الصغيرة */}

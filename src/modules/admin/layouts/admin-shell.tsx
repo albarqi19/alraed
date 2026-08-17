@@ -8,6 +8,7 @@ import clsx from 'classnames'
 import { primaryAdminNavGroups, secondaryAdminNav, settingsAdminNav } from '../constants/navigation'
 import { getCurrentAcademicWeek } from '../constants/academic-calendar-data'
 import { AIAssistantWidget } from '../components/ai-assistant-widget'
+import { AnnouncementHost } from '@/modules/announcements/components/announcement-host'
 import { SubscriptionExpiryAlert } from '@/modules/subscription/components/subscription-expiry-alert'
 import {
   AcademicYearSwitcher,
@@ -721,6 +722,11 @@ export function AdminShell() {
             تحذيرٍ يختفي بالتمرير أسوأ من غيابه، لأن من رآه أوّل مرة يظنّ أنه
             ما زال هناك. */}
         <div className="sticky top-0 z-30 flex-shrink-0">
+        {/* إعلاناتُ المنصّة أعلى كلِّ شيءٍ داخل اللصق — فوق شريط الأرشيف نفسه.
+            إعلانُ «الخدمةُ متوقّفةٌ للصيانة» يجب أن يُقرأ قبل أيِّ تحذيرٍ آخر،
+            وبقاؤه داخل الغلاف اللاصق هو ما يجعله «ثابتاً» فعلاً لا يهرب مع
+            التمرير. والمكوّنُ يُرجع null حين لا إعلان، فلا فراغَ بلا سبب. */}
+        <AnnouncementHost />
         <ArchiveModeBanner />
         <header className="flex-shrink-0 border-b shadow-sm" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
           <div className="flex w-full items-center justify-between gap-3 px-4 py-2.5 lg:px-6">

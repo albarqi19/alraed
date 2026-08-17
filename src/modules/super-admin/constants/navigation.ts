@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import { Building2, GaugeCircle, LineChart, Receipt, Settings2 } from 'lucide-react'
+import { Building2, GaugeCircle, LineChart, Megaphone, Receipt, Settings2 } from 'lucide-react'
 
 export interface SuperAdminNavItem {
   to: string
@@ -29,6 +29,11 @@ export const primaryPlatformNav: SuperAdminNavItem[] = [
     to: '/platform/invoices',
     label: 'الفواتير',
     icon: Receipt,
+  },
+  {
+    to: '/platform/announcements',
+    label: 'الإعلانات',
+    icon: Megaphone,
   },
 ]
 
