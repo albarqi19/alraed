@@ -35,6 +35,7 @@ import { FormSettingsPanel } from './form-settings-panel'
 import {
   buildAssignmentInputs,
   buildFieldsPayload,
+  createAttributeField,
   createDraftField,
   duplicateDraftField,
   getDefaultGeneralState,
@@ -104,6 +105,10 @@ export function FormDesigner({ mode, initialForm, submitting = false, onSubmit, 
   const editingDisabled = submitting || structureLocked
 
   const selectedField = fields.find((field) => field.localId === selectedId) ?? null
+  // سمةٌ في اللوح لا تُضاف مرّتين: للطالب خانةٌ واحدةٌ بكل مفتاح
+  const usedAttributeKeys = fields
+    .map((field) => field.maps_to)
+    .filter((key): key is string => Boolean(key))
   const questionCount = fields.filter((field) => fieldTypeStoresAnswer(field.type)).length
   const errorCount = Object.keys(fieldErrors).length + Object.keys(generalErrors).length
   const isDirty = baseline !== '' && snapshotOf(general, fields, selection) !== baseline
@@ -134,6 +139,30 @@ export function FormDesigner({ mode, initialForm, submitting = false, onSubmit, 
     setFields((previous) => [...previous, created])
     setSelectedId(created.localId)
     setFocusLabelKey(created.localId)
+    setGeneralErrors((previous) => {
+      const next = { ...previous }
+      delete next.fields
+      return next
+    })
+  }
+
+  /**
+   * سؤالٌ مسحوبٌ من معجم السمات — يأتي مربوطاً بمفتاحه.
+   *
+   * لا `setFocusLabelKey` هنا خلافاً للإضافة الحرّة: التسميةُ جاءت من المعجم
+   * صالحةً، ودفعُ المؤشّر إليها يوحي بأنها ناقصةٌ تنتظر الكتابة.
+   */
+  const handleAddAttribute = (attribute: {
+    key: string
+    label: string
+    type: string
+    options?: string[] | null
+  }) => {
+    if (editingDisabled) return
+
+    const created = createAttributeField(attribute, fields)
+    setFields((previous) => [...previous, created])
+    setSelectedId(created.localId)
     setGeneralErrors((previous) => {
       const next = { ...previous }
       delete next.fields
@@ -299,7 +328,12 @@ export function FormDesigner({ mode, initialForm, submitting = false, onSubmit, 
           storageKey="ws:form-designer:palette"
           width={300}
         >
-          <FieldTypePalette disabled={editingDisabled} onAdd={handleAdd} />
+          <FieldTypePalette
+            disabled={editingDisabled}
+            onAdd={handleAdd}
+            onAddAttribute={handleAddAttribute}
+            usedAttributeKeys={usedAttributeKeys}
+          />
         </WsSideCol>
       )}
 

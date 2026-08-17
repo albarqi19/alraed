@@ -143,6 +143,47 @@ export function createDraftField(type: FormFieldType, existing: DraftField[]): D
   }
 }
 
+/**
+ * حقلٌ مسحوبٌ من معجم سمات الطالب — يأتي مربوطاً بمفتاحه.
+ *
+ * التسميةُ والخياراتُ تُنسخان من المعجم **بذرةً لا قيداً**: للمدرسة أن تعيد
+ * صياغة السؤال كما تشاء وأن تزيد في خياراته، والمفتاحُ وحده هو ما يبقى ثابتاً.
+ * وهذا هو الفصلُ كلُّه — الشكلُ حرٌّ والمعنى موحَّد.
+ */
+export function createAttributeField(
+  attribute: { key: string; label: string; type: string; options?: string[] | null },
+  existing: DraftField[],
+): DraftField {
+  const type = (attribute.type as FormFieldType) ?? 'text'
+  const taken = takenKeys(existing)
+  const baseKey = attribute.key.split('.').pop() ?? attribute.key
+
+  const settings = getFieldTypeDefaults(type)
+
+  if (attribute.options?.length && fieldTypeHasOptions(type)) {
+    settings.options = attribute.options.map((option) => ({ label: option, value: option }))
+  }
+
+  return {
+    localId: nextLocalId(),
+    // المفتاحُ لا يتبع التسمية هنا: تحريرُ الأدمن للصياغة يجب ألّا يغيّر
+    // `field_key` تحت حقلٍ مرتبطٍ بسمة
+    autoKey: false,
+    field_key: uniqueKey(baseKey, taken),
+    maps_to: attribute.key,
+    type,
+    label: attribute.label,
+    description: '',
+    placeholder: '',
+    helper_text: '',
+    is_required: false,
+    settings,
+    validation: {},
+    visibility_rules: [],
+    sort_order: existing.length,
+  }
+}
+
 export function duplicateDraftField(field: DraftField, existing: DraftField[]): DraftField {
   const taken = takenKeys(existing)
 
@@ -154,6 +195,9 @@ export function duplicateDraftField(field: DraftField, existing: DraftField[]): 
     id: undefined,
     field_key: uniqueKey(`${field.field_key}_copy`, taken),
     label: `${field.label} (نسخة)`,
+    // الربطُ لا يُورَّث: للطالب سمةٌ واحدةٌ بكل مفتاح، فسؤالان مربوطان بنفس
+    // المفتاح إجابتان تتنافسان على خانةٍ واحدة — تفوز الأخيرةُ صامتةً وتضيع الأولى
+    maps_to: null,
     // نسخٌ عميق للإعدادات: مشاركةُ المرجع تجعل تحرير خيارات النسخة يعدّل الأصل
     settings: structuredClone(field.settings ?? {}),
     validation: structuredClone(field.validation ?? {}),
@@ -185,6 +229,7 @@ function toDraft(field: FormField): DraftField {
     autoKey: false,
     id: field.id,
     field_key: field.field_key,
+    maps_to: field.maps_to ?? null,
     type: field.type,
     label: field.label,
     description: field.description ?? '',
@@ -296,6 +341,10 @@ export function buildFieldsPayload(fields: DraftField[]): FormFieldInput[] {
 
     return {
       field_key: field.field_key.trim(),
+      // `null` صراحةً لا حذفاً: الحذفُ يجعل فكَّ الارتباط في تعديلٍ لاحق مستحيلاً
+      // — الباك لا يرى المفتاح فيُبقي القيمة القديمة، فيظلّ السؤال مربوطاً بسمةٍ
+      // نُزع عنها الربط في الواجهة.
+      maps_to: field.maps_to ?? null,
       type: field.type,
       label: field.label.trim(),
       description: trimmedOrNull(field.description),
