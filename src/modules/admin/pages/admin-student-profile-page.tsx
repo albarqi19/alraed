@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
+import { StudentAttributesPanel } from '@/modules/student-attributes/components/student-attributes-panel'
 import {
   useAttendanceReportMatrixQuery,
   useLateArrivalsQuery,
@@ -741,10 +742,13 @@ export function AdminStudentProfilePage() {
 
                 {/* ══ بيانات تفصيلية ══ */}
                 {activeSection === 'extended' && (
-                  <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
+                  <div style={{ display: 'grid', gap: 18 }}>
+                    {/* بطاقةُ حصر المعلومات — تهبط من ردٍّ اعتمده الموجّه، وتُعرض
+                        مطموسةً لمن لا يحقّ له. لا شرطَ إخفاءٍ هنا: المحجوب لم يصل. */}
+                    <StudentAttributesPanel studentId={selectedStudentId} />
+
+                    <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
                     {[
-                      { title: 'المعلومات الصحية', text: 'سيتم ربط التطعيمات والحساسية والحالات المزمنة قريبًا — البنية جاهزة لتجميع السجل الطبي (المواعيد، العلاجات، إشعارات الطوارئ).' },
-                      { title: 'البيانات الاجتماعية', text: 'متابعة الظروف الاجتماعية والدعم الأسري: الحالة الاجتماعية، عدد الإخوة، مشاركات الأنشطة، وملاحظات المرشد الطلابي.' },
                       { title: 'السلوك والانضباط', text: 'سيتضمن تنبيهات السلوك والمخالفات وخطط المعالجة عبر التكامل مع نظام المتابعة السلوكية.' },
                       { title: 'النقاط والمكافآت', text: 'بمجرد ربط نظام التحفيز سيعرض هذا القسم النقاط المكتسبة والجوائز وسجل المكافآت مع التصفية والتحليل.' },
                     ].map(({ title, text }) => (
@@ -763,6 +767,7 @@ export function AdminStudentProfilePage() {
                         <p style={{ margin: '6px 0 0', fontSize: 11.5, lineHeight: 1.8, color: 'var(--ws-text-2)' }}>{text}</p>
                       </div>
                     ))}
+                    </div>
                   </div>
                 )}
               </div>

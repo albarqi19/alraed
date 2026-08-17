@@ -81,6 +81,14 @@ export interface FormField {
   id: number
   section_id: number | null
   field_key: string
+  /**
+   * مفتاحُ سمةٍ في معجم الطالب — `null` لسؤالٍ عابرٍ لا يصير سجلّاً دائماً.
+   *
+   * هذا الحقلُ وحده هو ما يحلّ التوتر بين «نموذجٍ معتمدٍ لا يتغيّر» و«مدرسةٍ
+   * تريد نموذجها»: الصياغةُ والترتيب حرّان، والمفتاحُ ثابتٌ عند الجميع — فيهبط
+   * الجوابُ في نفس خانة ملفّ الطالب مهما اختلف السؤال.
+   */
+  maps_to?: string | null
   type: FormFieldType
   label: string
   description?: string | null
@@ -198,6 +206,14 @@ export interface FormSubmissionAnswer {
   value_date?: string | null
   value_datetime?: string | null
   value_boolean?: boolean | null
+  /**
+   * الإجابةُ محجوبةٌ عن صاحب الطلب.
+   *
+   * حين تكون `true` تصل كلُّ حقول `value_*` فارغةً **من الخادم**: لا شرطَ إخفاءٍ
+   * هنا يُخفي قيمةً موجودة، لأن ذلك يعني أنها في المتصفّح فعلاً ويقرؤها من يفتح
+   * أدوات المطوّر. الواجهة ترسم الطمس، ولا تملك ما تطمسه.
+   */
+  is_redacted?: boolean
 }
 
 /**

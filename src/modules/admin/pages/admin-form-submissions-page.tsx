@@ -17,6 +17,7 @@ import {
   GraduationCap,
   ImageIcon,
   Inbox,
+  Lock,
   MessageCircle,
   Paperclip,
   Percent,
@@ -197,9 +198,21 @@ function stringifyJsonValue(value: unknown): string {
   return String(value)
 }
 
+/** ما يُعرض مكان قيمةٍ لم يرسلها الخادم أصلاً. */
+export const REDACTED_LABEL = 'محجوب'
+
 function resolveSubmissionAnswerValue(answer?: FormSubmissionAnswer | null): string {
   if (!answer) {
     return '—'
+  }
+
+  /*
+   * الإجابةُ المحجوبة تصل بكل حقول `value_*` فارغةً من الخادم — لا نُخفي هنا
+   * قيمةً موجودة، بل نرسم مكانَ ما لم يصل. ولولا هذا الشرط لعُرضت «—» فيظنّها
+   * القارئُ سؤالاً لم يُجَب.
+   */
+  if (answer.is_redacted) {
+    return REDACTED_LABEL
   }
 
   /*
@@ -301,6 +314,37 @@ function formatAnswerForField(field: FormFieldWithSection, answer?: FormSubmissi
   return value
 }
 
+/**
+ * يُسقط أعمدةَ الحقول المحجوبة إسقاطاً — لا يطمسها.
+ *
+ * عمودٌ اسمه «الأمراض المزمنة» مملوءٌ بـ«محجوب» في ملفٍّ يُرسَل بالبريد أسوأ من
+ * غيابه: هو يُعلن أنّ لهذا الطالب أمراضاً وإن لم يقل ما هي. أمّا على الشاشة
+ * فالطمسُ صحيح، لأن غيابَ السطر يدفع القارئ للسؤال عمّا غاب.
+ *
+ * والحجبُ على مستوى الدور لا الطالب: إجابةٌ واحدةٌ محجوبةٌ في هذا الحقل تعني
+ * أنّ صاحبَ الطلب لا يرى هذا الحقل عند أحد.
+ */
+function withoutRedactedColumns(
+  fieldDefinitions: FormFieldWithSection[],
+  submissions: FormSubmission[],
+): FormFieldWithSection[] {
+  const redactedFieldIds = new Set<number>()
+
+  for (const submission of submissions) {
+    for (const answer of submission.answers ?? []) {
+      if (answer.is_redacted) {
+        redactedFieldIds.add(answer.field_id)
+      }
+    }
+  }
+
+  if (redactedFieldIds.size === 0) {
+    return fieldDefinitions
+  }
+
+  return fieldDefinitions.filter((field) => !redactedFieldIds.has(field.id))
+}
+
 function sanitizeForExcel(value: string): string {
   return value.replace(/\t|\r?\n/g, ' ').trim()
 }
@@ -312,11 +356,15 @@ function escapeHtml(value: string): string {
 function buildExcelWorkbook(
   submissions: FormSubmission[],
   form: FormSummary,
-  fieldDefinitions: FormFieldWithSection[],
+  allFieldDefinitions: FormFieldWithSection[],
 ): void {
   if (!submissions.length) {
     return
   }
+
+  // الفلترةُ هنا لا عند الاستدعاء: التصديرُ بابٌ يخرج منه كل شيء دفعةً واحدة،
+  // ووضعُ الحارس داخله يجعله يمرّ على كل من يستدعيه
+  const fieldDefinitions = withoutRedactedColumns(allFieldDefinitions, submissions)
 
   const headers = [
     '#',
@@ -398,8 +446,12 @@ function buildExcelWorkbook(
 function buildPrintableMarkup(
   submission: FormSubmission,
   form: FormSummary,
-  fieldDefinitions: FormFieldWithSection[],
+  allFieldDefinitions: FormFieldWithSection[],
 ): string {
+  // الورقةُ المطبوعة تُنسى على طاولة، فحكمُها حكمُ الملفّ المصدَّر: يُسقط المحجوب
+  // ولا يُذكر أنه كان
+  const fieldDefinitions = withoutRedactedColumns(allFieldDefinitions, [submission])
+
   const answers = fieldDefinitions
     .map((field) => {
       const answer = submission.answers?.find((item) => item.field_id === field.id)
@@ -1405,7 +1457,36 @@ function SubmissionDetail({
                         <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: 'var(--ws-text-2)' }}>
                           {fieldLabelOf(field)}
                         </p>
-                        {isAttachmentFieldType(field.type) ? (
+                        {answer.is_redacted ? (
+                          /* شريطُ طمسٍ لا نصٌّ مموّه: لا قيمة تحته أصلاً — الخادم
+                             لم يرسلها. والسطر يبقى ليعرف القارئُ أن هنا جواباً
+                             ليس له، لا أن السؤال لم يُجَب. */
+                          <p
+                            style={{
+                              margin: '6px 0 0',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: 'var(--ws-text-2)',
+                            }}
+                          >
+                            <Lock style={{ width: 12, height: 12, flexShrink: 0 }} />
+                            <span
+                              aria-label="قيمة محجوبة"
+                              style={{
+                                display: 'inline-block',
+                                minWidth: 96,
+                                height: 14,
+                                borderRadius: 2,
+                                background:
+                                  'repeating-linear-gradient(135deg, var(--ws-border-strong) 0 6px, var(--ws-border) 6px 12px)',
+                              }}
+                            />
+                            <span>لا يظهر إلا للموجّه الطلابي</span>
+                          </p>
+                        ) : isAttachmentFieldType(field.type) ? (
                           attachments.length > 0 ? (
                             <AttachmentGrid files={attachments} onZoom={setZoomed} />
                           ) : (

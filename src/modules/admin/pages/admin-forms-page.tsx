@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { TemplatePickerButton } from '@/modules/student-attributes/components/template-picker'
 import {
   Archive,
   ChevronLeft,
@@ -134,9 +135,12 @@ export function AdminFormsPage() {
       <WsHeader
         title="النماذج الإلكترونية"
         actions={
-          <Link to="/admin/forms/new" style={{ textDecoration: 'none' }}>
-            <WsBtn variant="primary" icon={Plus}>نموذج جديد</WsBtn>
-          </Link>
+          <>
+            <TemplatePickerButton />
+            <Link to="/admin/forms/new" style={{ textDecoration: 'none' }}>
+              <WsBtn variant="primary" icon={Plus}>نموذج جديد</WsBtn>
+            </Link>
+          </>
         }
         facts={
           <>
