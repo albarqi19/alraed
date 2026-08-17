@@ -2,7 +2,17 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 // أيقونات lucide لا Bootstrap: الأخيرة محارفُ خطٍّ يأتي من CDN خارجيّ، فإن حُجب
 // أو تأخّر رأى وليُّ الأمر مربّعاتٍ فارغة مكان النجوم وزرّ الإزالة — وهي هنا
 // عناصرُ تحكّمٍ لا زينة. وlucide مُحزَّمةٌ مع التطبيق فلا تعتمد على شبكةٍ ثانية.
-import { CircleCheck, ImageDown, ImageIcon, Loader2, Paperclip, Star, TriangleAlert, X } from 'lucide-react'
+import {
+  CircleCheck,
+  ImageDown,
+  ImageIcon,
+  Loader2,
+  Paperclip,
+  RotateCcw,
+  Star,
+  TriangleAlert,
+  X,
+} from 'lucide-react'
 import {
   buildFileAccept,
   fieldTypeStoresAnswer,
@@ -263,6 +273,40 @@ export function GuardianFormRenderer({ form, nationalId, onSubmitted, readOnly =
     [mergedFields],
   )
 
+  const returnNotice =
+    form.existing_submission?.status === 'returned'
+      ? (form.existing_submission.review_notes ?? 'يرجى مراجعة إجاباتك وتعديل ما يلزم.')
+      : null
+
+  /**
+   * الحقولُ التي تمنع الإرسال، بأسمائها كما يقرؤها وليّ الأمر.
+   *
+   * «يرجى مراجعة الحقول المطلوبة» رسالةٌ عمياء: تترك وليَّ الأمر يمسح أربعين
+   * حقلاً بحثاً عمّا منعه — وهي أوّلُ شكوى وصلت من المدارس. الحصرُ هنا يسمّي
+   * الحقلَ ويُمرّر إليه بالنقر.
+   */
+  const missingSummary = useMemo(
+    () =>
+      mergedFields
+        .filter((field) => errors[field.field_key])
+        .map((field) => ({
+          key: field.field_key,
+          label: field.label || field.field_key,
+          message: errors[field.field_key] as string,
+        })),
+    [mergedFields, errors],
+  )
+
+  /** يُمرّر الشاشةَ إلى الحقل ويضع المؤشّر فيه — النقرُ على اسمٍ يجب أن يصل إليه */
+  const focusField = (fieldKey: string) => {
+    const node = document.querySelector<HTMLElement>(`[data-field-key="${CSS.escape(fieldKey)}"]`)
+
+    if (!node) return
+
+    node.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    node.querySelector<HTMLElement>('input, select, textarea, button')?.focus({ preventScroll: true })
+  }
+
   /**
    * بصمةُ بنية النموذج لا هويّة كائنه: في المعاينة داخل المصمّم يُعاد بناء كائن
    * النموذج مع كلّ حرفٍ يكتبه الأدمن في عنوان سؤال، فربطُ التصفير بالكائن نفسه
@@ -276,9 +320,18 @@ export function GuardianFormRenderer({ form, nationalId, onSubmitted, readOnly =
 
   const resetForm = (fields: FormField[]) => {
     const initial: FormResponsesPayload = {}
+    const previous = form.existing_submission?.answers ?? {}
+
     fields.forEach((field) => {
-      initial[field.field_key] = defaultValueForField(field)
+      // الإجابةُ السابقة تسبق الافتراض: ردٌّ أُعيد للتصحيح يُفتح محمَّلاً، فيصحّح
+      // وليُّ الأمر ما نُبّه إليه بدل أن يُعيد كتابة النموذج كلِّه.
+      // و`hasOwnProperty` لا `??` — لأنّ `false` و`0` إجابتان صحيحتان تسقطان معه.
+      initial[field.field_key] = Object.prototype.hasOwnProperty.call(previous, field.field_key)
+        && previous[field.field_key] !== null
+        ? previous[field.field_key]
+        : defaultValueForField(field)
     })
+
     setResponses(initial)
     setFilesMap({})
     setErrors({})
@@ -545,6 +598,49 @@ export function GuardianFormRenderer({ form, nationalId, onSubmitted, readOnly =
 
   return (
     <form className="space-y-5" onSubmit={handleSubmit}>
+      {/* سببُ الإعادة فوق كل شيء: هو المقصودُ من فتح النموذج مرّةً أخرى */}
+      {returnNotice ? (
+        <section className="rounded-2xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/60 px-4 py-3">
+          <p className="flex items-center gap-2 text-sm font-bold text-amber-800 dark:text-amber-300">
+            <RotateCcw className="h-4 w-4 shrink-0" aria-hidden />
+            أُعيد النموذج إليك للتعديل
+          </p>
+          <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-amber-900 dark:text-amber-200">
+            {returnNotice}
+          </p>
+          <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
+            إجاباتك السابقة محفوظة أدناه — عدّل ما يلزم ثمّ أعد الإرسال.
+          </p>
+        </section>
+      ) : null}
+
+      {/* حصرُ الناقص فوق النموذج: «راجع الحقول المطلوبة» وحدها تترك وليَّ الأمر
+          يبحث في أربعين حقلاً عن الحقل الذي منعه */}
+      {missingSummary.length > 0 ? (
+        <section className="rounded-2xl border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/60 px-4 py-3">
+          <p className="flex items-center gap-2 text-sm font-bold text-rose-700 dark:text-rose-300">
+            <TriangleAlert className="h-4 w-4 shrink-0" aria-hidden />
+            {missingSummary.length === 1
+              ? 'حقلٌ واحدٌ يمنع الإرسال'
+              : `${missingSummary.length} حقول تمنع الإرسال`}
+          </p>
+          <ul className="mt-2 space-y-1">
+            {missingSummary.map((item) => (
+              <li key={item.key}>
+                <button
+                  type="button"
+                  onClick={() => focusField(item.key)}
+                  className="text-start text-sm font-semibold text-rose-700 dark:text-rose-300 underline underline-offset-4 hover:text-rose-900 dark:hover:text-rose-100"
+                >
+                  {item.label}
+                </button>
+                <span className="text-xs text-rose-600 dark:text-rose-400"> — {item.message}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       <section className="space-y-4">
         {visibleFields.length === 0 ? (
           <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-700 p-6 text-center text-sm text-muted">
@@ -900,25 +996,61 @@ function GuardianFieldControl({
   }
 
   return (
-    <article className="space-y-3 rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-5 shadow-sm">
+    <article
+      // المرساةُ يقفز إليها حصرُ الناقص فوق النموذج
+      data-field-key={field.field_key}
+      className={`space-y-3 rounded-3xl border px-4 py-5 shadow-sm transition-colors ${
+        error
+          ? 'border-rose-300 dark:border-rose-800 bg-rose-50/40 dark:bg-rose-950/30'
+          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'
+      }`}
+    >
       <header className="space-y-1 text-right">
-        <div className="flex items-center justify-between gap-3">
-          <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">{field.label}</h3>
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="text-base font-semibold leading-relaxed text-slate-900 dark:text-slate-100">
+            {field.label}
+            {/* النجمةُ مع الكلمة لا بدلاً منها: النجمةُ وحدها اصطلاحٌ لا يعرفه
+                كلُّ وليّ أمر، والكلمةُ وحدها تضيع في الصفّ الطويل */}
+            {field.is_required ? (
+              <span className="ms-1 text-rose-500" aria-hidden>
+                *
+              </span>
+            ) : null}
+          </h3>
+
           {field.is_required ? (
-            <span className="text-xs font-semibold text-rose-500">مطلوب</span>
-          ) : null}
+            <span className="shrink-0 rounded-full bg-rose-50 dark:bg-rose-950 px-2 py-0.5 text-[11px] font-bold text-rose-600 dark:text-rose-400">
+              مطلوب
+            </span>
+          ) : (
+            /* «اختياري» مكتوبةٌ صراحةً: صمتُ الحقل يجعل وليَّ الأمر يظنّ الكلَّ
+               مطلوباً فيتوقّف عند سؤالٍ لا يعنيه */
+            <span className="shrink-0 rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              اختياري
+            </span>
+          )}
         </div>
         {field.description ? (
-          <p className="text-xs text-muted">{field.description}</p>
+          <p className="text-xs leading-relaxed text-muted">{field.description}</p>
         ) : null}
       </header>
 
       <div>{renderInput()}</div>
 
       {field.helper_text ? (
-        <p className="text-[11px] text-slate-400 dark:text-slate-500">{field.helper_text}</p>
+        <p className="text-[11px] leading-relaxed text-slate-400 dark:text-slate-500">
+          {field.helper_text}
+        </p>
       ) : null}
-      {error ? <p className="text-xs text-rose-600 dark:text-rose-400">{error}</p> : null}
+      {error ? (
+        <p
+          role="alert"
+          className="flex items-center gap-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400"
+        >
+          <TriangleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          {error}
+        </p>
+      ) : null}
     </article>
   )
 }

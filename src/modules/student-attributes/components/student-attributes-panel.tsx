@@ -5,7 +5,7 @@
    القيمةُ المحجوبة تصل `null` من الخادم ومعها `is_redacted`،
    فليس في المتصفّح ما يُخفى. ما نرسمه شريطُ طمسٍ فوق فراغ.
    ====================================================== */
-import { HeartPulse, Landmark, Lock, ShieldCheck, UserRound, Users } from 'lucide-react'
+import { HeartPulse, ImageIcon, Landmark, Lock, ShieldCheck, UserRound, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useStudentAttributes } from '../hooks'
 import type { AttributeSection, StudentAttributeValue } from '../types'
@@ -37,6 +37,17 @@ export function StudentAttributesPanel({ studentId }: { studentId: number | null
   const groups = data?.data ?? []
   const meta = data?.meta
 
+  /*
+   * الصورةُ تُرفع صدرَ الملفّ لا سطراً في جدول.
+   *
+   * هي أوّلُ ما يبحث عنه من يفتح ملفَّ طالب — يريد أن يعرف الوجهَ قبل أن يقرأ
+   * البيانات. وعرضُها صفّاً بين «الجنسية» و«الهوايات» يجعلها مرفقاً يُنقر، لا
+   * تعريفاً يُرى.
+   */
+  const photo = groups
+    .flatMap((group) => group.attributes)
+    .find((attribute) => attribute.key === 'profile.photo' && !attribute.is_redacted && attribute.file?.url)
+
   if (groups.length === 0) {
     return (
       <WsAlert tone="info" boxed>
@@ -61,6 +72,8 @@ export function StudentAttributesPanel({ studentId }: { studentId: number | null
           تراها بصفتك مديراً لمدرسةٍ لا موجّه طلابيّ فيها — ويُسجَّل اطّلاعك.
         </WsAlert>
       ) : null}
+
+      {photo ? <StudentPhotoCard photo={photo} /> : null}
 
       <div
         style={{
@@ -89,7 +102,81 @@ export function StudentAttributesPanel({ studentId }: { studentId: number | null
   )
 }
 
+/** الصورةُ الشخصية في صدر الملفّ — مربّعةٌ مقصوصةٌ بلا تشويه. */
+function StudentPhotoCard({ photo }: { photo: StudentAttributeValue }) {
+  return (
+    <WsBlock title="الصورة الشخصية" icon={ImageIcon} padded>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <a
+          href={photo.file?.url ?? undefined}
+          target="_blank"
+          rel="noreferrer"
+          title="فتح الصورة بالحجم الكامل"
+          style={{ lineHeight: 0, flexShrink: 0 }}
+        >
+          <img
+            src={photo.file?.url ?? undefined}
+            alt="الصورة الشخصية للطالب"
+            loading="lazy"
+            style={{
+              width: 96,
+              height: 96,
+              // `cover` لا `contain`: صورةُ الجوّال طوليّةٌ غالباً، واحتواؤها
+              // في مربّعٍ يترك شريطَين فارغَين حولها
+              objectFit: 'cover',
+              borderRadius: 10,
+              border: '1px solid var(--ws-border)',
+              background: 'var(--ws-sunken)',
+            }}
+          />
+        </a>
+
+        <div style={{ display: 'grid', gap: 4, minWidth: 0 }}>
+          <span style={{ fontSize: 12.5, color: 'var(--ws-text-2)' }}>
+            رفعها وليّ الأمر ضمن بطاقة المعلومات
+          </span>
+          {photo.updated_at ? (
+            <span style={{ fontSize: 11.5, color: 'var(--ws-text-2)' }}>
+              آخر تحديث: {photo.updated_at.slice(0, 10)}
+            </span>
+          ) : null}
+        </div>
+      </div>
+    </WsBlock>
+  )
+}
+
 function AttributeRow({ attribute }: { attribute: StudentAttributeValue }) {
+  // المرفقُ في الجدول رابطٌ لا مسارٌ خام
+  if (attribute.file?.url) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          padding: '7px 0',
+          borderBottom: '1px solid var(--ws-hairline)',
+        }}
+      >
+        <span style={{ fontSize: 12.5, color: 'var(--ws-text-2)' }}>{attribute.label}</span>
+        <a
+          href={attribute.file.url}
+          target="_blank"
+          rel="noreferrer"
+          style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ws-accent)' }}
+        >
+          {attribute.file.filename ?? 'فتح المرفق'}
+        </a>
+      </div>
+    )
+  }
+
+  return <AttributeTextRow attribute={attribute} />
+}
+
+function AttributeTextRow({ attribute }: { attribute: StudentAttributeValue }) {
   return (
     <div
       style={{
