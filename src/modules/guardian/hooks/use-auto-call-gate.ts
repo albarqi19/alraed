@@ -134,13 +134,43 @@ function isWithinOpenHours(settings: GuardianAutoCallSettings, now: Date = new D
     return true
   }
 
-  const current = now.getHours() * 60 + now.getMinutes()
+  const current = minutesInSchoolTimezone(now)
 
   if (from > until) {
     return current >= from || current <= until
   }
 
   return current >= from && current <= until
+}
+
+/**
+ * دقائقُ اليوم بتوقيت المدرسة لا بتوقيت الجهاز.
+ *
+ * الخادمُ يحكم بـ`Asia/Riyadh` (config/app.php)، والبوّابةُ كانت تقارن
+ * `now.getHours()` — أي ساعةَ جوّال وليّ الأمر. فمن سافر، أو ضُبط جهازُه على
+ * منطقةٍ أخرى، يرى الزرَّ مقفلاً «خارج وقت النداء» في منتصف الدوام، أو
+ * مفتوحاً فيضغطه فيُردّ. والفرقُ ثلاثُ ساعاتٍ في أقرب البلدان المجاورة.
+ */
+function minutesInSchoolTimezone(now: Date): number {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Riyadh',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(now)
+
+    const hour = Number(parts.find((part) => part.type === 'hour')?.value ?? NaN)
+    const minute = Number(parts.find((part) => part.type === 'minute')?.value ?? NaN)
+
+    if (Number.isFinite(hour) && Number.isFinite(minute)) {
+      return hour * 60 + minute
+    }
+  } catch {
+    // متصفّحٌ بلا دعمٍ للمناطق: ساعةُ الجهاز أفضل من لا شيء.
+  }
+
+  return now.getHours() * 60 + now.getMinutes()
 }
 
 type PermissionPhase = 'unknown' | 'prompt' | 'granted' | 'denied'
@@ -275,8 +305,13 @@ export function useAutoCallGate(isActive: boolean, studentNationalId?: string | 
       ? distanceMeters(coords.latitude, coords.longitude, geofence.latitude, geofence.longitude)
       : null
 
+  // مدرسةٌ قرّرت أن الاستلام يُقرَّ عند البوّابة: لا زرَّ إقرارٍ في يد وليّ
+  // الأمر، فالمرحلةُ تُحسب كأنّ لا نداءَ قائماً له. والخادمُ يفرض القرار نفسه
+  // — هذا إخفاءٌ لا حراسة.
+  const acknowledgeableCall = settings?.allowGuardianAcknowledgement === false ? null : activeCall
+
   const gate = resolveGate({
-    activeCall,
+    activeCall: acknowledgeableCall,
     isSettingsLoading: settingsQuery.isLoading,
     isSettingsError: settingsQuery.isError,
     settings,
@@ -294,7 +329,7 @@ export function useAutoCallGate(isActive: boolean, studentNationalId?: string | 
     coords,
     hasGeofence: Boolean(geofence),
     measureLocation,
-    activeCall,
+    activeCall: acknowledgeableCall,
     otherActiveCalls,
     isQueueLoading: queueQuery.isLoading,
   }

@@ -162,9 +162,25 @@ export function subscribeToAutoCallChannel(
     channel.listen(rawEventName(AUTO_CALL_EVENTS.settingsUpdated), callbacks.onSettingsUpdated)
   }
 
-  // إرجاع دالة لإلغاء الاشتراك
+  // إلغاءُ المستمعين لا هدمُ القناة.
+  //
+  // `echo.leave` يفصل القناة من المُفرَدة المشتركة، وهي مشتركةٌ فعلاً: شريطُ
+  // النداء المقيم في هيكل البوّابة، ولوحةُ الأدمن، وشاشةُ العرض — كلُّها تشترك
+  // في `auto-call.{school}` نفسها. فإغلاقُ أحدها كان يُسكت الباقين، ولا خطأ
+  // في أيّ سجلّ: الشاشةُ تبقى مضاءةً ولا اسمَ جديدٌ يظهر عليها أبداً.
   return () => {
-    echo.leave(channelName)
+    if (callbacks.onEnqueued) {
+      channel.stopListening(rawEventName(AUTO_CALL_EVENTS.enqueued), callbacks.onEnqueued)
+    }
+    if (callbacks.onStatusUpdated) {
+      channel.stopListening(rawEventName(AUTO_CALL_EVENTS.statusUpdated), callbacks.onStatusUpdated)
+    }
+    if (callbacks.onAcknowledged) {
+      channel.stopListening(rawEventName(AUTO_CALL_EVENTS.acknowledged), callbacks.onAcknowledged)
+    }
+    if (callbacks.onSettingsUpdated) {
+      channel.stopListening(rawEventName(AUTO_CALL_EVENTS.settingsUpdated), callbacks.onSettingsUpdated)
+    }
   }
 }
 

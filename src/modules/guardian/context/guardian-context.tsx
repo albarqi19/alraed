@@ -167,6 +167,31 @@ export function GuardianProvider({ children: childrenProp }: GuardianProviderPro
         }
     }, [storedChildren, activeChildIndex])
 
+    /**
+     * إعادةُ إصدار رمز وليّ الأمر عند الإقلاع، ثمّ كلَّ نصف ساعة.
+     *
+     * `JWT_TTL` الافتراضيّ ستّون دقيقة، والبوّابة تستعيد الجلسة من التخزين
+     * المحلّيّ ولا تُجدّد الرمز إطلاقاً: لم يكن `reissueGuardianToken` يُستدعى
+     * إلا عند تبديل ابنٍ أو حذفه. و`isLoggedIn` مبنيٌّ على وجود أبناءٍ محفوظين
+     * لا على صلاحيّة الرمز — فالبوّابة تبدو داخلةً ورمزُها ميّت.
+     *
+     * والأثرُ على النداء الآليّ قاتلٌ بالذات: `guardianClient` يحذف الرمز صامتاً
+     * عند 401، فيسقط جلبُ الإعدادات والطابور، فيختفي زرُّ «استلمتُ ابني» بلا
+     * رسالةٍ واحدة — بينما وليُّ الأمر واقفٌ عند البوّابة وقد نادى، ثمّ تُسجَّل
+     * عليه مخالفةُ «انتهاء النداء بلا استجابة».
+     *
+     * وهي محاولةٌ صامتةٌ لا تحجب شيئاً: إن فشلت بقيت البوّابةُ على حالها.
+     */
+    useEffect(() => {
+        if (!activeChild) return
+
+        reissueGuardianToken(activeChild)
+
+        const timer = window.setInterval(() => reissueGuardianToken(activeChild), 30 * 60 * 1000)
+        return () => window.clearInterval(timer)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeChild?.national_id, activeChild?.phone_last4])
+
     // Update studentSummary when activeChild changes
     useEffect(() => {
         if (activeChild) {

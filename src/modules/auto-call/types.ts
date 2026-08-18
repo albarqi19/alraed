@@ -15,12 +15,22 @@ export interface AutoCallSettings {
   repeatIntervalSeconds: number
   announcementDurationSeconds: number
   enableSpeech: boolean
+  /** هل تُرقّي الشاشةُ النداءَ التالي وتنطقه بلا تدخّل موظّف؟ */
+  autoAnnounce: boolean
+  /** كم مرّةً يُنادى على الطالب قبل أن يُترك للمهلة. */
+  maxAnnouncements: number
+  /** «محمّد العتيبي — الصف الأول» أم الاسم وحده؟ */
+  announceWithClass: boolean
+  /** سرعة النطق (0.5 بطيء · 1.5 سريع). */
+  speechRate: number
   voiceGender: AutoCallVoiceGender
   voiceLocale: string
   allowGuardianAcknowledgement: boolean
   geofence?: AutoCallGeofence | null
   maxStrikesBeforeBlock: number
   blockDurationMinutes: number
+  /** مهلةُ النداء بالدقائق: بعدها يُغلق وتُحتسب المخالفة. */
+  callExpiryMinutes: number
   displayTheme: 'dark' | 'light'
   updatedAt?: string | null
   createdAt?: string | null

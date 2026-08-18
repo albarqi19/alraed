@@ -84,6 +84,27 @@ export async function enqueueAutoCall(payload: EnqueueAutoCallPayload): Promise<
   return normalizeQueueEntryFromApi(response.data.data)
 }
 
+/**
+ * «نادِ على التالي» — يرقّي الخادمُ أقدمَ نداءٍ مستحقٍّ ذرّيّاً ويعيده.
+ *
+ * تعود `null` حين لا أحد ينتظر (أو حين يكون نداءٌ آخر يُنطق الآن، أو الخدمةُ
+ * خارج نافذتها) — وهي الحالُ الغالبةُ في يومٍ هادئ، فليست خطأً يُعرض.
+ */
+export async function announceNextAutoCall(): Promise<AutoCallQueueEntry | null> {
+  const response = await apiClient.post<ApiResponse<ApiRawData | null>>('/admin/auto-call/queue/announce-next')
+  const raw = response.data?.data
+  return raw ? normalizeQueueEntryFromApi(raw) : null
+}
+
+/** انتهت دورةُ نطق هذا النداء ⇒ يعود إلى الطابور ليأخذ غيرُه دورَه. */
+export async function finishAutoCallAnnouncement(id: number | string): Promise<AutoCallQueueEntry | null> {
+  const response = await apiClient.post<ApiResponse<ApiRawData | null>>(
+    `/admin/auto-call/queue/${id}/finish-announcement`
+  )
+  const raw = response.data?.data
+  return raw ? normalizeQueueEntryFromApi(raw) : null
+}
+
 export async function updateAutoCallStatus(
   id: number | string,
   status: AutoCallStatus,
@@ -144,7 +165,12 @@ export async function getAutoCallHistoryEntry(id: number | string): Promise<Auto
 // ============ Guardian Status API ============
 
 export async function getGuardianStatuses(): Promise<AutoCallGuardianStatus[]> {
-  const response = await apiClient.get<ApiResponse<ApiRawData[]>>('/admin/auto-call/guardians')
+  // الباك يرقّم بـ20 افتراضاً ولا عنصرَ تنقّلٍ في التبويب، فكان يعرض أوّل
+  // عشرين وحدهم — وبطاقةُ «أولياء محظورون» تعدّ من القائمة نفسها، فتقول رقماً
+  // ناقصاً بثقة. والمئةُ هي الحدُّ الأعلى الذي يقبله التحقّق في الخادم.
+  const response = await apiClient.get<ApiResponse<ApiRawData[]>>('/admin/auto-call/guardians', {
+    params: { per_page: 100 },
+  })
   return response.data.data.map(normalizeGuardianStatusFromApi)
 }
 
@@ -157,6 +183,29 @@ export async function checkGuardianStatus(guardianNationalId: string): Promise<A
   } catch {
     return null
   }
+}
+
+/** إيقافٌ مباشرٌ بقرار الإدارة — انظر `AutoCallGuardianController::block`. */
+export async function blockGuardian(
+  guardianNationalId: string,
+  minutes?: number | null,
+  reason?: string | null
+): Promise<AutoCallGuardianStatus> {
+  const response = await apiClient.post<ApiResponse<ApiRawData>>('/admin/auto-call/guardians/block', {
+    guardian_national_id: guardianNationalId,
+    minutes: minutes ?? null,
+    reason: reason ?? null,
+  })
+  return normalizeGuardianStatusFromApi(response.data.data)
+}
+
+/** رابطُ شاشة البوّابة: يُنشأ إن لم يكن، ويُدوَّر عند الطلب. */
+export async function fetchDisplayToken(rotate = false): Promise<string> {
+  const response = await apiClient.post<ApiResponse<{ display_token: string }>>(
+    '/admin/auto-call/display-token',
+    { rotate }
+  )
+  return response.data.data.display_token
 }
 
 export async function recordGuardianStrike(
@@ -184,6 +233,10 @@ function normalizeSettingsFromApi(data: Record<string, unknown>): AutoCallSettin
     repeatIntervalSeconds: Number(data.repeat_interval_seconds) || 120,
     announcementDurationSeconds: Number(data.announcement_duration_seconds) || 30,
     enableSpeech: data.enable_speech !== false,
+    autoAnnounce: data.auto_announce !== false,
+    maxAnnouncements: Number(data.max_announcements) || 3,
+    announceWithClass: data.announce_with_class !== false,
+    speechRate: Number(data.speech_rate) || 0.9,
     voiceGender: (data.voice_gender as 'male' | 'female' | 'auto') || 'auto',
     voiceLocale: (data.voice_locale as string) || 'ar-SA-u-nu-latn',
     allowGuardianAcknowledgement: data.allow_guardian_acknowledgement !== false,
@@ -196,6 +249,7 @@ function normalizeSettingsFromApi(data: Record<string, unknown>): AutoCallSettin
       : null,
     maxStrikesBeforeBlock: Number(data.max_strikes_before_block) || 3,
     blockDurationMinutes: Number(data.block_duration_minutes) || 1440,
+    callExpiryMinutes: Number(data.call_expiry_minutes) || 30,
     displayTheme: data.display_theme === 'light' ? 'light' : 'dark',
     updatedAt: data.updated_at as string | null ?? null,
     createdAt: data.created_at as string | null ?? null,
@@ -211,6 +265,10 @@ function normalizeSettingsToApi(payload: Partial<AutoCallSettings>): Record<stri
   if (payload.repeatIntervalSeconds !== undefined) result.repeat_interval_seconds = payload.repeatIntervalSeconds
   if (payload.announcementDurationSeconds !== undefined) result.announcement_duration_seconds = payload.announcementDurationSeconds
   if (payload.enableSpeech !== undefined) result.enable_speech = payload.enableSpeech
+  if (payload.autoAnnounce !== undefined) result.auto_announce = payload.autoAnnounce
+  if (payload.maxAnnouncements !== undefined) result.max_announcements = payload.maxAnnouncements
+  if (payload.announceWithClass !== undefined) result.announce_with_class = payload.announceWithClass
+  if (payload.speechRate !== undefined) result.speech_rate = payload.speechRate
   if (payload.voiceGender !== undefined) result.voice_gender = payload.voiceGender
   if (payload.voiceLocale !== undefined) result.voice_locale = payload.voiceLocale
   if (payload.allowGuardianAcknowledgement !== undefined) result.allow_guardian_acknowledgement = payload.allowGuardianAcknowledgement
@@ -227,6 +285,7 @@ function normalizeSettingsToApi(payload: Partial<AutoCallSettings>): Record<stri
   }
   if (payload.maxStrikesBeforeBlock !== undefined) result.max_strikes_before_block = payload.maxStrikesBeforeBlock
   if (payload.blockDurationMinutes !== undefined) result.block_duration_minutes = payload.blockDurationMinutes
+  if (payload.callExpiryMinutes !== undefined) result.call_expiry_minutes = payload.callExpiryMinutes
   if (payload.displayTheme !== undefined) result.display_theme = payload.displayTheme
 
   return result
@@ -252,9 +311,45 @@ function normalizeQueueEntryFromApi(data: Record<string, unknown>): AutoCallQueu
   }
 }
 
+/**
+ * حالةُ صفٍّ في السجلّ: من `final_status` لا من `status`.
+ *
+ * `auto_call_history` ليس فيه عمودٌ اسمه `status` أصلاً؛ فيه `final_status`
+ * بقيمٍ ثلاث: `completed`/`expired`/`cancelled`. وكان التطبيع يمرّ على
+ * `normalizeQueueEntryFromApi` وحدها فيقرأ `data.status` الغائب، فيسقط إلى
+ * `'pending'` الافتراضيّة — ثم تُصفّي شاشةُ البوّابة الاستلاماتِ بـ
+ * `status === 'acknowledged'` فلا تطابق صفّاً واحداً أبداً. عطلان متراكبان:
+ * اسمُ الحقل خطأ، والقيمةُ المتوقَّعةُ خطأ.
+ *
+ * و`completed` تُقرأ `acknowledged` عمداً: هي حالةُ الطابور المقابلة، وبها
+ * تتكلّم بقيّةُ الواجهة. أما البثُّ اللحظيّ فيرسل صفَّ الطابور بحقل `status`
+ * — فتُقبل الصيغتان هنا، وهو الموضع الوحيد الذي تلتقيان فيه.
+ */
+function normalizeHistoryStatus(data: Record<string, unknown>): AutoCallStatus {
+  const raw = String(data.final_status ?? data.status ?? '').trim().toLowerCase()
+
+  switch (raw) {
+    case 'completed':
+    case 'acknowledged':
+      return 'acknowledged'
+    case 'expired':
+      return 'expired'
+    case 'cancelled':
+      return 'cancelled'
+    default:
+      return 'pending'
+  }
+}
+
 function normalizeHistoryEntryFromApi(data: Record<string, unknown>): AutoCallHistoryEntry {
   return {
     ...normalizeQueueEntryFromApi(data),
+    status: normalizeHistoryStatus(data),
+    // `queued_at` وقتُ الطلب في جدول السجلّ، و`created_at` وقتُ كتابة صفّ
+    // السجلّ نفسِه — أي لحظةُ الأرشفة لا لحظةُ النداء. الترتيبُ بالثانية يخلط
+    // نداءَ الصباح بنداء الظهر.
+    createdAt: String(data.queued_at || data.created_at || new Date().toISOString()),
+    acknowledgedAt: (data.resolved_at as string | null) ?? (data.acknowledged_at as string | null) ?? null,
     resolvedAt: data.resolved_at as string | null ?? null,
     resolutionNotes: data.resolution_notes as string | null ?? null,
   }

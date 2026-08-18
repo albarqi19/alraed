@@ -33,6 +33,14 @@ export interface GuardianAutoCallSettings {
   openUntil: string | null
   /** `null` تعني «لا سياج لهذه المدرسة» — لا «سياجٌ مركزه (0,0)». */
   geofence: GuardianAutoCallGeofence | null
+  /**
+   * هل يُقرّ وليُّ الأمر الاستلامَ بنفسه، أم يُقرّه موظّفُ البوّابة؟
+   *
+   * القرارُ للمدرسة، والخادمُ يفرضه. وإخفاءُ الزرّ هنا رحمةٌ لا حراسة: من
+   * يضغط زرّاً يُردّ بـ403 لا يفهم أنّ مدرسته قرّرت ذلك، فيظنّ العطلَ في
+   * التطبيق ويعيد المحاولة.
+   */
+  allowGuardianAcknowledgement: boolean
 }
 
 /** حالات النداء كما يسمّيها الخادم حرفيّاً (`AutoCallQueue::STATUS_*`). */
@@ -75,6 +83,7 @@ interface RawGuardianAutoCallSettings {
   enabled?: boolean
   open_from?: string | null
   open_until?: string | null
+  allow_guardian_acknowledgement?: boolean
   geofence?: {
     latitude?: number
     longitude?: number
@@ -141,6 +150,9 @@ export async function fetchGuardianAutoCallSettings(): Promise<GuardianAutoCallS
     openFrom: raw.open_from ?? null,
     openUntil: raw.open_until ?? null,
     geofence: normalizeGeofence(raw.geofence),
+    // الغيابُ يعني «مسموح»: هو السلوك القائم، وخادمٌ قديمٌ لا يرسل الحقل يجب
+    // ألّا يُخفي زرّاً كان يعمل.
+    allowGuardianAcknowledgement: raw.allow_guardian_acknowledgement !== false,
   }
 }
 

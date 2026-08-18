@@ -20,6 +20,8 @@ import {
   VolumeX,
 } from 'lucide-react'
 import { useAutoCall, type AutoCallGuardianStatus, type AutoCallQueueEntry, type AutoCallSettings } from '@/modules/auto-call'
+import { getErrorMessage } from '@/services/api/errors'
+import { fetchDisplayToken } from '@/modules/auto-call/api/auto-call-api'
 import { useToast } from '@/shared/feedback/use-toast'
 
 type AdminAutoCallTab = 'queue' | 'settings' | 'history' | 'guardians'
@@ -57,11 +59,17 @@ interface SettingsDraft {
   openFrom: string | null
   openUntil: string | null
   enableSpeech: boolean
+  autoAnnounce: boolean
+  maxAnnouncements: number
+  announceWithClass: boolean
+  speechRate: number
   voiceGender: AutoCallSettings['voiceGender']
   allowGuardianAcknowledgement: boolean
   maxStrikesBeforeBlock: number
   blockDurationMinutes: number
   displayTheme: AutoCallSettings['displayTheme']
+  callExpiryMinutes: number
+  voiceLocale: string
   geofence: {
     latitude: string
     longitude: string
@@ -77,11 +85,17 @@ function createDraftFromSettings(settings: AutoCallSettings | null): SettingsDra
     openFrom: settings?.openFrom ?? null,
     openUntil: settings?.openUntil ?? null,
     enableSpeech: settings?.enableSpeech ?? true,
+    autoAnnounce: settings?.autoAnnounce ?? true,
+    maxAnnouncements: settings?.maxAnnouncements ?? 3,
+    announceWithClass: settings?.announceWithClass ?? true,
+    speechRate: settings?.speechRate ?? 0.9,
     voiceGender: settings?.voiceGender ?? 'auto',
     allowGuardianAcknowledgement: settings?.allowGuardianAcknowledgement ?? true,
     maxStrikesBeforeBlock: settings?.maxStrikesBeforeBlock ?? 3,
     blockDurationMinutes: settings?.blockDurationMinutes ?? 1440,
     displayTheme: settings?.displayTheme ?? 'dark',
+    callExpiryMinutes: settings?.callExpiryMinutes ?? 30,
+    voiceLocale: settings?.voiceLocale ?? 'ar-SA',
     geofence: settings?.geofence
       ? {
           latitude: settings.geofence.latitude.toString(),
@@ -144,10 +158,14 @@ export function AdminAutoCallPage() {
     recordGuardianStrike,
     blockGuardian,
     unblockGuardian,
+    refresh,
   } = useAutoCall()
 
   const [activeTab, setActiveTab] = useState<AdminAutoCallTab>('queue')
   const [isSavingSettings, setIsSavingSettings] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [displayToken, setDisplayToken] = useState<string | null>(null)
+  const [isPreparingDisplayLink, setIsPreparingDisplayLink] = useState(false)
   const [settingsDraft, setSettingsDraft] = useState<SettingsDraft>(() => createDraftFromSettings(settings))
 
   useEffect(() => {
@@ -306,6 +324,14 @@ export function AdminAutoCallPage() {
         openFrom: settingsDraft.openFrom || null,
         openUntil: settingsDraft.openUntil || null,
         enableSpeech: settingsDraft.enableSpeech,
+        autoAnnounce: settingsDraft.autoAnnounce,
+        maxAnnouncements: Number.isFinite(settingsDraft.maxAnnouncements)
+          ? Math.min(10, Math.max(1, settingsDraft.maxAnnouncements))
+          : 3,
+        announceWithClass: settingsDraft.announceWithClass,
+        speechRate: Number.isFinite(settingsDraft.speechRate)
+          ? Math.min(1.5, Math.max(0.5, settingsDraft.speechRate))
+          : 0.9,
         voiceGender: settingsDraft.voiceGender,
         allowGuardianAcknowledgement: settingsDraft.allowGuardianAcknowledgement,
         maxStrikesBeforeBlock: Number.isFinite(settingsDraft.maxStrikesBeforeBlock)
@@ -315,26 +341,93 @@ export function AdminAutoCallPage() {
           ? settingsDraft.blockDurationMinutes
           : 1440,
         displayTheme: settingsDraft.displayTheme,
+        // كانا مخزَّنين في القاعدة بلا حقلٍ في الواجهة: مهلةُ النداء تحكم متى
+        // يُغلق النداء وتُحتسب المخالفة، ولغةُ النطق تحكم لكنةَ المُركِّب —
+        // ولا سبيل لتغيير أيّهما إلا بتعديلٍ يدويٍّ في قاعدة البيانات.
+        callExpiryMinutes: Number.isFinite(settingsDraft.callExpiryMinutes)
+          ? Math.min(120, Math.max(5, settingsDraft.callExpiryMinutes))
+          : 30,
+        voiceLocale: settingsDraft.voiceLocale || 'ar-SA',
       }
 
-      if (settingsDraft.geofence) {
-        const lat = Number(settingsDraft.geofence.latitude)
-        const lng = Number(settingsDraft.geofence.longitude)
-        const radius = Number(settingsDraft.geofence.radiusMeters)
-        payload.geofence =
-          Number.isFinite(lat) && Number.isFinite(lng) && Number.isFinite(radius)
-            ? { latitude: lat, longitude: lng, radiusMeters: radius }
-            : null
-      } else {
+      // `Number('')` تساوي صفراً لا NaN، فكان الحقلُ الفارغ يمرّ `isFinite`
+      // ويُرسَل `radius_meters: 0` فيرتدّ بـ422 («لا يقلّ عن 50»). أي أن
+      // التعليمة المكتوبة تحت الحقول — «اترك الحقول فارغة لتعطيل التحقق» —
+      // كانت تنتهي بخطأٍ في كلّ مرّة، ولا السياجُ يُضبط ولا يُمسح.
+      const rawLat = (settingsDraft.geofence?.latitude ?? '').trim()
+      const rawLng = (settingsDraft.geofence?.longitude ?? '').trim()
+      const rawRadius = (settingsDraft.geofence?.radiusMeters ?? '').trim()
+
+      if (!rawLat && !rawLng) {
         payload.geofence = null
+      } else {
+        const lat = Number(rawLat)
+        const lng = Number(rawLng)
+        const radius = rawRadius ? Number(rawRadius) : 500
+
+        if (!Number.isFinite(lat) || !Number.isFinite(lng) || !rawLat || !rawLng) {
+          toast({ type: 'error', title: 'أكمل خط العرض وخط الطول معاً، أو امسحهما لتعطيل النطاق' })
+          setIsSavingSettings(false)
+          return
+        }
+
+        payload.geofence = { latitude: lat, longitude: lng, radiusMeters: radius }
       }
 
       await updateSettings(payload)
       toast({ type: 'success', title: 'تم حفظ إعدادات النداء الآلي' })
     } catch (error) {
-      toast({ type: 'error', title: error instanceof Error ? error.message : 'تعذر حفظ الإعدادات' })
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر حفظ الإعدادات') })
     } finally {
       setIsSavingSettings(false)
+    }
+  }
+
+  /**
+   * رابطُ شاشة البوّابة.
+   *
+   * يُنشأ عند أوّل طلبٍ ولا يتبدّل بعدها إلا بتدويرٍ صريح: الرابطُ يُفتح على
+   * جهازٍ معلّقٍ عند المدخل ويُترك سنةً دراسيّةً كاملة، فتبديلُه بلا قصدٍ يُطفئ
+   * الشاشةَ في وجه من لا يعرف أنها تحتاج رابطاً جديداً.
+   */
+  async function handleDisplayLink(rotate: boolean) {
+    setIsPreparingDisplayLink(true)
+    try {
+      const token = await fetchDisplayToken(rotate)
+      setDisplayToken(token)
+
+      const url = `${window.location.origin}/display/auto-call?token=${token}`
+
+      try {
+        await navigator.clipboard.writeText(url)
+        toast({ type: 'success', title: rotate ? 'تم تدوير الرابط ونسخه' : 'تم نسخ رابط شاشة العرض' })
+      } catch {
+        // متصفّحٌ يمنع الحافظة (سياقٌ غير آمن مثلاً): الرابطُ معروضٌ تحت الزرّ
+        // فينسخه المستخدم بيده، ولا يُترك بلا خبر.
+        toast({ type: 'info', title: 'انسخ الرابط الظاهر أدناه يدوياً' })
+      }
+    } catch (error) {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تجهيز رابط شاشة العرض') })
+    } finally {
+      setIsPreparingDisplayLink(false)
+    }
+  }
+
+  /**
+   * إعادةُ قراءةٍ صريحةٍ من الخادم.
+   *
+   * اللوحةُ تجلب مرّةً عند الإقلاع ثمّ تعتمد على البثّ اللحظيّ وحده. فإن سقط
+   * خادمُ البثّ —أو فشل تصريحُ القناة بصمت— جمدت الأرقامُ على حالها بلا أيّ
+   * مؤشّر، ولا مخرجَ إلا إعادةُ تحميل الصفحة كلّها.
+   */
+  async function handleRefresh() {
+    setIsRefreshing(true)
+    try {
+      await refresh()
+    } catch (error) {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تحديث البيانات') })
+    } finally {
+      setIsRefreshing(false)
     }
   }
 
@@ -343,7 +436,7 @@ export function AdminAutoCallPage() {
       await acknowledgeCall(call.id, by)
       toast({ type: 'success', title: `تم تأكيد استلام ${call.studentName}` })
     } catch (error) {
-      toast({ type: 'error', title: error instanceof Error ? error.message : 'تعذر تأكيد الاستلام' })
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تأكيد الاستلام') })
     }
   }
 
@@ -352,7 +445,7 @@ export function AdminAutoCallPage() {
       await updateCallStatus(call.id, { status })
       toast({ type: 'info', title: `تم تحديث حالة ${call.studentName}` })
     } catch (error) {
-      toast({ type: 'error', title: error instanceof Error ? error.message : 'تعذر تحديث الحالة' })
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تحديث الحالة') })
     }
   }
 
@@ -361,7 +454,7 @@ export function AdminAutoCallPage() {
       await recordGuardianStrike(status.guardianNationalId, reason)
       toast({ type: 'warning', title: 'تم تسجيل مخالفة على حساب ولي الأمر' })
     } catch (error) {
-      toast({ type: 'error', title: error instanceof Error ? error.message : 'تعذر تسجيل المخالفة' })
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تسجيل المخالفة') })
     }
   }
 
@@ -371,7 +464,7 @@ export function AdminAutoCallPage() {
       await blockGuardian(status.guardianNationalId, until)
       toast({ type: 'warning', title: 'تم إيقاف الخدمة لولي الأمر مؤقتاً' })
     } catch (error) {
-      toast({ type: 'error', title: error instanceof Error ? error.message : 'تعذر تنفيذ الإيقاف' })
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تنفيذ الإيقاف') })
     }
   }
 
@@ -380,7 +473,7 @@ export function AdminAutoCallPage() {
       await unblockGuardian(status.guardianNationalId)
       toast({ type: 'success', title: 'تم إعادة تفعيل الخدمة لولي الأمر' })
     } catch (error) {
-      toast({ type: 'error', title: error instanceof Error ? error.message : 'تعذر إعادة التفعيل' })
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر إعادة التفعيل') })
     }
   }
 
@@ -394,6 +487,17 @@ export function AdminAutoCallPage() {
 
     return (
       <div className="flex flex-wrap items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={() => void handleRefresh()}
+          disabled={isRefreshing}
+          className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+          title="إعادة قراءة الطابور والسجل من الخادم"
+        >
+          <RefreshCcw className={clsx('h-4 w-4', isRefreshing && 'animate-spin')} />
+          <span>تحديث</span>
+        </button>
+
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -765,17 +869,33 @@ export function AdminAutoCallPage() {
                 <span className="font-semibold">الفاصل بين النداءات (ثانية)</span>
                 <input
                   type="number"
-                  min={30}
+                  min={10}
+                  max={300}
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
                   value={settingsDraft.repeatIntervalSeconds}
                   onChange={(event) => handleDraftChange('repeatIntervalSeconds', Number(event.target.value))}
                 />
               </label>
               <label className="space-y-1 text-xs text-slate-600">
+                <span className="font-semibold">مهلة النداء (دقيقة)</span>
+                <input
+                  type="number"
+                  min={5}
+                  max={120}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
+                  value={settingsDraft.callExpiryMinutes}
+                  onChange={(event) => handleDraftChange('callExpiryMinutes', Number(event.target.value))}
+                />
+                <span className="block text-[11px] text-slate-500">
+                  بعدها يُغلق النداء تلقائياً وتُحتسب مخالفة على ولي الأمر إن كان قد نودي عليه.
+                </span>
+              </label>
+              <label className="space-y-1 text-xs text-slate-600">
                 <span className="font-semibold">مدة عرض النداء (ثانية)</span>
                 <input
                   type="number"
-                  min={10}
+                  min={5}
+                  max={60}
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
                   value={settingsDraft.announcementDurationSeconds}
                   onChange={(event) => handleDraftChange('announcementDurationSeconds', Number(event.target.value))}
@@ -810,8 +930,30 @@ export function AdminAutoCallPage() {
               الصوت والواجهة
               <MonitorPlay className="h-4 w-4 text-slate-500" />
             </h3>
+            {/*
+              المفتاحُ الأوّل: هل تنادي الشاشةُ وحدها؟
+              كانت الشاشةُ لا تنطق إلا ما يرقّيه موظّفٌ بيده من هذه اللوحة، فمن
+              لم يجلس أمامها أحدٌ بقيت صامتةً واسمُها «النداء الآليّ». صار
+              التلقائيُّ هو الأصل، وبقي اليدويُّ خياراً لمن أراده.
+            */}
+            <label className="flex items-start justify-between gap-3 rounded-xl border border-indigo-200 bg-indigo-50/60 px-3 py-2.5 text-sm text-slate-700">
+              <span className="space-y-0.5">
+                <span className="block font-semibold text-indigo-900">النداء التلقائي</span>
+                <span className="block text-[11px] leading-relaxed text-indigo-700/80">
+                  تنادي شاشة العرض على الطلاب بالترتيب دون تدخل. عند الإطفاء لن يُنادى أحد
+                  إلا بضغط «بدء النداء» يدوياً من الطابور.
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                checked={settingsDraft.autoAnnounce}
+                onChange={(event) => handleDraftChange('autoAnnounce', event.target.checked)}
+              />
+            </label>
+
             <label className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
-              <span>تشغيل النطق الآلي</span>
+              <span>تشغيل النطق الصوتي</span>
               <input
                 type="checkbox"
                 className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
@@ -819,6 +961,47 @@ export function AdminAutoCallPage() {
                 onChange={(event) => handleDraftChange('enableSpeech', event.target.checked)}
               />
             </label>
+
+            <label className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+              <span>نطق الصف مع الاسم</span>
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                checked={settingsDraft.announceWithClass}
+                onChange={(event) => handleDraftChange('announceWithClass', event.target.checked)}
+              />
+            </label>
+
+            <div className="grid gap-3 lg:grid-cols-2">
+              <label className="space-y-1 text-xs text-slate-600">
+                <span className="font-semibold">عدد مرات النداء لكل طالب</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={10}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
+                  value={settingsDraft.maxAnnouncements}
+                  onChange={(event) => handleDraftChange('maxAnnouncements', Number(event.target.value))}
+                />
+                <span className="block text-[11px] text-slate-500">
+                  بعد بلوغ العدد يتوقف النداء عليه ويبقى في الطابور حتى انتهاء المهلة.
+                </span>
+              </label>
+
+              <label className="space-y-1 text-xs text-slate-600">
+                <span className="font-semibold">سرعة النطق</span>
+                <input
+                  type="number"
+                  min={0.5}
+                  max={1.5}
+                  step={0.1}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
+                  value={settingsDraft.speechRate}
+                  onChange={(event) => handleDraftChange('speechRate', Number(event.target.value))}
+                />
+                <span className="block text-[11px] text-slate-500">0.5 أبطأ · 1.0 طبيعي · 1.5 أسرع</span>
+              </label>
+            </div>
 
             <label className="space-y-1 text-xs text-slate-600">
               <span className="font-semibold">اختيار نوع الصوت</span>
@@ -836,6 +1019,19 @@ export function AdminAutoCallPage() {
             </label>
 
             <label className="space-y-1 text-xs text-slate-600">
+              <span className="font-semibold">لغة النطق</span>
+              <select
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                value={settingsDraft.voiceLocale}
+                onChange={(event) => handleDraftChange('voiceLocale', event.target.value)}
+              >
+                <option value="ar-SA">العربية (السعودية)</option>
+                <option value="ar-EG">العربية (مصر)</option>
+                <option value="ar">العربية (عامة)</option>
+              </select>
+            </label>
+
+            <label className="space-y-1 text-xs text-slate-600">
               <span className="font-semibold">نمط شاشة العرض</span>
               <select
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
@@ -846,6 +1042,49 @@ export function AdminAutoCallPage() {
                 <option value="light">نمط فاتح</option>
               </select>
             </label>
+          </section>
+
+          {/*
+            رابطُ الشاشة: هو ما يجعلها شاشةَ بوّابةٍ لا تبويباً في متصفّح مدير.
+            كانت تعمل بجلسة موظّفٍ فقط، وانتهاءُ رمزه يُطفئها بصمت — لا رسالةَ
+            خطأ، بل «لا توجد مناداة حالياً» إلى الأبد والآباء ينتظرون.
+          */}
+          <section className="space-y-3 rounded-2xl bg-indigo-50/60 p-4">
+            <h3 className="flex items-center justify-between text-sm font-semibold text-indigo-900">
+              رابط شاشة العرض عند البوابة
+              <MonitorPlay className="h-4 w-4 text-indigo-500" />
+            </h3>
+
+            <p className="text-[11px] leading-relaxed text-indigo-800/80">
+              افتح هذا الرابط على جهاز العرض المعلّق عند المدخل. لا يحتاج تسجيل دخول ولا ينقطع بانتهاء
+              جلستك، ولا يعرض أرقام هويات ولا أرقام جوالات.
+            </p>
+
+            {displayToken ? (
+              <p className="select-all break-all rounded-xl border border-indigo-200 bg-white px-3 py-2 text-[11px] text-indigo-900">
+                {`${window.location.origin}/display/auto-call?token=${displayToken}`}
+              </p>
+            ) : null}
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => void handleDisplayLink(false)}
+                disabled={isPreparingDisplayLink}
+                className="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-60"
+              >
+                {isPreparingDisplayLink ? 'جارٍ التجهيز…' : 'نسخ رابط الشاشة'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void handleDisplayLink(true)}
+                disabled={isPreparingDisplayLink}
+                className="rounded-xl border border-indigo-300 px-3 py-2 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-60"
+              >
+                تدوير الرابط (إلغاء القديم)
+              </button>
+            </div>
           </section>
 
           <section className="space-y-3 rounded-2xl bg-slate-50/60 p-4">
@@ -869,6 +1108,7 @@ export function AdminAutoCallPage() {
                 <input
                   type="number"
                   min={1}
+                  max={10}
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
                   value={settingsDraft.maxStrikesBeforeBlock}
                   onChange={(event) => handleDraftChange('maxStrikesBeforeBlock', Number(event.target.value))}
@@ -878,7 +1118,8 @@ export function AdminAutoCallPage() {
                 <span className="font-semibold">مدة الحظر (دقائق)</span>
                 <input
                   type="number"
-                  min={30}
+                  min={60}
+                  max={10080}
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none"
                   value={settingsDraft.blockDurationMinutes}
                   onChange={(event) => handleDraftChange('blockDurationMinutes', Number(event.target.value))}
