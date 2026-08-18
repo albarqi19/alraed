@@ -44,7 +44,7 @@ import {
   UserX,
   Eye, // أيقونة الإشراف اليومي
   Bell, // أيقونة اختبار الإشعارات
-  Wand2, // أيقونة محاكي الجداول
+  // Wand2 — أيقونة محاكي الجداول، تعود معه حين يُعاد إظهاره
   FileWarning, // أيقونة إجراءات التأخير
   HeartPulse, // أيقونة نبض الفريق
   BarChart3, // أيقونة تقرير مدرستي
@@ -110,7 +110,15 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
       { to: '/admin/evaluation-settings', label: 'تقييم الطلاب', icon: ClipboardPen, permission: 'admin.evaluation-settings' },
       { to: '/admin/class-schedules', label: 'جداول الفصول', icon: Calendar, permission: 'admin.class-schedules' },
       { to: '/admin/class-sessions', label: 'إدارة الحصص', icon: Clock, permission: 'admin.class-sessions' },
-      { to: '/admin/schedule-simulator', label: 'محاكي الجداول الذكي', icon: Wand2, permission: 'admin.schedule-simulator' },
+      /*
+       * محاكي الجداول الذكي — مخفيٌّ من القائمة بقرار المالك (2026-08-18) ريثما
+       * يكتمل، كي لا يستعمله أحدٌ الآن.
+       *
+       * إخفاءٌ لا حذف: الصفحةُ ومسارُها والخدمةُ خلفهما قائمةٌ كما هي، وفتحُ
+       * `/admin/schedule-simulator` بالرابط المباشر يعمل — فيجرّبه المالكُ متى
+       * شاء. وإعادتُه سطرٌ واحد: انزع التعليق عن السطر أدناه.
+       */
+      // { to: '/admin/schedule-simulator', label: 'محاكي الجداول الذكي', icon: Wand2, permission: 'admin.schedule-simulator' },
     ],
   },
   {
