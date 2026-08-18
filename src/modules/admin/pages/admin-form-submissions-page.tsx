@@ -556,11 +556,26 @@ function buildPrintableMarkup(
   // ولا يُذكر أنه كان
   const fieldDefinitions = withoutRedactedColumns(allFieldDefinitions, [submission])
 
-  // الصورةُ الشخصية ترتفع إلى الترويسة ولا تبقى صفّاً باسم ملفّ
+  /*
+   * الصورةُ الشخصية ترتفع إلى الترويسة ولا تبقى صفّاً باسم ملفّ.
+   *
+   * والتعرّفُ عليها لا يكتفي بـ`maps_to`: نماذجُ المدارس المبنيّةُ يدوياً لا
+   * تربط حقولَها بالمعجم أصلاً — فحقلُ «الصورة الشخصية» في نموذجٍ حقيقيّ فحصناه
+   * بلا `maps_to` — ولو اكتفينا به لهبطت صورةُ الطالب صفحةً مستقلّةً بين
+   * المرفقات بدل أن تُعرّف بصاحب الورقة في صدرها.
+   *
+   * فنسقط إلى التسمية: هي ما يكتبه بانٍ النموذج، وهي ثابتةٌ عملياً في هذا السؤال.
+   */
+  const isPersonalPhotoField = (field?: FormFieldWithSection | null): boolean => {
+    if (!field) return false
+    if (field.maps_to === 'profile.photo') return true
+    const label = field.label ?? ''
+    return /الصورة\s*الشخصي|صورة\s*شخصي|صورة\s*الطالب/.test(label)
+  }
+
   const photoFile = submission.files?.find((file) => {
     if (!file.is_image || !file.url) return false
-    const field = allFieldDefinitions.find((item) => item.id === file.field_id)
-    return field?.maps_to === 'profile.photo'
+    return isPersonalPhotoField(allFieldDefinitions.find((item) => item.id === file.field_id))
   })
 
   const printableFields = fieldDefinitions.filter((field) => field.id !== photoFile?.field_id)
@@ -575,7 +590,32 @@ function buildPrintableMarkup(
       ? signatureAnswer.value_text
       : null
 
-  const bodyFields = printableFields.filter((field) => field.id !== signatureField?.id)
+  /*
+   * المرفقاتُ تُنزع من الجدول وتُطبع صفحاتٍ بعده.
+   *
+   * صفٌّ مكتوبٌ فيه «صك-البيت.jpg» لا يقول شيئاً لمن يقرأ الورقة — الصورةُ هي
+   * الجواب لا اسمُ ملفّها. فيُحذف الصفُّ من الجدول، وتُفرَد لكلّ مرفقٍ صفحةٌ
+   * عنوانُها السؤالُ نفسُه.
+   *
+   * والصورةُ الشخصية مستثناة: موضعُها الترويسةُ حيث تُعرّف بصاحب الورقة.
+   */
+  const attachmentPages = (submission.files ?? [])
+    .filter((file) => file.url && file.field_id !== photoFile?.field_id)
+    .map((file) => ({
+      file,
+      field: allFieldDefinitions.find((item) => item.id === file.field_id) ?? null,
+    }))
+    // المحجوبُ لا يُطبع: المصفاةُ أسقطت حقلَه من `fieldDefinitions`، والمرفقُ
+    // يتبع حقلَه — وإلّا طُمس النصُّ وسُلّم المرفقُ كاملاً في الورقة نفسها
+    .filter((entry) => entry.field !== null && fieldDefinitions.some((f) => f.id === entry.field?.id))
+
+  const attachmentFieldIds = new Set(
+    printableFields.filter((field) => isAttachmentFieldType(field.type)).map((field) => field.id),
+  )
+
+  const bodyFields = printableFields.filter(
+    (field) => field.id !== signatureField?.id && !attachmentFieldIds.has(field.id),
+  )
 
   /*
    * تقسيمُ الورقة يقرأ مصدرَين لا واحداً.
@@ -673,6 +713,38 @@ function buildPrintableMarkup(
       )
     })
     .join('')
+  /*
+   * صفحةٌ لكلّ مرفق: عنوانُ السؤال في أعلاها ثمّ الصورة.
+   *
+   * `page-break-before: always` يفتح صفحةً جديدة، و`max-height: 235mm` يضمن أنّ
+   * الصورةَ الطويلةَ تنكمش لتسع الصفحةَ بعد ترويستها بدل أن تُقصّ عند حافّتها.
+   *
+   * وما ليس صورةً (PDF مثلاً) لا يُطبع صفحةً فارغة: يُذكر في ذيل الورقة الأولى
+   * أنّ للسؤال مرفقاً يُفتح من النظام — فيعرف القارئُ بوجوده ولا يظنّ السؤالَ
+   * بلا جواب.
+   */
+  const imagePages = attachmentPages.filter((entry) => entry.file.is_image)
+  const otherAttachments = attachmentPages.filter((entry) => !entry.file.is_image)
+
+  const attachmentsHtml = imagePages
+    .map(
+      (entry) =>
+        '<section class="attach">' +
+        '<div class="attach__q">' + escapeHtml(entry.field?.label ?? 'مرفق') + '</div>' +
+        '<img src="' + escapeHtml(entry.file.url ?? '') + '" alt="" />' +
+        '<div class="attach__f">' + escapeHtml(entry.file.filename ?? '') + '</div>' +
+        '</section>',
+    )
+    .join('')
+
+  const otherAttachmentsHtml = otherAttachments.length
+    ? '<div class="attach-note"><strong>مرفقاتٌ غير قابلة للطباعة:</strong> ' +
+      otherAttachments
+        .map((entry) => escapeHtml((entry.field?.label ?? 'مرفق') + ' — ' + (entry.file.filename ?? '')))
+        .join(' · ') +
+      ' (تُفتح من النظام)</div>'
+    : ''
+
   const student = submission.student
   const photoHtml = photoFile?.url
     ? '<img class="head__photo" src="' + escapeHtml(photoFile.url) + '" alt="" />'
@@ -803,6 +875,44 @@ function buildPrintableMarkup(
             padding-top: 3px;
           }
 
+          /* ── صفحاتُ المرفقات ── */
+          .attach-note {
+            margin-top: 8px;
+            border: 1px dashed #9ca3af;
+            background: #f9fafb;
+            padding: 5px 9px;
+            font-size: 10px;
+            color: #374151;
+            border-radius: 3px;
+          }
+          .attach {
+            page-break-before: always;
+            break-before: page;
+            text-align: center;
+          }
+          .attach__q {
+            font-size: 13px;
+            font-weight: 800;
+            border: 1px solid #9ca3af;
+            background: #EDF5F9;
+            padding: 5px 10px;
+            margin-bottom: 8px;
+            text-align: right;
+          }
+          .attach img {
+            max-width: 100%;
+            /* ارتفاعُ A4 ناقصَ الهوامشِ والترويسة — فتنكمش الصورةُ الطويلةُ
+               لتسع الصفحةَ بدل أن تُقصّ عند حافّتها */
+            max-height: 235mm;
+            object-fit: contain;
+            border: 1px solid #d1d5db;
+          }
+          .attach__f {
+            margin-top: 4px;
+            font-size: 9px;
+            color: #6b7280;
+          }
+
           /* الطابعاتُ تُسقط ألوانَ الخلفية افتراضياً، وبإسقاطها تضيع أقسامُ الورقة */
           @media print {
             * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -846,10 +956,14 @@ function buildPrintableMarkup(
           <div><div class="line"></div>الموجّه الطلابي</div>
         </div>
 
+        ${otherAttachmentsHtml}
+
         <div class="foot">
           <span>رد رقم ${submission.id.toString()} · ${escapeHtml(FORM_SUBMISSION_STATUS_LABELS[submission.status])}</span>
           <span>أُرسل: ${escapeHtml(formatDateTime(submission.submitted_at))}</span>
         </div>
+
+        ${attachmentsHtml}
       </body>
     </html>
   `
@@ -1284,6 +1398,37 @@ export function AdminFormSubmissionsPage() {
       printWindow.document.write(markup)
       printWindow.document.close()
       printWindow.focus()
+
+      /*
+       * الطباعةُ تنتظر الصور.
+       *
+       * `print()` يلتقط الصفحةَ كما هي في تلك اللحظة، و`document.write` لا ينتظر
+       * تحميلَ ما فيها. فمرفقاتُ الصور — وهي صفحةٌ لكلّ واحدة — كانت ستخرج بيضاء،
+       * والصورةُ الشخصيةُ في الترويسة معها. وروابطُ المرفقات موقَّعةٌ من الخادم،
+       * أي طلبُ شبكةٍ حقيقيّ لا شيء من الذاكرة.
+       *
+       * و`onerror` يُنهي الانتظارَ كما يُنهيه `onload`: رابطٌ منتهي الصلاحية يجب
+       * أن يُخرج ورقةً ناقصةَ صورةٍ واحدة، لا أن يمنع الطباعةَ كلَّها. والمهلةُ
+       * سقفٌ أخير لئلّا تعلق النافذةُ على شبكةٍ بطيئة.
+       */
+      const images = Array.from(printWindow.document.images)
+      const pending = images
+        .filter((image) => !image.complete)
+        .map(
+          (image) =>
+            new Promise<void>((resolve) => {
+              image.addEventListener('load', () => resolve(), { once: true })
+              image.addEventListener('error', () => resolve(), { once: true })
+            }),
+        )
+
+      if (pending.length > 0) {
+        await Promise.race([
+          Promise.all(pending),
+          new Promise((resolve) => setTimeout(resolve, 8000)),
+        ])
+      }
+
       printWindow.print()
     },
     [fieldDefinitions, formId, formQuery.data, toast],
