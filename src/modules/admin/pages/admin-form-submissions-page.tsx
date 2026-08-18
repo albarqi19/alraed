@@ -49,6 +49,7 @@ import {
   WsIconBtn,
   WsInput,
   WsModal,
+  WsPage,
   WsProgress,
   WsSpinner,
   WsTable,
@@ -1345,25 +1346,17 @@ export function AdminFormSubmissionsPage() {
 
   return (
     /*
-     * لوحٌ في التدفّق الطبيعي لا مساحةَ عملٍ ملتصقة: مسار
-     * `/admin/forms/:formId/submissions` ليس مسجَّلاً في WORKSPACE_ROUTES بـ
-     * admin-shell.tsx، فيسقط داخل حاويةٍ بحشوةٍ وبتمريرٍ خارجي وبلا ارتفاعٍ
-     * محدَّد — و`flex:1` مع `overflow:hidden` هناك يقصّ الصفحة بلا مَخرج. فنُبقي
-     * كلاس `ws-page` (لتَرِث الصفحةُ مفرداته وأشرطةَ تمريره) ونعطّل تمدّده
-     * بـ`flex:none`. يوم يُسجَّل المسار: تُحذف هذه الأنماط ويُستبدل الوسم بـ
-     * `WsPage`، ويُعطى بلوكُ الجدول `fill` و`scroll` ليتمرّر داخلياً.
+     * مساحةُ عملٍ ملتصقةٌ بملء الشاشة.
+     *
+     * كان المسارُ مستثنىً من `WORKSPACE_ROUTE_PATTERNS` في admin-shell — الـregex
+     * يطابق `/admin/forms/\d+$` وينتهي عند `$` فلا يشمل `/submissions`. فتسقط
+     * الصفحةُ في الحاوية العادية بحشوتها وتمريرها الخارجيّ، وتظهر محاطةً بفراغٍ
+     * من أطرافها الأربعة بينما أخواتُها تملأ الشاشة.
+     *
+     * وكان الالتفافُ هنا إطاراً مرسوماً بيدٍ (`border` و`borderRadius`) يزيد
+     * الإحساسَ بالصندوق بدل أن يزيله. سُجّل المسارُ في الـregex وحُذف الالتفاف.
      */
-    <section
-      dir="rtl"
-      className="ws-page"
-      style={{
-        flex: 'none',
-        border: '1px solid var(--ws-border)',
-        borderRadius: 10,
-        overflow: 'hidden',
-        background: 'var(--ws-surface)',
-      }}
-    >
+    <WsPage dir="rtl">
       <WsHeader
         title={`ردود: ${form.title}`}
         actions={
@@ -1473,7 +1466,24 @@ export function AdminFormSubmissionsPage() {
         </WsField>
       </WsToolbar>
 
-      <WsBlock
+      {/*
+       * حاويةُ التمرير الداخليّ.
+       *
+       * `.ws-page` و`.ws-main` كلاهما `overflow:hidden` — وهو جوهرُ «النمط
+       * الملتصق»: الصفحةُ لا تتمرّر، بل يتمرّر جوفُها. فبلا هذه الحاوية تُقصّ
+       * البلوكاتُ الثلاثةُ صامتةً عند حافّة الشاشة ولا يصل القارئُ إلى «متابعة
+       * الطلاب» أبداً.
+       */}
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <WsBlock
         title="قائمة الردود"
         icon={FileText}
         count={nf(totalCount)}
@@ -1623,7 +1633,8 @@ export function AdminFormSubmissionsPage() {
             />
           </div>
         )}
-      </WsBlock>
+        </WsBlock>
+      </div>
 
       {detailOpen ? (
         <SubmissionDetail
@@ -1638,7 +1649,7 @@ export function AdminFormSubmissionsPage() {
           fieldMap={fieldMap}
         />
       ) : null}
-    </section>
+    </WsPage>
   )
 }
 
