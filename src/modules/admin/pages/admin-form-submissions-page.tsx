@@ -63,7 +63,7 @@ import {
   useDeleteAdminSubmissionMutation,
   useReviewAdminSubmissionMutation,
 } from '@/modules/forms/hooks'
-import { fetchAdminFormSubmissions } from '@/modules/forms/api'
+import { fetchAdminFormSubmission, fetchAdminFormSubmissions } from '@/modules/forms/api'
 import { FORM_SUBMISSION_STATUS_LABELS, isAttachmentFieldType } from '@/modules/forms/constants'
 import type {
   FormFieldSettings,
@@ -576,25 +576,47 @@ function buildPrintableMarkup(
 
   const bodyFields = printableFields.filter((field) => field.id !== signatureField?.id)
 
-  // التجميعُ بالأقسام بترتيب ظهورها لا بترتيب المفاتيح
-  const order: string[] = []
-  const grouped = new Map<string, FormFieldWithSection[]>()
+  /*
+   * تقسيمُ الورقة يقرأ مصدرَين لا واحداً.
+   *
+   * النموذجُ قد يُقسَّم بأقسامٍ حقيقية (`form_sections`) وقد يُقسَّم بحقولٍ من نوع
+   * `section_break` — وهو ما تفعله أغلبُ المدارس، لأنّ المصمّمَ يعرض «فاصل قسم»
+   * في لوحته ولا يعرض الأقسامَ الحقيقية أصلاً. وكانت الطباعةُ تقرأ الأول وحده،
+   * فتجمع نموذجاً كاملاً تحت عنوانٍ واحدٍ اسمه «الإجابات» وتطبع الفواصلَ صفوفاً
+   * فارغةً بين الأسئلة.
+   *
+   * فالفاصلُ هنا يفتح قسماً بعنوانه، وما بعده ينتمي إليه حتى الفاصل التالي.
+   */
+  type PrintSection = { title: string; fields: FormFieldWithSection[] }
+
+  const sections: PrintSection[] = []
+
+  const sectionFor = (title: string): PrintSection => {
+    const last = sections[sections.length - 1]
+    if (last && last.title === title) return last
+    const created: PrintSection = { title, fields: [] }
+    sections.push(created)
+    return created
+  }
+
+  let breakTitle: string | null = null
 
   bodyFields.forEach((field) => {
-    const key = field.sectionTitle ?? ''
-    const bucket = grouped.get(key)
-    if (bucket) {
-      bucket.push(field)
-    } else {
-      grouped.set(key, [field])
-      order.push(key)
+    if (field.type === 'section_break') {
+      // الفاصلُ عنوانٌ لا سؤال: يفتح قسماً ولا يشغل صفّاً
+      breakTitle = field.label?.trim() || null
+      if (breakTitle) sectionFor(breakTitle)
+      return
     }
+
+    // القسمُ الحقيقيّ يسبق الفاصل: هو بنيةٌ في القاعدة لا مجرّد عنوانٍ مكتوب
+    sectionFor(field.sectionTitle?.trim() || breakTitle || 'الإجابات').fields.push(field)
   })
 
-  const sectionsHtml = order
-    .map((sectionTitle, index) => {
-      const sectionFields = grouped.get(sectionTitle) ?? []
-      const dictionarySection = dominantDictionarySection(sectionFields)
+  const sectionsHtml = sections
+    .filter((section) => section.fields.length > 0)
+    .map((section, index) => {
+      const dictionarySection = dominantDictionarySection(section.fields)
       const tone =
         (dictionarySection ? PRINT_SECTION_TONES[dictionarySection] : undefined) ??
         PRINT_NEUTRAL_TONES[index % PRINT_NEUTRAL_TONES.length]
@@ -602,7 +624,7 @@ function buildPrintableMarkup(
       /*
        * سؤالان في الصفّ كما في الورقة، والطويلُ يبتلع الصفَّ كلَّه.
        * `pending` يحمل الخليّةَ الفردية حتى تجد قرينتَها — وإن لم تجدها خُتم
-       * الصفُّ بخليّتَين فارغتَين، فلا تنكسر الشبكةُ ولا تتمدّد قيمةٌ على فراغ.
+       * الصفُّ بخليّتَين فارغتَين، فلا تنكسر الشبكة.
        */
       const rows: string[] = []
       let pending: string | null = null
@@ -614,11 +636,11 @@ function buildPrintableMarkup(
         }
       }
 
-      sectionFields.forEach((field) => {
+      section.fields.forEach((field) => {
         const answer = submission.answers?.find((item) => item.field_id === field.id)
         const value = formatAnswerForField(field, answer)
         const isLong =
-          value.length > 45 || field.type === 'textarea' || field.type === 'multi_select'
+          value.length > 40 || field.type === 'textarea' || field.type === 'multi_select'
         const label = escapeHtml(field.label)
         const safeValue = escapeHtml(value)
 
@@ -644,13 +666,12 @@ function buildPrintableMarkup(
 
       return (
         '<table class="sec" style="--head:' + tone.head + ';--body:' + tone.body + '">' +
-        '<thead><tr><th colspan="4">' + escapeHtml(sectionTitle || 'الإجابات') + '</th></tr></thead>' +
+        '<thead><tr><th colspan="4">' + escapeHtml(section.title) + '</th></tr></thead>' +
         '<tbody>' + rows.join('') + '</tbody>' +
         '</table>'
       )
     })
     .join('')
-
   const student = submission.student
   const photoHtml = photoFile?.url
     ? '<img class="head__photo" src="' + escapeHtml(photoFile.url) + '" alt="" />'
@@ -712,7 +733,12 @@ function buildPrintableMarkup(
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 6px;
-            /* القسمُ لا يُقصّ بين صفحتين ما استطاع */
+            /*
+             * «fixed» لا «auto»: بلا هذا يوزّع المحرّكُ الأعمدةَ على أطول محتوى،
+             * فصفٌّ فيه colspan يزحزح أعمدةَ الجدول كلِّه ويمطّ ارتفاعاتِ ما
+             * حوله. والعرضُ المعلَن على الخليّة أدناه لا يُحترم إلا معه.
+             */
+            table-layout: fixed;
             break-inside: avoid;
           }
           table.sec th {
@@ -727,16 +753,24 @@ function buildPrintableMarkup(
             border: 1px solid #b6bcc4;
             padding: 3px 7px;
             vertical-align: top;
+            /* لا يرتفع الصفُّ عن سطرِه إلا بمحتوىً حقيقيّ */
+            height: auto;
           }
-          /* التسميةُ سُبعُ العرض والقيمةُ ما بقي — عمودان متساويان يهدران المساحة */
+          /*
+           * التسميةُ ربعُ العرض والقيمةُ ما بقي. و«nowrap» مرفوضٌ هنا: تسميةٌ
+           * طويلة («ما الذي يجب فعله عند حدوث نوبة؟») كانت تفرض عرضاً يزيح
+           * العمودَ المقابل ويمطّ الصفّ. تُلفّ التسميةُ في سطرَين ولا تُشوّه الشبكة.
+           */
           td.k {
             background: var(--body);
             font-weight: 700;
             font-size: 10.5px;
-            width: 15%;
-            white-space: nowrap;
+            width: 25%;
+            word-break: break-word;
           }
-          td.v { width: 35%; word-break: break-word; white-space: pre-line; }
+          td.v { width: 25%; word-break: break-word; white-space: pre-line; }
+          /* القيمةُ الممتدّة تأخذ ثلاثةَ أرباع الصفّ */
+          td.v[colspan="3"] { width: 75%; }
 
           /* ── الإقرار والتوقيع ── */
           .consent {
@@ -1217,9 +1251,30 @@ export function AdminFormSubmissionsPage() {
   )
 
   const handlePrintSubmission = useCallback(
-    (submission: FormSubmission) => {
+    async (submission: FormSubmission) => {
       if (!formQuery.data) return
-      const markup = buildPrintableMarkup(submission, formQuery.data, fieldDefinitions)
+
+      /*
+       * صفُّ القائمة **لا يحمل إجاباتٍ ولا مرفقات**: `FormSubmissionController::index`
+       * يحمّل `student` وحده. فالطباعةُ منه كانت تُخرج ورقةً كاملةَ التسميات
+       * فارغةَ القيم — كلُّ خليّةٍ فيها «—» — بينما الشاشةُ تعرض الردَّ مملوءاً،
+       * لأنّها تفتح الدرجَ الذي يجلب التفصيل.
+       *
+       * فنجلبه هنا قبل الرسم متى غاب، ونستعمل ما بين أيدينا متى حضر (الطباعةُ من
+       * داخل الدرج).
+       */
+      let printable = submission
+
+      if (!submission.answers) {
+        try {
+          printable = await fetchAdminFormSubmission(formId, submission.id)
+        } catch {
+          toast({ type: 'error', title: 'تعذّر تحميل تفاصيل الرد للطباعة' })
+          return
+        }
+      }
+
+      const markup = buildPrintableMarkup(printable, formQuery.data, fieldDefinitions)
       const printWindow = window.open('', '_blank', 'width=900,height=700')
       if (!printWindow) {
         toast({ type: 'error', title: 'تعذر فتح نافذة الطباعة، تأكد من السماح بالنوافذ المنبثقة' })
@@ -1230,7 +1285,7 @@ export function AdminFormSubmissionsPage() {
       printWindow.focus()
       printWindow.print()
     },
-    [fieldDefinitions, formQuery.data, toast],
+    [fieldDefinitions, formId, formQuery.data, toast],
   )
 
   const handleDeleteSubmission = useCallback(
