@@ -4,7 +4,9 @@ import {
   Check,
   Clock3,
   Copy,
+  FlaskConical,
   MessageSquare,
+  ShieldCheck,
   Plus,
   Power,
   RefreshCw,
@@ -103,6 +105,16 @@ export function AdminBarcodeSettingsPage() {
   const enabledNoDevice = draft ? draft.barcode_enabled && activeDevices === 0 : false
   const hasBlockingError = cutBeforeStart || noWorkingDays
 
+  // النصابُ كما سيحسبه الخادم: أقلُّ العددِ الثابت والنسبةِ من الطلاب.
+  // يُعرض رقماً حيّاً لأنّ «١٠ أو ٢٠٪» وحدَها لا تقول للمدير كم طالباً فعلاً.
+  const quorumPreview = useMemo(() => {
+    if (!draft) return 0
+    const minCount = draft.barcode_min_scans_for_absence
+    if (minCount <= 0) return 0
+    const fromPercent = Math.ceil(((stats?.total_students ?? 0) * draft.barcode_min_scans_percent) / 100)
+    return Math.max(1, Math.min(minCount, fromPercent))
+  }, [draft, stats])
+
   const patch = <K extends keyof BarcodeSettings>(key: K, value: BarcodeSettings[K]) =>
     setDraft((prev) => (prev ? { ...prev, [key]: value } : prev))
 
@@ -110,6 +122,16 @@ export function AdminBarcodeSettingsPage() {
   const patchThreshold = (raw: string) => {
     const n = Math.round(Number(raw))
     patch('barcode_late_threshold_minutes', Number.isFinite(n) ? Math.min(120, Math.max(0, n)) : 0)
+  }
+
+  const patchMinScans = (raw: string) => {
+    const n = Math.round(Number(raw))
+    patch('barcode_min_scans_for_absence', Number.isFinite(n) ? Math.min(1000, Math.max(0, n)) : 0)
+  }
+
+  const patchMinPercent = (raw: string) => {
+    const n = Number(raw)
+    patch('barcode_min_scans_percent', Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 0)
   }
 
   const toggleWorkingDay = (day: number) => {
@@ -248,8 +270,21 @@ export function AdminBarcodeSettingsPage() {
       <WsLayout>
         <WsMain>
           {/* صف الحراسة */}
-          {(cutBeforeStart || noWorkingDays || enabledNoDevice || devicesError) && (
+          {(cutBeforeStart || noWorkingDays || enabledNoDevice || devicesError ||
+            draft.barcode_test_mode || stats?.auto_absence_blocked) && (
             <WsBlock padded>
+              {draft.barcode_test_mode && (
+                <WsAlert tone="warn" boxed>
+                  وضع الاختبار مفعّل — المسح يُعرض على الشاشة ولا يُسجَّل حضوراً ولا يُرسل رسالة،
+                  والغياب التلقائي متوقّف. أطفئه قبل أول يوم دوام.
+                </WsAlert>
+              )}
+              {stats?.auto_absence_blocked &&
+                (stats.auto_absence_reason === 'below_quorum' || stats.auto_absence_reason === 'holiday') && (
+                  <WsAlert tone={stats.auto_absence_reason === 'below_quorum' ? 'warn' : 'info'} boxed>
+                    {stats.auto_absence_message}
+                  </WsAlert>
+                )}
               {cutBeforeStart && (
                 <WsAlert tone="error" boxed>
                   وقت القطع {draft.barcode_absence_cutoff_time} يسبق أو يساوي بداية الدوام{' '}
@@ -284,6 +319,19 @@ export function AdminBarcodeSettingsPage() {
             <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--ws-text-2)', lineHeight: 1.7 }}>
               عند وقت القطع يُنشئ النظام سجل غياب دائماً لكل طالب بلا حضور، ويُرسل رسالة لولي أمره.
             </p>
+
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--ws-hairline)' }}>
+              <WsField label="تفعيل حضور البصمة">
+                <WsSwitch
+                  checked={draft.biometric_enabled}
+                  onChange={(v) => patch('biometric_enabled', v)}
+                />
+              </WsField>
+              <p style={{ margin: '4px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)', lineHeight: 1.7 }}>
+                البصمة والباركود بوّابةٌ واحدة: يتقاسمان كلّ الأوقات والحرّاس في هذه الصفحة،
+                ولكلٍّ مفتاح تشغيل. إدارةُ الأجهزة وسجلُّ البصمات في صفحة «حضور البصمة».
+              </p>
+            </div>
           </WsBlock>
 
           {/* ★ الصباح المُعاد */}
@@ -353,6 +401,82 @@ export function AdminBarcodeSettingsPage() {
                   {d.label}
                 </button>
               ))}
+            </div>
+          </WsBlock>
+
+          {/* حرّاس الرصد الخاطئ */}
+          <WsBlock title="حرّاس الرصد الخاطئ" icon={ShieldCheck} padded>
+            <p style={{ margin: '0 0 10px', fontSize: 11, color: 'var(--ws-text-2)', lineHeight: 1.7 }}>
+              «أيام العمل» أعلاه تعرف الجمعة والسبت ولا تعرف إجازة اليوم الوطني ولا نهاية الفصل —
+              وكلّها تقع في أيام الأسبوع الخمسة. هنا الحرّاس التي تقف بين خللٍ في الصباح
+              وبين مئات الرسائل الخاطئة.
+            </p>
+
+            <WsField label="احترام التقويم الدراسي">
+              <WsSwitch
+                checked={draft.barcode_respect_academic_calendar}
+                onChange={(v) => patch('barcode_respect_academic_calendar', v)}
+              />
+            </WsField>
+            <p style={{ margin: '4px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)', lineHeight: 1.7 }}>
+              في يومٍ مسجَّلٍ إجازةً في التقويم: البوابة ترفض المسح، ولا يُرصد غياب، ولا تُرسل رسالة.
+              أطفئه فقط إن كان تقويم مدرستك غير مضبوط.
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 12 }}>
+              <WsField label="نهاية نافذة المسح">
+                <WsInput
+                  type="time"
+                  value={draft.barcode_scan_end_time ?? ''}
+                  onChange={(e) => patch('barcode_scan_end_time', e.target.value)}
+                />
+                <p style={{ margin: '2px 0 0', fontSize: 10, color: 'var(--ws-text-2)' }}>
+                  فارغ = بلا حدّ
+                </p>
+              </WsField>
+              <WsField label="النصاب: عدد ثابت">
+                <WsInput
+                  type="number"
+                  min={0}
+                  max={1000}
+                  value={draft.barcode_min_scans_for_absence}
+                  onChange={(e) => patchMinScans(e.target.value)}
+                />
+              </WsField>
+              <WsField label="النصاب: نسبة (%)">
+                <WsInput
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={draft.barcode_min_scans_percent}
+                  onChange={(e) => patchMinPercent(e.target.value)}
+                />
+              </WsField>
+            </div>
+
+            <p style={{ margin: '6px 0 0', fontSize: 10.5, lineHeight: 1.7,
+              color: quorumPreview === 0 ? TONES.red.tx : 'var(--ws-text-2)' }}>
+              {quorumPreview === 0
+                ? 'الحارس معطَّل — سيُرصد الغياب حتى لو لم يمسح طالبٌ واحد.'
+                : `النصاب اليوم ${quorumPreview} طالباً من ${stats?.total_students ?? 0} — أقلُّ الرقمين: العدد الثابت والنسبة. دونه لا يُرصد غياب، لأنّ صفرَ مسحاتٍ ماسحٌ معطَّلٌ لا مدرسةٌ خالية.`}
+            </p>
+            <p style={{ margin: '4px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)', lineHeight: 1.7 }}>
+              ونافذةُ المسح سقفٌ للتأخير: مسحةٌ بعدها تُسجَّل حضوراً وتُكتم رسالتُها، فإشعارُ تأخيرٍ
+              في وقتٍ لا يدخل فيه أحدٌ ضجيجٌ لا خبر.
+            </p>
+
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--ws-hairline)' }}>
+              <WsField label="وضع الاختبار">
+                <WsSwitch
+                  checked={draft.barcode_test_mode}
+                  onChange={(v) => patch('barcode_test_mode', v)}
+                />
+              </WsField>
+              <p style={{ margin: '4px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)', lineHeight: 1.7 }}>
+                <FlaskConical size={11} style={{ display: 'inline', verticalAlign: '-1px', marginInlineEnd: 4 }} />
+                جرّب الماسح في أيّ وقتٍ وأيّ يوم: يقرأ الباركود ويُظهر الطالب وما كان سيُسجَّل له،
+                بلا سجلّ حضورٍ وبلا رسالة.
+              </p>
             </div>
           </WsBlock>
 

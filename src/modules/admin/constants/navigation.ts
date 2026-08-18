@@ -136,6 +136,7 @@ export const primaryAdminNavGroups: AdminNavGroup[] = [
       { to: '/admin/barcode-attendance', label: 'حضور الباركود', icon: ScanLine, permission: 'admin.barcode-attendance' },
       { to: '/admin/barcode-settings', label: 'إعدادات البوابة', icon: Settings, permission: 'admin.barcode-settings' },
       { to: '/admin/barcode-print', label: 'طباعة الباركود', icon: Printer, permission: 'admin.barcode-print' },
+      { to: '/admin/biometric', label: 'حضور البصمة', icon: Fingerprint, permission: 'admin.barcode-attendance' },
       { to: '/admin/behavior', label: 'سجل المخالفات', icon: AlertTriangle, permission: 'admin.behavior' },
       { to: '/admin/behavior/plans', label: 'خطط المعالجة', icon: ClipboardList, soon: true, permission: 'admin.behavior' },
       { to: '/admin/behavior/analytics', label: 'مؤشرات السلوك', icon: Activity, permission: 'admin.behavior' },

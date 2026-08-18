@@ -113,6 +113,7 @@ const AdminAbsenceMessagesPage = lazyNamed(() => import('@/modules/admin/pages/a
 const AdminBarcodeAttendancePage = lazyNamed(() => import('@/modules/admin/pages/admin-barcode-attendance-page'), 'AdminBarcodeAttendancePage')
 const AdminBarcodeSettingsPage = lazyNamed(() => import('@/modules/admin/pages/admin-barcode-settings-page'), 'AdminBarcodeSettingsPage')
 const AdminBarcodePrintPage = lazyNamed(() => import('@/modules/admin/pages/admin-barcode-print-page'), 'AdminBarcodePrintPage')
+const AdminBiometricPage = lazyNamed(() => import('@/modules/admin/pages/admin-biometric-page'), 'AdminBiometricPage')
 const AdminBehaviorPage = lazyNamed(() => import('@/modules/admin/pages/admin-behavior-page'), 'AdminBehaviorPage')
 const AdminBehaviorDetailPage = lazyNamed(() => import('@/modules/admin/pages/admin-behavior-detail-page'), 'AdminBehaviorDetailPage')
 const AdminBehaviorPlansPage = lazyNamed(() => import('@/modules/admin/pages/admin-behavior-plans-page'), 'AdminBehaviorPlansPage')
@@ -319,6 +320,7 @@ const appRoutes = [
           { path: 'barcode-attendance', element: <AdminBarcodeAttendancePage /> },
           { path: 'barcode-settings', element: <AdminBarcodeSettingsPage /> },
           { path: 'barcode-print', element: <AdminBarcodePrintPage /> },
+          { path: 'biometric', element: <AdminBiometricPage /> },
           { path: 'period-attendance', element: <AdminPeriodAttendancePage /> },
           { path: 'remote-attendance', element: <AdminRemoteAttendancePage /> },
           { path: 'lesson-plans', element: <AdminLessonPlansPage /> },
