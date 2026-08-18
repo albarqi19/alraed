@@ -500,6 +500,52 @@ function buildExcelWorkbook(
   URL.revokeObjectURL(url)
 }
 
+/**
+ * لوحةُ ألوان الأقسام — منقولةٌ من النموذج الورقيّ نفسه.
+ *
+ * اللونُ يُشتقّ من قسم المعجم الذي تنتمي إليه حقولُ القسم (`maps_to`)، فقسمٌ
+ * حقولُه صحّيةٌ يخرج أخضرَ كما في الورقة تماماً. والنماذجُ التي لا تلمس المعجم
+ * تأخذ لوناً محايداً بالدور — فتبقى الورقةُ مقسَّمةً بصريّاً ولو لم تكن بطاقةَ
+ * معلومات.
+ */
+const PRINT_SECTION_TONES: Record<string, { head: string; body: string }> = {
+  profile: { head: '#C5DCE8', body: '#EDF5F9' },
+  social: { head: '#E8C8CE', body: '#FAF0F2' },
+  financial: { head: '#F5E7B8', body: '#FDF9EC' },
+  health: { head: '#CFE5C3', body: '#F1F8ED' },
+  military: { head: '#DCDCDC', body: '#F5F5F5' },
+}
+
+const PRINT_NEUTRAL_TONES = [
+  { head: '#C5DCE8', body: '#EDF5F9' },
+  { head: '#E8C8CE', body: '#FAF0F2' },
+  { head: '#F5E7B8', body: '#FDF9EC' },
+  { head: '#CFE5C3', body: '#F1F8ED' },
+  { head: '#DCDCDC', body: '#F5F5F5' },
+]
+
+/** القسمُ الغالبُ على حقولٍ ما — أكثرُ أقسام المعجم تكراراً بينها. */
+function dominantDictionarySection(fields: FormFieldWithSection[]): string | null {
+  const tally = new Map<string, number>()
+
+  fields.forEach((field) => {
+    const section = field.maps_to?.split('.')[0]
+    if (section) tally.set(section, (tally.get(section) ?? 0) + 1)
+  })
+
+  if (tally.size === 0) return null
+
+  return [...tally.entries()].sort((a, b) => b[1] - a[1])[0][0]
+}
+
+/**
+ * ورقةُ الردّ للطباعة — بمرآةِ النموذج الورقيّ لا بتصميمٍ جديد.
+ *
+ * الورقةُ التي تُحفظ في ملفّ الطالب لها شكلٌ يعرفه الموجّه: جدولٌ متلاصقٌ
+ * بأقسامٍ ملوَّنة، كلُّ صفٍّ فيه تسميتان وقيمتاهما، والطويلُ يمتدّ عرض الصفحة.
+ * والبطاقاتُ المتباعدة — وإن بدت أنظف على الشاشة — تُخرج ثلاثَ صفحاتٍ حيث
+ * تكفي واحدة، وتُفقد الورقةَ طابعَها الرسميّ الذي يعرفه من يحفظها في ملفّ.
+ */
 function buildPrintableMarkup(
   submission: FormSubmission,
   form: FormSummary,
@@ -509,182 +555,265 @@ function buildPrintableMarkup(
   // ولا يُذكر أنه كان
   const fieldDefinitions = withoutRedactedColumns(allFieldDefinitions, [submission])
 
-  /*
-   * الصورةُ الشخصية تُرفع إلى الترويسة ولا تُترك سطراً في القائمة.
-   *
-   * كانت تُطبع كأيّ جواب: عنوانٌ تحته اسمُ ملفّ لا يقول شيئاً. والورقةُ المطبوعة
-   * تُقرأ بالعين قبل النصّ — فالوجهُ في صدرها يعرّف بصاحبها في لمحة، ويوفّر على
-   * الموجّه مطابقةَ اسمٍ برقم.
-   */
+  // الصورةُ الشخصية ترتفع إلى الترويسة ولا تبقى صفّاً باسم ملفّ
   const photoFile = submission.files?.find((file) => {
     if (!file.is_image || !file.url) return false
     const field = allFieldDefinitions.find((item) => item.id === file.field_id)
-    return field?.maps_to === 'profile.photo' || field?.type === 'image'
+    return field?.maps_to === 'profile.photo'
   })
 
   const printableFields = fieldDefinitions.filter((field) => field.id !== photoFile?.field_id)
 
-  /* الأجوبةُ مجموعةٌ بأقسامها: ورقةٌ من أربعين سؤالاً بلا عناوينَ كتلةٌ لا تُقرأ */
+  // التوقيعُ الرقميّ يُرسم صورةً في موضع التوقيع لا نصّاً في خليّة جدول
+  const signatureField = printableFields.find((field) => field.type === 'signature')
+  const signatureAnswer = signatureField
+    ? submission.answers?.find((item) => item.field_id === signatureField.id)
+    : undefined
+  const signatureData =
+    typeof signatureAnswer?.value_text === 'string' && signatureAnswer.value_text.startsWith('data:')
+      ? signatureAnswer.value_text
+      : null
+
+  const bodyFields = printableFields.filter((field) => field.id !== signatureField?.id)
+
+  // التجميعُ بالأقسام بترتيب ظهورها لا بترتيب المفاتيح
+  const order: string[] = []
   const grouped = new Map<string, FormFieldWithSection[]>()
 
-  printableFields.forEach((field) => {
+  bodyFields.forEach((field) => {
     const key = field.sectionTitle ?? ''
     const bucket = grouped.get(key)
-    if (bucket) bucket.push(field)
-    else grouped.set(key, [field])
+    if (bucket) {
+      bucket.push(field)
+    } else {
+      grouped.set(key, [field])
+      order.push(key)
+    }
   })
 
-  const answers = [...grouped.entries()]
-    .map(([sectionTitle, sectionFields]) => {
-      const rows = sectionFields
-        .map((field) => {
-          const answer = submission.answers?.find((item) => item.field_id === field.id)
-          const value = formatAnswerForField(field, answer)
-          const long = value.length > 60
+  const sectionsHtml = order
+    .map((sectionTitle, index) => {
+      const sectionFields = grouped.get(sectionTitle) ?? []
+      const dictionarySection = dominantDictionarySection(sectionFields)
+      const tone =
+        (dictionarySection ? PRINT_SECTION_TONES[dictionarySection] : undefined) ??
+        PRINT_NEUTRAL_TONES[index % PRINT_NEUTRAL_TONES.length]
 
-          return `
-            <div class="answer-row${long ? ' answer-row--wide' : ''}">
-              <div class="label">${escapeHtml(field.label)}</div>
-              <div class="value">${escapeHtml(value)}</div>
-            </div>
-          `
-        })
-        .join('')
+      /*
+       * سؤالان في الصفّ كما في الورقة، والطويلُ يبتلع الصفَّ كلَّه.
+       * `pending` يحمل الخليّةَ الفردية حتى تجد قرينتَها — وإن لم تجدها خُتم
+       * الصفُّ بخليّتَين فارغتَين، فلا تنكسر الشبكةُ ولا تتمدّد قيمةٌ على فراغ.
+       */
+      const rows: string[] = []
+      let pending: string | null = null
 
-      return `
-        <section class="answer-section">
-          ${sectionTitle ? `<h3 class="answer-section__title">${escapeHtml(sectionTitle)}</h3>` : ''}
-          <div class="answers-grid">${rows}</div>
-        </section>
-      `
+      const flushPending = () => {
+        if (pending) {
+          rows.push('<tr>' + pending + '<td class="k"></td><td class="v"></td></tr>')
+          pending = null
+        }
+      }
+
+      sectionFields.forEach((field) => {
+        const answer = submission.answers?.find((item) => item.field_id === field.id)
+        const value = formatAnswerForField(field, answer)
+        const isLong =
+          value.length > 45 || field.type === 'textarea' || field.type === 'multi_select'
+        const label = escapeHtml(field.label)
+        const safeValue = escapeHtml(value)
+
+        if (isLong) {
+          flushPending()
+          rows.push(
+            '<tr><td class="k">' + label + '</td><td class="v" colspan="3">' + safeValue + '</td></tr>',
+          )
+          return
+        }
+
+        const cell = '<td class="k">' + label + '</td><td class="v">' + safeValue + '</td>'
+
+        if (pending) {
+          rows.push('<tr>' + pending + cell + '</tr>')
+          pending = null
+        } else {
+          pending = cell
+        }
+      })
+
+      flushPending()
+
+      return (
+        '<table class="sec" style="--head:' + tone.head + ';--body:' + tone.body + '">' +
+        '<thead><tr><th colspan="4">' + escapeHtml(sectionTitle || 'الإجابات') + '</th></tr></thead>' +
+        '<tbody>' + rows.join('') + '</tbody>' +
+        '</table>'
+      )
     })
     .join('')
+
+  const student = submission.student
+  const photoHtml = photoFile?.url
+    ? '<img class="head__photo" src="' + escapeHtml(photoFile.url) + '" alt="" />'
+    : ''
+  const spacerHtml = photoFile?.url ? '<div class="head__spacer"></div>' : ''
+  const signatureHtml = signatureData
+    ? '<img src="' + escapeHtml(signatureData) + '" alt="" />'
+    : ''
+  const nationalIdHtml = student?.national_id
+    ? ' · هوية ' + escapeHtml(student.national_id)
+    : ''
 
   return `
     <html lang="ar" dir="rtl">
       <head>
         <meta charset="utf-8" />
-        <title>${escapeHtml(form.title)} - رد رقم ${submission.id}</title>
+        <title>${escapeHtml(form.title)} — ${escapeHtml(student?.name ?? '')}</title>
         <style>
-          @page { size: A4; margin: 14mm 12mm; }
+          @page { size: A4; margin: 10mm 9mm; }
+
+          * { box-sizing: border-box; }
 
           body {
             font-family: 'Segoe UI', Tahoma, sans-serif;
             margin: 0;
-            color: #1f2937;
-            font-size: 12px;
-            line-height: 1.7;
+            color: #111827;
+            font-size: 11px;
+            line-height: 1.55;
           }
 
-          /* ── الترويسة: الصورةُ يميناً والتعريفُ يسارها ── */
-          .sheet-head {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #1f2937;
-            margin-bottom: 14px;
+          /* ── الترويسة ── */
+          .head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+          .head__photo {
+            width: 74px; height: 92px; object-fit: cover;
+            border: 1px solid #9ca3af; border-radius: 3px;
+            flex-shrink: 0; background: #f3f4f6;
           }
-          .sheet-head__photo {
-            width: 84px;
-            height: 104px;
-            object-fit: cover;
-            border: 1px solid #9ca3af;
-            border-radius: 4px;
-            flex-shrink: 0;
-            background: #f3f4f6;
-          }
-          .sheet-head__text { flex: 1; min-width: 0; }
-          .sheet-head__text h1 { margin: 0 0 2px; font-size: 17px; }
-          .sheet-head__text .who { font-size: 14px; font-weight: 700; }
-          .sheet-head__text .sub { font-size: 11.5px; color: #6b7280; }
+          .head__mid { flex: 1; text-align: center; }
+          .head__mid h1 { margin: 0; font-size: 17px; font-weight: 800; }
+          .head__mid .who { margin-top: 3px; font-size: 13px; font-weight: 700; }
+          .head__mid .sub { font-size: 10.5px; color: #4b5563; }
+          /* موازنةٌ بصرية: بلا هذا ينزاح العنوانُ عن مركز الورقة حين توجد صورة */
+          .head__spacer { width: 74px; flex-shrink: 0; }
 
-          /* ── بطاقات التعريف ── */
-          .meta-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 6px;
-            margin-bottom: 6px;
-          }
-          .meta-card { border: 1px solid #e5e7eb; border-radius: 6px; padding: 5px 9px; }
-          .meta-card .title { font-size: 10px; color: #6b7280; }
-          .meta-card .data { font-size: 12px; font-weight: 600; }
-
-          /* ── الأجوبة: عمودان، والطويلُ يمتدّ عرضاً ── */
-          .answer-section { margin-top: 12px; break-inside: auto; }
-          .answer-section__title {
-            font-size: 13px;
-            font-weight: 800;
-            margin: 0 0 6px;
+          .confidential {
+            border: 1px solid #dc2626;
+            background: #fef2f2;
+            color: #b91c1c;
+            font-size: 10px;
+            font-weight: 700;
             padding: 3px 8px;
-            background: #f3f4f6;
-            border-inline-start: 3px solid #1f2937;
-            /* العنوانُ لا يُترك وحيداً في ذيل الصفحة */
-            break-after: avoid;
+            border-radius: 3px;
+            margin-bottom: 8px;
+            text-align: center;
           }
-          .answers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-          .answer-row {
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            padding: 5px 9px;
-            /* الجوابُ لا يُقصّ بين صفحتين */
+
+          /* ── جداول الأقسام ── */
+          table.sec {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 6px;
+            /* القسمُ لا يُقصّ بين صفحتين ما استطاع */
             break-inside: avoid;
           }
-          .answer-row--wide { grid-column: 1 / -1; }
-          .label { font-weight: 700; font-size: 10.5px; color: #4b5563; margin-bottom: 1px; }
-          .value { font-size: 12px; color: #111827; white-space: pre-line; word-break: break-word; }
+          table.sec th {
+            background: var(--head);
+            border: 1px solid #9ca3af;
+            padding: 3px 8px;
+            text-align: right;
+            font-size: 11.5px;
+            font-weight: 800;
+          }
+          table.sec td {
+            border: 1px solid #b6bcc4;
+            padding: 3px 7px;
+            vertical-align: top;
+          }
+          /* التسميةُ سُبعُ العرض والقيمةُ ما بقي — عمودان متساويان يهدران المساحة */
+          td.k {
+            background: var(--body);
+            font-weight: 700;
+            font-size: 10.5px;
+            width: 15%;
+            white-space: nowrap;
+          }
+          td.v { width: 35%; word-break: break-word; white-space: pre-line; }
 
-          .section-title { font-size: 14px; font-weight: 800; margin: 16px 0 6px; }
-
-          /* ── مكانُ التوقيع: ورقةٌ تُحفظ في ملفّ الطالب ── */
-          .sign-row {
+          /* ── الإقرار والتوقيع ── */
+          .consent {
+            border: 1px solid #6b7280;
+            padding: 7px 10px;
+            font-size: 10.5px;
+            line-height: 1.75;
+            margin-top: 8px;
+            break-inside: avoid;
+          }
+          .sign {
             display: flex;
-            gap: 28px;
-            margin-top: 22px;
-            padding-top: 10px;
-            border-top: 1px dashed #9ca3af;
+            gap: 22px;
+            align-items: flex-end;
+            margin-top: 10px;
             break-inside: avoid;
           }
-          .sign-row div { flex: 1; font-size: 11px; color: #4b5563; }
-          .sign-row .line { margin-top: 26px; border-bottom: 1px solid #6b7280; }
+          .sign > div { flex: 1; font-size: 10.5px; color: #374151; text-align: center; }
+          .sign .line { margin-top: 22px; border-bottom: 1px solid #6b7280; }
+          .sign img { max-height: 46px; max-width: 100%; display: block; margin: 0 auto 2px; }
 
+          .foot {
+            margin-top: 8px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 9px;
+            color: #6b7280;
+            border-top: 1px solid #d1d5db;
+            padding-top: 3px;
+          }
+
+          /* الطابعاتُ تُسقط ألوانَ الخلفية افتراضياً، وبإسقاطها تضيع أقسامُ الورقة */
           @media print {
-            .meta-grid { grid-template-columns: repeat(4, 1fr); }
+            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           }
         </style>
       </head>
       <body>
-        <header class="sheet-head">
-          ${
-            photoFile?.url
-              ? `<img class="sheet-head__photo" src="${escapeHtml(photoFile.url)}" alt="" />`
-              : ''
-          }
-          <div class="sheet-head__text">
+        <header class="head">
+          ${photoHtml}
+          <div class="head__mid">
             <h1>${escapeHtml(form.title)}</h1>
-            <div class="who">${escapeHtml(submission.student?.name ?? '—')}</div>
+            <div class="who">${escapeHtml(student?.name ?? '—')}</div>
             <div class="sub">
-              ${escapeHtml(submission.student?.grade ?? '—')} · ${escapeHtml(submission.student?.class_name ?? '—')}
-              &nbsp;|&nbsp; رد رقم ${submission.id.toString()}
+              ${escapeHtml(student?.grade ?? '—')} · ${escapeHtml(student?.class_name ?? '—')}${nationalIdHtml}
             </div>
           </div>
+          ${spacerHtml}
         </header>
 
-        <div class="meta-grid">
-          <div class="meta-card"><div class="title">اسم الطالب</div><div class="data">${escapeHtml(submission.student?.name ?? '—')}</div></div>
-          <div class="meta-card"><div class="title">الصف</div><div class="data">${escapeHtml(submission.student?.grade ?? '—')}</div></div>
-          <div class="meta-card"><div class="title">الفصل</div><div class="data">${escapeHtml(submission.student?.class_name ?? '—')}</div></div>
-          <div class="meta-card"><div class="title">الحالة</div><div class="data">${escapeHtml(FORM_SUBMISSION_STATUS_LABELS[submission.status])}</div></div>
-          <div class="meta-card"><div class="title">تاريخ الإرسال</div><div class="data">${escapeHtml(formatDateTime(submission.submitted_at))}</div></div>
-          <div class="meta-card"><div class="title">ولي الأمر</div><div class="data">${escapeHtml(submission.guardian_name ?? submission.student?.parent_name ?? '—')}</div></div>
-          <div class="meta-card"><div class="title">هاتف ولي الأمر</div><div class="data">${escapeHtml(submission.guardian_phone ?? submission.student?.parent_phone ?? '—')}</div></div>
+        <div class="confidential">
+          المعلومات المدوَّنة في هذا النموذج تُحاط بالسرّية التامة حفاظاً على خصوصية الطالب وأسرته
         </div>
-        ${answers}
 
-        <div class="sign-row">
-          <div>توقيع ولي الأمر<div class="line"></div></div>
-          <div>الموجّه الطلابي<div class="line"></div></div>
-          <div>التاريخ<div class="line"></div></div>
+        ${sectionsHtml}
+
+        <div class="consent">
+          <strong>إقرار ولي الأمر:</strong>
+          أقرّ أنا ولي أمر الطالب المذكور أعلاه بأن المعلومات المدوَّنة صحيحة، وأتحمّل أي معلومات
+          غير مكتملة أو ناقصة، وأفوّض إدارة المدرسة في تقديم الإسعافات الضرورية داخل المدرسة أو
+          خارجها واتخاذ الإجراءات اللازمة عند حدوث أي طارئ لابني، ونقله إلى المستشفى إذا دعت
+          الحاجة إلى ذلك.
+        </div>
+
+        <div class="sign">
+          <div>
+            ${signatureHtml}
+            <div class="line"></div>
+            توقيع ولي الأمر
+          </div>
+          <div><div class="line"></div>التاريخ</div>
+          <div><div class="line"></div>الموجّه الطلابي</div>
+        </div>
+
+        <div class="foot">
+          <span>رد رقم ${submission.id.toString()} · ${escapeHtml(FORM_SUBMISSION_STATUS_LABELS[submission.status])}</span>
+          <span>أُرسل: ${escapeHtml(formatDateTime(submission.submitted_at))}</span>
         </div>
       </body>
     </html>
