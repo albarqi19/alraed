@@ -1485,6 +1485,15 @@ export function AdminFormSubmissionsPage() {
 
   const form = formQuery.data
   const requiresApproval = form.requires_approval
+
+  /*
+   * أيرى صاحبُ الشاشة الإجابات؟
+   *
+   * لا نسأل عن دوره — نسأل عمّا وصل. الخادمُ هو مَن يقرّر، وقراءةُ الدور هنا
+   * تُنشئ مصدرَ حقيقةٍ ثانياً ينحرف عنه يوماً ما. ووصولُ `answers` معرَّفةً في
+   * ردٍّ واحد يكفي دليلاً.
+   */
+  const confidentialAnswersVisible = submissions.some((item) => item.answers !== undefined)
   const pendingMessageTargetIds = pendingStudents.slice(0, 200).map((student) => student.id).join(',')
   const totalCount = meta?.total ?? submissions.length
   const lastPage = meta?.last_page ?? 1
@@ -1552,7 +1561,27 @@ export function AdminFormSubmissionsPage() {
       >
         <WsChip tone={FORM_STATUS_TONE[form.status]}>{FORM_STATUS_LABELS[form.status]}</WsChip>
         {requiresApproval ? <WsChip tone="sky">يتطلب اعتماداً</WsChip> : null}
+        {form.is_confidential ? (
+          <WsChip tone="red">
+            <Lock style={{ width: 11, height: 11 }} /> سرّي
+          </WsChip>
+        ) : null}
       </WsHeader>
+
+      {/*
+       * تفسيرُ الحجب لمن لا يراه.
+       *
+       * الخادمُ يمنع الإجاباتِ عن غير الموجّه، فتصل القائمةُ بلا إجابة. وبلا هذه
+       * اللافتة يظهر جدولٌ كامل الصفوف فارغُ القيَم فيبدو النظامُ معطوباً، أو
+       * يُفتح ردٌّ فيرتدّ 403 بلا سبب.
+       */}
+      {form.is_confidential && !confidentialAnswersVisible ? (
+        <WsAlert tone="warn">
+          <strong>نموذجٌ سرّي.</strong> يحوي أسئلةً من الأقسام المحاطة بالسرّية، فلا تظهر إجاباتُه
+          ولا مرفقاتُه ولا تُصدَّر إلا للموجّه الطلابي. وما تراه هنا متابعةٌ فقط: مَن ردّ ومَن لم
+          يردّ.
+        </WsAlert>
+      ) : null}
 
       {audience.unreachable ? (
         <WsAlert tone="warn">

@@ -175,6 +175,16 @@ export interface FormSummary {
   allow_multiple_submissions: boolean
   allow_edit_after_submit: boolean
   requires_approval: boolean
+  /**
+   * نموذجٌ يحوي خانةً مغلقةً واحدة — لا يرى ردودَه إلّا الموجّه الطلابي.
+   *
+   * يُحسب في الخادم من محتوى النموذج ولا يُرسَل من هنا. والواجهةُ تقرؤه لتشرح
+   * الحجبَ لمن لا يراه ولتُري بانيَ النموذج شارتَه قبل النشر — **لا لتحجب به**:
+   * الحجبُ في الخادم، وزرٌّ مخفيٌّ في React يبقى مساراً مفتوحاً لمن يعرف عنوانه.
+   */
+  is_confidential?: boolean
+  /** mapped_attribute | matched_label | keyword | manual — لماذا أُقفل */
+  confidentiality_reason?: string | null
   created_at: string
   updated_at: string
   submissions_count?: number

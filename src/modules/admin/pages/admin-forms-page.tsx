@@ -15,7 +15,7 @@ import {
   Send,
   Trash2,
   TriangleAlert,
-  Users,
+  Users, Lock,
 } from 'lucide-react'
 import {
   useAdminForms,
@@ -386,7 +386,15 @@ function FormRow({
       style={closer.needsDecision ? { background: TONES.amber.bg } : undefined}
     >
       <td>
-        <span style={{ display: 'block', fontWeight: 600 }}>{form.title}</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+          {form.title}
+          {/* شارةُ السرّية تُقرأ قبل فتح الردود، فلا يُفاجأ أحدٌ بـ403 */}
+          {form.is_confidential ? (
+            <span title="يحوي بياناتٍ سرّية — لا يرى ردودَه إلا الموجّه الطلابي">
+              <Lock style={{ width: 13, height: 13, color: TONES.red.tx, flexShrink: 0 }} />
+            </span>
+          ) : null}
+        </span>
         <span className="ws-cell-sub">
           {form.category ? `${form.category} · ` : ''}
           {form.fields_count != null ? `${form.fields_count} سؤالاً` : ''}
