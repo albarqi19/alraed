@@ -30,6 +30,7 @@ const WORKSPACE_ROUTES = [
   '/admin/attendance-report',
   '/admin/period-attendance',
   '/admin/barcode-attendance',
+  '/admin/biometric',
   '/admin/teachers',
   '/admin/delay-actions',
   '/admin/remote-attendance',
