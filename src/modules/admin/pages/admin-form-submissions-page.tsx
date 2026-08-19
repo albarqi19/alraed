@@ -547,6 +547,9 @@ function dominantDictionarySection(fields: FormFieldWithSection[]): string | nul
  * والبطاقاتُ المتباعدة — وإن بدت أنظف على الشاشة — تُخرج ثلاثَ صفحاتٍ حيث
  * تكفي واحدة، وتُفقد الورقةَ طابعَها الرسميّ الذي يعرفه من يحفظها في ملفّ.
  */
+/** سببُ التعطيل — نصٌّ واحدٌ يُقرأ في كل زرٍّ محجوب. */
+const CONFIDENTIAL_HINT = 'نموذجٌ سرّي — لا يقرأ ردودَه ولا يصدّرها إلا الموجّه الطلابي'
+
 function buildPrintableMarkup(
   submission: FormSubmission,
   form: FormSummary,
@@ -1493,7 +1496,7 @@ export function AdminFormSubmissionsPage() {
    * تُنشئ مصدرَ حقيقةٍ ثانياً ينحرف عنه يوماً ما. ووصولُ `answers` معرَّفةً في
    * ردٍّ واحد يكفي دليلاً.
    */
-  const confidentialAnswersVisible = submissions.some((item) => item.answers !== undefined)
+  const answersVisible = !form.is_confidential || submissions.some((item) => item.answers !== undefined)
   const pendingMessageTargetIds = pendingStudents.slice(0, 200).map((student) => student.id).join(',')
   const totalCount = meta?.total ?? submissions.length
   const lastPage = meta?.last_page ?? 1
@@ -1531,10 +1534,28 @@ export function AdminFormSubmissionsPage() {
             >
               {aggregate.loading ? 'جارٍ التحديث...' : 'تحديث الإحصائيات'}
             </WsBtn>
-            <WsBtn icon={FileSpreadsheet} onClick={() => handleExportExcel({ filtered: true })} disabled={exporting}>
+            {/*
+              * التصديرُ يُعطَّل بتفسيرٍ لا يُخفى.
+              *
+              * الخادمُ لا يرسل الإجاباتِ في النموذج السرّيّ، فالزرُّ العامل كان
+              * يُخرج ملفاً كاملَ الأعمدة فارغَ القيَم — يظنّه المستخدمُ عطلاً
+              * ويعيد المحاولة. والتعطيلُ مع سببٍ في `title` أصدقُ من الإخفاء:
+              * يعرف أنّ الزرّ موجودٌ ولماذا لا يعمل.
+              */}
+            <WsBtn
+              icon={FileSpreadsheet}
+              onClick={() => handleExportExcel({ filtered: true })}
+              disabled={exporting || !answersVisible}
+              title={answersVisible ? undefined : CONFIDENTIAL_HINT}
+            >
               {exporting ? 'جارٍ التصدير...' : 'تصدير المعروض'}
             </WsBtn>
-            <WsBtn icon={Download} onClick={() => handleExportExcel({ filtered: false })} disabled={exporting}>
+            <WsBtn
+              icon={Download}
+              onClick={() => handleExportExcel({ filtered: false })}
+              disabled={exporting || !answersVisible}
+              title={answersVisible ? undefined : CONFIDENTIAL_HINT}
+            >
               تصدير الكل
             </WsBtn>
           </>
@@ -1575,7 +1596,7 @@ export function AdminFormSubmissionsPage() {
        * اللافتة يظهر جدولٌ كامل الصفوف فارغُ القيَم فيبدو النظامُ معطوباً، أو
        * يُفتح ردٌّ فيرتدّ 403 بلا سبب.
        */}
-      {form.is_confidential && !confidentialAnswersVisible ? (
+      {form.is_confidential && !answersVisible ? (
         <WsAlert tone="warn">
           <strong>نموذجٌ سرّي.</strong> يحوي أسئلةً من الأقسام المحاطة بالسرّية، فلا تظهر إجاباتُه
           ولا مرفقاتُه ولا تُصدَّر إلا للموجّه الطلابي. وما تراه هنا متابعةٌ فقط: مَن ردّ ومَن لم
@@ -1684,7 +1705,11 @@ export function AdminFormSubmissionsPage() {
         {submissionsQuery.isLoading ? (
           <WsEmpty loading>جارٍ تحميل الردود...</WsEmpty>
         ) : submissions.length === 0 ? (
-          <WsEmpty icon={Inbox}>لا توجد ردود مطابقة للفلتر الحالي.</WsEmpty>
+          <WsEmpty icon={Inbox}>
+            {form.is_confidential && !answersVisible
+              ? 'لا ردود بعد. ولو وصلت فلن تُعرض هنا — نموذجٌ سرّي لا يقرأ ردودَه إلا الموجّه الطلابي.'
+              : 'لا توجد ردود مطابقة للفلتر الحالي.'}
+          </WsEmpty>
         ) : (
           <WsTable>
             <thead>
@@ -1706,8 +1731,11 @@ export function AdminFormSubmissionsPage() {
                 return (
                   <tr
                     key={submission.id}
-                    className={cx('is-clickable', selectedSubmissionId === submission.id && 'is-selected')}
-                    onClick={() => handleOpenDetail(submission.id)}
+                    className={cx(
+                      answersVisible && 'is-clickable',
+                      selectedSubmissionId === submission.id && 'is-selected',
+                    )}
+                    onClick={answersVisible ? () => handleOpenDetail(submission.id) : undefined}
                   >
                     <td>
                       {student?.name ?? '—'}
@@ -1727,10 +1755,16 @@ export function AdminFormSubmissionsPage() {
                     <td>{formatDateTime(submission.submitted_at)}</td>
                     <td onClick={(event) => event.stopPropagation()}>
                       <div style={{ display: 'flex', gap: 4 }}>
-                        <WsIconBtn icon={Eye} label="عرض الرد" onClick={() => handleOpenDetail(submission.id)} />
+                        <WsIconBtn
+                          icon={Eye}
+                          label={answersVisible ? 'عرض الرد' : CONFIDENTIAL_HINT}
+                          disabled={!answersVisible}
+                          onClick={() => handleOpenDetail(submission.id)}
+                        />
                         <WsIconBtn
                           icon={Printer}
-                          label="طباعة الرد"
+                          label={answersVisible ? 'طباعة الرد' : CONFIDENTIAL_HINT}
+                          disabled={!answersVisible}
                           onClick={() => handlePrintSubmission(submission)}
                         />
                       </div>
