@@ -1,3 +1,5 @@
+import type { UserRole } from '@/modules/auth/types'
+
 export interface AdminDashboardStats {
   total_students: number
   total_teachers: number
@@ -39,15 +41,13 @@ export interface AdminDashboardStats {
 
 export type TeacherStatus = 'active' | 'inactive'
 
-export type StaffRole =
-  | 'teacher'
-  | 'school_principal'
-  | 'deputy_teachers'
-  | 'deputy_students'
-  | 'administrative_staff'
-  | 'student_counselor'
-  | 'learning_resources_admin'
-  | 'health_counselor'
+/**
+ * ما يصلح دوراً لموظَّفٍ تُنشئه مدرسة — مطابقٌ لـ`UserRole::assignableValues()`.
+ *
+ * كان اتحاداً ثانياً منسوخاً باليد يُنسى تحديثُه، فصار مشتقّاً: `admin` موروثٌ لا
+ * يُنشَأ يدويّاً، و`super_admin` يملك المنصّةَ كلَّها فلا تصنعه مدرسة.
+ */
+export type StaffRole = Exclude<UserRole, 'admin' | 'super_admin'>
 
 export interface TeacherRecord {
   id: number

@@ -1,3 +1,4 @@
+import { getUserDashboard } from './components/route-guards'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { login as loginRequest, logout as logoutRequest, requestPasswordReset } from './api'
@@ -14,13 +15,10 @@ export function useLoginMutation() {
     mutationFn: (payload: LoginPayload) => loginRequest(payload),
     onSuccess: (data) => {
       setAuth(data)
-      if (data.user.role === 'teacher') {
-        navigate('/teacher/dashboard', { replace: true })
-      } else if (data.user.role === 'admin') {
-        navigate('/admin/dashboard', { replace: true })
-      } else {
-        navigate('/platform/overview', { replace: true })
-      }
+      // كان الشرطُ الثلاثيّ يرمي كلَّ دورٍ ليس `teacher` ولا `admin` إلى بوّابة
+      // المنصّة — حتى مديرَ المدرسة — فيرتدّ منها عبر حارسها. منطقٌ ثانٍ مكرَّرٌ
+      // ومتضاربٌ مع `getUserDashboard`، وقد أُلغي لصالحها.
+      navigate(getUserDashboard(data.user.role), { replace: true })
       showToast({ type: 'success', title: 'تم تسجيل الدخول بنجاح' })
     },
     onError: (error: unknown) => {

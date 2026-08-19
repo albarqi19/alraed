@@ -1,3 +1,4 @@
+import { USER_ROLES } from '@/modules/auth/constants/roles'
 import { useState, useMemo } from 'react'
 import {
   Apple,
@@ -47,14 +48,9 @@ import {
 } from '../app-notifications/hooks'
 import type { TeacherFilterStatus, SendNotificationPayload, NotificationLogEntry } from '../app-notifications/types'
 
-const roleLabels: Record<string, string> = {
-  teacher: 'معلم',
-  school_principal: 'مدير المدرسة',
-  deputy_teachers: 'وكيل شؤون المعلمين',
-  deputy_students: 'وكيل شؤون الطلاب',
-  student_counselor: 'مرشد طلابي',
-  administrative_staff: 'إداري',
-}
+const roleLabels: Record<string, string> = Object.fromEntries(
+  Object.values(USER_ROLES).map((r) => [r.value, r.label]),
+)
 
 const PLATFORM_ICON: Record<string, typeof Globe> = {
   web: Globe,

@@ -132,7 +132,7 @@ export function PdfExportButton({ summary, printRef }: PdfExportButtonProps) {
 
         <div class="signature-area">
           <div class="signature-box"><p>المعلم</p></div>
-          <div class="signature-box"><p>وكيل المدرسة</p></div>
+          <div class="signature-box"><p>وكيل شؤون المعلمين</p></div>
           <div class="signature-box"><p>مدير المدرسة</p></div>
         </div>
 

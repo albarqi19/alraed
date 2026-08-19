@@ -1,3 +1,5 @@
+import { USER_ROLES } from '@/modules/auth/constants/roles'
+import type { UserRole } from '@/modules/auth/types'
 import { useState } from 'react'
 import { MessageCircle, Search, User } from 'lucide-react'
 import { Input } from '@/components/ui/input'
@@ -43,14 +45,7 @@ export function ConversationList({
 
   function getRoleLabel(c: Conversation) {
     if (side !== 'guardian') return c.student?.name ?? ''
-    const labels: Record<string, string> = {
-      teacher: 'معلم',
-      student_counselor: 'موجه طلابي',
-      school_principal: 'مدير المدرسة',
-      deputy_teachers: 'وكيل المعلمين',
-      deputy_students: 'وكيل الطلاب',
-    }
-    return labels[c.participant_role] ?? 'إدارة'
+    return USER_ROLES[c.participant_role as UserRole]?.label ?? 'إدارة'
   }
 
   function getUnread(c: Conversation) {

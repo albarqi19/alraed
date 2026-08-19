@@ -432,7 +432,7 @@ export function GuidanceReferralDetailsPage() {
                     className="w-full flex items-center justify-center gap-2 rounded-lg border border-orange-200 bg-orange-50 px-4 py-2.5 text-sm font-medium text-orange-700 hover:bg-orange-100"
                   >
                     <i className="bi bi-arrow-repeat" />
-                    تحويل لوكيل المدرسة
+                    تحويل لوكيل شؤون الطلاب
                   </button>
                   
                   <button
@@ -694,10 +694,10 @@ export function GuidanceReferralDetailsPage() {
       {showTransferModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-md bg-white rounded-xl p-6 m-4">
-            <h3 className="font-semibold text-lg text-slate-900 mb-4">تحويل لوكيل المدرسة</h3>
+            <h3 className="font-semibold text-lg text-slate-900 mb-4">تحويل لوكيل شؤون الطلاب</h3>
             
             <p className="text-sm text-slate-600 mb-4">
-              سيتم تحويل هذه الإحالة إلى وكيل المدرسة للمتابعة
+              سيتم تحويل هذه الإحالة إلى وكيل شؤون الطلاب للمتابعة
             </p>
             
             <textarea

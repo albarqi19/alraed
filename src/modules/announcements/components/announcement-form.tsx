@@ -1,3 +1,4 @@
+import { USER_ROLES } from '@/modules/auth/constants/roles'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,17 +15,14 @@ import type {
   PlatformAnnouncement,
 } from '../types'
 
-/** أدوارُ الاستهداف — القيمُ نفسُها التي يتحقّق منها الباك في `validated()`. */
-const ROLE_OPTIONS: { value: string; label: string }[] = [
-  { value: 'admin', label: 'مدير النظام' },
-  { value: 'school_principal', label: 'قائد المدرسة' },
-  { value: 'teacher', label: 'المعلمون' },
-  { value: 'deputy_teachers', label: 'وكيل شؤون المعلمين' },
-  { value: 'deputy_students', label: 'وكيل شؤون الطلاب' },
-  { value: 'student_counselor', label: 'المرشد الطلابي' },
-  { value: 'administrative_staff', label: 'الإداريون' },
-  { value: 'learning_resources_admin', label: 'أمين مصادر التعلّم' },
-]
+/**
+ * أدوارُ الاستهداف — كلُّ أدوار النظام من المصدر الواحد.
+ *
+ * كانت قائمةً محليّةً ثالثةً تحمل اسمَ `ROLE_OPTIONS` نفسَه دون أن تكون هي،
+ * وتنقصها `health_counselor` — أي أنّ الموجّهَ الصحّيّ لم يكن يمكن استهدافُه
+ * بإعلانٍ أصلاً. وكانت تسمّي مديرَ المدرسة «قائد المدرسة» وحدَها من بين الشاشات.
+ */
+const ROLE_OPTIONS = Object.values(USER_ROLES).map((r) => ({ value: r.value as string, label: r.label }))
 
 interface AnnouncementFormProps {
   /** حاضرٌ = تعديل، غائبٌ = إنشاء. */

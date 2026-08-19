@@ -1004,7 +1004,7 @@ export function AdminReferralDetailPage() {
               <WsField label="الجهة الجديدة">
                 <WsSelect value={transferTarget} onChange={(e) => setTransferTarget(e.target.value as ReferralTargetRole)}>
                   <option value="counselor">الموجه الطلابي</option>
-                  <option value="vice_principal">وكيل المدرسة</option>
+                  <option value="vice_principal">وكيل شؤون الطلاب</option>
                   <option value="committee">اللجنة السلوكية</option>
                 </WsSelect>
               </WsField>

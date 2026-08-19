@@ -189,8 +189,8 @@ const featureGroups: Array<{
 ]
 
 const roleCards: Array<{ title: string; subtitle: string; icon: IconType }> = [
-  { title: 'وكيل المعلمين', subtitle: 'إدارة شؤون المعلمين', icon: UserRound },
-  { title: 'وكيل الطلاب', subtitle: 'إدارة شؤون الطلاب', icon: GraduationCap },
+  { title: 'وكيل شؤون المعلمين', subtitle: 'إدارة شؤون المعلمين', icon: UserRound },
+  { title: 'وكيل شؤون الطلاب', subtitle: 'إدارة شؤون الطلاب', icon: GraduationCap },
   { title: 'رائد النشاط', subtitle: 'إدارة الأنشطة الطلابية', icon: Star },
   { title: 'الموجه الطلابي', subtitle: 'دعم وتوجيه الطلاب', icon: Fingerprint },
   { title: 'الإداري', subtitle: 'إدارة الأعمال الإدارية', icon: ClipboardList },

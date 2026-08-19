@@ -1,3 +1,4 @@
+import { USER_ROLES } from '@/modules/auth/constants/roles'
 /* ======================================================
    أساس العرض الموحد لتفاصيل ملف المعلم — Profile UI
    ------------------------------------------------------
@@ -16,14 +17,9 @@ import { arNum, useCountUp } from '../../pages/dashboard-ui'
 export const toneBg = (t: Tone) => `color-mix(in srgb, ${t.bd} 55%, var(--ws-surface))`
 
 /* نبرة الدور — مطابقة لجدول إدارة المعلمين حتى يثبت لون الدور في كل الشاشات */
-const ROLE_TONE_KEYS: Record<string, string> = {
-  school_principal: 'sky',
-  deputy_teachers: 'sky',
-  deputy_students: 'sky',
-  student_counselor: 'green',
-  learning_resources_admin: 'amber',
-  health_counselor: 'red',
-}
+const ROLE_TONE_KEYS: Record<string, string> = Object.fromEntries(
+  Object.values(USER_ROLES).map((r) => [r.value, r.color ?? 'gray']),
+)
 
 export function roleProfileTone(role: string): Tone {
   return TONES[ROLE_TONE_KEYS[role] ?? 'gray'] ?? TONES.gray

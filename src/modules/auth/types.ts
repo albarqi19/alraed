@@ -1,14 +1,29 @@
-export type UserRole =
-  | 'teacher'
-  | 'admin'
-  | 'super_admin'
-  | 'school_principal'
-  | 'deputy_teachers'
-  | 'deputy_students'
-  | 'administrative_staff'
-  | 'student_counselor'
-  | 'learning_resources_admin'
-  | 'health_counselor'
+/**
+ * قيمُ الأدوار — يجب أن تطابق `App\Enums\UserRole` في الباك حرفاً بحرف.
+ *
+ * مصفوفةٌ لا اتحادٌ مكتوبٌ باليد، ليكون للقيم وجودٌ في وقت التشغيل أيضاً (تحقّقٌ،
+ * سردٌ، مقارنة) لا في وقت الترجمة وحده.
+ */
+export const USER_ROLE_VALUES = [
+  'teacher',
+  'teacher_assistant',
+  'admin',
+  'super_admin',
+  'school_principal',
+  'deputy_teachers',
+  'deputy_students',
+  'administrative_staff',
+  'administrative_assistant',
+  'student_counselor',
+  'health_counselor',
+  'learning_resources_admin',
+  'activity_leader',
+  'lab_technician',
+  'gifted_teacher',
+  'data_registrar',
+] as const
+
+export type UserRole = (typeof USER_ROLE_VALUES)[number]
 
 export type SubscriptionPlan = 'trial' | 'basic' | 'premium' | 'enterprise' | (string & {})
 export type SubscriptionStatus = 'trial' | 'active' | 'suspended' | 'cancelled' | 'expired'

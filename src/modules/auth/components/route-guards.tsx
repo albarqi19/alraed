@@ -2,32 +2,41 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import type { UserRole } from '../types'
 import { useAuthStore } from '../store/auth-store'
-import { hasManagementAccess } from '../constants/roles'
+import { getRolePortal, hasManagementAccess } from '../constants/roles'
 
 interface RequireAuthProps {
   children?: ReactNode
-  role?: UserRole
+  /**
+   * الأدوارُ المسموح لها. قائمةٌ لا قيمةً واحدة عن قصد.
+   *
+   * كانت `role?: UserRole` تُقارَن بمساواةٍ صارمة، فبوّابةُ المعلّم كانت مغلقةً
+   * أمام كلِّ دورٍ سوى `teacher` حرفيّاً. ومساعدُ المعلّم كان يُطرَد منها إلى
+   * `getUserDashboard('teacher_assistant')` وهي نفسُها `/teacher/dashboard` —
+   * فيرفضه الحارسُ ثانيةً ويعيد الكرّة: حلقةٌ مغلقةٌ لا تُرسَم فيها الشاشة أبداً.
+   */
+  roles?: UserRole | UserRole[]
   requireManagement?: boolean
   skipOnboardingCheck?: boolean
 }
 
-export function RequireAuth({ children, role, requireManagement, skipOnboardingCheck }: RequireAuthProps) {
+export function RequireAuth({ children, roles, requireManagement, skipOnboardingCheck }: RequireAuthProps) {
+  const allowed = roles === undefined ? undefined : Array.isArray(roles) ? roles : [roles]
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const user = useAuthStore((state) => state.user)
   const location = useLocation()
 
   if (!isAuthenticated || !user) {
     let fallback = '/auth/teacher'
-    if (role === 'admin' || role === 'school_principal' || requireManagement) {
+    if (requireManagement || allowed?.some((r) => getRolePortal(r) === 'admin')) {
       fallback = '/auth/admin'
-    } else if (role === 'super_admin') {
+    } else if (allowed?.some((r) => getRolePortal(r) === 'platform')) {
       fallback = '/auth/platform'
     }
     return <Navigate to={fallback} state={{ from: location }} replace />
   }
 
   // التحقق من الدور المحدد
-  if (role && user.role !== role) {
+  if (allowed && !allowed.includes(user.role)) {
     const destination = getUserDashboard(user.role)
     return <Navigate to={destination} replace />
   }
@@ -93,18 +102,22 @@ export function RequireOnboarding({ children }: { children: ReactNode }) {
   return <>{children}</>
 }
 
-function getUserDashboard(role: UserRole): string {
-  switch (role) {
-    case 'super_admin':
+/**
+ * الوجهةُ التي يستقرّ فيها كلُّ دورٍ بعد الدخول.
+ *
+ * كانت `switch` تسرد الأدوارَ يدويّاً و`default` يرمي ما لم يُذكَر إلى بوّابة
+ * المعلّم. فدورٌ إداريٌّ جديدٌ نُسي في السرد كان يُرسَل إلى `/teacher/dashboard`،
+ * وحارسُها يردّه إلى `getUserDashboard` فيعيده إليها — حلقةٌ لا نهاية لها.
+ *
+ * صارت مشتقّةً من البوّابة نفسها، فلا `default` قاتلٌ ولا سردَ يُنسى.
+ *
+ * ومُصدَّرةٌ الآن لأنّ `useLoginMutation` كان يكرّر منطقَها بشرطٍ ثلاثيٍّ مختلف.
+ */
+export function getUserDashboard(role: UserRole): string {
+  switch (getRolePortal(role)) {
+    case 'platform':
       return '/platform/overview'
     case 'admin':
-    case 'school_principal':
-    case 'deputy_teachers':
-    case 'deputy_students':
-    case 'administrative_staff':
-    case 'student_counselor':
-    case 'learning_resources_admin':
-    case 'health_counselor':
       return '/admin/dashboard'
     case 'teacher':
     default:

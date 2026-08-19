@@ -1,3 +1,4 @@
+import { USER_ROLES } from '@/modules/auth/constants/roles'
 import { useMemo, useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
 import {
@@ -52,27 +53,22 @@ import {
 } from '@/shared/workspace'
 import { DayCard, chip } from './dashboard-ui'
 
-// ألوان الأدوار بدرجات النظام (theme-safe)
-const ROLE_TONES: Record<string, WsChipTone | undefined> = {
-  teacher: undefined,
-  school_principal: 'sky',
-  deputy_teachers: 'sky',
-  deputy_students: 'sky',
-  student_counselor: 'green',
-  administrative_staff: undefined,
-  learning_resources_admin: 'amber',
-  health_counselor: 'red',
-}
+/**
+ * ألوانُ الأدوار — مشتقّةٌ من `USER_ROLES` لا مسرودةً هنا.
+ *
+ * `WsChipTone` يقبل أربعَ نبراتٍ فقط، فما خرج عنها (`purple` و`gray`) يسقط إلى
+ * شريحةٍ محايدة — وهو ما كانت تفعله القائمةُ اليدويّة بـ`undefined`.
+ */
+const CHIP_TONES = new Set<string>(['green', 'red', 'amber', 'sky'])
 
-const ROLE_LEGEND = [
-  { role: 'school_principal', label: 'مدير' },
-  { role: 'deputy_teachers', label: 'وكيل المدرسة' },
-  { role: 'deputy_students', label: 'وكيل الطلاب' },
-  { role: 'student_counselor', label: 'موجه طلابي' },
-  { role: 'learning_resources_admin', label: 'أمين مصادر' },
-  { role: 'health_counselor', label: 'موجه صحي' },
-  { role: 'teacher', label: 'معلم' },
-]
+const ROLE_TONES: Record<string, WsChipTone | undefined> = Object.fromEntries(
+  Object.values(USER_ROLES).map((r) => [
+    r.value,
+    CHIP_TONES.has(r.color ?? '') ? (r.color as WsChipTone) : undefined,
+  ]),
+)
+
+const ROLE_LEGEND = ROLE_OPTIONS.map((r) => ({ role: r.value as string, label: r.label }))
 
 /** لون الصورة الرمزية يتبع لون الدور نفسه — العين تربط الاسم بدوره فوراً */
 function roleAvatarTone(role: string): Tone {

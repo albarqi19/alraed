@@ -1,3 +1,4 @@
+import { ROLE_OPTIONS } from '@/modules/auth/constants/roles'
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCreateTeacherMutation, useTeachersQuery } from '@/modules/admin/hooks'
@@ -19,15 +20,12 @@ const DEFAULT_TEACHER: TeacherForm = {
   role: 'teacher',
 }
 
-const ROLES = [
-  { value: 'teacher', label: 'معلم' },
-  { value: 'deputy_teachers', label: 'وكيل المعلمين' },
-  { value: 'deputy_students', label: 'وكيل الطلاب' },
-  { value: 'administrative_staff', label: 'موظف إداري' },
-  { value: 'student_counselor', label: 'الموجه الطلابي' },
-  { value: 'learning_resources_admin', label: 'أمين مصادر التعلم' },
-  { value: 'health_counselor', label: 'موجه صحي' },
-]
+/**
+ * كانت قائمةً محليّةً منفصلةً تنقصها `school_principal`، وتسمّي وكيلَ شؤون
+ * المعلمين «وكيل المعلمين». ومدرسةٌ تُهيَّأ اليوم كانت لن ترى الأدوارَ الجديدة
+ * عند إدخال كادرِها أوّلَ مرّة — وهي أسوأُ لحظةٍ لإخفائها.
+ */
+const ROLES = ROLE_OPTIONS
 
 /** الباك يشترط هوية من عشر خانات رقمية بالضبط */
 const NATIONAL_ID_LENGTH = 10

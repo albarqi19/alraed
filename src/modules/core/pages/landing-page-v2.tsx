@@ -732,7 +732,7 @@ export function LandingPageV2() {
         <Reveal delay={140}>
           <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl border px-6 py-4 text-[12px] font-bold" style={{ borderColor: LINE, background: '#f2eee2', color: '#6d6550' }}>
             <span className="font-black" style={{ color: INK }}>وتشمل أيضاً:</span>
-            {['وكيل المعلمين', 'وكيل الطلاب', 'رائد النشاط', 'الموجه الطلابي', 'الإداري'].map((role) => (
+            {['وكيل شؤون المعلمين', 'وكيل شؤون الطلاب', 'رائد النشاط', 'الموجه الطلابي', 'الإداري'].map((role) => (
               <span key={role} className="flex items-center gap-1.5">
                 <Fingerprint className="h-3 w-3" style={{ color: GOLD }} />
                 {role}

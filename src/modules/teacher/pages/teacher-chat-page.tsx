@@ -1,3 +1,5 @@
+import { USER_ROLES } from '@/modules/auth/constants/roles'
+import type { UserRole } from '@/modules/auth/types'
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/modules/auth/store/auth-store'
@@ -91,8 +93,7 @@ export default function TeacherChatPage() {
 
   function getSubtitle(conv: Conversation) {
     if (conv.context_type === 'staff') {
-      const labels: Record<string, string> = { school_principal: 'مدير المدرسة', deputy_teachers: 'وكيل المعلمين', deputy_students: 'وكيل الطلاب' }
-      return labels[conv.admin_user?.role ?? ''] ?? 'الإدارة'
+      return USER_ROLES[(conv.admin_user?.role ?? '') as UserRole]?.label ?? 'الإدارة'
     }
     return conv.student ? `${conv.student.name} - ${conv.student.grade}` : ''
   }

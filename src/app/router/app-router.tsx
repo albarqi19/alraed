@@ -1,3 +1,4 @@
+import { TEACHER_PORTAL_ROLES } from '@/modules/auth/constants/roles'
 import { lazy, Suspense, type ComponentType } from 'react'
 import { Navigate, useRoutes } from 'react-router-dom'
 import { RootLayout } from '../layouts/root-layout'
@@ -250,7 +251,7 @@ const appRoutes = [
       {
         path: 'teacher',
         element: (
-          <RequireAuth role="teacher">
+          <RequireAuth roles={TEACHER_PORTAL_ROLES}>
             <TeacherShell />
           </RequireAuth>
         ),
@@ -374,7 +375,7 @@ const appRoutes = [
       {
         path: 'platform',
         element: (
-          <RequireAuth role="super_admin">
+          <RequireAuth roles="super_admin">
             <SuperAdminShell />
           </RequireAuth>
         ),

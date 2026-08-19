@@ -434,7 +434,7 @@ export function AdminReferralsPage() {
               <WsSelect value={filters.target_role ?? ''} onChange={(e) => updateFilter('target_role', e.target.value)}>
                 <option value="">جميع الجهات</option>
                 <option value="counselor">الموجه الطلابي</option>
-                <option value="vice_principal">وكيل المدرسة</option>
+                <option value="vice_principal">وكيل شؤون الطلاب</option>
                 <option value="committee">اللجنة السلوكية</option>
               </WsSelect>
             </WsField>
