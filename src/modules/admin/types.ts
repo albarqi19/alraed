@@ -66,7 +66,14 @@ export interface TeacherRecord {
 
 export interface TeacherCredentials {
   national_id: string
-  password: string
+  /**
+   * `null` للحساب السرّيّ — الموجّه الطلابيّ والصحّيّ.
+   *
+   * الخادمُ يرسلها إلى جوّاله من رقم النظام ولا يردّها لمن ضغط الزرّ: حسابُه
+   * مفتاحُ البيانات الصحّية، ومَن يقرأ كلمتَه يدخل بها ويُسجَّل اطّلاعُه باسمه
+   * هو لا باسم القارئ.
+   */
+  password: string | null
   role?: StaffRole
 }
 

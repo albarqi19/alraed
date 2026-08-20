@@ -335,6 +335,18 @@ function TeacherFormDialog({ open, onClose, onSubmit, isSubmitting, teacher }: T
   )
 }
 
+/**
+ * أحسابُ هذا المستخدمِ سرّيٌّ؟ — يطابق `UserRole::isConfidentialAccount` في الخادم.
+ *
+ * الدورُ الثانويّ يُفحص كالأساسيّ: بابٌ خلفيٌّ يفتح كلَّ شيءٍ بدورٍ أساسيٍّ بريء.
+ * والواجهةُ تقرؤه لتشرح لا لتحجب — الحجبُ في الخادم وحده.
+ */
+function isConfidentialAccount(teacher: { role?: string | null; secondary_role?: string | null }): boolean {
+  const confidential = ['student_counselor', 'health_counselor']
+
+  return confidential.includes(teacher.role ?? '') || confidential.includes(teacher.secondary_role ?? '')
+}
+
 export function AdminTeachersPage() {
   const toast = useToast()
   const [searchTerm, setSearchTerm] = useState('')
@@ -472,6 +484,22 @@ export function AdminTeachersPage() {
   const handleResetPassword = (teacher: TeacherRecord) => {
     resetPasswordMutation.mutate(teacher.id, {
       onSuccess: (credentials) => {
+        /*
+         * الحسابُ السرّيّ لا تُردّ كلمتُه — الخادمُ يرسلها إلى جوّاله من رقم
+         * النظام ويُرجع `null`. وبلا هذا الفرع تُضاف بطاقةٌ فارغةٌ إلى السجلّ
+         * تقول «كلمة المرور: —» فيظنّها المديرُ عطلاً ويعيد التعيينَ مراراً،
+         * وكلُّ إعادةٍ تُبطل الكلمةَ التي وصلت الموجّهَ للتوّ.
+         */
+        if (!credentials?.password) {
+          toast({
+            type: 'success',
+            title: 'أُعيد تعيين كلمة المرور',
+            description: 'أُرسلت إلى جوّال صاحب الحساب من رقم النظام — لا تظهر هنا حفاظاً على سرّية حسابه.',
+          })
+
+          return
+        }
+
         appendCredentials(teacher.name, credentials)
       },
     })
@@ -770,6 +798,23 @@ export function AdminTeachersPage() {
                     </WsFactRow>
                   )}
                 </WsFactsList>
+
+                {/*
+                  * تفسيرُ غياب كلمة المرور — بلا هذا تختفي البطاقةُ بصمت.
+                  *
+                  * الخادمُ لا يخزّن كلمةَ الموجّه ولا يُصدّرها: حسابُه مفتاحُ
+                  * البيانات الصحّية والمالية، ومَن يقرأ كلمتَه يدخل بها ويُسجَّل
+                  * اطّلاعُه **باسم الموجّه** لا باسمه. فالشرطُ `&&` أعلاه كان
+                  * يُسقط الصفَّ فيظنّ المديرُ النظامَ ناسياً.
+                  */}
+                {isConfidentialAccount(selectedTeacher) ? (
+                  <WsAlert tone="info" boxed>
+                    <strong>حسابٌ سرّي.</strong> كلمةُ مرور {getRoleLabel(selectedTeacher.role)} لا
+                    تُخزَّن ولا تُعرَض لأحد — تصله على جوّاله من رقم النظام مباشرةً. وهذا يمنع
+                    الدخولَ بحسابه إلى البيانات الصحّية والمالية باسمه.
+                  </WsAlert>
+                ) : null}
+
                 <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
                   <WsBtn icon={Pencil} onClick={() => handleEdit(selectedTeacher)} style={{ flex: 1 }}>
                     تعديل
