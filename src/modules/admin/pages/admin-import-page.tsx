@@ -1337,7 +1337,10 @@ export function AdminImportPage() {
                     كيف تُخرج الملف من البرنامج
                   </p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, fontSize: 12.5 }}>
-                    {['الجدول', 'طباعة', 'جداول المعلمين منفردة', 'تصدير إلى ملف Excel'].map((step, i, all) => (
+                    {/* خطواتُ aSc لا «الجدول الذكي»: هذه بطاقةُ XML، وتلك بطاقةُ
+                        المصنّف. وكانت خطواتُ الأخرى مكتوبةً هنا فتُرسل صاحبَها
+                        إلى شاشةٍ لا وجودَ لها في برنامجه. */}
+                    {['افتح جدولك في aSc TimeTables', 'ملف ← تصدير', 'اختر صيغة XML', 'ارفع الملف هنا'].map((step, i, all) => (
                       <span key={step} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                         <span
                           style={{
