@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react'
 import {
   X, Upload, Check, AlertTriangle, User, BookOpen, GraduationCap, FileText,
-  ArrowLeft, ArrowRight, Plus, UserX, Info, Sparkles,
+  ArrowLeft, ArrowRight, Plus, UserX, Info, Sparkles, Trash2, Users,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePreviewSmartScheduleMutation, useConfirmSmartScheduleMutation } from '../hooks'
@@ -14,6 +14,7 @@ import type {
   SmartScheduleSubjectMapping,
   SmartScheduleClassMapping,
   SmartScheduleImportError,
+  SmartScheduleOrphanClass,
 } from '../types'
 import type { TimeTableAvailableTeacher, TimeTableAvailableSubject } from '../types'
 
@@ -71,6 +72,9 @@ export function SmartScheduleImportDialog({ isOpen, onClose }: SmartScheduleImpo
   // بالقائمة هنا ونعرضها في خطوة التأكيد حتى المحاولة التالية.
   const [failure, setFailure] = useState<{ message: string; errors: SmartScheduleImportError[] } | null>(null)
 
+  // الفصول الملغاة التي أقرّ المدير حذف جداولها — مفاتيحُها «صف|فصل».
+  const [orphansToDrop, setOrphansToDrop] = useState<Set<string>>(new Set())
+
   const previewMutation = usePreviewSmartScheduleMutation()
   const confirmMutation = useConfirmSmartScheduleMutation()
 
@@ -103,6 +107,13 @@ export function SmartScheduleImportDialog({ isOpen, onClose }: SmartScheduleImpo
         })
         setClassDecisions(classes)
 
+        // فصلٌ ملغى بلا طلاب يُنتقى للحذف مسبقاً: جدولُه ميّتٌ بيقين ولا
+        // أحدَ يتأثر. أما ما بقي فيه طالبٌ فيُترك للمدير — حذفُ جدوله
+        // يجعل ذلك الطالب بلا حصصٍ ولا حضور، وذلك قرارٌ لا يُتّخذ عنه.
+        setOrphansToDrop(new Set(
+          data.orphan_classes.filter((o) => o.students === 0).map((o) => `${o.grade}|${o.class_name}`),
+        ))
+
         setCurrentStep('subjects')
       },
     })
@@ -117,6 +128,7 @@ export function SmartScheduleImportDialog({ isOpen, onClose }: SmartScheduleImpo
     setClassDecisions({})
     setReplaceExisting(true)
     setFailure(null)
+    setOrphansToDrop(new Set())
     onClose()
   }, [onClose])
 
@@ -135,14 +147,18 @@ export function SmartScheduleImportDialog({ isOpen, onClose }: SmartScheduleImpo
 
     setFailure(null)
 
+    const orphan_classes = (previewData.orphan_classes ?? [])
+      .filter((o) => orphansToDrop.has(`${o.grade}|${o.class_name}`))
+      .map((o) => ({ grade: o.grade, class_name: o.class_name }))
+
     confirmMutation.mutate(
-      { file, teacher_mappings, subject_mappings, class_mappings, replace_existing: replaceExisting },
+      { file, teacher_mappings, subject_mappings, class_mappings, orphan_classes, replace_existing: replaceExisting },
       {
         onSuccess: handleClose,
         onError: (error) => setFailure(readFailure(error)),
       },
     )
-  }, [file, previewData, teacherDecisions, subjectDecisions, classDecisions, replaceExisting, confirmMutation, handleClose])
+  }, [file, previewData, teacherDecisions, subjectDecisions, classDecisions, orphansToDrop, replaceExisting, confirmMutation, handleClose])
 
   /** كل مادة إما مربوطة أو مطلوبٌ إنشاؤها — لا مادة معلّقة. */
   const allSubjectsDecided = useMemo(() => {
@@ -276,6 +292,15 @@ export function SmartScheduleImportDialog({ isOpen, onClose }: SmartScheduleImpo
               replaceExisting={replaceExisting}
               onReplaceExistingChange={setReplaceExisting}
               failure={failure}
+              orphansToDrop={orphansToDrop}
+              onToggleOrphan={(key) =>
+                setOrphansToDrop((prev) => {
+                  const next = new Set(prev)
+                  if (next.has(key)) next.delete(key)
+                  else next.add(key)
+                  return next
+                })
+              }
             />
           )}
         </div>
@@ -673,11 +698,13 @@ interface ConfirmStepProps {
   replaceExisting: boolean
   onReplaceExistingChange: (value: boolean) => void
   failure: { message: string; errors: SmartScheduleImportError[] } | null
+  orphansToDrop: Set<string>
+  onToggleOrphan: (key: string) => void
 }
 
 function ConfirmStep({
   previewData, subjectDecisions, teacherDecisions, classDecisions,
-  replaceExisting, onReplaceExistingChange, failure,
+  replaceExisting, onReplaceExistingChange, failure, orphansToDrop, onToggleOrphan,
 }: ConfirmStepProps) {
   const subjectsToCreate = Object.values(subjectDecisions).filter((d) => d.create).length
   const skippedTeachers = previewData.teachers.filter((t) => teacherDecisions[t.key]?.skip)
@@ -737,6 +764,14 @@ function ConfirmStep({
           <div className="font-medium text-slate-700 mb-1">معلمون مستبعَدون ({skippedTeachers.length})</div>
           {skippedTeachers.map((t) => t.name).join('، ')}
         </div>
+      )}
+
+      {(previewData.orphan_classes ?? []).length > 0 && (
+        <OrphanPanel
+          orphans={previewData.orphan_classes}
+          selected={orphansToDrop}
+          onToggle={onToggleOrphan}
+        />
       )}
 
       <label className="flex items-start gap-3 p-4 rounded-lg border bg-white cursor-pointer">
@@ -813,6 +848,92 @@ function FailurePanel({ failure }: { failure: { message: string; errors: SmartSc
       <div className="text-xs text-red-700">
         لم يُحفظ شيء — جدولك القائم كما هو. صحّح ما سبق ثم أعد المحاولة.
       </div>
+    </div>
+  )
+}
+
+/**
+ * الفصولُ الملغاة: لها جدولٌ في النظام ولا يذكرها الملف.
+ *
+ * ── لماذا تُعرض هنا ───────────────────────────────────────────────────
+ * «استبدال الجدول القائم» يحذف فصولَ الملف وحدها، فيبقى جدولُ فصلٍ أُلغي
+ * بين عامين. وذلك الجدولُ الميّت يحجز معلّميه: الفهرسُ الفريد يمنع المعلّم
+ * من مكانين في اللحظة الواحدة ولا يعرف فصلاً حيّاً من ملغى — فيسقط
+ * الاستيرادُ كلُّه بخطأٍ لا يدلّ على مصدره.
+ *
+ * ولا يُحذف الفصلُ نفسُه ولا طلابُه، بل حصصُه فقط. ولذلك يفترق السطران:
+ * فصلٌ بلا طلابٍ مُنتقىً مسبقاً لأن جدولَه ميّتٌ بيقين، وفصلٌ فيه طالبٌ
+ * متروكٌ للمدير لأن حذفَ جدوله يتركه بلا حصصٍ ولا حضور.
+ */
+function OrphanPanel({
+  orphans, selected, onToggle,
+}: {
+  orphans: SmartScheduleOrphanClass[]
+  selected: Set<string>
+  onToggle: (key: string) => void
+}) {
+  const chosen = orphans.filter((o) => selected.has(`${o.grade}|${o.class_name}`))
+  const droppedSessions = chosen.reduce((sum, o) => sum + o.sessions, 0)
+  const withStudents = chosen.filter((o) => o.students > 0)
+
+  return (
+    <div className="p-4 rounded-lg border border-amber-300 bg-amber-50 space-y-3">
+      <div className="flex items-start gap-2 text-sm text-amber-900">
+        <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+        <span>
+          <b>{orphans.length} فصلاً في جدولك لا يذكرها الملف</b> — أُلغيت بين عامين على الأرجح.
+          جداولها القائمة تحجز معلّميها فتُسقط الاستيراد. اختر ما تريد حذف جدوله.
+          <span className="block mt-1 text-xs">الفصل نفسه وطلابه لا يُحذفون — الحصص وحدها.</span>
+        </span>
+      </div>
+
+      <div className="space-y-1.5">
+        {orphans.map((o) => {
+          const key = `${o.grade}|${o.class_name}`
+          const isOn = selected.has(key)
+          return (
+            <label
+              key={key}
+              className={cn(
+                'flex items-center gap-3 p-2.5 rounded border cursor-pointer transition-colors',
+                isOn ? 'bg-white border-amber-400' : 'bg-white/50 border-slate-200',
+              )}
+            >
+              <input type="checkbox" checked={isOn} onChange={() => onToggle(key)} />
+              <span className="flex-1 min-w-0 text-sm font-medium text-slate-900">
+                {o.grade} / {o.class_name}
+              </span>
+              <span className="text-xs text-slate-500 tabular-nums">{o.sessions} حصة</span>
+              {o.students > 0 ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-medium">
+                  <Users className="w-3 h-3" />
+                  {o.students} طالب
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-xs">فارغ</span>
+              )}
+            </label>
+          )
+        })}
+      </div>
+
+      {withStudents.length > 0 && (
+        <div className="flex items-start gap-2 p-2.5 rounded bg-red-50 border border-red-200 text-xs text-red-800">
+          <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+          <span>
+            اخترتَ حذف جدول {withStudents.length} فصلٍ فيه طلاب
+            ({withStudents.map((o) => `${o.grade}/${o.class_name}`).join('، ')}).
+            سيبقى طلابه مسجّلين لكن بلا حصصٍ ولا حضور حتى يُسنَد لهم جدول.
+          </span>
+        </div>
+      )}
+
+      {droppedSessions > 0 && (
+        <div className="flex items-center gap-2 text-xs text-amber-900">
+          <Trash2 className="w-3.5 h-3.5" />
+          سيُحذف {droppedSessions} حصة من {chosen.length} فصل.
+        </div>
+      )}
     </div>
   )
 }

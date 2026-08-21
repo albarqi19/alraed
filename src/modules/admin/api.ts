@@ -3776,6 +3776,7 @@ export async function confirmSmartScheduleImport(payload: {
   teacher_mappings: SmartScheduleTeacherMapping[]
   subject_mappings: SmartScheduleSubjectMapping[]
   class_mappings: SmartScheduleClassMapping[]
+  orphan_classes: Array<{ grade: string; class_name: string }>
   replace_existing: boolean
 }): Promise<SmartScheduleConfirmResult> {
   const formData = new FormData()
@@ -3783,6 +3784,7 @@ export async function confirmSmartScheduleImport(payload: {
   formData.append('teacher_mappings', JSON.stringify(payload.teacher_mappings))
   formData.append('subject_mappings', JSON.stringify(payload.subject_mappings))
   formData.append('class_mappings', JSON.stringify(payload.class_mappings))
+  formData.append('orphan_classes', JSON.stringify(payload.orphan_classes))
   formData.append('replace_existing', payload.replace_existing ? '1' : '0')
 
   const { data } = await apiClient.post<ApiResponse<SmartScheduleConfirmResult>>(

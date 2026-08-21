@@ -2064,6 +2064,19 @@ export interface SmartScheduleConflicts {
   teacher: SmartScheduleTeacherConflict[]
 }
 
+/**
+ * فصلٌ له جدولٌ قائم في النظام ولا يذكره الملف — أُلغي بين عامين غالباً.
+ * جدولُه الميّت يحجز معلّميه فيُسقط الاستيراد، فيُعرض ليقرّر المدير حذفه.
+ */
+export interface SmartScheduleOrphanClass {
+  grade: string
+  class_name: string
+  /** عدد حصصه القائمة التي ستُحذف */
+  sessions: number
+  /** طلابه المسجّلون — إن كانوا أكثر من صفر فحذفُ جدوله يتركهم بلا حصص */
+  students: number
+}
+
 export interface SmartSchedulePreviewStats {
   total_cards: number
   total_teachers: number
@@ -2078,6 +2091,8 @@ export interface SmartSchedulePreviewStats {
   total_periods: number
   /** خلايا «منتظر N» — نوبات انتظار لا حصص فصول، تُقرأ وتُتخطّى */
   standby_cells: number
+  orphan_classes: number
+  orphan_sessions: number
   class_conflicts: number
   teacher_conflicts: number
 }
@@ -2093,6 +2108,7 @@ export interface SmartSchedulePreviewData {
   conflicts: SmartScheduleConflicts
   warnings: string[]
   standby_cells: number
+  orphan_classes: SmartScheduleOrphanClass[]
   available_teachers: TimeTableAvailableTeacher[]
   available_subjects: TimeTableAvailableSubject[]
   stats: SmartSchedulePreviewStats
@@ -2124,12 +2140,16 @@ export interface SmartScheduleConfirmPayload {
   teacher_mappings: SmartScheduleTeacherMapping[]
   subject_mappings: SmartScheduleSubjectMapping[]
   class_mappings: SmartScheduleClassMapping[]
+  /** الفصول الملغاة التي أقرّ المدير حذف جداولها */
+  orphan_classes: Array<{ grade: string; class_name: string }>
   replace_existing: boolean
 }
 
 export interface SmartScheduleConfirmStats {
   sessions_created: number
   sessions_replaced: number
+  orphan_sessions_dropped: number
+  orphan_classes_dropped: number
   subjects_created: number
   cards_skipped: number
   classes_count: number

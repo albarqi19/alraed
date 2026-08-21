@@ -2779,6 +2779,7 @@ export function useConfirmSmartScheduleMutation() {
       teacher_mappings: SmartScheduleTeacherMapping[]
       subject_mappings: SmartScheduleSubjectMapping[]
       class_mappings: SmartScheduleClassMapping[]
+      orphan_classes: Array<{ grade: string; class_name: string }>
       replace_existing: boolean
     }) => confirmSmartScheduleImport(payload),
     onSuccess: (result) => {
