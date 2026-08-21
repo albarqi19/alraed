@@ -29,6 +29,7 @@ import {
   KeyRound,
   ListChecks,
   Sparkles,
+  Printer,
   Zap,
 } from 'lucide-react'
 import {
@@ -933,6 +934,7 @@ export function AdminImportPage() {
 
   const [isTimeTableDialogOpen, setIsTimeTableDialogOpen] = useState(false)
   const [isSmartScheduleDialogOpen, setIsSmartScheduleDialogOpen] = useState(false)
+  const [isSevenSchedulesDialogOpen, setIsSevenSchedulesDialogOpen] = useState(false)
 
   const previewStudentsMutation = usePreviewImportStudentsMutation()
   const importStudentsMutation = useImportStudentsMutation()
@@ -1264,7 +1266,16 @@ export function AdminImportPage() {
           )}
 
           {activeTab === 'schedules' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            /* أنواعُ الجداول تصطفّ اثنين في السطر متى اتّسعت الشاشة: أربعةُ
+               مصادرَ فوق بعضها تُطيل الصفحةَ حتى يغيب آخرُها عن العين. */
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+                alignItems: 'start',
+                gap: 14,
+              }}
+            >
             <WsBlock
               title="استيراد من aSc TimeTable"
               icon={Calendar}
@@ -1475,6 +1486,92 @@ export function AdminImportPage() {
                 </div>
               </div>
             </WsBlock>
+
+            {/* ── الجداول السبعة: تُطبع PDF لا تُصدَّر ملفاً ───────────────
+                البرنامجُ لا يُصدِّر جدولاً، فالمخرجُ الوحيدُ منه شاشةُ الطباعة.
+                والحفظُ كـPDF بدل الطابعة يجعلها ملفاً يُقرأ. */}
+            <WsBlock
+              title="استيراد من الجداول السبعة"
+              icon={Printer}
+              className="ws-fade-in"
+              tools={
+                <WsBtn size="sm" variant="primary" icon={UploadCloud} onClick={() => setIsSevenSchedulesDialogOpen(true)}>
+                  استيراد جدول
+                </WsBtn>
+              }
+              padded
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <p style={{ margin: 0, fontSize: 12.5, color: 'var(--ws-text-2)' }}>
+                  اطبع «الجداول السبعة» واحفظها ملفَّ PDF بدل إرسالها للطابعة، ثم ارفعه هنا. لكل معلّم
+                  جدولُه: سبعُ حصصٍ وخمسةُ أيام، تُقرأ بمواضعها وتُطابَق بالمعلمين والمواد والفصول.
+                </p>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: `1px solid ${TONES.amber.bd}`,
+                    background: chip(TONES.amber),
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 30,
+                      height: 30,
+                      borderRadius: 8,
+                      background: 'var(--ws-surface)',
+                      display: 'grid',
+                      placeItems: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Printer style={{ width: 16, height: 16, color: TONES.amber.tx }} />
+                  </span>
+                  <div>
+                    <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700 }}>الجداول السبعة — PDF</span>
+                    <span style={{ fontSize: 11.5, color: 'var(--ws-text-2)' }}>
+                      الجداول السبعة ← طباعة ← احفظ كـ PDF ← ارفع الملف
+                    </span>
+                  </div>
+                </div>
+
+                <ul style={{ margin: 0, paddingInlineStart: 0, listStyle: 'none', display: 'grid', gap: 6 }}>
+                  {[
+                    'ترتيبُ الصفوف هو الحكم: أوّلُ صفٍّ الأحد — أسماءُ الأيام في الملف مُزاحةٌ يوماً وتُهمَل.',
+                    'المواد تُطبع مختصرةً («اسلامية»، «E») وتُردّ إلى أسمائها الكاملة قبل المطابقة.',
+                    'الأسماءُ ألقابٌ بلا اسمٍ أوّل، فما التبس منها يُطابَق يدويّاً في الخطوة التالية.',
+                  ].map((item) => (
+                    <li
+                      key={item}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 7,
+                        fontSize: 12,
+                        color: 'var(--ws-text-2)',
+                        lineHeight: 1.65,
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: 7,
+                          height: 7,
+                          borderRadius: '50%',
+                          background: TONES.amber.tx,
+                          flexShrink: 0,
+                          marginTop: 5,
+                        }}
+                      />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </WsBlock>
             </div>
           )}
 
@@ -1549,6 +1646,11 @@ export function AdminImportPage() {
 
       <TimeTableImportDialog isOpen={isTimeTableDialogOpen} onClose={() => setIsTimeTableDialogOpen(false)} />
       <SmartScheduleImportDialog isOpen={isSmartScheduleDialogOpen} onClose={() => setIsSmartScheduleDialogOpen(false)} />
+      <SmartScheduleImportDialog
+        source="seven"
+        isOpen={isSevenSchedulesDialogOpen}
+        onClose={() => setIsSevenSchedulesDialogOpen(false)}
+      />
     </WsPage>
   )
 }

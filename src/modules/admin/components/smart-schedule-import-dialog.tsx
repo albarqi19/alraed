@@ -21,6 +21,49 @@ import type { TimeTableAvailableTeacher, TimeTableAvailableSubject } from '../ty
 interface SmartScheduleImportDialogProps {
   isOpen: boolean
   onClose: () => void
+  /** مصدرُ الجدول. الافتراضُ «الجدول الذكي». */
+  source?: ScheduleSource
+}
+
+type ScheduleSource = 'smart' | 'seven'
+
+/**
+ * ما يختلف بين المصدرين — والباقي واحد.
+ *
+ * المصنّفُ والملفُّ المطبوع يمرّان بالنقطة نفسِها ويُخرج قارئاهما الشكلَ
+ * نفسَه، فلا يختلف من المعالج إلا ما يراه المدير: العنوان، والامتداد
+ * المقبول، وخطواتُ إخراج الملفّ من برنامجه.
+ */
+const SOURCES: Record<ScheduleSource, {
+  title: string
+  program: string
+  accept: string
+  pick: string
+  hint: string
+  reading: string
+  failure: string
+  steps: string[]
+}> = {
+  smart: {
+    title: 'استيراد من الجدول الذكي',
+    program: 'الجدول الذكي',
+    accept: '.xlsx,.xls,.xlsm',
+    pick: 'اختر ملف الجدول الذكي (xlsx)',
+    hint: 'تصدير «جداول المعلمين» — ورقةٌ لكل معلم',
+    reading: 'جاري قراءة المصنّف…',
+    failure: 'تعذّرت قراءة الملف. تأكّد أنه تصدير «جداول المعلمين» من برنامج الجدول الذكي.',
+    steps: ['الجدول', 'طباعة', 'جداول المعلمين منفردة', 'تصدير إلى ملف Excel'],
+  },
+  seven: {
+    title: 'استيراد من الجداول السبعة',
+    program: 'الجداول السبعة',
+    accept: '.pdf',
+    pick: 'اختر ملف الجداول السبعة (PDF)',
+    hint: 'صفحةٌ فيها جدولُ كلّ معلّم — سبعُ حصصٍ وخمسةُ أيام',
+    reading: 'جاري قراءة الملف…',
+    failure: 'تعذّرت قراءة الملف. تأكّد أنه مطبوعٌ من شاشة «الجداول السبعة» لا مصوَّرٌ ضوئياً.',
+    steps: ['الجداول السبعة', 'طباعة', 'اختر «حفظ كـ PDF» بدل الطابعة', 'ارفع الملف هنا'],
+  },
 }
 
 type WizardStep = 'upload' | 'subjects' | 'teachers' | 'classes' | 'confirm'
@@ -56,7 +99,8 @@ function readFailure(error: unknown): { message: string; errors: SmartScheduleIm
   }
 }
 
-export function SmartScheduleImportDialog({ isOpen, onClose }: SmartScheduleImportDialogProps) {
+export function SmartScheduleImportDialog({ isOpen, onClose, source = 'smart' }: SmartScheduleImportDialogProps) {
+  const meta = SOURCES[source]
   const [currentStep, setCurrentStep] = useState<WizardStep>('upload')
   const [file, setFile] = useState<File | null>(null)
   const [previewData, setPreviewData] = useState<SmartSchedulePreviewData | null>(null)
@@ -215,7 +259,7 @@ export function SmartScheduleImportDialog({ isOpen, onClose }: SmartScheduleImpo
               <Sparkles className="w-5 h-5 text-violet-600" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900">استيراد من الجدول الذكي</h2>
+              <h2 className="text-lg font-bold text-slate-900">{meta.title}</h2>
               <p className="text-sm text-slate-500">
                 {previewData?.school_name
                   ? `${previewData.school_name} · ${previewData.cards_count} حصة`
@@ -258,6 +302,7 @@ export function SmartScheduleImportDialog({ isOpen, onClose }: SmartScheduleImpo
               onFileSelect={handleFileSelect}
               isLoading={previewMutation.isPending}
               error={previewMutation.error}
+              meta={meta}
             />
           )}
           {currentStep === 'subjects' && previewData && (
@@ -379,9 +424,10 @@ interface UploadStepProps {
   onFileSelect: (file: File) => void
   isLoading: boolean
   error: unknown
+  meta: (typeof SOURCES)[ScheduleSource]
 }
 
-function UploadStep({ file, onFileSelect, isLoading, error }: UploadStepProps) {
+function UploadStep({ file, onFileSelect, isLoading, error, meta }: UploadStepProps) {
   return (
     <div className="space-y-4">
       <label
@@ -392,7 +438,7 @@ function UploadStep({ file, onFileSelect, isLoading, error }: UploadStepProps) {
       >
         <input
           type="file"
-          accept=".xlsx,.xls,.xlsm"
+          accept={meta.accept}
           className="hidden"
           disabled={isLoading}
           onChange={(e) => {
@@ -403,15 +449,15 @@ function UploadStep({ file, onFileSelect, isLoading, error }: UploadStepProps) {
         {isLoading ? (
           <>
             <div className="animate-spin rounded-full h-8 w-8 border-2 border-violet-500 border-t-transparent" />
-            <span className="text-sm text-slate-600">جاري قراءة المصنّف…</span>
+            <span className="text-sm text-slate-600">{meta.reading}</span>
           </>
         ) : (
           <>
             <Upload className="w-10 h-10 text-violet-400" />
             <span className="text-sm font-medium text-slate-700">
-              {file ? file.name : 'اختر ملف الجدول الذكي (xlsx)'}
+              {file ? file.name : meta.pick}
             </span>
-            <span className="text-xs text-slate-500">تصدير «جداول المعلمين» — ورقةٌ لكل معلم</span>
+            <span className="text-xs text-slate-500">{meta.hint}</span>
           </>
         )}
       </label>
@@ -419,20 +465,20 @@ function UploadStep({ file, onFileSelect, isLoading, error }: UploadStepProps) {
       {error != null && (
         <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
           <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-          <span>تعذّرت قراءة الملف. تأكّد أنه تصدير «جداول المعلمين» من برنامج الجدول الذكي.</span>
+          <span>{meta.failure}</span>
         </div>
       )}
 
       <div className="p-4 rounded-lg border border-violet-200 bg-violet-50/60 text-sm space-y-2">
-        <p className="font-bold text-violet-900">كيف تُخرج الملف من برنامج الجدول الذكي</p>
+        <p className="font-bold text-violet-900">كيف تُخرج الملف من برنامج {meta.program}</p>
         <ol className="space-y-1.5">
-          {['الجدول', 'طباعة', 'جداول المعلمين منفردة', 'تصدير إلى ملف Excel'].map((step, i) => (
+          {meta.steps.map((step, i) => (
             <li key={step} className="flex items-center gap-2 text-violet-900">
               <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-violet-600 text-[11px] font-bold text-white">
                 {i + 1}
               </span>
               {step}
-              {i < 3 && <span className="text-violet-400">←</span>}
+              {i < meta.steps.length - 1 && <span className="text-violet-400">←</span>}
             </li>
           ))}
         </ol>
@@ -733,7 +779,7 @@ function ConfirmStep({
               المعلم {t.teacher} — {t.day} حصة {t.period}: {t.classes.join(' و ')}
             </div>
           ))}
-          <div className="pt-1 text-xs">صحّحها في برنامج الجدول الذكي ثم أعد التصدير.</div>
+          <div className="pt-1 text-xs">صحّحها في برنامج الجداول ثم أعد التصدير.</div>
         </div>
       )}
 
