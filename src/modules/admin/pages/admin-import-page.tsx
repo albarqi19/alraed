@@ -1318,6 +1318,44 @@ export function AdminImportPage() {
                   style={{
                     padding: 12,
                     borderRadius: 8,
+                    border: `1px solid ${TONES.purple.bd}`,
+                    background: chip(TONES.purple),
+                  }}
+                >
+                  <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: TONES.purple.tx }}>
+                    كيف تُخرج الملف من البرنامج
+                  </p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, fontSize: 12.5 }}>
+                    {['الجدول', 'طباعة', 'جداول المعلمين منفردة', 'تصدير إلى ملف Excel'].map((step, i, all) => (
+                      <span key={step} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <span
+                          style={{
+                            width: 18,
+                            height: 18,
+                            borderRadius: '50%',
+                            background: TONES.purple.tx,
+                            color: '#fff',
+                            fontSize: 10,
+                            fontWeight: 700,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {i + 1}
+                        </span>
+                        <span style={{ fontWeight: 600 }}>{step}</span>
+                        {i < all.length - 1 && <span style={{ color: TONES.purple.tx, opacity: 0.5 }}>←</span>}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    padding: 12,
+                    borderRadius: 8,
                     border: '1px solid var(--ws-hairline)',
                     background: 'var(--ws-surface-2)',
                   }}
@@ -1415,7 +1453,7 @@ export function AdminImportPage() {
                   <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 5 }}>
                     {[
                       'يقلب جداول المعلمين إلى حصص فصول تلقائياً',
-                      'يفكّ الخلية إلى صف وفصل ومادة («ثألث 2 لغتي» ← الصف الثالث / 2)',
+                      'يقرأ صيغتَي الخلية: «سادس 4 رياضيات» و«3-1 الرياضيات»',
                       'يطابق المواد المختصرة بالمسجّلة، ويُنشئ ما ينقص منها',
                       'يكشف تعارضات الملف قبل الكتابة، والاستيراد كلّه أو لا شيء',
                     ].map((item) => (

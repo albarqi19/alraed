@@ -398,11 +398,27 @@ function UploadStep({ file, onFileSelect, isLoading, error }: UploadStepProps) {
         </div>
       )}
 
+      <div className="p-4 rounded-lg border border-violet-200 bg-violet-50/60 text-sm space-y-2">
+        <p className="font-bold text-violet-900">كيف تُخرج الملف من برنامج الجدول الذكي</p>
+        <ol className="space-y-1.5">
+          {['الجدول', 'طباعة', 'جداول المعلمين منفردة', 'تصدير إلى ملف Excel'].map((step, i) => (
+            <li key={step} className="flex items-center gap-2 text-violet-900">
+              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-violet-600 text-[11px] font-bold text-white">
+                {i + 1}
+              </span>
+              {step}
+              {i < 3 && <span className="text-violet-400">←</span>}
+            </li>
+          ))}
+        </ol>
+      </div>
+
       <div className="p-4 rounded-lg bg-slate-50 border text-sm text-slate-600 space-y-1.5">
         <p className="font-medium text-slate-700">ما يفعله هذا الاستيراد</p>
         <ul className="space-y-1 list-disc pr-5">
           <li>يقرأ كل ورقة معلم ويقلب الجدول إلى حصص فصول</li>
-          <li>يفكّ خلية «سادس 4 رياضيات» إلى صفٍّ وفصلٍ ومادة</li>
+          <li>يفكّ الخلية إلى صفٍّ وفصلٍ ومادة — بصيغتَي «سادس 4 رياضيات» و«3-1 الرياضيات»</li>
+          <li>يتخطّى نوبات الانتظار («منتظر 3») فهي ليست حصص فصول</li>
           <li>يطابق المواد بالمسجّلة، ويُنشئ ما لم يُسجَّل بعد</li>
           <li>يطابق المعلمين بحساباتهم — ولا يُنشئ حساباً بلا رقم هوية</li>
         </ul>
@@ -708,6 +724,13 @@ function ConfirmStep({
         <SummaryTile label="مواد ستُنشأ" value={subjectsToCreate} tone={subjectsToCreate > 0 ? 'emerald' : 'slate'} />
         <SummaryTile label="حصص مستبعَدة" value={skippedTeacherCards} tone={skippedTeacherCards > 0 ? 'amber' : 'slate'} />
       </div>
+
+      {previewData.standby_cells > 0 && (
+        <div className="p-3 rounded-lg bg-slate-50 border text-sm text-slate-600">
+          في الملف {previewData.standby_cells} نوبةَ انتظار («منتظر») — تُقرأ ولا تُستورد،
+          لأنها ليست حصةَ فصلٍ لها صفٌّ ومادة.
+        </div>
+      )}
 
       {skippedTeachers.length > 0 && (
         <div className="p-3 rounded-lg bg-slate-50 border text-sm text-slate-600">

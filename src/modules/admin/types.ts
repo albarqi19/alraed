@@ -2076,6 +2076,8 @@ export interface SmartSchedulePreviewStats {
   known_classes: number
   total_days: number
   total_periods: number
+  /** خلايا «منتظر N» — نوبات انتظار لا حصص فصول، تُقرأ وتُتخطّى */
+  standby_cells: number
   class_conflicts: number
   teacher_conflicts: number
 }
@@ -2090,6 +2092,7 @@ export interface SmartSchedulePreviewData {
   cards_count: number
   conflicts: SmartScheduleConflicts
   warnings: string[]
+  standby_cells: number
   available_teachers: TimeTableAvailableTeacher[]
   available_subjects: TimeTableAvailableSubject[]
   stats: SmartSchedulePreviewStats
