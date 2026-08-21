@@ -10,6 +10,7 @@ import type { ImportStudentsPreview, ImportSummary, ImportTeachersSummary } from
 import { ImportCover } from './import-ui'
 import { useToast } from '@/shared/feedback/use-toast'
 import { TimeTableImportDialog } from '../components/timetable-import-dialog'
+import { SmartScheduleImportDialog } from '../components/smart-schedule-import-dialog'
 import {
   UploadCloud,
   Download,
@@ -27,6 +28,7 @@ import {
   Info,
   KeyRound,
   ListChecks,
+  Sparkles,
   Zap,
 } from 'lucide-react'
 import {
@@ -930,6 +932,7 @@ export function AdminImportPage() {
   const [teacherError, setTeacherError] = useState<string | null>(null)
 
   const [isTimeTableDialogOpen, setIsTimeTableDialogOpen] = useState(false)
+  const [isSmartScheduleDialogOpen, setIsSmartScheduleDialogOpen] = useState(false)
 
   const previewStudentsMutation = usePreviewImportStudentsMutation()
   const importStudentsMutation = useImportStudentsMutation()
@@ -1261,6 +1264,7 @@ export function AdminImportPage() {
           )}
 
           {activeTab === 'schedules' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <WsBlock
               title="استيراد من aSc TimeTable"
               icon={Calendar}
@@ -1346,6 +1350,94 @@ export function AdminImportPage() {
                 </div>
               </div>
             </WsBlock>
+
+            <WsBlock
+              title="استيراد من الجدول الذكي"
+              icon={Sparkles}
+              className="ws-fade-in"
+              tools={
+                <WsBtn size="sm" variant="primary" icon={UploadCloud} onClick={() => setIsSmartScheduleDialogOpen(true)}>
+                  استيراد جدول
+                </WsBtn>
+              }
+              padded
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <p style={{ margin: 0, fontSize: 12.5, color: 'var(--ws-text-2)' }}>
+                  استيراد تصدير «جداول المعلمين» من برنامج الجدول الذكي: مصنّف Excel فيه ورقةٌ لكل معلم،
+                  يُقلَب إلى حصص فصول مع مطابقة المعلمين والمواد.
+                </p>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: `1px solid ${TONES.purple.bd}`,
+                    background: chip(TONES.purple),
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 30,
+                      height: 30,
+                      borderRadius: 8,
+                      background: 'var(--ws-surface)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Sparkles style={{ width: 16, height: 16, color: TONES.purple.tx }} />
+                  </span>
+                  <span>
+                    <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700 }}>الجدول الذكي — Excel</span>
+                    <span style={{ display: 'block', fontSize: 12, color: 'var(--ws-text-2)' }}>
+                      ورقة لكل معلم · خلية «سادس 4 رياضيات»
+                    </span>
+                  </span>
+                </div>
+
+                <div
+                  style={{
+                    padding: 12,
+                    borderRadius: 8,
+                    border: '1px solid var(--ws-hairline)',
+                    background: 'var(--ws-surface-2)',
+                  }}
+                >
+                  <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: 'var(--ws-text-2)' }}>
+                    مميزات الاستيراد
+                  </p>
+                  <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    {[
+                      'يقلب جداول المعلمين إلى حصص فصول تلقائياً',
+                      'يفكّ الخلية إلى صف وفصل ومادة («ثألث 2 لغتي» ← الصف الثالث / 2)',
+                      'يطابق المواد المختصرة بالمسجّلة، ويُنشئ ما ينقص منها',
+                      'يكشف تعارضات الملف قبل الكتابة، والاستيراد كلّه أو لا شيء',
+                    ].map((item) => (
+                      <li key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, fontSize: 13 }}>
+                        <span
+                          style={{
+                            width: 7,
+                            height: 7,
+                            borderRadius: '50%',
+                            background: TONES.purple.tx,
+                            flexShrink: 0,
+                            marginTop: 5,
+                          }}
+                        />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </WsBlock>
+            </div>
           )}
 
           {activeTab === 'platforms' && (
@@ -1418,6 +1510,7 @@ export function AdminImportPage() {
       </WsLayout>
 
       <TimeTableImportDialog isOpen={isTimeTableDialogOpen} onClose={() => setIsTimeTableDialogOpen(false)} />
+      <SmartScheduleImportDialog isOpen={isSmartScheduleDialogOpen} onClose={() => setIsSmartScheduleDialogOpen(false)} />
     </WsPage>
   )
 }

@@ -4,12 +4,11 @@ import {
   fetchPendingMatches,
   linkTeacher,
   linkSubject,
-  createAndLinkTeacher,
   createAndLinkSubject,
   type UnmatchedTeacher,
   type UnmatchedSubject,
 } from '../api'
-import { X, Check, Plus, AlertTriangle, User, BookOpen, RefreshCw } from 'lucide-react'
+import { X, Check, Plus, AlertTriangle, User, UserPlus, BookOpen, RefreshCw } from 'lucide-react'
 import { WsBtn, WsChip, WsEmpty, WsInput } from '@/shared/workspace'
 
 interface ScheduleMatchingDialogProps {
@@ -22,9 +21,7 @@ export function ScheduleMatchingDialog({ isOpen, onClose }: ScheduleMatchingDial
   const [activeTab, setActiveTab] = useState<'teachers' | 'subjects'>('teachers')
   const [selectedTeacher, setSelectedTeacher] = useState<UnmatchedTeacher | null>(null)
   const [selectedSubject, setSelectedSubject] = useState<UnmatchedSubject | null>(null)
-  const [newTeacherName, setNewTeacherName] = useState('')
   const [newSubjectName, setNewSubjectName] = useState('')
-  const [showCreateTeacher, setShowCreateTeacher] = useState(false)
   const [showCreateSubject, setShowCreateSubject] = useState(false)
 
   const { data, isLoading, refetch } = useQuery({
@@ -48,17 +45,6 @@ export function ScheduleMatchingDialog({ isOpen, onClose }: ScheduleMatchingDial
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['schedule-matching-pending'] })
       setSelectedSubject(null)
-    },
-  })
-
-  const createTeacherMutation = useMutation({
-    mutationFn: ({ chromeName, name }: { chromeName: string; name: string }) =>
-      createAndLinkTeacher(chromeName, name),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['schedule-matching-pending'] })
-      setSelectedTeacher(null)
-      setNewTeacherName('')
-      setShowCreateTeacher(false)
     },
   })
 
@@ -143,13 +129,7 @@ export function ScheduleMatchingDialog({ isOpen, onClose }: ScheduleMatchingDial
               selected={selectedTeacher}
               onSelect={setSelectedTeacher}
               onLink={(chromeName, id) => linkTeacherMutation.mutate({ chromeName, teacherId: id })}
-              onCreate={(chromeName, name) => createTeacherMutation.mutate({ chromeName, name })}
               isLinking={linkTeacherMutation.isPending}
-              isCreating={createTeacherMutation.isPending}
-              showCreate={showCreateTeacher}
-              setShowCreate={setShowCreateTeacher}
-              newName={newTeacherName}
-              setNewName={setNewTeacherName}
             />
           ) : (
             <MatchingPanes
@@ -159,13 +139,15 @@ export function ScheduleMatchingDialog({ isOpen, onClose }: ScheduleMatchingDial
               selected={selectedSubject}
               onSelect={setSelectedSubject}
               onLink={(chromeName, id) => linkSubjectMutation.mutate({ chromeName, subjectId: id })}
-              onCreate={(chromeName, name) => createSubjectMutation.mutate({ chromeName, name })}
               isLinking={linkSubjectMutation.isPending}
-              isCreating={createSubjectMutation.isPending}
-              showCreate={showCreateSubject}
-              setShowCreate={setShowCreateSubject}
-              newName={newSubjectName}
-              setNewName={setNewSubjectName}
+              create={{
+                onCreate: (chromeName, name) => createSubjectMutation.mutate({ chromeName, name }),
+                isCreating: createSubjectMutation.isPending,
+                showCreate: showCreateSubject,
+                setShowCreate: setShowCreateSubject,
+                newName: newSubjectName,
+                setNewName: setNewSubjectName,
+              }}
             />
           )}
         </div>
@@ -184,6 +166,16 @@ export function ScheduleMatchingDialog({ isOpen, onClose }: ScheduleMatchingDial
 type MatchingItem = { chrome_name: string; sessions_count: number; current_match?: { name: string } | null }
 type AvailableItem = { id: number; name: string }
 
+/** ما يلزم لإنشاء سجلٍ ناقصٍ وربطه من داخل الحوار. */
+interface CreateAffordance {
+  onCreate: (chromeName: string, name: string) => void
+  isCreating: boolean
+  showCreate: boolean
+  setShowCreate: (v: boolean) => void
+  newName: string
+  setNewName: (v: string) => void
+}
+
 interface MatchingPanesProps<TUnmatched extends MatchingItem> {
   kind: 'teachers' | 'subjects'
   unmatched: TUnmatched[]
@@ -191,13 +183,13 @@ interface MatchingPanesProps<TUnmatched extends MatchingItem> {
   selected: TUnmatched | null
   onSelect: (item: TUnmatched | null) => void
   onLink: (chromeName: string, id: number) => void
-  onCreate: (chromeName: string, name: string) => void
   isLinking: boolean
-  isCreating: boolean
-  showCreate: boolean
-  setShowCreate: (v: boolean) => void
-  newName: string
-  setNewName: (v: string) => void
+  /**
+   * الإنشاء يُمرَّر للمواد وحدها. المادة اسمٌ ولا شيء غيره، أما المعلم فحسابُ
+   * دخولٍ مفتاحُه رقم الهوية — ولا يحمله ملفُ «مدرستي» — فيُضاف من صفحة
+   * المعلمين ثم يُربط من هنا.
+   */
+  create?: CreateAffordance
 }
 
 function MatchingPanes<TUnmatched extends MatchingItem>({
@@ -207,13 +199,8 @@ function MatchingPanes<TUnmatched extends MatchingItem>({
   selected,
   onSelect,
   onLink,
-  onCreate,
   isLinking,
-  isCreating,
-  showCreate,
-  setShowCreate,
-  newName,
-  setNewName,
+  create,
 }: MatchingPanesProps<TUnmatched>) {
   const isTeachers = kind === 'teachers'
   const EntityIcon = isTeachers ? User : BookOpen
@@ -338,55 +325,10 @@ function MatchingPanes<TUnmatched extends MatchingItem>({
             </div>
 
             <div style={{ borderTop: '1px solid var(--ws-hairline)', paddingTop: 8 }}>
-              {showCreate ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <WsInput
-                    type="text"
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    placeholder={isTeachers ? 'اسم المعلم الجديد' : 'اسم المادة الجديدة'}
-                    autoFocus
-                  />
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <WsBtn
-                      variant="primary"
-                      icon={Plus}
-                      onClick={() => onCreate(selected.chrome_name, newName || selected.chrome_name)}
-                      disabled={isCreating}
-                      style={{ flex: 1, justifyContent: 'center' }}
-                    >
-                      إنشاء وربط
-                    </WsBtn>
-                    <WsBtn onClick={() => setShowCreate(false)}>إلغاء</WsBtn>
-                  </div>
-                </div>
+              {create ? (
+                <CreatePane create={create} chromeName={selected.chrome_name} />
               ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNewName(selected.chrome_name)
-                    setShowCreate(true)
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                    width: '100%',
-                    padding: '8px 11px',
-                    borderRadius: 8,
-                    border: '2px dashed var(--ws-border)',
-                    background: 'transparent',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    fontSize: 11.5,
-                    fontWeight: 600,
-                    color: 'var(--ws-text-2)',
-                  }}
-                >
-                  <Plus style={{ width: 13, height: 13 }} />
-                  {isTeachers ? 'إنشاء معلم جديد' : 'إنشاء مادة جديدة'}
-                </button>
+                <MissingTeacherNote />
               )}
             </div>
           </div>
@@ -397,6 +339,96 @@ function MatchingPanes<TUnmatched extends MatchingItem>({
         )}
       </div>
     </>
+  )
+}
+
+/** إنشاء سجلٍ ناقصٍ وربطه في خطوة واحدة — للمواد وحدها. */
+function CreatePane({ create, chromeName }: { create: CreateAffordance; chromeName: string }) {
+  if (!create.showCreate) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          create.setNewName(chromeName)
+          create.setShowCreate(true)
+        }}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 6,
+          width: '100%',
+          padding: '8px 11px',
+          borderRadius: 8,
+          border: '2px dashed var(--ws-border)',
+          background: 'transparent',
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+          fontSize: 11.5,
+          fontWeight: 600,
+          color: 'var(--ws-text-2)',
+        }}
+      >
+        <Plus style={{ width: 13, height: 13 }} />
+        إنشاء مادة جديدة
+      </button>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <WsInput
+        type="text"
+        value={create.newName}
+        onChange={(e) => create.setNewName(e.target.value)}
+        placeholder="اسم المادة الجديدة"
+        autoFocus
+      />
+      <div style={{ display: 'flex', gap: 6 }}>
+        <WsBtn
+          variant="primary"
+          icon={Plus}
+          onClick={() => create.onCreate(chromeName, create.newName || chromeName)}
+          disabled={create.isCreating}
+          style={{ flex: 1, justifyContent: 'center' }}
+        >
+          إنشاء وربط
+        </WsBtn>
+        <WsBtn onClick={() => create.setShowCreate(false)}>إلغاء</WsBtn>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * بديلُ زرِّ «إنشاء معلم جديد» الذي كان هنا.
+ *
+ * حسابُ المعلم مفتاحُه رقم الهوية: عشرة أرقام، فريدةٌ في المدرسة، وبها
+ * يدخل النظامَ ويُطابَق حضورُه على جهاز البصمة. وملفُّ «مدرستي» لا يحمل
+ * أرقامَ الهويات — فاختلاقُ رقمٍ هنا كان يُنتج حساباً لا يدخل به صاحبه
+ * وقد يصادم هويةً حقيقية. فصار الإرشاد بدل الزر.
+ */
+function MissingTeacherNote() {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        gap: 7,
+        padding: '8px 11px',
+        borderRadius: 8,
+        border: '1px solid var(--ws-border)',
+        background: 'var(--ws-surface-2)',
+        fontSize: 11,
+        lineHeight: 1.7,
+        color: 'var(--ws-text-2)',
+      }}
+    >
+      <UserPlus style={{ width: 13, height: 13, flexShrink: 0, marginTop: 3 }} />
+      <span>
+        المعلم غير موجود في القائمة؟ أضِفه من <b>صفحة المعلمين</b> برقم هويته، ثم عُد إلى هنا لربطه.
+        حسابُ المعلم يحتاج رقمَ هويةٍ حقيقياً ليدخل به ولتُطابَق بصمتُه، وهو ما لا يحمله ملفُّ «مدرستي».
+      </span>
+    </div>
   )
 }
 

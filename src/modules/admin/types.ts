@@ -2005,6 +2005,148 @@ export interface TimeTableConfirmResponse {
   stats: TimeTableConfirmStats
 }
 
+// ========== استيراد «الجدول الذكي» (مصنّف Excel، ورقة لكل معلم) ==========
+
+/**
+ * حالة المطابقة الثلاثية.
+ * `matched` بلغت الثقةَ فتُنتقى مسبقاً، و`suggested` دونها فتُعرض ولا تُنتقى:
+ * الأسماء العربية الكاملة تتشابه بنيوياً إلى حدٍّ يجعل الترجيح الصامت خطراً.
+ */
+export type SmartScheduleMatchStatus = 'matched' | 'suggested' | 'unmatched'
+
+export interface SmartScheduleMatch {
+  id: number
+  name: string
+  score: number
+  method: string
+}
+
+export interface SmartScheduleMatchedTeacher {
+  key: string
+  name: string
+  declared_periods: number | null
+  cards: number
+  status: SmartScheduleMatchStatus
+  match: SmartScheduleMatch | null
+}
+
+export interface SmartScheduleMatchedSubject {
+  key: string
+  name: string
+  status: SmartScheduleMatchStatus
+  match: SmartScheduleMatch | null
+}
+
+export interface SmartScheduleParsedClass {
+  key: string
+  grade: string
+  class_name: string
+  /** هل لهذا الفصل طلاب مسجّلون فعلاً؟ */
+  exists: boolean
+}
+
+export interface SmartScheduleClassConflict {
+  class: string
+  day: string
+  period: number
+  teachers: string[]
+}
+
+export interface SmartScheduleTeacherConflict {
+  teacher: string
+  day: string
+  period: number
+  classes: string[]
+}
+
+export interface SmartScheduleConflicts {
+  class: SmartScheduleClassConflict[]
+  teacher: SmartScheduleTeacherConflict[]
+}
+
+export interface SmartSchedulePreviewStats {
+  total_cards: number
+  total_teachers: number
+  matched_teachers: number
+  suggested_teachers: number
+  total_subjects: number
+  matched_subjects: number
+  suggested_subjects: number
+  total_classes: number
+  known_classes: number
+  total_days: number
+  total_periods: number
+  class_conflicts: number
+  teacher_conflicts: number
+}
+
+export interface SmartSchedulePreviewData {
+  school_name: string | null
+  days: string[]
+  periods: number[]
+  teachers: SmartScheduleMatchedTeacher[]
+  subjects: SmartScheduleMatchedSubject[]
+  classes: SmartScheduleParsedClass[]
+  cards_count: number
+  conflicts: SmartScheduleConflicts
+  warnings: string[]
+  available_teachers: TimeTableAvailableTeacher[]
+  available_subjects: TimeTableAvailableSubject[]
+  stats: SmartSchedulePreviewStats
+}
+
+export interface SmartScheduleTeacherMapping {
+  key: string
+  teacher_id: number | null
+  /** استبعاد جدول هذا المعلم من هذه الجولة */
+  skip: boolean
+}
+
+export interface SmartScheduleSubjectMapping {
+  key: string
+  subject_id: number | null
+  /** إنشاء المادة بهذا الاسم إن لم تُربط بمادة قائمة */
+  create: boolean
+}
+
+export interface SmartScheduleClassMapping {
+  key: string
+  grade: string
+  class_name: string
+  skip: boolean
+}
+
+export interface SmartScheduleConfirmPayload {
+  file: File
+  teacher_mappings: SmartScheduleTeacherMapping[]
+  subject_mappings: SmartScheduleSubjectMapping[]
+  class_mappings: SmartScheduleClassMapping[]
+  replace_existing: boolean
+}
+
+export interface SmartScheduleConfirmStats {
+  sessions_created: number
+  sessions_replaced: number
+  subjects_created: number
+  cards_skipped: number
+  classes_count: number
+  errors_count: number
+}
+
+export interface SmartScheduleImportError {
+  class: string
+  teacher: string
+  day: string
+  period: number
+  reason: string
+}
+
+export interface SmartScheduleConfirmResult {
+  message: string
+  stats: SmartScheduleConfirmStats
+  errors: SmartScheduleImportError[]
+}
+
 // ========== تحضير الحصص (Period Attendance) ==========
 
 export interface PeriodHeader {

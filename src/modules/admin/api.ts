@@ -3560,14 +3560,6 @@ export async function linkSubject(chromeName: string, subjectId: number): Promis
   return unwrapResponse(data, 'تعذر ربط المادة')
 }
 
-export async function createAndLinkTeacher(chromeName: string, name: string): Promise<{ message: string; teacher: { id: number; name: string }; updated_count: number }> {
-  const { data } = await apiClient.post<ApiResponse<{ message: string; teacher: { id: number; name: string }; updated_count: number }>>(
-    '/admin/schedule-matching/create-and-link-teacher',
-    { chrome_name: chromeName, name }
-  )
-  return unwrapResponse(data, 'تعذر إنشاء وربط المعلم')
-}
-
 export async function createAndLinkSubject(chromeName: string, name: string): Promise<{ message: string; subject: { id: number; name: string }; updated_count: number }> {
   const { data } = await apiClient.post<ApiResponse<{ message: string; subject: { id: number; name: string }; updated_count: number }>>(
     '/admin/schedule-matching/create-and-link-subject',
@@ -3733,6 +3725,68 @@ export async function confirmTimeTableImport(payload: {
 
   const { data } = await apiClient.post<ApiResponse<{ message: string; stats: TimeTableConfirmStats }>>(
     '/admin/timetable-import/confirm',
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    },
+  )
+
+  return unwrapResponse(data, 'تعذر استيراد الجدول')
+}
+
+// ============================================
+// استيراد الجداول من «الجدول الذكي» (مصنّف Excel)
+// ============================================
+
+import type {
+  SmartSchedulePreviewData,
+  SmartScheduleTeacherMapping,
+  SmartScheduleSubjectMapping,
+  SmartScheduleClassMapping,
+  SmartScheduleConfirmResult,
+} from './types'
+
+/**
+ * معاينة مصنّف «الجدول الذكي» قبل الاستيراد
+ */
+export async function previewSmartScheduleImport(file: File): Promise<SmartSchedulePreviewData> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const { data } = await apiClient.post<ApiResponse<SmartSchedulePreviewData>>(
+    '/admin/smart-schedule-import/preview',
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    },
+  )
+
+  return unwrapResponse(data, 'تعذر قراءة ملف الجدول الذكي')
+}
+
+/**
+ * تأكيد وتنفيذ استيراد «الجدول الذكي»
+ */
+export async function confirmSmartScheduleImport(payload: {
+  file: File
+  teacher_mappings: SmartScheduleTeacherMapping[]
+  subject_mappings: SmartScheduleSubjectMapping[]
+  class_mappings: SmartScheduleClassMapping[]
+  replace_existing: boolean
+}): Promise<SmartScheduleConfirmResult> {
+  const formData = new FormData()
+  formData.append('file', payload.file)
+  formData.append('teacher_mappings', JSON.stringify(payload.teacher_mappings))
+  formData.append('subject_mappings', JSON.stringify(payload.subject_mappings))
+  formData.append('class_mappings', JSON.stringify(payload.class_mappings))
+  formData.append('replace_existing', payload.replace_existing ? '1' : '0')
+
+  const { data } = await apiClient.post<ApiResponse<SmartScheduleConfirmResult>>(
+    '/admin/smart-schedule-import/confirm',
     formData,
     {
       headers: {

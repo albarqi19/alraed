@@ -25,6 +25,8 @@ import {
   deleteClassScheduleSession,
   previewTimeTableImport,
   confirmTimeTableImport,
+  previewSmartScheduleImport,
+  confirmSmartScheduleImport,
   deleteClassSession,
   deleteLateArrival,
   deleteSchedule,
@@ -200,6 +202,9 @@ import type {
   TimeTableTeacherMapping,
   TimeTableSubjectMapping,
   TimeTableClassMapping,
+  SmartScheduleTeacherMapping,
+  SmartScheduleSubjectMapping,
+  SmartScheduleClassMapping,
 } from './types'
 import { getErrorMessage as resolveApiErrorMessage } from '@/services/api/errors'
 
@@ -2728,6 +2733,63 @@ export function useConfirmTimeTableMutation() {
       // تحديث الجداول
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.classSessions.summary() })
       queryClient.invalidateQueries({ queryKey: ['admin', 'class-schedules'] })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر استيراد الجدول') })
+    },
+  })
+}
+
+// ============================================
+// استيراد الجداول من «الجدول الذكي» (مصنّف Excel)
+// ============================================
+
+/**
+ * Hook لمعاينة مصنّف «الجدول الذكي»
+ */
+export function usePreviewSmartScheduleMutation() {
+  const toast = useToast()
+
+  return useMutation({
+    // الإعداد العام يعيد كلّ طفرةٍ فاشلة مرّة (app-providers). وهو نافعٌ لطلبٍ
+    // صغير عابر، ضارٌّ هنا: رفعُ المصنّف وقراءةُ ٤٣ ورقةٍ مرّتين لا يُصلح
+    // خطأ تحقّق، ويُبقي الواجهة على «جاري…» طوال الجولة الثانية.
+    retry: 0,
+    mutationFn: (file: File) => previewSmartScheduleImport(file),
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر قراءة ملف الجدول الذكي') })
+    },
+  })
+}
+
+/**
+ * Hook لتأكيد استيراد «الجدول الذكي»
+ */
+export function useConfirmSmartScheduleMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    // لا إعادة تلقائية: الرفض هنا قرارُ تحقّقٍ لا عثرةُ شبكة، وإعادتُه تُعيد
+    // رفع الملف ومعالجة ٨٩٦ حصة بلا أن تغيّر النتيجة. الأخطر أنها تُطيل
+    // «جاري الاستيراد…» فيظنّ المدير أن العملية ماضية وهي مرفوضة.
+    retry: 0,
+    mutationFn: (payload: {
+      file: File
+      teacher_mappings: SmartScheduleTeacherMapping[]
+      subject_mappings: SmartScheduleSubjectMapping[]
+      class_mappings: SmartScheduleClassMapping[]
+      replace_existing: boolean
+    }) => confirmSmartScheduleImport(payload),
+    onSuccess: (result) => {
+      toast({
+        type: 'success',
+        title: 'تم استيراد الجدول',
+        description: result.message,
+      })
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.classSessions.summary() })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'class-schedules'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'subjects'] })
     },
     onError: (error) => {
       toast({ type: 'error', title: getErrorMessage(error, 'تعذر استيراد الجدول') })
