@@ -187,7 +187,14 @@ export function PointsCardFace({
   return (
     <div
       ref={innerRef}
-      style={hidden ? { position: 'absolute', left: '-9999px', top: 0 } : undefined}
+      /* `fixed` لا `absolute`. القالبُ المخفيّ عرضُه ٣٨٤px ويُزاح ‎-9999px‎،
+         و`absolute` يُبقيه في تدفّق التمرير فيمدّ ‎scrollWidth‎ إلى ١١٣٦٥px —
+         والصفحةُ حينها تُصيَّر بيضاءَ تماماً على العروض الثلاثة كلّها لأنّ
+         المحتوى الحقيقيّ يُدفَع خارج النافذة. و`fixed` يُخرجه من التدفّق
+         فيبقى مطبوعاً وغيرَ مرئيّ. وهو ما تفعله نظائرُه الأربعة في المشروع:
+         duty-roster-templates-panel و standby-distribution-modal (موضعان)
+         و guardian-services-page — هذا الموضع وحده شذّ. */
+      style={hidden ? { position: 'fixed', left: '-9999px', top: 0 } : undefined}
       className="mx-auto flex h-[576px] w-[384px] flex-col justify-between rounded-[32px] border border-slate-200 bg-gradient-to-b from-slate-50 via-white to-slate-100 p-6 text-right shadow-inner"
     >
       <div className="flex items-center justify-between text-xs font-semibold text-slate-500">

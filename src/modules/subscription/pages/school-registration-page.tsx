@@ -680,9 +680,12 @@ export function SchoolRegistrationPage() {
                     رمز الإحالة
                     {/* الشارةُ إلى جانب الاسم لا تحته: كانت `اختياري` تنزل سطراً
                         مستقلاً لأنّ الـ`label` عموديّةٌ، فتُقرأ عنوانًا ثانيًا لا وصفًا. */}
+                    {/* اللونُ والحجمُ مقيسان لا مذوَّقان: #8A8175 على #F1EFE9 نسبتُه
+                        ٣٫٣٣ وهي دون عتبة WCAG AA (٤٫٥)، و#6B6255 يبلغ ٥٫١٧.
+                        و١١px بدل ١٠ لأنّ الشارة تُقرأ لا تُزيَّن. */}
                     <span
-                      className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                      style={{ background: '#F1EFE9', color: '#8A8175' }}
+                      className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                      style={{ background: '#F1EFE9', color: '#6B6255' }}
                     >
                       اختياري
                     </span>

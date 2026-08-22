@@ -239,9 +239,32 @@
     transition: border-color 0.15s, box-shadow 0.15s;
 }
 
+/*
+ * سهمُ القائمة يُرسَم عندنا لا عند المتصفّح.
+ *
+ * كان الأمرُ متروكاً لسهم المتصفّح الأصليّ مع حجزِ مساحةٍ له في
+ * `padding-inline-end` — أي يسارَ الحقل في واجهةٍ عربيّة. لكنّ كروم يرسمه
+ * على اليمين، فوقعَ السهمُ فوق **أوّل حرفٍ** من كلّ قيمة: «جميع الصفوف»
+ * تُقرأ والشيفرونُ فوق جيمها، و«جميع الحالات» كذلك. وأوّلُ الحرف في العربية
+ * هو ما يميّز الكلمة، فالقصُّ من مبتدئها أشدُّ منه من منتهاها.
+ *
+ * والعلاجُ ألّا نراهن على المتصفّح: `appearance: none` يُطفئ سهمَه، وشيفرونٌ
+ * مرسومٌ بـSVG يوضَع في الطرف المنطقيّ صراحةً — يميناً في LTR ويساراً في RTL
+ * — والحشوةُ محجوزةٌ في الطرف نفسه. فيتطابق موضعُ السهم وموضعُ الفراغ في
+ * الاتجاهين معاً، ولا يعلو حرفاً أبداً.
+ */
 .ws-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23807769' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 9px center;
     padding-inline-end: 26px;
     cursor: pointer;
+}
+
+[dir='rtl'] .ws-select {
+    background-position: left 9px center;
 }
 
 .ws-input:focus,
@@ -447,7 +470,10 @@
 
 /* عمود جانبي ملتصق (يسار افتراضياً في RTL) قابل للطي */
 .ws-sidecol {
-    width: 340px;
+    /* ٣٤٠ هو الافتراضيّ، و`WsSideCol` تكتب `--ws-sidecol-w` حين يُمرَّر عرضٌ
+       من الاستدعاء. المتغيّرُ لا النمطُ السطريّ: النمطُ السطريّ يهزم قاعدةَ
+       الجوال أدناه، والمتغيّرُ تهزمه هي. */
+    width: var(--ws-sidecol-w, 340px);
     flex-shrink: 0;
     min-height: 0;
     min-width: 0;
@@ -1382,7 +1408,10 @@ button.ws-chip:disabled {
     }
 
     .ws-sidecol {
-        width: auto;
+        /* يتجاوز المتغيّر عمداً: تحت ١٠٢٤ يتراصّ العمودُ تحت المحتوى
+           فيأخذ العرضَ كلَّه، ولا معنى لعرضٍ مكتبيٍّ محفوظ. */
+        --ws-sidecol-w: 100%;
+        width: 100%;
         border-inline-start: none;
         border-inline-end: none;
         border-top: 1px solid var(--ws-border);

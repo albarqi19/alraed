@@ -223,7 +223,16 @@ export function WsSideCol({
   return (
     <aside
       className={cx('ws-sidecol', side === 'start' && 'ws-sidecol--start', className)}
-      style={width ? { width } : undefined}
+      /* العرضُ متغيّرٌ لا نمطٌ سطريّ.
+         كان `style={{ width }}` يكتب العرضَ على العنصر نفسه، والنمطُ السطريّ
+         يتغلّب على أيّ قاعدةٍ في ورقة الأنماط — فقاعدةُ الجوال
+         `@media (max-width: 1023.98px) { .ws-sidecol { width: auto } }`
+         كانت تُكتَب ولا تُنفَّذ. والنتيجةُ عمودٌ جانبيٌّ بعرضه المكتبيّ
+         (٢٦٠–٣٤٠px) على شاشةِ ٣٩٠px، يترك ثلثَ الشاشة فراغاً ميّتاً ويحشر
+         الأسماءَ في ثلثين. قِيس ذلك في عشرِ صفحات.
+         والمتغيّرُ يُبقي الرقمَ قادماً من الاستدعاء ويُبقي القرارَ لورقة
+         الأنماط — فتفوز قاعدةُ الجوال كما قُصد لها. */
+      style={width ? ({ '--ws-sidecol-w': typeof width === 'number' ? `${width}px` : width } as React.CSSProperties) : undefined}
     >
       <div className="ws-block__head">
         <span className="ws-block__title">
