@@ -39,10 +39,12 @@ export function useActivities(filters: ActivityFilters = {}) {
 /**
  * جلب إحصائيات الأنشطة
  */
-export function useActivityStats() {
+export function useActivityStats(academicYear: string = 'current') {
   return useQuery({
-    queryKey: activityKeys.stats(),
-    queryFn: api.fetchActivityStats,
+    /* العامُ في المفتاح لا في المعاملات وحدها — وإلّا بقيت البطاقاتُ على
+       أرقام العام السابق بعد التبديل بلا إعادة جلب: رقمٌ كاذبٌ صامت. */
+    queryKey: [...activityKeys.stats(), academicYear],
+    queryFn: () => api.fetchActivityStats(academicYear),
   })
 }
 

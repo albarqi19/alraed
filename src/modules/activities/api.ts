@@ -32,6 +32,7 @@ export async function fetchActivities(filters: ActivityFilters = {}): Promise<Ac
   if (filters.page) {
     params.page = filters.page
   }
+  params.academic_year = filters.academic_year ?? 'current'
 
   const { data } = await apiClient.get<ApiResponse<Activity[]> & { meta?: ActivitiesListResponse['meta'] }>('/admin/activities', { params })
   
@@ -57,8 +58,10 @@ export async function fetchActivities(filters: ActivityFilters = {}): Promise<Ac
 /**
  * جلب إحصائيات الأنشطة (للإدارة)
  */
-export async function fetchActivityStats(): Promise<ActivityStats> {
-  const { data } = await apiClient.get<ApiResponse<ActivityStats>>('/admin/activities/stats')
+export async function fetchActivityStats(academicYear: string = 'current'): Promise<ActivityStats> {
+  const { data } = await apiClient.get<ApiResponse<ActivityStats>>('/admin/activities/stats', {
+    params: { academic_year: academicYear },
+  })
   
   if (!data.success) {
     throw new Error(data.message ?? 'تعذر تحميل إحصائيات الأنشطة')

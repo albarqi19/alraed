@@ -85,6 +85,7 @@ import type {
   StoreSettingsPayload,
   StoreStatus,
 } from '@/modules/admin/types'
+import { useYearScope, YearScopeSelect } from '@/modules/admin/academic-years'
 
 const numberFormatter = new Intl.NumberFormat('en-US')
 const dateFormatter = new Intl.DateTimeFormat('ar-SA-u-nu-latn', {
@@ -307,6 +308,9 @@ function createDefaultCategoryForm(): CategoryFormState {
 export function AdminEStorePage() {
   const toast = useToast()
   const [activeTab, setActiveTab] = useState<'catalog' | 'orders' | 'settings'>('catalog')
+  /* الكتالوجُ رفٌّ قائمٌ لا سجلّ، فالمنتقي على تبويب الطلبات وحده — لكنّ
+     البطاقاتِ في الترويسة تخصّ الطلباتِ أيضاً فتتبع العامَ في كل حال. */
+  const { scope: yearScope, setScope: setYearScope } = useYearScope()
   const [itemFilters, setItemFilters] = useState<StoreItemFilters>({ status: 'all', page: 1, per_page: 10 })
   const [orderFilters, setOrderFilters] = useState<StoreOrderFilters>({ status: 'all', page: 1, per_page: 10 })
   const [itemSearch, setItemSearch] = useState('')
@@ -326,11 +330,11 @@ export function AdminEStorePage() {
   const [deleteItemTarget, setDeleteItemTarget] = useState<StoreItemRecord | null>(null)
   const [deleteCategoryTarget, setDeleteCategoryTarget] = useState<StoreCategoryRecord | null>(null)
 
-  const statsQuery = useStoreStatsQuery()
+  const statsQuery = useStoreStatsQuery(yearScope)
   const storeSettingsQuery = useStoreSettingsQuery()
   const categoriesQuery = useStoreCategoriesQuery()
   const itemsQuery = useStoreItemsQuery(itemFilters)
-  const ordersQuery = useStoreOrdersQuery(orderFilters)
+  const ordersQuery = useStoreOrdersQuery({ ...orderFilters, academic_year: yearScope })
 
   const createCategoryMutation = useCreateStoreCategoryMutation()
   const updateCategoryMutation = useUpdateStoreCategoryMutation()
@@ -745,6 +749,7 @@ export function AdminEStorePage() {
         }
         actions={
           <>
+            {activeTab === 'orders' && <YearScopeSelect scope={yearScope} onChange={setYearScope} />}
             {activeTab === 'catalog' && (
               <>
                 <WsBtn icon={Tags} onClick={() => { setEditingCategory(null); setCategoryForm(createDefaultCategoryForm()); setIsCategoryFormOpen(true) }}>

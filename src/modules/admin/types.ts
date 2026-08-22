@@ -1195,6 +1195,8 @@ export interface StoreOrderFilters {
   search?: string
   page?: number
   per_page?: number
+  /** `current` (الافتراضيّ في الخادم) أو `all` أو معرَّف سنة */
+  academic_year?: string
 }
 
 export interface WhatsappTemplateVariable {
@@ -1306,6 +1308,8 @@ export interface LeaveRequestFilters {
   page?: number
   per_page?: number
   student_id?: number
+  /** `current` (الافتراضيّ في الخادم) أو `all` أو معرَّف سنة */
+  academic_year?: string
 }
 
 export interface LeaveRequestListResult {
@@ -1445,6 +1449,8 @@ export interface PointTransactionFilters {
   search?: string
   page?: number
   per_page?: number
+  /** `current` (الافتراضيّ في الخادم) أو `all` أو معرَّف سنة */
+  academic_year?: string
 }
 
 export interface PointLeaderboardFilters {

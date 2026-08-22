@@ -2212,6 +2212,7 @@ export async function fetchLeaveRequests(filters: LeaveRequestFilters = {}): Pro
   if (filters.page) params.page = filters.page
   if (filters.per_page) params.per_page = filters.per_page
   if (typeof filters.student_id === 'number' && filters.student_id > 0) params.student_id = filters.student_id
+  params.academic_year = filters.academic_year ?? 'current'
 
   const { data } = await apiClient.get<PaginatedResponse<unknown[]>>('/admin/leave-requests', {
     params,
@@ -2972,8 +2973,10 @@ function sanitizeFilters(filters: Record<string, unknown>): Record<string, unkno
   )
 }
 
-export async function fetchStoreStats(): Promise<StoreStats> {
-  const response = await apiClient.get<ApiResponse<StoreStats>>('/admin/e-store/stats')
+export async function fetchStoreStats(academicYear: string = 'current'): Promise<StoreStats> {
+  const response = await apiClient.get<ApiResponse<StoreStats>>('/admin/e-store/stats', {
+    params: { academic_year: academicYear },
+  })
   return unwrapResponse(response.data, 'تعذر جلب إحصائيات المتجر')
 }
 

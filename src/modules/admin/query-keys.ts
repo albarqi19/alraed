@@ -77,7 +77,9 @@ export const adminQueryKeys = {
   },
   store: {
     settings: () => ['admin', 'store', 'settings'] as const,
-    stats: () => ['admin', 'store', 'stats'] as const,
+    /* بوسيطٍ لا بدونه: مفتاحٌ ثابتٌ يُبقي البطاقاتِ على أرقام العام السابق
+       بعد تبديل السنة بلا إعادة جلب — رقمٌ كاذبٌ صامت. */
+    stats: (filters: Record<string, unknown> = {}) => ['admin', 'store', 'stats', filters] as const,
     categories: () => ['admin', 'store', 'categories'] as const,
     items: (filters: Record<string, unknown>) => ['admin', 'store', 'items', filters] as const,
     orders: (filters: Record<string, unknown>) => ['admin', 'store', 'orders', filters] as const,

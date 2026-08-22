@@ -33,6 +33,7 @@ import {
   WsEmpty,
   WsProgress,
 } from '@/shared/workspace'
+import { useYearScope, YearScopeSelect, YearScopeEmptyNote } from '@/modules/admin/academic-years'
 import { useAdminTreatmentPlans, useAdminGuidanceStudents } from '../api/guidance-hooks'
 import { TONES, ToneChip, InitialAvatar } from './student-cases-ui'
 import { PLAN_STATUS_META, PROBLEM_META, ProgressRing, DaysRemainingChip } from './treatment-plans-ui'
@@ -76,7 +77,14 @@ export function TreatmentPlansPage() {
     }
   }, [viewMode])
 
-  const { data: plansData, isLoading, error } = useAdminTreatmentPlans(filters)
+  const { scope: yearScope, setScope: setYearScope } = useYearScope()
+
+  /* الخادمُ يقصّ بالتقاطع لا بالبداية: خطّةٌ بدأت قبل العام وما تزال جارية
+     تظهر في عامها وفي هذا معاً — وهي على مكتب المرشد فعلاً. */
+  const { data: plansData, isLoading, error } = useAdminTreatmentPlans({
+    ...filters,
+    academic_year: yearScope,
+  })
   const { data: students } = useAdminGuidanceStudents()
 
   // حساب الإحصائيات
@@ -146,7 +154,12 @@ export function TreatmentPlansPage() {
       <WsHeader
         title="الخطط العلاجية"
         badge="الإرشاد الطلابي"
-        actions={<WsBtn variant="primary" icon={Plus} onClick={() => navigate('/admin/treatment-plans/new')}>خطة جديدة</WsBtn>}
+        actions={
+          <>
+            <YearScopeSelect scope={yearScope} onChange={setYearScope} />
+            <WsBtn variant="primary" icon={Plus} onClick={() => navigate('/admin/treatment-plans/new')}>خطة جديدة</WsBtn>
+          </>
+        }
         facts={
           <>
             <WsFact icon={ClipboardList} label="إجمالي الخطط">{stats.total}</WsFact>
@@ -280,12 +293,13 @@ export function TreatmentPlansPage() {
             <WsEmpty loading>جاري تحميل الخطط العلاجية...</WsEmpty>
           ) : plans.length === 0 ? (
             <WsEmpty icon={ClipboardList}>
-              <p style={{ margin: 0 }}>لا توجد خطط علاجية{hasActiveFilters ? ' مطابقة للفلاتر' : ''}</p>
+              <p style={{ margin: 0 }}>لا توجد خطط علاجية{hasActiveFilters ? ' مطابقة للفلاتر' : ' في هذا العام'}</p>
               {!hasActiveFilters && (
                 <WsBtn variant="primary" size="sm" icon={Plus} onClick={() => navigate('/admin/treatment-plans/new')} style={{ marginTop: 8 }}>
                   إنشاء خطة علاجية
                 </WsBtn>
               )}
+              <YearScopeEmptyNote scope={yearScope} onShowAll={() => setYearScope('all')} />
             </WsEmpty>
           ) : viewMode === 'cards' ? (
             <div className="ws-block__scroll">

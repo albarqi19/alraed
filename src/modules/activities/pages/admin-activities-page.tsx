@@ -49,6 +49,7 @@ import {
   useApproveReport,
   useRejectReport,
 } from '../hooks'
+import { useYearScope, YearScopeSelect, YearScopeEmptyNote } from '@/modules/admin/academic-years'
 import { ActivityCreateModal } from '../components/activity-create-modal'
 import type { ActivityStatus, ReportStatus } from '../types'
 
@@ -99,10 +100,13 @@ export function AdminActivitiesPage() {
   const [rejectionReason, setRejectionReason] = useState('')
   const [viewingImageIndex, setViewingImageIndex] = useState<number | null>(null)
 
+  const { scope: yearScope, setScope: setYearScope } = useYearScope()
+
   const { data: activitiesData, isLoading: isLoadingActivities } = useActivities({
-    status: statusFilter === 'all' ? undefined : statusFilter
+    status: statusFilter === 'all' ? undefined : statusFilter,
+    academic_year: yearScope,
   })
-  const { data: stats } = useActivityStats()
+  const { data: stats } = useActivityStats(yearScope)
   const { data: grades } = useAvailableGrades()
   const deleteActivity = useDeleteActivity()
 
@@ -219,7 +223,12 @@ export function AdminActivitiesPage() {
       <WsHeader
         title="إدارة الأنشطة"
         badge="الأنشطة الطلابية"
-        actions={<WsBtn variant="primary" icon={Plus} onClick={() => setIsCreateModalOpen(true)}>نشاط جديد</WsBtn>}
+        actions={
+          <>
+            <YearScopeSelect scope={yearScope} onChange={setYearScope} />
+            <WsBtn variant="primary" icon={Plus} onClick={() => setIsCreateModalOpen(true)}>نشاط جديد</WsBtn>
+          </>
+        }
         facts={
           <>
             <WsFact icon={Sparkles} label="إجمالي الأنشطة">{stats?.total_activities ?? 0}</WsFact>
@@ -266,7 +275,12 @@ export function AdminActivitiesPage() {
             {isLoadingActivities ? (
               <WsEmpty loading>جاري التحميل...</WsEmpty>
             ) : activities.length === 0 ? (
-              <WsEmpty icon={CalendarDays}>لا توجد أنشطة مطابقة للفلتر الحالي</WsEmpty>
+              <WsEmpty icon={CalendarDays}>
+                لا توجد أنشطة مطابقة للفلتر الحالي
+                {/* هذه الشاشة تنتقي أوّلَ نشاطٍ تلقائيّاً، فسنةٌ فارغةٌ تُخلي
+                    العمودين معاً — ولا مخرجَ للمستخدم بلا هذا السطر. */}
+                <YearScopeEmptyNote scope={yearScope} onShowAll={() => setYearScope('all')} />
+              </WsEmpty>
             ) : (
               activities.map((item) => {
                 const meta = STATUS_META[item.status]

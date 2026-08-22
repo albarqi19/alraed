@@ -82,6 +82,7 @@ import type {
   PointTransactionFilters,
   PointTransactionRecord,
 } from '../types'
+import { useYearScope, YearScopeSelect, YearScopeEmptyNote } from '@/modules/admin/academic-years'
 
 const NUMBER_FORMATTER = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 })
 const DATE_FORMATTER = new Intl.DateTimeFormat('ar-SA-u-nu-latn', {
@@ -173,6 +174,7 @@ function getSettingsPayload(settings: PointSettingsRecord | null | undefined): P
 
 export function PointsProgramPage() {
   const [activeTab, setActiveTab] = useState<TabKey>('transactions')
+  const { scope: yearScope, setScope: setYearScope } = useYearScope()
   const [settingsDraft, setSettingsDraft] = useState<PointSettingsUpdatePayload>(DEFAULT_SETTINGS)
   const [reasonForm, setReasonForm] = useState<PointReasonPayload>(DEFAULT_REASON_FORM)
   const [editingReason, setEditingReason] = useState<PointReasonRecord | null>(null)
@@ -197,7 +199,16 @@ export function PointsProgramPage() {
   const settingsQuery = usePointSettingsQuery()
   const leaderboardQuery = usePointLeaderboardQuery({ page: 1, per_page: 10 })
   const reasonsQuery = usePointReasonsQuery()
-  const transactionsQuery = usePointTransactionsQuery(transactionFilters)
+  /* سجلُّ الحركات وحده يُقصّ بالعام. أمّا لوحةُ الشرف والبطاقاتُ فرصيدٌ
+     قائمٌ وهويّةٌ سارية لا تاريخٌ يُقصّ — طالبٌ رصيدُه اليومَ ثمانون هو
+     صاحبُ ثمانين مهما تفرّقت حركاتُه على الأعوام، وبطاقةٌ فعّالةٌ أُصدرت
+     العامَ الماضي فعّالةٌ اليوم. وإعادةُ بناء اللوحة لعامٍ واحد تقتضي جمعَ
+     أربعة أنواعِ حركاتٍ بإشاراتها واستثناءَ المتراجَع عنه — عملٌ مستقلٌّ
+     يغيّر معنى «الرصيد» لا يُدَسّ في مرشِّح عرض. */
+  const transactionsQuery = usePointTransactionsQuery({
+    ...transactionFilters,
+    academic_year: yearScope,
+  })
 
   // Fetch cards with pagination
   const cardsQuery = usePointCardsQuery({
@@ -661,6 +672,11 @@ export function PointsProgramPage() {
         badge={<span style={{ color: programBadge.tone.tx }}>{programBadge.label}</span>}
         actions={
           <>
+            {/* على تبويب السجلّ وحده: البطاقاتُ والإعدادات والأسبابُ حالةٌ
+                قائمة لا تاريخ، ومنتقٍ لا يبدّل شيئاً ضجيجٌ يُوهم بأنّه يفعل. */}
+            {activeTab === 'transactions' && (
+              <YearScopeSelect scope={yearScope} onChange={setYearScope} />
+            )}
             {activeTab === 'cards' && (
               <WsBtn
                 variant="primary"
@@ -930,7 +946,10 @@ export function PointsProgramPage() {
               {transactionsQuery.isLoading ? (
                 <WsEmpty loading>جارٍ تحميل السجل...</WsEmpty>
               ) : transactions.length === 0 ? (
-                <WsEmpty icon={Activity}>لا توجد عمليات مسجلة مطابقة للمرشحات الحالية</WsEmpty>
+                <WsEmpty icon={Activity}>
+                  لا توجد عمليات مسجلة مطابقة للمرشحات الحالية
+                  <YearScopeEmptyNote scope={yearScope} onShowAll={() => setYearScope('all')} />
+                </WsEmpty>
               ) : (
                 <WsTable>
                   <thead>

@@ -33,6 +33,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { useYearScope, YearScopeSelect, YearScopeEmptyNote } from '@/modules/admin/academic-years'
 import {
   WsAlert,
   WsBlock,
@@ -602,9 +603,13 @@ export function AdminLeaveRequestsPage() {
   const [isGeneratingPrintSheet, setIsGeneratingPrintSheet] = useState(false)
   const adminSettingsQuery = useAdminSettingsQuery()
 
+  const { scope: yearScope, setScope: setYearScope } = useYearScope()
+
+  /* تبديلُ العام يُعيد الترقيمَ للأولى كسائر المرشِّحات: الصفحةُ السابعةُ
+     من عامٍ فيه ألفُ طلبٍ لا وجودَ لها في عامٍ فيه عشرة. */
   useEffect(() => {
     setPage(1)
-  }, [statusFilter, submittedByFilter, fromDate, toDate])
+  }, [statusFilter, submittedByFilter, fromDate, toDate, yearScope])
 
   const filters = useMemo<LeaveRequestFilters>(
     () => ({
@@ -614,8 +619,9 @@ export function AdminLeaveRequestsPage() {
       to_date: toDate || undefined,
       page,
       per_page: PAGE_SIZE,
+      academic_year: yearScope,
     }),
-    [fromDate, page, statusFilter, submittedByFilter, toDate],
+    [fromDate, page, statusFilter, submittedByFilter, toDate, yearScope],
   )
 
   const { data, isLoading, isError, refetch } = useLeaveRequestsQuery(filters)
@@ -924,6 +930,7 @@ export function AdminLeaveRequestsPage() {
         badge="خروج الطلاب"
         actions={
           <>
+            <YearScopeSelect scope={yearScope} onChange={setYearScope} />
             <WsBtn icon={Printer} onClick={handlePrintGuardianSheet} disabled={isGeneratingPrintSheet}>
               {isGeneratingPrintSheet ? 'جاري التجهيز...' : 'تعليمات أولياء الأمور'}
             </WsBtn>
@@ -1006,7 +1013,10 @@ export function AdminLeaveRequestsPage() {
             {isLoading ? (
               <WsEmpty loading>جاري تحميل طلبات الاستئذان...</WsEmpty>
             ) : requests.length === 0 ? (
-              <WsEmpty icon={Inbox}>لا توجد طلبات استئذان مطابقة للمرشحات الحالية.</WsEmpty>
+              <WsEmpty icon={Inbox}>
+                لا توجد طلبات استئذان مطابقة للمرشحات الحالية.
+                <YearScopeEmptyNote scope={yearScope} onShowAll={() => setYearScope('all')} />
+              </WsEmpty>
             ) : (
               <WsTable>
                 <thead>

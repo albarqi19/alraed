@@ -1940,10 +1940,10 @@ export function useUpdateStoreSettingsMutation() {
   })
 }
 
-export function useStoreStatsQuery() {
+export function useStoreStatsQuery(academicYear: string = 'current') {
   return useQuery({
-    queryKey: adminQueryKeys.store.stats(),
-    queryFn: fetchStoreStats,
+    queryKey: adminQueryKeys.store.stats({ academicYear }),
+    queryFn: () => fetchStoreStats(academicYear),
     refetchOnMount: true,
   })
 }

@@ -202,4 +202,6 @@ export interface ActivitiesListResponse {
 export interface ActivityFilters {
   status?: ActivityStatus | 'all'
   page?: number
+  /** `current` (الافتراضيّ في الخادم) أو `all` أو معرَّف سنة */
+  academic_year?: string
 }
