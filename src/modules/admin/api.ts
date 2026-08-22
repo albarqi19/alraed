@@ -29,7 +29,6 @@ import type {
   ImportStudentsPayload,
   ImportStudentsPreview,
   ImportSummary,
-  ImportTeachersSummary,
   LateArrivalCreateResponse,
   LateArrivalRecord,
   LateArrivalStats,
@@ -2481,6 +2480,13 @@ export async function previewImportStudents(formData: FormData): Promise<ImportS
   return unwrapResponse(data, 'تعذر تحليل ملف الطلاب')
 }
 
+export async function downloadStudentsTemplate(): Promise<Blob> {
+  const { data } = await apiClient.get<Blob>('/admin/import/students/template', {
+    responseType: 'blob',
+  })
+  return data
+}
+
 export async function importStudents(formData: FormData, options: ImportStudentsPayload = {}): Promise<ImportSummary> {
   if (options.update_existing) {
     formData.append('update_existing', options.update_existing ? '1' : '0')
@@ -2493,27 +2499,6 @@ export async function importStudents(formData: FormData, options: ImportStudents
     headers: { 'Content-Type': 'multipart/form-data' },
   })
   return unwrapResponse(data, 'تعذر استيراد الطلاب')
-}
-
-export async function importTeachers(formData: FormData): Promise<ImportTeachersSummary> {
-  const { data } = await apiClient.post<ApiResponse<ImportTeachersSummary>>('/admin/import/teachers', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
-  return unwrapResponse(data, 'تعذر استيراد المعلمين')
-}
-
-export async function downloadStudentsTemplate(): Promise<Blob> {
-  const { data } = await apiClient.get<Blob>('/admin/import/students/template', {
-    responseType: 'blob',
-  })
-  return data
-}
-
-export async function downloadTeachersTemplate(): Promise<Blob> {
-  const { data } = await apiClient.get<Blob>('/admin/import/teachers/template', {
-    responseType: 'blob',
-  })
-  return data
 }
 
 export async function fetchAdminSettings(): Promise<AdminSettings> {

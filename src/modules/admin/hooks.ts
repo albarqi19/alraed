@@ -34,7 +34,6 @@ import {
   deleteWhatsappQueueItem,
   deleteWhatsappTemplate,
   downloadStudentsTemplate,
-  downloadTeachersTemplate,
   exportAttendanceReport,
   fetchAdminDashboardStats,
   fetchAdminSettings,
@@ -65,7 +64,6 @@ import {
   fetchWhatsappStudents,
   fetchWhatsappTemplates,
   importStudents,
-  importTeachers,
   previewImportStudents,
   rejectAttendanceRecord,
   rejectAttendanceSession,
@@ -1577,22 +1575,6 @@ export function useImportStudentsMutation() {
   })
 }
 
-export function useImportTeachersMutation() {
-  const toast = useToast()
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: importTeachers,
-    onSuccess: () => {
-      toast({ type: 'success', title: 'تم استيراد المعلمين' })
-      queryClient.invalidateQueries({ queryKey: adminQueryKeys.teachers.all() })
-    },
-    onError: (error) => {
-      toast({ type: 'error', title: getErrorMessage(error, 'تعذر استيراد المعلمين') })
-    },
-  })
-}
-
 export function useDownloadStudentsTemplateMutation() {
   const toast = useToast()
 
@@ -1609,29 +1591,6 @@ export function useDownloadStudentsTemplateMutation() {
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
       toast({ type: 'success', title: 'تم تنزيل قالب الطلاب بنجاح' })
-    },
-    onError: (error) => {
-      toast({ type: 'error', title: getErrorMessage(error, 'تعذر تنزيل القالب') })
-    },
-  })
-}
-
-export function useDownloadTeachersTemplateMutation() {
-  const toast = useToast()
-
-  return useMutation({
-    mutationFn: downloadTeachersTemplate,
-    onSuccess: (blob) => {
-      // تنزيل الملف فعلياً
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = 'قالب_استيراد_المعلمين.csv'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-      toast({ type: 'success', title: 'تم تنزيل قالب المعلمين بنجاح' })
     },
     onError: (error) => {
       toast({ type: 'error', title: getErrorMessage(error, 'تعذر تنزيل القالب') })

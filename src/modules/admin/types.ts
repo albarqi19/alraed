@@ -935,9 +935,6 @@ export interface ImportSummary {
   }>
 }
 
-export interface ImportTeachersSummary extends ImportSummary {
-  credentials?: TeacherCredentials[]
-}
 
 export interface AdminSettings {
   school_name: string

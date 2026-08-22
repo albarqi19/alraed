@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   AlertTriangle,
   BookOpen,
@@ -290,8 +291,29 @@ export function AdminSubjectsPage() {
             ) : isLoading ? (
               <WsEmpty loading>جارٍ تحميل المواد...</WsEmpty>
             ) : filteredSubjects.length === 0 ? (
+              /* الفرق بين «لا موادَ بعد» و«لا نتيجةَ لبحثك» فرقٌ في المعنى لا في
+                 الصياغة: الأوّل يحتاج طريقاً، والثاني يحتاج أن يمسح مرشّحاته.
+
+                 والطريقُ لمن لا مادةَ عنده ليس الكتابة يداً: `ScheduleMatchingController` و
+                 `SmartScheduleImportController` يُنشئان الموادَ من الجدول وقتَ استيراده.
+                 فصفحةٌ فارغةٌ تقول «لا مواد مسجّلة» تحت زرّ أخضرَ بارز تدفع المديرَ إلى
+                 كتابة ثلاثين مادةً ستأتيه وحدها بعد دقيقتين من استيراد الجدول. */
               <WsEmpty icon={BookOpen}>
-                {subjects.length === 0 ? 'لا مواد مسجّلة' : 'لا مواد مطابقة للبحث'}
+                {subjects.length === 0 ? (
+                  <span style={{ display: 'block', maxWidth: 420, lineHeight: 1.9 }}>
+                    <strong style={{ display: 'block', marginBottom: 4 }}>لا موادَ بعد</strong>
+                    لا حاجةَ لكتابتها واحدةً واحدة — موادُ مدرستكم تُنشَأ تلقائيّاً حين
+                    تستوردون الجدول الدراسيّ.{' '}
+                    <Link to="/admin/import" style={{ color: 'var(--ws-accent)', fontWeight: 700 }}>
+                      اذهبوا إلى صفحة الاستيراد
+                    </Link>
+                    <span style={{ display: 'block', marginTop: 6, fontSize: 12.5, opacity: 0.75 }}>
+                      وزرّ «مادة جديدة» أعلاه لمادةٍ خارج الجدول تريدون إضافتها بأنفسكم.
+                    </span>
+                  </span>
+                ) : (
+                  'لا مواد مطابقة للبحث'
+                )}
               </WsEmpty>
             ) : (
               <WsTable>

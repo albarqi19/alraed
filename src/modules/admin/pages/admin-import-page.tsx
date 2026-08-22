@@ -1,12 +1,10 @@
 import { useEffect, useId, useMemo, useState } from 'react'
 import {
   useDownloadStudentsTemplateMutation,
-  useDownloadTeachersTemplateMutation,
   useImportStudentsMutation,
-  useImportTeachersMutation,
   usePreviewImportStudentsMutation,
 } from '../hooks'
-import type { ImportStudentsPreview, ImportSummary, ImportTeachersSummary } from '../types'
+import type { ImportStudentsPreview, ImportSummary } from '../types'
 import { ImportCover } from './import-ui'
 import { useToast } from '@/shared/feedback/use-toast'
 import { TimeTableImportDialog } from '../components/timetable-import-dialog'
@@ -18,7 +16,6 @@ import {
   CheckSquare,
   AlertTriangle,
   Trash2,
-  Users,
   GraduationCap,
   Calendar,
   Puzzle,
@@ -26,7 +23,6 @@ import {
   Chrome,
   FileUp,
   Info,
-  KeyRound,
   ListChecks,
   Sparkles,
   Printer,
@@ -907,7 +903,7 @@ function ImportSteps({ dones }: { dones: boolean[] }) {
 type TabId = 'people' | 'schedules' | 'platforms'
 
 const TABS: Array<{ id: TabId; label: string }> = [
-  { id: 'people', label: 'الطلاب والمعلمون' },
+  { id: 'people', label: 'الطلاب' },
   { id: 'schedules', label: 'الجداول' },
   { id: 'platforms', label: 'المنصات' },
 ]
@@ -927,10 +923,6 @@ export function AdminImportPage() {
   const [studentError, setStudentError] = useState<string | null>(null)
   const [studentImportSummary, setStudentImportSummary] = useState<ImportSummary | null>(null)
 
-  // حالة المعلمين
-  const [teacherFile, setTeacherFile] = useState<File | null>(null)
-  const [teacherSummary, setTeacherSummary] = useState<ImportTeachersSummary | null>(null)
-  const [teacherError, setTeacherError] = useState<string | null>(null)
 
   const [isTimeTableDialogOpen, setIsTimeTableDialogOpen] = useState(false)
   const [isSmartScheduleDialogOpen, setIsSmartScheduleDialogOpen] = useState(false)
@@ -938,9 +930,7 @@ export function AdminImportPage() {
 
   const previewStudentsMutation = usePreviewImportStudentsMutation()
   const importStudentsMutation = useImportStudentsMutation()
-  const importTeachersMutation = useImportTeachersMutation()
   const downloadStudentsTemplateMutation = useDownloadStudentsTemplateMutation()
-  const downloadTeachersTemplateMutation = useDownloadTeachersTemplateMutation()
 
   const handleStudentFileSelected = (file: File) => {
     setStudentFile(file)
@@ -981,26 +971,6 @@ export function AdminImportPage() {
     )
   }
 
-  const handleTeacherFileSelected = (file: File) => {
-    setTeacherFile(file)
-    setTeacherSummary(null)
-    setTeacherError(null)
-  }
-
-  const handleTeacherImport = () => {
-    if (!teacherFile) {
-      setTeacherError('اختر ملف المعلمين أولاً.')
-      return
-    }
-    setTeacherError(null)
-    const formData = new FormData()
-    formData.append('file', teacherFile)
-    importTeachersMutation.mutate(formData, {
-      onSuccess: (summary) => setTeacherSummary(summary),
-      onError: () => setTeacherError('تعذر استيراد البيانات. تأكد من القالب أو أعد المحاولة.'),
-    })
-  }
-
   const handlePlatformImport = (platform: 'noor' | 'madrasati') => {
     showToast({
       title: `الاستيراد من ${platform === 'noor' ? 'نظام نور' : 'منصة مدرستي'}`,
@@ -1010,7 +980,6 @@ export function AdminImportPage() {
   }
 
   const isStudentBusy = previewStudentsMutation.isPending || importStudentsMutation.isPending
-  const isTeacherBusy = importTeachersMutation.isPending
 
   const stepDones = [
     Boolean(studentFile),
@@ -1049,8 +1018,11 @@ export function AdminImportPage() {
 
       <WsLayout>
         <WsMain>
+          {/* عمودٌ واحدٌ بعد حذف استيراد المعلمين: كان التخطيط `ws-import-duo`
+              شبكةً `1fr 3px 1fr`، فلو بقي لظلّ عمودُ الطلاب في نصف الشاشة
+              والنصفُ الآخر فارغاً. */}
           {activeTab === 'people' && (
-            <div className="ws-import-duo ws-fade-in">
+            <div className="ws-fade-in" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
               {/* ── عمود الطلاب ── */}
               <WsBlock
                 title="الطلاب"
@@ -1153,115 +1125,6 @@ export function AdminImportPage() {
                 </div>
               </WsBlock>
 
-              {/* الفاصل بين العمودين — لونه وشكله من CSS ليتبع الهوية */}
-              <span className="ws-import-duo__bar" aria-hidden />
-
-              {/* ── عمود المعلمين ── */}
-              <WsBlock
-                title="المعلمون"
-                icon={Users}
-                tools={
-                  <WsBtn
-                    size="sm"
-                    icon={Download}
-                    onClick={() => downloadTeachersTemplateMutation.mutate()}
-                    disabled={downloadTeachersTemplateMutation.isPending}
-                  >
-                    القالب
-                  </WsBtn>
-                }
-                padded
-              >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <p style={{ margin: 0, fontSize: 12.5, color: 'var(--ws-text-2)' }}>
-                    سيتم إنشاء الحسابات الجديدة وإرجاع كلمات المرور المؤقتة إن وُجدت.
-                  </p>
-
-                  <UploadCard
-                    onFileSelected={handleTeacherFileSelected}
-                    isLoading={isTeacherBusy}
-                    helper="الاسم · الهوية · البريد · الجوال · التخصص"
-                    fileName={teacherFile?.name}
-                  />
-
-                  {teacherError && (
-                    <WsAlert tone="error" boxed icon={AlertTriangle}>
-                      {teacherError}
-                    </WsAlert>
-                  )}
-
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
-                    <WsBtn
-                      size="sm"
-                      icon={RefreshCw}
-                      onClick={() => {
-                        setTeacherFile(null)
-                        setTeacherSummary(null)
-                      }}
-                      disabled={isTeacherBusy}
-                    >
-                      إعادة تعيين
-                    </WsBtn>
-                    <WsBtn
-                      size="sm"
-                      variant="primary"
-                      icon={UploadCloud}
-                      onClick={handleTeacherImport}
-                      disabled={isTeacherBusy || !teacherFile}
-                    >
-                      {isTeacherBusy ? 'جارٍ الاستيراد...' : 'تنفيذ الاستيراد'}
-                    </WsBtn>
-                  </div>
-
-                  {teacherSummary && (
-                    <>
-                      <ImportSummaryCard summary={teacherSummary} title="نتائج استيراد المعلمين" />
-
-                      {teacherSummary.credentials && teacherSummary.credentials.length > 0 && (
-                        <div
-                          style={{
-                            padding: 10,
-                            borderRadius: 8,
-                            border: `1px solid ${TONES.amber.bd}`,
-                            background: chip(TONES.amber),
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: 6,
-                          }}
-                        >
-                          <header style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <KeyRound style={{ width: 14, height: 14, color: TONES.amber.tx }} />
-                            <h4 style={{ margin: 0, fontSize: 13, fontWeight: 700, flex: 1 }}>
-                              كلمات المرور المؤقتة ({ar(teacherSummary.credentials.length)})
-                            </h4>
-                          </header>
-                          <div style={{ ...tableWrap, background: 'var(--ws-surface)' }}>
-                            <WsTable>
-                              <thead>
-                                <tr>
-                                  <th>رقم الهوية</th>
-                                  <th>كلمة المرور</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {teacherSummary.credentials.map((credential) => (
-                                  <tr key={`${credential.national_id}-${credential.password}`}>
-                                    <td>{credential.national_id}</td>
-                                    <td style={{ fontFamily: 'monospace' }}>{credential.password}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </WsTable>
-                          </div>
-                          <p style={{ margin: 0, fontSize: 12, color: 'var(--ws-text-2)' }}>
-                            رقم الهوية يُستخدم اسمَ مستخدم — انسخ الكلمات الآن فلن تُعرض مرة أخرى.
-                          </p>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              </WsBlock>
             </div>
           )}
 
@@ -1625,7 +1488,6 @@ export function AdminImportPage() {
               {[
                 { tone: TONES.green, text: 'المعاينة آمنة تماماً — لا تغيّر بيانات النظام.' },
                 { tone: TONES.red, text: 'خيار «حذف السجلات غير الموجودة» يقتلع كل من لم يذكرهم الملف، ومعهم سجلات حضورهم.' },
-                { tone: TONES.amber, text: 'كلمات مرور المعلمين الجدد تظهر مرة واحدة بعد التنفيذ — انسخها فوراً.' },
                 { tone: TONES.sky, text: 'استيراد الجداول يعرض شاشة مطابقة للمعلمين والمواد قبل أي حفظ.' },
               ].map((item) => (
                 <li key={item.text} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
