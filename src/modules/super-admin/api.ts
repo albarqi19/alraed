@@ -6,6 +6,10 @@ import type {
   PlatformOverview,
   PlatformRevenueTrend,
   PlatformSchoolsResponse,
+  ReferralCode,
+  ReferralCodePayload,
+  ReferralCodesResponse,
+  ReferralSchool,
 } from './types'
 
 interface SchoolsQueryParams {
@@ -59,6 +63,55 @@ export async function fetchPlatformSchools(params: SchoolsQueryParams = {}): Pro
   const { data } = await apiClient.get<ApiResponse<PlatformSchoolsResponse>>(endpoint)
   if (!data.success) {
     throw new Error(data.message ?? 'تعذر تحميل قائمة المدارس')
+  }
+  return data.data
+}
+
+/* ═══════ رموز الإحالة ═══════ */
+
+export async function fetchReferralCodes(): Promise<ReferralCodesResponse> {
+  const { data } = await apiClient.get<ApiResponse<ReferralCodesResponse>>('/platform/referral-codes')
+  if (!data.success) {
+    throw new Error(data.message ?? 'تعذر تحميل رموز الإحالة')
+  }
+  return data.data
+}
+
+export async function fetchReferralCodeSchools(
+  id: number,
+): Promise<{ code: ReferralCode; schools: ReferralSchool[] }> {
+  const { data } = await apiClient.get<ApiResponse<{ code: ReferralCode; schools: ReferralSchool[] }>>(
+    `/platform/referral-codes/${id}/schools`,
+  )
+  if (!data.success) {
+    throw new Error(data.message ?? 'تعذر تحميل مدارس الرمز')
+  }
+  return data.data
+}
+
+export async function createReferralCode(payload: ReferralCodePayload): Promise<ReferralCode> {
+  const { data } = await apiClient.post<ApiResponse<ReferralCode>>('/platform/referral-codes', payload)
+  if (!data.success) {
+    throw new Error(data.message ?? 'تعذر إنشاء الرمز')
+  }
+  return data.data
+}
+
+export async function updateReferralCode(
+  id: number,
+  payload: ReferralCodePayload,
+): Promise<ReferralCode> {
+  const { data } = await apiClient.put<ApiResponse<ReferralCode>>(`/platform/referral-codes/${id}`, payload)
+  if (!data.success) {
+    throw new Error(data.message ?? 'تعذر تحديث الرمز')
+  }
+  return data.data
+}
+
+export async function toggleReferralCode(id: number): Promise<ReferralCode> {
+  const { data } = await apiClient.post<ApiResponse<ReferralCode>>(`/platform/referral-codes/${id}/toggle`)
+  if (!data.success) {
+    throw new Error(data.message ?? 'تعذر تغيير حالة الرمز')
   }
   return data.data
 }

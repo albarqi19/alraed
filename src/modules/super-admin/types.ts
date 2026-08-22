@@ -110,3 +110,51 @@ export interface PlatformSchoolsResponse {
     plan: string | null
   }
 }
+
+/* ═══════ رموز الإحالة ═══════ */
+
+export interface ReferralCode {
+  id: number
+  code: string
+  owner_name: string
+  owner_phone: string | null
+  discount_percent: string | number
+  discount_months: number
+  is_active: boolean
+  notes: string | null
+  created_at: string
+  /** كل المدارس المنسوبة للرمز، بما فيها المحذوفة. */
+  schools_count: number
+  /** المدارس القائمة وحدها — الفرق بينهما هو ما حُذف. */
+  active_schools_count: number
+  creator?: { id: number; name: string } | null
+}
+
+export interface ReferralCodesResponse {
+  items: ReferralCode[]
+  summary: { codes: number; active_codes: number; schools: number }
+}
+
+export interface ReferralSchool {
+  id: number
+  name: string
+  admin_name: string | null
+  admin_email: string | null
+  admin_phone: string | null
+  status: string | null
+  subscription_status: string | null
+  created_at: string
+  referral_discount_percent: string | number | null
+  referral_discount_ends_at: string | null
+  discount_active: boolean
+}
+
+export interface ReferralCodePayload {
+  code?: string
+  owner_name?: string
+  owner_phone?: string | null
+  discount_percent?: number | null
+  discount_months?: number | null
+  is_active?: boolean
+  notes?: string | null
+}

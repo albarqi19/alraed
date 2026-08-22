@@ -176,6 +176,7 @@ const PlatformSchoolsPage = lazyNamed(() => import('@/modules/super-admin/pages/
 const PlatformRevenuePage = lazyNamed(() => import('@/modules/super-admin/pages/platform-revenue-page'), 'PlatformRevenuePage')
 const PlatformInvoicesPage = lazyNamed(() => import('@/modules/super-admin/pages/platform-invoices-page'), 'PlatformInvoicesPage')
 const PlatformAnnouncementsPage = lazyNamed(() => import('@/modules/super-admin/pages/platform-announcements-page'), 'PlatformAnnouncementsPage')
+const PlatformReferralsPage = lazyNamed(() => import('@/modules/super-admin/pages/platform-referrals-page'), 'PlatformReferralsPage')
 
 // ── التوجيه (بوابة الموجّه) ──
 const GuidanceAccessPage = lazyNamed(() => import('@/modules/guidance/pages'), 'GuidanceAccessPage')
@@ -386,6 +387,7 @@ const appRoutes = [
           { path: 'revenue', element: <PlatformRevenuePage /> },
           { path: 'invoices', element: <PlatformInvoicesPage /> },
           { path: 'announcements', element: <PlatformAnnouncementsPage /> },
+          { path: 'referrals', element: <PlatformReferralsPage /> },
         ],
       },
       {

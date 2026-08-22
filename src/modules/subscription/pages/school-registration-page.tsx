@@ -34,6 +34,7 @@ const initialForm: RegisterSchoolPayload = {
   admin_phone: '',
   admin_email: '',
   plan_code: '',
+  referral_code: '',
 }
 
 const schoolLevelOptions = [
@@ -268,7 +269,13 @@ export function SchoolRegistrationPage() {
 
     // التشذيبُ قبل الإرسال: مسافةٌ لاصقةٌ في آخر البريد (يضيفها اللصقُ من الجوّال
     // كثيراً) تجعل الرسالة تُرفض عند البوّابة، والمدرسةُ لا تعرف لماذا لم تصل.
-    registerMutation.mutate({ ...form, admin_email: (form.admin_email ?? '').trim() })
+    registerMutation.mutate({
+      ...form,
+      admin_email: (form.admin_email ?? '').trim(),
+      /* الفارغ يُرسَل null لا '': الخادم يفحص `filled()`، وسلسلةٌ فارغة تمرّ
+         منه بسلام لكنّ null أصدقُ في الحمولة وأوضحُ لمن يقرأ سجلَّ الطلب. */
+      referral_code: (form.referral_code ?? '').trim() || null,
+    })
   }
 
   return (
@@ -653,6 +660,29 @@ export function SchoolRegistrationPage() {
                       وتفتحه، فهو طريقك الوحيد لاستعادة بياناتك لاحقاً.
                     </span>
                     {hasSubmitted && emailError ? <FieldError>{emailError}</FieldError> : null}
+                  </label>
+                  {/* رمزُ الإحالة — سطرٌ كاملٌ تحت الزوج، وآخرُ حقلٍ في النموذج.
+                      موضعُه ونبرتُه مقصودان: حقلٌ اختياريٌّ في آخر الصفّ لا
+                      يوقف من لا رمزَ له، ونصُّه يسأل عن مصدر المعرفة ولا يَعِد
+                      بشيء — فلا يتحوّل التسجيل إلى بحثٍ عن رمزٍ في المجموعات. */}
+                  <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700 md:col-span-2">
+                    رمز الإحالة <span className="font-normal" style={{ color: '#8A8175' }}>— اختياري</span>
+                    <input
+                      type="text"
+                      dir="ltr"
+                      autoComplete="off"
+                      value={form.referral_code ?? ''}
+                      /* التحويلُ إلى الكبير عرضاً فقط (CSS) لا في الحالة: الخادم
+                         يوحّد الصورة عنده، ومسُّ ما يكتبه المستخدم أثناء الكتابة
+                         يقفز بالمؤشّر إلى آخر السطر في بعض المتصفّحات. */
+                      style={{ ...fieldStyle, background: '#FFFFFF', textTransform: 'uppercase' }}
+                      onChange={(event) => handleChange('referral_code', event.target.value)}
+                      placeholder="إن كان لديك رمز"
+                      className={`${fieldInput} text-left`}
+                    />
+                    <span className="text-xs font-normal" style={{ color: '#6B6255' }}>
+                      إن وصلك رمز من أحد شركائنا فاكتبه هنا، ليصلنا أنّك جئت من طريقه.
+                    </span>
                   </label>
                 </div>
                 <p className="flex items-start gap-1.5 text-xs" style={{ color: GREEN }}>
