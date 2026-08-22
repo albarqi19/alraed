@@ -1866,3 +1866,28 @@ button.ws-chip:disabled {
         transition: none;
     }
 }
+
+/* ======================================================
+   منتقي العام الدراسي — `YearScopeSelect`
+   ------------------------------------------------------
+   يجاور مرشِّحاتِ الشاشة في `.ws-toolbar` لكنه ليس واحداً منها: هو يقرّر
+   معنى كل رقمٍ تحته، لا يضيّق نتيجةً داخل معنىً قائم. فحدٌّ خفيفٌ حوله
+   يفصله بصرياً بلا أن يصرخ — والأيقونة تكفي دلالةً على أنه زمنٌ لا حالة.
+   ====================================================== */
+.ws-yearscope {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding-inline: 6px;
+    border: 1px solid var(--ws-border);
+    border-radius: 999px;
+    background: var(--ws-accent-softer);
+    color: var(--ws-text-2);
+}
+
+/* الحدُّ الخارجيّ يحمل الشكل، فالحدُّ الداخليّ تكرارٌ يُثخن الحافّة */
+.ws-yearscope .ws-select {
+    border: 0;
+    background-color: transparent;
+    padding-inline-start: 2px;
+}

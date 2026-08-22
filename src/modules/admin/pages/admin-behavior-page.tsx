@@ -33,6 +33,7 @@ import type {
   BehaviorViolation,
 } from '@/modules/admin/behavior/types'
 import type { CreateBehaviorViolationPayload } from '@/modules/admin/behavior/api'
+import { useYearScope, YearScopeSelect, YearScopeEmptyNote } from '@/modules/admin/academic-years'
 import { useBehaviorStore } from '@/modules/admin/behavior/store/use-behavior-store'
 import { useBehaviorConfigStore } from '@/modules/admin/behavior/store/use-behavior-config-store'
 import {
@@ -149,14 +150,21 @@ export function AdminBehaviorPage() {
     [selectedStudentIds, students],
   )
 
+  const { scope: yearScope, setScope: setYearScope } = useYearScope()
+
   // Load students, violations and config on mount
   useEffect(() => {
     fetchStudents()
-    fetchViolations()
     loadConfig()
     loadViolationTypes()
     loadProcedures()
-  }, [fetchStudents, fetchViolations, loadConfig, loadViolationTypes, loadProcedures])
+  }, [fetchStudents, loadConfig, loadViolationTypes, loadProcedures])
+
+  /* المخالفات وحدها تُعاد بتبديل العام — والبقيةُ (الطلاب، الأنواع،
+     الإجراءات) إعداداتٌ لا تتبع سنة، فإعادةُ تحميلها معها هدرٌ صريح. */
+  useEffect(() => {
+    fetchViolations({ academicYear: yearScope })
+  }, [fetchViolations, yearScope])
 
   // Load reporters when modal is opened
   useEffect(() => {
@@ -475,6 +483,7 @@ export function AdminBehaviorPage() {
         badge="السلوك والمواظبة"
         actions={
           <>
+            <YearScopeSelect scope={yearScope} onChange={setYearScope} />
             <WsBtn icon={Download} onClick={() => toast({ type: 'info', title: 'ميزة التصدير قيد التطوير' })}>
               تصدير
             </WsBtn>
@@ -692,7 +701,10 @@ export function AdminBehaviorPage() {
           <WsBlock fill scroll title="السجل" icon={ClipboardList} count={filteredViolations.length}>
             {paginatedViolations.length === 0 ? (
               <WsEmpty icon={ClipboardList}>
-                {violations.length === 0 ? 'لا مخالفات مرصودة بعد' : 'لا نتائج مطابقة للبحث الحالي'}
+                {violations.length === 0 ? 'لا مخالفات مرصودة في هذا العام' : 'لا نتائج مطابقة للبحث الحالي'}
+                {violations.length === 0 && (
+                  <YearScopeEmptyNote scope={yearScope} onShowAll={() => setYearScope('all')} />
+                )}
               </WsEmpty>
             ) : (
               <WsTable>

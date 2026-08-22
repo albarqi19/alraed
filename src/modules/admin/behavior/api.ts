@@ -16,6 +16,8 @@ export interface FetchBehaviorViolationsParams {
   status?: BehaviorStatus
   degree?: BehaviorDegree
   search?: string
+  /** `current` (الافتراضيّ في الخادم) أو `all` أو معرَّف سنة */
+  academicYear?: string
 }
 
 export interface CreateBehaviorViolationPayload {
@@ -64,6 +66,10 @@ export async function fetchBehaviorViolations(
   if (params?.search && params.search.trim().length > 0) {
     searchParams.set('search', params.search.trim())
   }
+
+  /* يُرسَل دائماً — حتى `current`. الخادم يفترضه أصلاً، لكنّ إرساله صريحاً
+     يجعل الطلبَ يقرأ ما تعنيه الشاشة بلا اتّكالٍ على افتراضٍ قد يتغيّر. */
+  searchParams.set('academic_year', params?.academicYear ?? 'current')
 
   const response = await apiClient.get<ApiResponse<BehaviorViolation[]>>('/admin/behavior/violations', {
     params: searchParams,

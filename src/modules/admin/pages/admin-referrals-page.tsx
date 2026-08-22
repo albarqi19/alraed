@@ -36,6 +36,7 @@ import {
   ToneChip,
   InitialAvatar,
 } from '@/shared/workspace'
+import { useYearScope, YearScopeSelect, YearScopeEmptyNote } from '@/modules/admin/academic-years'
 import {
   useAdminReferralsQuery,
   useAdminReferralStatsQuery,
@@ -63,6 +64,9 @@ export function AdminReferralsPage() {
   const location = useLocation()
   const [activeTab, setActiveTab] = useState<ReferralTab>('teacher')
   const [filters, setFilters] = useState<ReferralFilters>({ per_page: 15 })
+  /* خارج `filters` عمداً: عدّادُ المرشِّحات النشطة يعدّ ما فيها، والعامُ
+     ليس مرشِّحاً يُنظَّف بـ«مسح الفلاتر» بل نطاقُ الشاشة كلِّها. */
+  const { scope: yearScope, setScope: setYearScope } = useYearScope()
   const [currentPage, setCurrentPage] = useState(1)
   const [showStatsModal, setShowStatsModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
@@ -131,7 +135,7 @@ export function AdminReferralsPage() {
 
   // فلاتر حسب التبويب النشط
   const tabFilters = useMemo((): ReferralFilters => {
-    const baseFilters = { ...filters, page: currentPage }
+    const baseFilters = { ...filters, page: currentPage, academic_year: yearScope }
 
     switch (activeTab) {
       case 'teacher':
@@ -148,7 +152,7 @@ export function AdminReferralsPage() {
       default:
         return baseFilters
     }
-  }, [filters, activeTab, currentPage])
+  }, [filters, activeTab, currentPage, yearScope])
 
   // تحديد عنوان الصفحة
   const getPageTitle = () => {
@@ -162,10 +166,10 @@ export function AdminReferralsPage() {
 
   // جلب الإحصائيات مع تمرير نوع الإحالة للفلترة
   const statsFilters = useMemo(() => {
-    if (isGuidancePage) return { type: 'academic_weakness' }
-    if (isBehavioralPage) return { type: 'behavioral_violation' }
-    return {}
-  }, [isGuidancePage, isBehavioralPage])
+    if (isGuidancePage) return { type: 'academic_weakness', academic_year: yearScope }
+    if (isBehavioralPage) return { type: 'behavioral_violation', academic_year: yearScope }
+    return { academic_year: yearScope }
+  }, [isGuidancePage, isBehavioralPage, yearScope])
 
   // تبويب النظام لا يقرأ من هذين حرفاً — أحدهما بـper_page:1000
   const { data: referralsData, isLoading, error } = useAdminReferralsQuery(tabFilters, {
@@ -195,7 +199,9 @@ export function AdminReferralsPage() {
 
   // جلب جميع الإحالات بدون pagination لحساب الإحصائيات
   const allReferralsFilters = useMemo(() => {
-    const base: ReferralFilters = { per_page: 1000 }
+    /* `per_page: 1000` بلا قصّ عامٍ كان يجرّ ٤٬٣٥١ إحالةً بعلاقاتها في كل
+       فتحةٍ لحساب إحصاءاتٍ على المتصفّح. */
+    const base: ReferralFilters = { per_page: 1000, academic_year: yearScope }
     if (isGuidancePage) base.type = 'academic_weakness'
     if (isBehavioralPage) base.type = 'behavioral_violation'
     // إضافة فلتر التبويب النشط
@@ -205,13 +211,13 @@ export function AdminReferralsPage() {
       case 'system': base.referred_by_type = 'system'; break
     }
     return base
-  }, [isGuidancePage, isBehavioralPage, activeTab])
+  }, [isGuidancePage, isBehavioralPage, activeTab, yearScope])
 
   const { data: allReferrals } = useAdminReferralsQuery(allReferralsFilters, {
     enabled: activeTab !== 'system',
   })
   const { data: stats } = useAdminReferralStatsQuery(statsFilters)
-  const { data: absenceStats } = useAbsenceReferralStatsQuery()
+  const { data: absenceStats } = useAbsenceReferralStatsQuery(yearScope)
   const receiveMutation = useReceiveReferralMutation()
 
   // هل توجد حالات غياب متواصل تتطلب إجراء عاجل؟
@@ -337,6 +343,7 @@ export function AdminReferralsPage() {
         badge={routeBadge}
         actions={
           <>
+            <YearScopeSelect scope={yearScope} onChange={setYearScope} />
             <WsBtn icon={BarChart3} onClick={() => setShowStatsModal(true)}>الإحصائيات</WsBtn>
             <WsBtn icon={Settings} onClick={() => setShowSettingsModal(true)}>الإعدادات</WsBtn>
           </>
@@ -592,7 +599,7 @@ export function AdminReferralsPage() {
 
         {activeTab === 'system' ? (
           /* اللوحة تُخرج عمودها وWsMain بنفسها — صفر رفع حالة وصفر props */
-          <AbsenceReferralsPanel />
+          <AbsenceReferralsPanel yearScope={yearScope} />
         ) : (
           <WsMain>
             <WsBlock
@@ -757,6 +764,7 @@ export function AdminReferralsPage() {
                   {activeFilterCount > 0 && (
                     <WsBtn size="sm" icon={RotateCcw} onClick={clearFilters} style={{ marginTop: 8 }}>مسح الفلاتر</WsBtn>
                   )}
+                  <YearScopeEmptyNote scope={yearScope} onShowAll={() => setYearScope('all')} />
                 </WsEmpty>
               )}
             </WsBlock>

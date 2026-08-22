@@ -104,6 +104,8 @@ export interface GuidanceCaseFilters {
   search?: string
   page?: number
   per_page?: number
+  /** `current` (الافتراضيّ في الخادم) أو `all` أو معرَّف سنة */
+  academic_year?: string
 }
 
 export interface GuidancePaginatedResponse<T> {

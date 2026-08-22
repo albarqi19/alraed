@@ -38,6 +38,7 @@ import {
   useWhatsappStatisticsQuery,
   useWhatsappTemplatesQuery,
 } from '../hooks'
+import { useYearScope, YearScopeSelect, YearScopeEmptyNote } from '@/modules/admin/academic-years'
 import { fetchWhatsappInstances } from '../api'
 import type { WhatsappHistoryItem, WhatsappQueueItem, WhatsappTemplate, WhatsappTemplateVariable, WhatsappInstance } from '../types'
 import {
@@ -135,6 +136,7 @@ const INSTANCE_STATUS_META: Record<string, { tone: WsChipTone | undefined; label
 
 export function WhatsappHubPage() {
   const [activeTab, setActiveTab] = useState<TabKey>('history')
+  const { scope: yearScope, setScope: setYearScope } = useYearScope()
   const [templateSelection, setTemplateSelection] = useState<number | 'new' | null>(null)
   const [templateForm, setTemplateForm] = useState<TemplateFormState>(DEFAULT_TEMPLATE_FORM)
   const [modalHistoryId, setModalHistoryId] = useState<number | null>(null)
@@ -148,7 +150,9 @@ export function WhatsappHubPage() {
     refetchInterval: 30000,
   })
   const queueQuery = useWhatsappQueueQuery()
-  const historyQuery = useWhatsappHistoryQuery()
+  /* الطابور بلا قصّ عام — رسالةٌ عالقةٌ من سنةٍ مضت ما زالت تسدّه اليوم،
+     فإخفاؤها يُري المشغّلَ صفراً بينما الطابور ممتلئ. السجلُّ وحده يُقصّ. */
+  const historyQuery = useWhatsappHistoryQuery({ academic_year: yearScope })
   const templatesQuery = useWhatsappTemplatesQuery()
 
   const sendPendingMutation = useSendPendingWhatsappMessagesMutation()
@@ -410,6 +414,9 @@ export function WhatsappHubPage() {
         badge="القناة الرسمية للمدرسة"
         actions={
           <>
+            {/* يقصّ السجلَّ وحده — التبويبات الأخرى (الطابور، القوالب) حالةٌ
+                قائمة لا تاريخ، فلا معنى لعامٍ فيها. */}
+            {activeTab === 'history' && <YearScopeSelect scope={yearScope} onChange={setYearScope} />}
             <WsBtn
               icon={RefreshCcw}
               onClick={() => {
@@ -577,7 +584,10 @@ export function WhatsappHubPage() {
               (historyQuery.isLoading ? (
                 <WsEmpty loading>جاري تحميل السجل...</WsEmpty>
               ) : historyItems.length === 0 ? (
-                <WsEmpty icon={ClipboardList}>لا توجد بيانات في السجل خلال الفترة الحالية.</WsEmpty>
+                <WsEmpty icon={ClipboardList}>
+                  لا توجد رسائل في هذا العام.
+                  <YearScopeEmptyNote scope={yearScope} onShowAll={() => setYearScope('all')} />
+                </WsEmpty>
               ) : (
                 <>
                   <WsTable className="is-clickable">

@@ -37,6 +37,7 @@ import {
 import type { AbsenceExcuseRecord, ExcuseReviewHistoryItem } from '../types'
 import { useToast } from '@/shared/feedback/use-toast'
 import { useAuthStore } from '@/modules/auth/store/auth-store'
+import { useYearScope, YearScopeSelect, YearScopeEmptyNote } from '@/modules/admin/academic-years'
 import {
   WsBlock,
   WsBtn,
@@ -85,6 +86,7 @@ export function AdminAbsenceExcusesPage() {
   const { token, user } = useAuthStore()
   const isPrincipal = user?.role === 'school_principal'
   const [page, setPage] = useState(1)
+  const { scope: yearScope, setScope: setYearScope } = useYearScope()
   const [activeTab, setActiveTab] = useState<TabValue>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchInput, setSearchInput] = useState('')
@@ -134,7 +136,7 @@ export function AdminAbsenceExcusesPage() {
 
   // Query
   const excusesQuery = useQuery({
-    queryKey: ['admin', 'absence-excuses', page, activeTab, searchQuery, selectedGrades],
+    queryKey: ['admin', 'absence-excuses', page, activeTab, searchQuery, selectedGrades, yearScope],
     queryFn: () =>
       getAbsenceExcuses({
         page,
@@ -142,6 +144,7 @@ export function AdminAbsenceExcusesPage() {
         status: activeTab === 'all' ? undefined : activeTab,
         search: searchQuery || undefined,
         grades: selectedGrades.length > 0 ? selectedGrades : undefined,
+        academic_year: yearScope,
       }),
   })
 
@@ -342,6 +345,7 @@ export function AdminAbsenceExcusesPage() {
         badge="مراجعة الأعذار"
         actions={
           <>
+            <YearScopeSelect scope={yearScope} onChange={setYearScope} />
             <WsBtn icon={Settings} onClick={() => setSettingsModalOpen(true)}>
               الإعدادات
             </WsBtn>
@@ -487,7 +491,10 @@ export function AdminAbsenceExcusesPage() {
             {excusesQuery.isLoading ? (
               <WsEmpty loading>جاري تحميل الأعذار...</WsEmpty>
             ) : excuses.length === 0 ? (
-              <WsEmpty icon={Inbox}>لا توجد أعذار.</WsEmpty>
+              <WsEmpty icon={Inbox}>
+                لا توجد أعذار في هذا العام.
+                <YearScopeEmptyNote scope={yearScope} onShowAll={() => setYearScope('all')} />
+              </WsEmpty>
             ) : (
               <WsTable>
                 <thead>

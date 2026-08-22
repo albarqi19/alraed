@@ -59,10 +59,10 @@ export function useAdminGuidanceCases(filters: GuidanceCaseFilters) {
   })
 }
 
-export function useAdminGuidanceStats() {
+export function useAdminGuidanceStats(academicYear: string = 'current') {
   return useQuery<GuidanceStatsSummary>({
-    queryKey: STATS_QUERY_KEY,
-    queryFn: fetchGuidanceStats,
+    queryKey: [...STATS_QUERY_KEY, academicYear],
+    queryFn: () => fetchGuidanceStats(academicYear),
     staleTime: 60_000,
   })
 }

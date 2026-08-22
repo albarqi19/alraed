@@ -105,6 +105,7 @@ export async function getAbsenceExcuses(filters?: AbsenceExcuseFilters): Promise
   if (filters?.per_page) {
     params.append('per_page', filters.per_page.toString())
   }
+  params.append('academic_year', filters?.academic_year ?? 'current')
 
   const query = params.toString()
   const url = query ? `/admin/absence-excuses?${query}` : '/admin/absence-excuses'

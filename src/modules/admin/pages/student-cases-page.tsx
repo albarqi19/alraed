@@ -30,6 +30,7 @@ import {
   WsMain,
 } from '@/shared/workspace'
 import { DayCard, chip } from './dashboard-ui'
+import { useYearScope, YearScopeSelect, YearScopeEmptyNote } from '@/modules/admin/academic-years'
 import { useAdminGuidanceCases, useAdminGuidanceStats, useAdminGuidanceCaseMutations } from '../api/guidance-hooks'
 import { TONES, SEVERITY_META, STATUS_META, categoryTone, ToneChip, SeverityBadge, InitialAvatar } from './student-cases-ui'
 import type { GuidanceCaseFilters } from '@/modules/guidance/types'
@@ -56,8 +57,13 @@ export function StudentCasesPage() {
   const [filters, setFilters] = useState<GuidanceCaseFilters>({ page: 1, per_page: 20 })
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
 
-  const { data: stats } = useAdminGuidanceStats()
-  const { data: casesData, isLoading, error } = useAdminGuidanceCases(filters)
+  const { scope: yearScope, setScope: setYearScope } = useYearScope()
+
+  const { data: stats } = useAdminGuidanceStats(yearScope)
+  const { data: casesData, isLoading, error } = useAdminGuidanceCases({
+    ...filters,
+    academic_year: yearScope,
+  })
   const { deleteCase } = useAdminGuidanceCaseMutations()
 
   // حفظ وضع العرض
@@ -119,7 +125,12 @@ export function StudentCasesPage() {
       <WsHeader
         title="الحالات الطلابية"
         badge="الإرشاد الطلابي"
-        actions={<WsBtn variant="primary" icon={Plus} onClick={() => navigate('/admin/student-cases/new')}>حالة جديدة</WsBtn>}
+        actions={
+          <>
+            <YearScopeSelect scope={yearScope} onChange={setYearScope} />
+            <WsBtn variant="primary" icon={Plus} onClick={() => navigate('/admin/student-cases/new')}>حالة جديدة</WsBtn>
+          </>
+        }
       >
         {/* التبديل والبحث والفلاتر في شريط العنوان نفسه — لا شريط منفصل تحته */}
         <div className="ws-header__filters">
@@ -275,11 +286,14 @@ export function StudentCasesPage() {
             <WsEmpty loading>جاري تحميل الحالات...</WsEmpty>
           ) : !casesData || casesData.data.length === 0 ? (
             <WsEmpty icon={FolderOpen}>
-              <p style={{ margin: 0 }}>لا توجد حالات{hasActiveFilters ? ' مطابقة للفلاتر' : ''}</p>
+              <p style={{ margin: 0 }}>لا توجد حالات{hasActiveFilters ? ' مطابقة للفلاتر' : ' في هذا العام'}</p>
               {!hasActiveFilters && (
-                <WsBtn variant="primary" size="sm" icon={Plus} onClick={() => navigate('/admin/student-cases/new')} style={{ marginTop: 8 }}>
-                  إنشاء أول حالة
-                </WsBtn>
+                <>
+                  <WsBtn variant="primary" size="sm" icon={Plus} onClick={() => navigate('/admin/student-cases/new')} style={{ marginTop: 8 }}>
+                    إنشاء أول حالة
+                  </WsBtn>
+                  <YearScopeEmptyNote scope={yearScope} onShowAll={() => setYearScope('all')} />
+                </>
               )}
             </WsEmpty>
           ) : viewMode === 'table' ? (

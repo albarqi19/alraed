@@ -2643,6 +2643,8 @@ export async function fetchWhatsappHistory(filters?: {
   date_to?: string
   status?: string
   per_page?: number
+  /** `current` (الافتراضيّ في الخادم) أو `all` أو معرَّف سنة */
+  academic_year?: string
 }): Promise<WhatsappHistoryItem[]> {
   const params: Record<string, string | number> = {}
 
@@ -2651,9 +2653,10 @@ export async function fetchWhatsappHistory(filters?: {
   if (filters?.date_to) params.date_to = filters.date_to
   if (filters?.status) params.status = filters.status
   if (filters?.per_page) params.per_page = filters.per_page
+  params.academic_year = filters?.academic_year ?? 'current'
 
   const { data } = await apiClient.get<ApiResponse<unknown>>('/admin/whatsapp/history', {
-    params: Object.keys(params).length > 0 ? params : undefined
+    params
   })
   return unwrapCollectionResponse<WhatsappHistoryItem>(data, 'تعذر تحميل سجل الواتساب', ['data', 'history', 'items', 'records'])
 }
@@ -3115,10 +3118,11 @@ export interface TeacherMessagesByPeriodResponse {
 
 export async function fetchTeacherMessagesByPeriod(
   period: 'today' | 'week' | 'month' | 'active',
+  academicYear: string = 'current',
 ): Promise<TeacherMessagesByPeriodResponse> {
   const response = await apiClient.get<ApiResponse<TeacherMessagesByPeriodResponse>>(
     '/admin/teacher-messages/messages-by-period',
-    { params: { period } },
+    { params: { period, academic_year: academicYear } },
   )
   return unwrapResponse(response.data, 'تعذر جلب تفاصيل رسائل المعلمين')
 }

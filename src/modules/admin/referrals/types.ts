@@ -131,6 +131,8 @@ export interface ReferralFilters {
   referred_by_type?: 'teacher' | 'deputy_students' | 'system'
   page?: number
   per_page?: number
+  /** `current` (الافتراضيّ في الخادم) أو `all` أو معرَّف سنة */
+  academic_year?: string
 }
 
 export interface AssignReferralPayload {
@@ -380,6 +382,8 @@ export interface AbsenceReferralFilters {
   requiring_action?: boolean
   page?: number
   per_page?: number
+  /** `current` (الافتراضيّ في الخادم) أو `all` أو معرَّف سنة */
+  academic_year?: string
 }
 
 export interface ProcessAbsencesResult {

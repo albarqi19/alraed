@@ -274,7 +274,13 @@ function LadderBoard({
    اللوحة — تُخرج عمودها بنفسها، بلا props وبلا رفع حالة
    ═══════════════════════════════════════════════════════════ */
 
-export function AbsenceReferralsPanel() {
+interface AbsenceReferralsPanelProps {
+  /* يأتي من منتقي العام في ترويسة صفحة الإحالات — لا يُملَك هنا كي لا يفترق
+     تبويبُ النظام عن أخوَيه فيعرض عاماً غير الذي تقوله الترويسة فوقه. */
+  yearScope?: string
+}
+
+export function AbsenceReferralsPanel({ yearScope = 'current' }: AbsenceReferralsPanelProps = {}) {
   const navigate = useNavigate()
   const [activeSubTab, setActiveSubTab] = useState<SystemSubTab>('consecutive')
   // الكائن يُشتق من القائمة لا يُلتقط لقطةً جامدة — فالإبطال يُحدّث المودال مجاناً
@@ -297,7 +303,7 @@ export function AbsenceReferralsPanel() {
   const currentPage = pages[activeSubTab]
   const setPage = (page: number) => setPages((prev) => ({ ...prev, [activeSubTab]: page }))
 
-  const { data: stats } = useAbsenceReferralStatsQuery()
+  const { data: stats } = useAbsenceReferralStatsQuery(yearScope)
   const {
     data: referrals,
     isLoading,
@@ -311,15 +317,16 @@ export function AbsenceReferralsPanel() {
       requiring_action: requiringAction || undefined,
       page: currentPage,
       per_page: 15,
+      academic_year: yearScope,
     },
     // كان يعمل على تبويبَي الرصد بـ absence_type: undefined فيجلب النوعين ليعرض لا شيء
     { enabled: isAbsenceTab },
   )
   // بالمفاتيح لا بـ enabled: meta.total يغذّي شارتَي التبويبين فتعطيلهما يُطفئ العدّادين
   const { data: violationStudents, isLoading: isLoadingViolations, isError: violationsError } =
-    useViolationStudentsQuery(pages.violations, minViolations)
+    useViolationStudentsQuery(pages.violations, minViolations, yearScope)
   const { data: lateStudents, isLoading: isLoadingLate, isError: lateError } =
-    useLateStudentsQuery(pages.lateness, minLate)
+    useLateStudentsQuery(pages.lateness, minLate, yearScope)
 
   const processAbsences = useProcessAbsencesMutation()
   const updateAction = useUpdateAbsenceActionMutation()

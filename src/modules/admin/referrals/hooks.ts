@@ -49,6 +49,7 @@ export function useAdminReferralsQuery(filters?: ReferralFilters, options?: { en
       if (filters?.referred_by_type) params.append('referred_by_type', filters.referred_by_type)
       if (filters?.page) params.append('page', String(filters.page))
       if (filters?.per_page) params.append('per_page', String(filters.per_page))
+      params.append('academic_year', filters?.academic_year ?? 'current')
 
       const { data } = await apiClient.get<ReferralListResponse>(
         `/admin/referrals?${params.toString()}`
@@ -80,12 +81,15 @@ export function useAdminReferralDetailQuery(id: number) {
 }
 
 // جلب إحصائيات
-export function useAdminReferralStatsQuery(filters?: { type?: string }) {
+export function useAdminReferralStatsQuery(filters?: { type?: string; academic_year?: string }) {
   return useQuery<ReferralStats>({
     queryKey: [...REFERRAL_KEYS.stats(), filters ?? {}],
     queryFn: async () => {
       const params = new URLSearchParams()
       if (filters?.type) params.append('type', filters.type)
+      /* البطاقاتُ تعلو الجدولَ نفسه، فعامُها عامُه — وإلّا قرأ المستخدم
+         «٤٣٥١ إحالة» فوق قائمةٍ فيها ثلاثون. */
+      params.append('academic_year', filters?.academic_year ?? 'current')
 
       const { data } = await apiClient.get<ReferralStatsResponse>(
         `/admin/referrals/stats?${params.toString()}`
@@ -96,12 +100,13 @@ export function useAdminReferralStatsQuery(filters?: { type?: string }) {
 }
 
 // جلب إحصائيات متقدمة
-export function useAdvancedReferralStatsQuery(filters?: { type?: string }) {
+export function useAdvancedReferralStatsQuery(filters?: { type?: string; academic_year?: string }) {
   return useQuery<AdvancedReferralStats>({
     queryKey: ['admin-referrals', 'advanced-stats', filters ?? {}],
     queryFn: async () => {
       const params = new URLSearchParams()
       if (filters?.type) params.append('type', filters.type)
+      params.append('academic_year', filters?.academic_year ?? 'current')
 
       const { data } = await apiClient.get<AdvancedReferralStatsResponse>(
         `/admin/referrals/advanced-stats?${params.toString()}`
@@ -577,6 +582,7 @@ export function useAbsenceReferralsQuery(filters: AbsenceReferralFilters, option
       if (filters.requiring_action) params.append('requiring_action', '1')
       if (filters.page) params.append('page', String(filters.page))
       if (filters.per_page) params.append('per_page', String(filters.per_page))
+      params.append('academic_year', filters.academic_year ?? 'current')
 
       const { data } = await apiClient.get<{ items: AbsenceReferral[]; meta: WatchListMeta }>(
         `/admin/absence-referrals?${params.toString()}`,
@@ -587,34 +593,44 @@ export function useAbsenceReferralsQuery(filters: AbsenceReferralFilters, option
   })
 }
 
-export function useAbsenceReferralStatsQuery() {
-  return useQuery({
-    queryKey: ABSENCE_KEYS.stats(),
-    queryFn: async () => {
-      const { data } = await apiClient.get<AbsenceReferralStats>('/admin/absence-referrals/stats')
-      return data
-    },
-  })
-}
+export function useAbsenceReferralStatsQuery(academicYear?: string) {
+  const scope = academicYear ?? 'current'
 
-export function useViolationStudentsQuery(page: number = 1, minViolations: number = 3) {
   return useQuery({
-    queryKey: ABSENCE_KEYS.violations(page, minViolations),
+    /* العامُ في المفتاح لا في المعاملات وحدها: بدونه يعرض التبديلُ أرقامَ
+       العام السابق من المخزن حتى يعود الردّ الجديد. */
+    queryKey: [...ABSENCE_KEYS.stats(), scope],
     queryFn: async () => {
-      const { data } = await apiClient.get<{ items: ViolationStudent[]; meta: WatchListMeta }>(
-        `/admin/behavior/most-violated?min_violations=${minViolations}&page=${page}&per_page=15`,
+      const { data } = await apiClient.get<AbsenceReferralStats>(
+        `/admin/absence-referrals/stats?academic_year=${encodeURIComponent(scope)}`,
       )
       return data
     },
   })
 }
 
-export function useLateStudentsQuery(page: number = 1, minLate: number = 5) {
+export function useViolationStudentsQuery(page: number = 1, minViolations: number = 3, academicYear?: string) {
+  const scope = academicYear ?? 'current'
+
   return useQuery({
-    queryKey: ABSENCE_KEYS.late(page, minLate),
+    queryKey: [...ABSENCE_KEYS.violations(page, minViolations), scope],
+    queryFn: async () => {
+      const { data } = await apiClient.get<{ items: ViolationStudent[]; meta: WatchListMeta }>(
+        `/admin/behavior/most-violated?min_violations=${minViolations}&page=${page}&per_page=15&academic_year=${encodeURIComponent(scope)}`,
+      )
+      return data
+    },
+  })
+}
+
+export function useLateStudentsQuery(page: number = 1, minLate: number = 5, academicYear?: string) {
+  const scope = academicYear ?? 'current'
+
+  return useQuery({
+    queryKey: [...ABSENCE_KEYS.late(page, minLate), scope],
     queryFn: async () => {
       const { data } = await apiClient.get<{ items: LateStudent[]; meta: WatchListMeta }>(
-        `/admin/behavior/most-late?min_late=${minLate}&page=${page}&per_page=15`,
+        `/admin/behavior/most-late?min_late=${minLate}&page=${page}&per_page=15&academic_year=${encodeURIComponent(scope)}`,
       )
       return data
     },

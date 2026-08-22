@@ -41,8 +41,10 @@ export async function fetchGuidanceCases(filters: GuidanceCaseFilters) {
   return unwrap(data, 'تعذر تحميل الحالات الطلابية')
 }
 
-export async function fetchGuidanceStats() {
-  const { data } = await apiClient.get<ApiResponse<GuidanceStatsSummary>>('/guidance/cases/stats')
+export async function fetchGuidanceStats(academicYear: string = 'current') {
+  const { data } = await apiClient.get<ApiResponse<GuidanceStatsSummary>>('/guidance/cases/stats', {
+    params: { academic_year: academicYear },
+  })
   return unwrap(data, 'تعذر تحميل ملخص الحالات')
 }
 

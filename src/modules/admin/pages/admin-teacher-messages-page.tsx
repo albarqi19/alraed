@@ -14,6 +14,7 @@ import {
   Users,
 } from 'lucide-react'
 import { apiClient } from '@/services/api/client'
+import { useYearScope, YearScopeSelect } from '@/modules/admin/academic-years'
 import { fetchTeacherMessagesByPeriod } from '../api'
 import { TeacherMessagesModal } from '../components/teacher-messages-modal'
 import {
@@ -114,6 +115,7 @@ function SettingCheckboxRow({
 
 export function AdminTeacherMessagesPage() {
   const queryClient = useQueryClient()
+  const { scope: yearScope, setScope: setYearScope } = useYearScope()
   const [editingTemplate, setEditingTemplate] = useState<MessageTemplate | null>(null)
   const [creatingTemplate, setCreatingTemplate] = useState(false)
   const [editingSettings, setEditingSettings] = useState(false)
@@ -146,17 +148,19 @@ export function AdminTeacherMessagesPage() {
 
   // Fetch statistics
   const { data: statisticsData } = useQuery({
-    queryKey: ['admin', 'teacher-message-statistics'],
+    queryKey: ['admin', 'teacher-message-statistics', yearScope],
     queryFn: async () => {
-      const response = await apiClient.get('/admin/teacher-messages/statistics')
+      const response = await apiClient.get('/admin/teacher-messages/statistics', {
+        params: { academic_year: yearScope },
+      })
       return response.data
     },
   })
 
   // Fetch detailed messages when modal is opened
   const { data: modalData, isLoading: modalLoading } = useQuery({
-    queryKey: ['admin', 'teacher-messages-by-period', modalState?.period],
-    queryFn: () => fetchTeacherMessagesByPeriod(modalState!.period),
+    queryKey: ['admin', 'teacher-messages-by-period', modalState?.period, yearScope],
+    queryFn: () => fetchTeacherMessagesByPeriod(modalState!.period, yearScope),
     enabled: modalState !== null,
   })
 
@@ -311,6 +315,7 @@ export function AdminTeacherMessagesPage() {
         badge="قناة المعلم ← ولي الأمر"
         actions={
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <YearScopeSelect scope={yearScope} onChange={setYearScope} />
             <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--ws-text-2)' }}>
               {toggleSystemMutation.isPending ? 'جاري التحديث...' : settings.is_enabled ? 'النظام مفعّل' : 'النظام معطّل'}
             </span>
