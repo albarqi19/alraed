@@ -661,13 +661,35 @@ export function SchoolRegistrationPage() {
                     </span>
                     {hasSubmitted && emailError ? <FieldError>{emailError}</FieldError> : null}
                   </label>
-                  {/* رمزُ الإحالة — سطرٌ كاملٌ تحت الزوج، وآخرُ حقلٍ في النموذج.
-                      موضعُه ونبرتُه مقصودان: حقلٌ اختياريٌّ في آخر الصفّ لا
-                      يوقف من لا رمزَ له، ونصُّه يسأل عن مصدر المعرفة ولا يَعِد
-                      بشيء — فلا يتحوّل التسجيل إلى بحثٍ عن رمزٍ في المجموعات. */}
-                  <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700 md:col-span-2">
-                    رمز الإحالة <span className="font-normal" style={{ color: '#8A8175' }}>— اختياري</span>
+                </div>
+                <p className="flex items-start gap-1.5 text-xs" style={{ color: GREEN }}>
+                  <Check className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                  سيُنشأ حساب دخول لمدير المدرسة تلقائياً باستخدام رقم الهوية وكلمة مرور مؤقتة.
+                </p>
+
+                {/* رمزُ الإحالة — خارج شبكة الحقول المطلوبة عن قصد.
+
+                    كان داخلها بـ`md:col-span-2` فصار أعرضَ حقلٍ في النموذج وأقلَّه
+                    أهميّةً — والعينُ تقرأ العرضَ إلحاحاً. والرمزُ بضعةُ أحرفٍ فلا يحتاج
+                    سطراً كاملاً، والشرحُ إلى جانبه لا تحته ليبقى الشريطُ سطرًا واحدًا. */}
+                <div className="border-t pt-3.5" style={{ borderColor: PASTEL_BD }}>
+                  <label
+                    htmlFor="referral_code"
+                    className="flex items-center gap-2 text-sm font-semibold text-slate-700"
+                  >
+                    رمز الإحالة
+                    {/* الشارةُ إلى جانب الاسم لا تحته: كانت `اختياري` تنزل سطراً
+                        مستقلاً لأنّ الـ`label` عموديّةٌ، فتُقرأ عنوانًا ثانيًا لا وصفًا. */}
+                    <span
+                      className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                      style={{ background: '#F1EFE9', color: '#8A8175' }}
+                    >
+                      اختياري
+                    </span>
+                  </label>
+                  <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
                     <input
+                      id="referral_code"
                       type="text"
                       dir="ltr"
                       autoComplete="off"
@@ -677,18 +699,14 @@ export function SchoolRegistrationPage() {
                          يقفز بالمؤشّر إلى آخر السطر في بعض المتصفّحات. */
                       style={{ ...fieldStyle, background: '#FFFFFF', textTransform: 'uppercase' }}
                       onChange={(event) => handleChange('referral_code', event.target.value)}
-                      placeholder="إن كان لديك رمز"
-                      className={`${fieldInput} text-left`}
+                      placeholder="ABC123"
+                      className={`${fieldInput} w-full text-left tracking-widest sm:w-44`}
                     />
-                    <span className="text-xs font-normal" style={{ color: '#6B6255' }}>
+                    <p className="text-xs leading-relaxed" style={{ color: '#6B6255' }}>
                       إن وصلك رمز من أحد شركائنا فاكتبه هنا، ليصلنا أنّك جئت من طريقه.
-                    </span>
-                  </label>
+                    </p>
+                  </div>
                 </div>
-                <p className="flex items-start gap-1.5 text-xs" style={{ color: GREEN }}>
-                  <Check className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
-                  سيُنشأ حساب دخول لمدير المدرسة تلقائياً باستخدام رقم الهوية وكلمة مرور مؤقتة.
-                </p>
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-4 border-t pt-4" style={{ borderColor: '#F0ECE3' }}>
