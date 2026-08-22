@@ -116,6 +116,22 @@ export interface GuidancePaginatedResponse<T> {
   last_page: number
 }
 
+/**
+ * توزيعُ حالات الخطط على **كامل** النتائج المطابقة — يحسبه الخادم.
+ *
+ * كانت الواجهةُ تعدّه من الصفحة المعروضة وحدها بينما `total` من الخادم،
+ * فتقول البطاقةُ «٣٥ خطّة» وتحتها «نشطة: ٩» والحقيقةُ خمسَ عشرة — ويتبدّل
+ * الرقمُ بمجرّد الانتقال لصفحةٍ أخرى.
+ */
+export interface TreatmentPlanStats {
+  total: number
+  active: number
+  completed: number
+  suspended: number
+  draft: number
+  cancelled: number
+}
+
 export interface GuidanceStatsSummary {
   by_status: Record<string, number>
   by_category: Record<string, number>

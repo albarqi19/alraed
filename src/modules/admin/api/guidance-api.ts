@@ -22,6 +22,7 @@ import type {
   TreatmentEvaluation,
   TreatmentEvaluationFormData,
   TreatmentIntervention,
+  TreatmentPlanStats,
 } from '@/modules/guidance/types'
 
 function unwrap<T>(response: ApiResponse<T>, fallback: string): T {
@@ -160,12 +161,17 @@ export async function fetchTreatmentPlans(filters: TreatmentPlanFilters) {
     throw new Error(data.message ?? 'تعذر جلب الخطط العلاجية')
   }
   // نرجع الـ response الكامل للـ pagination
+  const raw = data as unknown as Record<string, unknown>
+
   return {
     data: data.data,
-    current_page: (data as any).current_page ?? 1,
-    per_page: (data as any).per_page ?? 20,
-    total: (data as any).total ?? 0,
-    last_page: (data as any).last_page ?? 1,
+    current_page: (raw.current_page as number) ?? 1,
+    per_page: (raw.per_page as number) ?? 20,
+    total: (raw.total as number) ?? 0,
+    last_page: (raw.last_page as number) ?? 1,
+    /* توزيعُ الحالات من الخادم على كامل النتائج — لا يُحسب في المتصفّح من
+       الصفحة المعروضة، وإلّا ناقض «الإجمالي» ما تحته. */
+    stats: (raw.stats as TreatmentPlanStats | undefined) ?? null,
   }
 }
 

@@ -88,7 +88,15 @@ export function TreatmentPlansPage() {
   const { data: students } = useAdminGuidanceStudents()
 
   // حساب الإحصائيات
+  /* من الخادم على كامل النتائج، لا عدّاً في المتصفّح من الصفحة المعروضة.
+     كان «الإجمالي» يأتي من `total` والبقيّةُ تُعدّ من عشرين صفّاً ظاهرة،
+     فتتناقض البطاقاتُ ويتبدّل الرقمُ بالانتقال بين الصفحات بلا سبب.
+     والاحتياطُ باقٍ لخادمٍ أقدمَ لم يُرسل `stats` بعد. */
   const stats = useMemo(() => {
+    if (plansData?.stats) {
+      return plansData.stats
+    }
+
     const plans: TreatmentPlan[] = (plansData?.data as unknown as TreatmentPlan[]) || []
     return {
       total: plansData?.total || 0,

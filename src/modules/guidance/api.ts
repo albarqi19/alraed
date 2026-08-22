@@ -200,15 +200,42 @@ export async function uploadGuidanceDocument(token: string, caseId: number, file
 
 // ==================== Treatment Plans API ====================
 
+/**
+ * الخطط العلاجيّة لشاشة الموجّه.
+ *
+ * **لا تُستعمل `unwrap` هنا** خلافاً لجاراتها، وهذا سببُ عطلٍ عاشت به
+ * الشاشةُ صامتةً: متحكّمُ الخطط ينثر حقولَ الترقيم في **جذر** الردّ
+ * (`{success, data: [...], current_page, total, last_page}`) بخلاف متحكّم
+ * الحالات الذي يضع الـpaginator كاملاً في `data`. فـ`unwrap` — وهي تعيد
+ * `response.data` — كانت تُرجع **المصفوفة** بينما الصفحةُ تقرأ
+ * `plansData.data` و`plansData.last_page`، فيصدق شرطُ الفراغ أبداً وتعرض
+ * الشاشةُ «لا توجد خطط» مهما كان في القاعدة، ولا تُرقِّم صفحةً قطّ.
+ *
+ * والنوعُ `ApiResponse<GuidancePaginatedResponse<...>>` كان يُخفي ذلك عن
+ * المدقّق لأنّه يصف شكلاً لا يُرسله الخادم.
+ *
+ * فتُعاد البِنيةُ هنا كما تفعل نظيرتُها في `admin/api/guidance-api.ts`
+ * حرفيّاً — حتّى تقرأ الشاشتان شكلاً واحداً.
+ */
 export async function fetchTreatmentPlans(token: string, filters: TreatmentPlanFilters) {
-  const { data } = await apiClient.get<ApiResponse<GuidancePaginatedResponse<TreatmentPlan>>>(
-    '/guidance/treatment-plans',
-    {
-      params: filters,
-      ...applyGuidanceToken(token),
-    },
-  )
-  return unwrap(data, 'تعذر جلب الخطط العلاجية')
+  const { data } = await apiClient.get<
+    ApiResponse<TreatmentPlan[]> & Partial<Omit<GuidancePaginatedResponse<TreatmentPlan>, 'data'>>
+  >('/guidance/treatment-plans', {
+    params: filters,
+    ...applyGuidanceToken(token),
+  })
+
+  if (!data.success) {
+    throw new Error(data.message ?? 'تعذر جلب الخطط العلاجية')
+  }
+
+  return {
+    data: data.data ?? [],
+    current_page: data.current_page ?? 1,
+    per_page: data.per_page ?? 20,
+    total: data.total ?? 0,
+    last_page: data.last_page ?? 1,
+  }
 }
 
 export async function fetchTreatmentPlan(token: string, planId: number) {
