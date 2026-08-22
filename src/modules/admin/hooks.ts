@@ -131,6 +131,7 @@ import {
   deleteStudent,
   deleteSubject,
   fetchStudents,
+  fetchStudentsList,
   fetchSubjects,
   fetchSubjectsWithMeta,
   fetchGrades,
@@ -602,6 +603,19 @@ export function useStudentsQuery(options: { enabled?: boolean } = {}) {
     queryKey: adminQueryKeys.students.all(),
     queryFn: fetchStudents,
     enabled: options.enabled ?? true,
+  })
+}
+
+/**
+ * شاشة إدارة الطلاب وحدها — تملك إظهار المغادرين لأنّها مكانُ مراجعتهم.
+ *
+ * الراية داخل مفتاح الاستعلام: قائمتان مختلفتان لا واحدةٌ تُرشَّح في المتصفّح.
+ */
+export function useStudentsListQuery(includeInactive: boolean) {
+  return useQuery({
+    queryKey: [...adminQueryKeys.students.all(), { includeInactive }],
+    queryFn: () => fetchStudentsList(includeInactive),
+    placeholderData: (previous) => previous,
   })
 }
 

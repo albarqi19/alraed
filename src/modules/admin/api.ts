@@ -1522,6 +1522,31 @@ export async function resetTeacherPassword(id: number): Promise<TeacherCredentia
   }
 }
 
+export interface StudentsListResult {
+  students: StudentRecord[]
+  /** عددُ المغادرين — يُرسَل دائماً حتّى حين لا يُعرَضون. */
+  inactiveCount: number
+  showingInactive: boolean
+}
+
+/**
+ * قائمة الطلاب لشاشة إدارتهم — وهي الوحيدة التي تملك إظهار المغادرين.
+ *
+ * مفصولةٌ عن `fetchStudents` عن قصد: الأخيرة تقرأ منها قوائمُ اختيارٍ
+ * كثيرة، وتغييرُ شكل ردّها لأجل عدّادٍ تحتاجه شاشةٌ واحدة ضررٌ بلا مقابل.
+ */
+export async function fetchStudentsList(includeInactive = false): Promise<StudentsListResult> {
+  const { data } = await apiClient.get<
+    ApiResponse<StudentRecord[]> & { meta?: { inactive_count?: number; showing_inactive?: boolean } }
+  >('/admin/students', { params: includeInactive ? { include_inactive: 1 } : undefined })
+
+  return {
+    students: unwrapResponse(data, 'تعذر تحميل قائمة الطلاب'),
+    inactiveCount: data.meta?.inactive_count ?? 0,
+    showingInactive: Boolean(data.meta?.showing_inactive),
+  }
+}
+
 export async function fetchStudents(): Promise<StudentRecord[]> {
   const { data } = await apiClient.get<ApiResponse<StudentRecord[]>>('/admin/students')
   return unwrapResponse(data, 'تعذر تحميل قائمة الطلاب')

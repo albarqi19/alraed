@@ -4,7 +4,7 @@ import { isAxiosError } from 'axios'
 import {
   useCreateStudentMutation,
   useDeleteStudentMutation,
-  useStudentsQuery,
+  useStudentsListQuery,
   useUpdateStudentMutation,
 } from '../hooks'
 import type { StudentRecord } from '../types'
@@ -330,9 +330,18 @@ export function AdminStudentsPage() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(PAGE_SIZE_OPTIONS[1])
 
-  const { data, isLoading, isError, isFetching, refetch } = useStudentsQuery()
+  /* الافتراضيّ «القائمون»: استيرادُ نور يُعطّل المغادر ولا يحذفه،
+     فكانت القائمة تخلط من غادر بمن بقي وتعرض رقماً يخالف لوحة القيادة. */
+  const [statusFilter, setStatusFilter] = useState<'active' | 'all' | 'inactive'>('active')
+  const includeInactive = statusFilter !== 'active'
 
-  const students = useMemo(() => data ?? [], [data])
+  const { data, isLoading, isError, isFetching, refetch } = useStudentsListQuery(includeInactive)
+
+  const inactiveCount = data?.inactiveCount ?? 0
+  const students = useMemo(() => {
+    const rows = data?.students ?? []
+    return statusFilter === 'inactive' ? rows.filter((s) => s.status !== 'active') : rows
+  }, [data, statusFilter])
 
   const gradeOptions = useMemo(() => {
     const set = new Set<string>()
@@ -509,6 +518,20 @@ export function AdminStudentsPage() {
       badge={`${students.length.toLocaleString('ar-SA-u-nu-latn')} طالب`}
       actions={
         <>
+          {/* مرشّحُ الحالة يقود الخادم لا المتصفّح: المغادر لا يُرسَل أصلاً
+              حتّى يُطلَب — فلا تحمل الشبكة مئاتَ صفوفٍ تُخفَى بعد وصولها. */}
+          <WsSelect
+            aria-label="فلتر الحالة"
+            title="فلتر الحالة"
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value as 'active' | 'all' | 'inactive')}
+          >
+            <option value="active">القائمون</option>
+            <option value="all">
+              {inactiveCount > 0 ? `الكلّ — ومعهم ${inactiveCount} مغادراً` : 'الكلّ'}
+            </option>
+            <option value="inactive">المغادرون فقط</option>
+          </WsSelect>
           <WsBtn icon={RefreshCcw} onClick={handleRefresh} disabled={isFetching}>
             {isFetching ? 'جاري التحديث...' : 'تحديث'}
           </WsBtn>

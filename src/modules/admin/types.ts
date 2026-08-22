@@ -95,6 +95,13 @@ export interface StudentRecord {
   class_name: string
   parent_name?: string
   parent_phone?: string
+  /**
+   * حالةُ القيد: `active` قائمٌ في المدرسة، و`inactive` غادرَ.
+   *
+   * الخادمُ يرسلها منذ البداية وكان النوعُ يُسقطها — فبقيت الشاشةُ عمياءَ
+   * عن الفرق بين ألفٍ ومئةِ طالبٍ قائم و١٩٧ مغادراً، تعرضهم صفّاً واحداً.
+   */
+  status?: 'active' | 'inactive' | string
   created_at?: string
   updated_at?: string
 }
