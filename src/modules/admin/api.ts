@@ -1450,9 +1450,41 @@ export async function fetchAdminDashboardStats(): Promise<AdminDashboardStats> {
   return unwrapResponse(data, 'تعذر تحميل إحصائيات لوحة التحكم')
 }
 
+/**
+ * قائمة الكادر لقوائم الاختيار — العاملون وحدهم.
+ *
+ * تقرأ منها شاشاتٌ كثيرة (المناوبة، برنامج النقاط، الإسنادات)،
+ * وكلُّها تريد من يُسنَد إليه عملٌ اليوم لا من غادر. والخادم يرشّح الموقوفين
+ * افتراضاً، فلا حاجةَ لمعامِلٍ هنا.
+ */
 export async function fetchTeachers(): Promise<TeacherRecord[]> {
   const { data } = await apiClient.get<ApiResponse<TeacherRecord[]>>('/admin/teachers')
   return unwrapResponse(data, 'تعذر تحميل قائمة المعلمين')
+}
+
+export interface StaffListResult {
+  teachers: TeacherRecord[]
+  /** عددُ الموقوفين — يُرسَل دائماً حتّى حين لا يُعرَضون. */
+  inactiveCount: number
+  showingInactive: boolean
+}
+
+/**
+ * قائمة الكادر لشاشة إدارتهم وحدها — وهي الوحيدة التي تملك إظهار الموقوفين.
+ *
+ * مفصولةٌ عن `fetchTeachers` عن قصد: هذه تعيد عدّاداً مع القائمة،
+ * ولو غيّرنا شكلَ الأولى لتأثّرت عشراتُ قوائم الاختيار بلا حاجة.
+ */
+export async function fetchStaffList(includeInactive = false): Promise<StaffListResult> {
+  const { data } = await apiClient.get<
+    ApiResponse<TeacherRecord[]> & { meta?: { inactive_count?: number; showing_inactive?: boolean } }
+  >('/admin/teachers', { params: includeInactive ? { include_inactive: 1 } : undefined })
+
+  return {
+    teachers: unwrapResponse(data, 'تعذر تحميل قائمة المعلمين'),
+    inactiveCount: data.meta?.inactive_count ?? 0,
+    showingInactive: Boolean(data.meta?.showing_inactive),
+  }
 }
 
 export async function createTeacher(payload: {

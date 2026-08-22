@@ -55,6 +55,7 @@ import {
   fetchTeacherAttendanceDelays,
   fetchScheduleDetails,
   fetchScheduleTemplates,
+  fetchStaffList,
   fetchTeachers,
   fetchWhatsappAbsentStudents,
   fetchWhatsappHistory,
@@ -406,6 +407,20 @@ export function useTeachersQuery() {
   return useQuery({
     queryKey: adminQueryKeys.teachers.all(),
     queryFn: fetchTeachers,
+  })
+}
+
+/**
+ * شاشة إدارة الكادر وحدها — تملك إظهار الموقوفين لأنّها مكانُ إعادة تفعيلهم.
+ *
+ * الراية داخل مفتاح الاستعلام: قائمتان مختلفتان لا واحدةٌ تُرشَّح في المتصفّح،
+ * وإلّا عرضتِ الشاشةُ مخزونَ القائمة الأخرى لحظةَ التبديل.
+ */
+export function useStaffListQuery(includeInactive: boolean) {
+  return useQuery({
+    queryKey: [...adminQueryKeys.teachers.all(), { includeInactive }],
+    queryFn: () => fetchStaffList(includeInactive),
+    placeholderData: (previous) => previous,
   })
 }
 

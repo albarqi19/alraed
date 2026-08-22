@@ -22,7 +22,7 @@ import {
   useCreateTeacherMutation,
   useDeleteTeacherMutation,
   useResetTeacherPasswordMutation,
-  useTeachersQuery,
+  useStaffListQuery,
   useUpdateTeacherMutation,
 } from '../hooks'
 import type { TeacherCredentials, TeacherRecord, TeacherStatus, StaffRole } from '../types'
@@ -350,15 +350,20 @@ function isConfidentialAccount(teacher: { role?: string | null; secondary_role?:
 export function AdminTeachersPage() {
   const toast = useToast()
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  /* الافتراضيّ «العاملون» لا «الكلّ»: المدير يفتح الشاشة ليدير من عنده
+     اليوم، ومن أوقفه لا يجب أن يزاحمهم إلّا حين يطلبه. والمرشّح يقود الخادمَ
+     لا المتصفّح وحده: الموقوف لا يُرسَل أصلاً ما لم يُطلَب. */
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('active')
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingTeacher, setEditingTeacher] = useState<TeacherRecord | null>(null)
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherRecord | null>(null)
   const [deletingTeacher, setDeletingTeacher] = useState<TeacherRecord | null>(null)
   const [credentialsLog, setCredentialsLog] = useState<CredentialsEntry[]>([])
 
-  const { data, isLoading, isError, refetch, isFetching } = useTeachersQuery()
-  const teachers = useMemo(() => data ?? [], [data])
+  const includeInactive = statusFilter !== 'active'
+  const { data, isLoading, isError, refetch, isFetching } = useStaffListQuery(includeInactive)
+  const teachers = useMemo(() => data?.teachers ?? [], [data])
+  const inactiveCount = data?.inactiveCount ?? 0
 
   const createTeacherMutation = useCreateTeacherMutation()
   const updateTeacherMutation = useUpdateTeacherMutation()
@@ -366,12 +371,13 @@ export function AdminTeachersPage() {
   const resetPasswordMutation = useResetTeacherPasswordMutation()
 
   const stats = useMemo(() => {
-    const total = teachers.length
     const active = teachers.filter((teacher) => teacher.status === 'active').length
     const dual = teachers.filter((teacher) => teacher.secondary_role).length
     const needsPassword = teachers.filter((teacher) => teacher.needs_password_change).length
-    return { total, active, inactive: total - active, dual, needsPassword }
-  }, [teachers])
+    /* عددُ الموقوفين من الخادم لا من القائمة المعروضة: حين يكون المرشّح
+       «العاملون» لا يصل الموقوفون أصلاً، فعدُّهم من المعروض يُعطي صفراً كاذباً. */
+    return { total: active + inactiveCount, active, inactive: inactiveCount, dual, needsPassword }
+  }, [teachers, inactiveCount])
 
   const filteredTeachers = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
@@ -557,9 +563,11 @@ export function AdminTeachersPage() {
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
           >
-            <option value="all">كل الحالات</option>
-            <option value="active">نشط</option>
-            <option value="inactive">موقوف</option>
+            <option value="active">العاملون</option>
+            <option value="all">
+              {inactiveCount > 0 ? `الكلّ — ومعهم ${inactiveCount} موقوفاً` : 'الكلّ'}
+            </option>
+            <option value="inactive">الموقوفون فقط</option>
           </WsSelect>
           <WsIconBtn icon={RefreshCw} label="تحديث" onClick={() => refetch()} disabled={isFetching} />
         </span>
