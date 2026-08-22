@@ -44,6 +44,8 @@ function normalizePlan(raw: unknown): SubscriptionPlanRecord | null {
     description: typeof raw.description === 'string' ? raw.description : null,
     monthly_price: coerceNumber(raw.monthly_price, 0),
     yearly_price: Number.isFinite(coerceNumber(raw.yearly_price, NaN)) ? coerceNumber(raw.yearly_price, NaN) : null,
+    // خادمٌ قديم لا يرسل الحقل ⇒ بلا ضريبة، لا ١٥٪ مفترضة
+    vat_rate: coerceNumber(raw.vat_rate, 0),
     student_limit: Number.isFinite(coerceNumber(raw.student_limit, NaN)) ? coerceNumber(raw.student_limit, NaN) : null,
     teacher_limit: Number.isFinite(coerceNumber(raw.teacher_limit, NaN)) ? coerceNumber(raw.teacher_limit, NaN) : null,
     storage_limit_mb: Number.isFinite(coerceNumber(raw.storage_limit_mb, NaN))
@@ -235,6 +237,7 @@ export async function changeSubscriptionPlan(payload: { plan_code: string; billi
     original_price: coerceNumber(rawPricing.original_price, 0),
     credit: coerceNumber(rawPricing.credit, 0),
     final_price: coerceNumber(rawPricing.final_price, 0),
+    vat_rate: coerceNumber(rawPricing.vat_rate, 0),
     tax: coerceNumber(rawPricing.tax, 0),
     total: coerceNumber(rawPricing.total, 0),
   } : null

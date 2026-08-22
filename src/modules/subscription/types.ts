@@ -13,6 +13,8 @@ export interface SubscriptionPlanRecord {
   description?: string | null
   monthly_price: number
   yearly_price?: number | null
+  /** نسبة ضريبة القيمة المضافة كعدد عشري: 0 = بلا ضريبة، 0.15 = ١٥٪ */
+  vat_rate: number
   student_limit?: number | null
   teacher_limit?: number | null
   storage_limit_mb?: number | null

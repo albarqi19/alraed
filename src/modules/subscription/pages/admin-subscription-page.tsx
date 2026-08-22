@@ -136,9 +136,11 @@ export function AdminSubscriptionPage() {
       currentSubscription?.ends_at,
     )
     const afterCredit = Math.max(0, basePrice - credit)
-    const tax = Math.round(afterCredit * 0.15)
+    // النسبة من سجل الخطة لا رقمٌ مبرمَج، والتقريب لهللتين ليطابق `round(..., 2)` في الباك
+    const vatRate = pendingPlan.vat_rate ?? 0
+    const tax = Math.round(afterCredit * vatRate * 100) / 100
     const total = afterCredit + tax
-    return { basePrice, credit, afterCredit, tax, total }
+    return { basePrice, credit, afterCredit, vatRate, tax, total }
   }, [pendingPlan, billingCycle, currentSubscription])
 
   const handlePlanAction = (plan: SubscriptionPlanRecord) => {
@@ -528,7 +530,12 @@ export function AdminSubscriptionPage() {
                       </div>
                     </>
                   )}
-                  <Row label="ضريبة القيمة المضافة (15%)" value={formatCurrency(confirmationPricing.tax)} />
+                  {confirmationPricing.vatRate > 0 && (
+                    <Row
+                      label={`ضريبة القيمة المضافة (${+(confirmationPricing.vatRate * 100).toFixed(2)}%)`}
+                      value={formatCurrency(confirmationPricing.tax)}
+                    />
+                  )}
                   <div style={{ borderTop: '1px solid var(--ws-hairline)', paddingTop: 7 }}>
                     <Row label="الإجمالي" value={formatCurrency(confirmationPricing.total)} bold tone={TONES.green} />
                   </div>
