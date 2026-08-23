@@ -1497,7 +1497,17 @@ export function AdminFormSubmissionsPage() {
    * ردٍّ واحد يكفي دليلاً.
    */
   const answersVisible = !form.is_confidential || submissions.some((item) => item.answers !== undefined)
-  const pendingMessageTargetIds = pendingStudents.slice(0, 200).map((student) => student.id).join(',')
+  /*
+   * سقفُ ما يُمرَّر في الرابط.
+   *
+   * المعرّفات تسافر في سلسلة الاستعلام، فمدرسةٌ بألف غير مستجيبٍ تُنتج رابطاً
+   * بستّة آلاف حرف. والسقفُ كان مئتين يقصّ صامتاً: الزرُّ يقول «تذكير ٤٥٠»
+   * ويصل الصفحةَ مئتان، فيُرسل المديرُ ظانّاً أنه غطّى الجميع.
+   */
+  const MESSAGE_TARGET_CAP = 500
+  const pendingMessageTargets = pendingStudents.slice(0, MESSAGE_TARGET_CAP)
+  const pendingMessageTargetIds = pendingMessageTargets.map((student) => student.id).join(',')
+  const pendingTargetsTruncated = pendingStudents.length > pendingMessageTargets.length
   const totalCount = meta?.total ?? submissions.length
   const lastPage = meta?.last_page ?? 1
 
@@ -1808,13 +1818,17 @@ export function AdminFormSubmissionsPage() {
             <Link
               to={
                 pendingMessageTargetIds
-                  ? `/admin/whatsapp/send?source=form&studentIds=${pendingMessageTargetIds}`
-                  : '/admin/whatsapp/send'
+                  ? `/admin/whatsapp-send?source=form&studentIds=${pendingMessageTargetIds}`
+                  : '/admin/whatsapp-send'
               }
               className="ws-btn ws-btn--sm"
             >
               <MessageCircle />
-              تذكير غير المستجيبين ({nf(pendingStudents.length)})
+              تذكير غير المستجيبين (
+              {pendingTargetsTruncated
+                ? `${nf(pendingMessageTargets.length)} من ${nf(pendingStudents.length)}`
+                : nf(pendingStudents.length)}
+              )
             </Link>
           ) : null
         }
