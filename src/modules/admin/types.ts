@@ -1928,7 +1928,8 @@ export interface TimeTableMatchedSubject {
   xml_name: string
   xml_short: string
   match: TimeTableSubjectMatch | null
-  status: 'matched' | 'unmatched'
+  /** `suggested` = مطابقةُ اشتقاقٍ تنتظر إقرار المدير، لا أمرٌ واقع */
+  status: 'matched' | 'suggested' | 'unmatched'
 }
 
 export interface TimeTableParsedClass {
@@ -1986,6 +1987,8 @@ export interface TimeTableTeacherMapping {
 export interface TimeTableSubjectMapping {
   xml_id: string
   subject_id: number | null
+  /** إنشاء المادة باسمها في الملف بدل ربطها بمادةٍ قائمة */
+  create: boolean
 }
 
 export interface TimeTableClassMapping {
@@ -2005,6 +2008,7 @@ export interface TimeTableConfirmPayload {
 export interface TimeTableConfirmStats {
   sessions_created: number
   sessions_replaced: number
+  subjects_created: number
   classes_count: number
   errors_count: number
 }

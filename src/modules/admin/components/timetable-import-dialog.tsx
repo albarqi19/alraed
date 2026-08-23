@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react'
-import { X, Upload, Check, AlertTriangle, User, BookOpen, GraduationCap, FileText, ArrowLeft, ArrowRight, Search, CheckCircle2, XCircle } from 'lucide-react'
+import { X, Upload, Check, AlertTriangle, User, BookOpen, GraduationCap, FileText, ArrowLeft, ArrowRight, Search, CheckCircle2, XCircle, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePreviewTimeTableMutation, useConfirmTimeTableMutation } from '../hooks'
 import type {
@@ -19,6 +19,9 @@ interface TimeTableImportDialogProps {
 
 type WizardStep = 'upload' | 'subjects' | 'teachers' | 'classes' | 'confirm'
 
+/** قرار المدير في مادةٍ واحدة: ربطٌ بمادةٍ قائمة، أو إنشاءٌ باسم الملف. */
+type SubjectDecision = { subjectId: number | null; create: boolean }
+
 const STEPS: { key: WizardStep; label: string; icon: React.ReactNode }[] = [
   { key: 'upload', label: 'رفع الملف', icon: <Upload className="w-4 h-4" /> },
   { key: 'subjects', label: 'المواد', icon: <BookOpen className="w-4 h-4" /> },
@@ -34,7 +37,7 @@ export function TimeTableImportDialog({ isOpen, onClose }: TimeTableImportDialog
   const [replaceExisting, setReplaceExisting] = useState(true)
 
   // Mappings state
-  const [subjectMappings, setSubjectMappings] = useState<Record<string, number | null>>({})
+  const [subjectDecisions, setSubjectDecisions] = useState<Record<string, SubjectDecision>>({})
   const [teacherMappings, setTeacherMappings] = useState<Record<string, number | null>>({})
   const [classMappings, setClassMappings] = useState<Record<string, { grade: string; class_name: string }>>({})
 
@@ -47,11 +50,16 @@ export function TimeTableImportDialog({ isOpen, onClose }: TimeTableImportDialog
       onSuccess: (data) => {
         setPreviewData(data)
         // Initialize mappings
-        const subjectMap: Record<string, number | null> = {}
+        //
+        // المقترَح يُنتقى مسبقاً: مطابقة الجذر دقيقة («الفنية» ⇐ «التربية
+        // الفنية»)، وثمن رفضها ليس توقّفاً بل إنشاءُ نسخةٍ ثانية من المادة
+        // نفسها — وهو ضررٌ دائم يصعب تنظيفه بعد أن تتعلّق به الحصص.
+        // وما لا مقترَح له يبدأ على «إنشاء» لأنه لا خيار سواه.
+        const subjectMap: Record<string, SubjectDecision> = {}
         data.subjects.forEach((s) => {
-          subjectMap[s.xml_id] = s.match?.id ?? null
+          subjectMap[s.xml_id] = { subjectId: s.match?.id ?? null, create: !s.match }
         })
-        setSubjectMappings(subjectMap)
+        setSubjectDecisions(subjectMap)
 
         const teacherMap: Record<string, number | null> = {}
         data.teachers.forEach((t) => {
@@ -78,9 +86,10 @@ export function TimeTableImportDialog({ isOpen, onClose }: TimeTableImportDialog
       teacher_id,
     }))
 
-    const subjectMappingsArray: TimeTableSubjectMapping[] = Object.entries(subjectMappings).map(([xml_id, subject_id]) => ({
+    const subjectMappingsArray: TimeTableSubjectMapping[] = Object.entries(subjectDecisions).map(([xml_id, decision]) => ({
       xml_id,
-      subject_id,
+      subject_id: decision.subjectId,
+      create: decision.create,
     }))
 
     const classMappingsArray: TimeTableClassMapping[] = Object.entries(classMappings).map(([xml_id, mapping]) => ({
@@ -103,13 +112,13 @@ export function TimeTableImportDialog({ isOpen, onClose }: TimeTableImportDialog
         },
       }
     )
-  }, [file, previewData, teacherMappings, subjectMappings, classMappings, replaceExisting, confirmMutation])
+  }, [file, previewData, teacherMappings, subjectDecisions, classMappings, replaceExisting, confirmMutation])
 
   const handleClose = useCallback(() => {
     setCurrentStep('upload')
     setFile(null)
     setPreviewData(null)
-    setSubjectMappings({})
+    setSubjectDecisions({})
     setTeacherMappings({})
     setClassMappings({})
     setReplaceExisting(true)
@@ -117,10 +126,14 @@ export function TimeTableImportDialog({ isOpen, onClose }: TimeTableImportDialog
   }, [onClose])
 
   // Check if all subjects are mapped
+  // مادةٌ محسومة: مربوطةٌ بمادةٍ قائمة، أو مطلوبٌ إنشاؤها.
   const allSubjectsMapped = useMemo(() => {
     if (!previewData) return false
-    return previewData.subjects.every((s) => subjectMappings[s.xml_id] != null)
-  }, [previewData, subjectMappings])
+    return previewData.subjects.every((s) => {
+      const decision = subjectDecisions[s.xml_id]
+      return decision != null && (decision.subjectId != null || decision.create)
+    })
+  }, [previewData, subjectDecisions])
 
   // Check if all teachers are mapped
   const allTeachersMapped = useMemo(() => {
@@ -220,8 +233,8 @@ export function TimeTableImportDialog({ isOpen, onClose }: TimeTableImportDialog
             <SubjectsStep
               subjects={previewData.subjects}
               availableSubjects={previewData.available_subjects}
-              mappings={subjectMappings}
-              onMappingChange={(xmlId, subjectId) => setSubjectMappings((prev) => ({ ...prev, [xmlId]: subjectId }))}
+              decisions={subjectDecisions}
+              onDecisionChange={(xmlId, decision) => setSubjectDecisions((prev) => ({ ...prev, [xmlId]: decision }))}
             />
           )}
           {currentStep === 'teachers' && previewData && (
@@ -244,7 +257,7 @@ export function TimeTableImportDialog({ isOpen, onClose }: TimeTableImportDialog
           {currentStep === 'confirm' && previewData && (
             <ConfirmStep
               previewData={previewData}
-              subjectMappings={subjectMappings}
+              subjectDecisions={subjectDecisions}
               teacherMappings={teacherMappings}
               replaceExisting={replaceExisting}
               onReplaceExistingChange={setReplaceExisting}
@@ -396,11 +409,11 @@ function UploadStep({ file, onFileSelect, isLoading, error }: UploadStepProps) {
 interface SubjectsStepProps {
   subjects: TimeTableMatchedSubject[]
   availableSubjects: { id: number; name: string }[]
-  mappings: Record<string, number | null>
-  onMappingChange: (xmlId: string, subjectId: number | null) => void
+  decisions: Record<string, SubjectDecision>
+  onDecisionChange: (xmlId: string, decision: SubjectDecision) => void
 }
 
-function SubjectsStep({ subjects, availableSubjects, mappings, onMappingChange }: SubjectsStepProps) {
+function SubjectsStep({ subjects, availableSubjects, decisions, onDecisionChange }: SubjectsStepProps) {
   const [search, setSearch] = useState('')
 
   const filteredSubjects = useMemo(() => {
@@ -408,7 +421,19 @@ function SubjectsStep({ subjects, availableSubjects, mappings, onMappingChange }
     return subjects.filter((s) => s.xml_name.includes(search))
   }, [subjects, search])
 
-  const unmatchedCount = useMemo(() => subjects.filter((s) => mappings[s.xml_id] == null).length, [subjects, mappings])
+  const undecidedCount = useMemo(
+    () =>
+      subjects.filter((s) => {
+        const d = decisions[s.xml_id]
+        return !d || (d.subjectId == null && !d.create)
+      }).length,
+    [subjects, decisions],
+  )
+
+  const toCreateCount = useMemo(
+    () => subjects.filter((s) => decisions[s.xml_id]?.create).length,
+    [subjects, decisions],
+  )
 
   return (
     <div>
@@ -416,8 +441,10 @@ function SubjectsStep({ subjects, availableSubjects, mappings, onMappingChange }
         <div>
           <h3 className="text-lg font-semibold text-slate-900">مطابقة المواد</h3>
           <p className="text-sm text-slate-500">
-            {unmatchedCount > 0 ? (
-              <span className="text-amber-600">{unmatchedCount} مادة تحتاج مطابقة</span>
+            {undecidedCount > 0 ? (
+              <span className="text-amber-600">{undecidedCount} مادة تحتاج قراراً</span>
+            ) : toCreateCount > 0 ? (
+              <span className="text-emerald-600">جاهزة — وستُنشأ {toCreateCount} مادة جديدة</span>
             ) : (
               <span className="text-emerald-600">جميع المواد متطابقة</span>
             )}
@@ -435,6 +462,10 @@ function SubjectsStep({ subjects, availableSubjects, mappings, onMappingChange }
         </div>
       </div>
 
+      <p className="text-xs text-slate-500 mb-3">
+        راجِع المقترَحات — ربطُ المادة بنظيرتها القائمة أفضل من إنشاء نسخةٍ ثانية منها.
+      </p>
+
       <div className="border rounded-lg overflow-hidden">
         <table className="w-full">
           <thead className="bg-slate-50">
@@ -446,9 +477,11 @@ function SubjectsStep({ subjects, availableSubjects, mappings, onMappingChange }
           </thead>
           <tbody className="divide-y">
             {filteredSubjects.map((subject) => {
-              const isMatched = mappings[subject.xml_id] != null
+              const decision = decisions[subject.xml_id] ?? { subjectId: null, create: false }
+              const isUndecided = decision.subjectId == null && !decision.create
+              const isSuggested = subject.status === 'suggested' && decision.subjectId != null
               return (
-                <tr key={subject.xml_id} className={cn(!isMatched && 'bg-amber-50/50')}>
+                <tr key={subject.xml_id} className={cn(isUndecided && 'bg-amber-50/50')}>
                   <td className="px-4 py-3">
                     <div className="font-medium text-slate-900">{subject.xml_name}</div>
                     {subject.xml_short && (
@@ -457,14 +490,22 @@ function SubjectsStep({ subjects, availableSubjects, mappings, onMappingChange }
                   </td>
                   <td className="px-4 py-3">
                     <select
-                      value={mappings[subject.xml_id] ?? ''}
-                      onChange={(e) => onMappingChange(subject.xml_id, e.target.value ? Number(e.target.value) : null)}
+                      value={decision.create ? '__create__' : (decision.subjectId ?? '')}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        if (value === '__create__') onDecisionChange(subject.xml_id, { subjectId: null, create: true })
+                        else if (value === '') onDecisionChange(subject.xml_id, { subjectId: null, create: false })
+                        else onDecisionChange(subject.xml_id, { subjectId: Number(value), create: false })
+                      }}
                       className={cn(
                         'w-full px-3 py-2 border rounded-lg text-sm',
-                        !isMatched && 'border-amber-300 bg-amber-50'
+                        decision.create && 'border-emerald-400 text-emerald-700',
+                        isSuggested && 'border-orange-300',
+                        isUndecided && 'border-amber-300 bg-amber-50',
                       )}
                     >
                       <option value="">-- اختر مادة --</option>
+                      <option value="__create__">➕ إنشاء «{subject.xml_name}» كمادة جديدة</option>
                       {availableSubjects.map((s) => (
                         <option key={s.id} value={s.id}>
                           {s.name}
@@ -473,7 +514,17 @@ function SubjectsStep({ subjects, availableSubjects, mappings, onMappingChange }
                     </select>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    {isMatched ? (
+                    {decision.create ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-medium">
+                        <Plus className="w-3 h-3" />
+                        ستُنشأ
+                      </span>
+                    ) : isSuggested ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">
+                        <AlertTriangle className="w-3 h-3" />
+                        مقترَحة
+                      </span>
+                    ) : decision.subjectId != null ? (
                       <span className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-medium">
                         <CheckCircle2 className="w-3 h-3" />
                         متطابقة
@@ -481,7 +532,7 @@ function SubjectsStep({ subjects, availableSubjects, mappings, onMappingChange }
                     ) : (
                       <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-medium">
                         <AlertTriangle className="w-3 h-3" />
-                        تحتاج مطابقة
+                        تحتاج قراراً
                       </span>
                     )}
                   </td>
@@ -492,14 +543,14 @@ function SubjectsStep({ subjects, availableSubjects, mappings, onMappingChange }
         </table>
       </div>
 
-      {unmatchedCount > 0 && (
+      {undecidedCount > 0 && (
         <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
           <div className="flex items-center gap-2 text-amber-700">
             <AlertTriangle className="w-5 h-5" />
-            <span className="font-medium">يجب مطابقة جميع المواد للمتابعة</span>
+            <span className="font-medium">لكل مادة قرار: اربطها بمادةٍ قائمة، أو اطلب إنشاءها</span>
           </div>
           <p className="text-sm text-amber-600 mt-1">
-            إذا لم تجد المادة في القائمة، يرجى إضافتها من صفحة إدارة المواد أولاً
+            «إنشاء» يضيف المادة باسمها في الملف عند التأكيد — ولا حاجة لمغادرة المعالج.
           </p>
         </div>
       )}
@@ -685,14 +736,19 @@ function ClassesStep({ classes, mappings, onMappingChange }: ClassesStepProps) {
 // ============== Confirm Step ==============
 interface ConfirmStepProps {
   previewData: TimeTablePreviewData
-  subjectMappings: Record<string, number | null>
+  subjectDecisions: Record<string, SubjectDecision>
   teacherMappings: Record<string, number | null>
   replaceExisting: boolean
   onReplaceExistingChange: (value: boolean) => void
 }
 
-function ConfirmStep({ previewData, subjectMappings: _subjectMappings, teacherMappings: _teacherMappings, replaceExisting, onReplaceExistingChange }: ConfirmStepProps) {
+function ConfirmStep({ previewData, subjectDecisions, teacherMappings: _teacherMappings, replaceExisting, onReplaceExistingChange }: ConfirmStepProps) {
   const { stats } = previewData
+
+  const subjectsToCreate = useMemo(
+    () => Object.values(subjectDecisions).filter((d) => d.create).length,
+    [subjectDecisions],
+  )
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -722,6 +778,18 @@ function ConfirmStep({ previewData, subjectMappings: _subjectMappings, teacherMa
           <div className="text-sm text-slate-600">مادة</div>
         </div>
       </div>
+
+      {subjectsToCreate > 0 && (
+        <div className="p-4 mb-6 bg-emerald-50 border border-emerald-200 rounded-lg">
+          <div className="flex items-center gap-2 text-emerald-700">
+            <Plus className="w-5 h-5" />
+            <span className="font-medium">ستُنشأ {subjectsToCreate} مادة جديدة</span>
+          </div>
+          <p className="text-sm text-emerald-600 mt-1">
+            بأسمائها كما وردت في الملف، وتُضاف إلى مواد المدرسة.
+          </p>
+        </div>
+      )}
 
       <div className="p-4 border rounded-lg mb-6">
         <label className="flex items-center gap-3 cursor-pointer">
