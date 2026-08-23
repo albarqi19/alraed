@@ -5,5 +5,6 @@ export const formQueryKeys = {
     ['forms', 'admin', 'submissions', formId, filters] as const,
   adminSubmission: (formId: number, submissionId: number | null) =>
     ['forms', 'admin', 'submission', formId, submissionId] as const,
+  adminNotifyPreview: (formId: number | null) => ['forms', 'admin', 'notify-preview', formId] as const,
   guardianList: (nationalId: string) => ['forms', 'guardian', nationalId] as const,
 }

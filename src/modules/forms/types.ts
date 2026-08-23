@@ -357,3 +357,33 @@ export interface GuardianFormSubmissionPayload {
   responses: FormResponsesPayload
   files?: Record<string, File | File[]>
 }
+
+// ========== إشعار أولياء الأمور بالنموذج عبر واتساب ==========
+
+/** إيقاعُ الإرسال كما حسبه `SendingPace` في الباك. */
+export interface FormNotifyPace {
+  tier: string
+  total_seconds: number
+  peak_per_hour: number
+  finishes_at: string
+  summary: string
+  gap_seconds?: [number, number]
+  pause_seconds?: [number, number] | null
+  pause_every?: number | null
+}
+
+export interface FormNotifyPreview {
+  audience_count: number
+  reachable_count: number
+  without_phone_count: number
+  already_notified_count: number
+  pending_count: number
+  /** النصُّ بعينه الذي سيصل وليّ الأمر — لا تقريبٌ له. */
+  sample_message: string
+  pace: FormNotifyPace
+}
+
+export interface FormNotifyResult {
+  queued_count: number
+  pace?: FormNotifyPace
+}

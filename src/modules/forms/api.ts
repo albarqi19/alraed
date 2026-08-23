@@ -3,6 +3,8 @@ import type { ApiResponse, PaginatedResponse } from '@/services/api/types'
 import type {
   FormAssignmentInput,
   FormListResponse,
+  FormNotifyPreview,
+  FormNotifyResult,
   FormSubmission,
   FormSummary,
   FormUpsertPayload,
@@ -80,6 +82,22 @@ export async function deleteAdminForm(formId: number): Promise<void> {
 export async function publishAdminForm(formId: number): Promise<FormSummary> {
   const { data } = await apiClient.post<ApiResponse<FormSummary>>(`/admin/forms/${formId}/publish`)
   return unwrap<FormSummary>(data, 'تعذر نشر النموذج')
+}
+
+/**
+ * معاينةُ الإشعار: العدد والإيقاع ونصُّ الرسالة — قبل إرسال شيء.
+ */
+export async function fetchFormNotifyPreview(formId: number): Promise<FormNotifyPreview> {
+  const { data } = await apiClient.get<ApiResponse<FormNotifyPreview>>(`/admin/forms/${formId}/notify-preview`)
+  return unwrap<FormNotifyPreview>(data, 'تعذر حساب معاينة الإشعار')
+}
+
+/**
+ * إطلاقُ الإشعار — يُدرج في طابور الواتساب بإيقاعٍ يحسبه الباك، ولا يُرسل فوراً.
+ */
+export async function notifyFormGuardians(formId: number): Promise<FormNotifyResult> {
+  const { data } = await apiClient.post<ApiResponse<FormNotifyResult>>(`/admin/forms/${formId}/notify`)
+  return unwrap<FormNotifyResult>(data, 'تعذر إدراج الإشعارات')
 }
 
 export async function archiveAdminForm(formId: number): Promise<FormSummary> {
