@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/services/api/client'
 import { MessageSquare, School, Calendar, CheckCheck, ExternalLink, Inbox, UserRound } from 'lucide-react'
@@ -69,14 +69,42 @@ export function AdminParentRepliesPage() {
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [selectedReply, setSelectedReply] = useState<ParentReply | null>(null)
 
-  // جلب خيارات الفلاتر (الصفوف والفصول المتاحة)
-  const { data: filterOptions } = useQuery<{ success: boolean; data: { grades: string[]; classes: string[] } }>({
+  // جلب خيارات الفلاتر (الصفوف وفصولُ كلِّ صفّ)
+  const { data: filterOptions } = useQuery<{
+    success: boolean
+    data: { grades: string[]; grades_with_classes?: { grade: string; classes: string[] }[]; classes: string[] }
+  }>({
     queryKey: ['parent-replies-filter-options'],
     queryFn: async () => {
       const response = await apiClient.get('/admin/parent-replies/filter-options')
       return response.data
     },
   })
+
+  /**
+   * فصولُ الصفِّ المختار وحدَه.
+   *
+   * `class_name` رقمٌ مجرَّد يعيد كلُّ صفٍّ استعمالَه، فالقائمةُ المسطَّحة
+   * القديمة كانت خمسةَ أرقامٍ تخصُّ ستّةَ صفوف: يختار المشرفُ «1» بلا صفٍّ
+   * فتجتمع أمامه ردودُ أوّلِ ابتدائيٍّ وسادسِه.
+   */
+  const classOptions = useMemo(() => {
+    if (gradeFilter === 'all') return [] as string[]
+    return filterOptions?.data.grades_with_classes?.find((entry) => entry.grade === gradeFilter)?.classes ?? []
+  }, [filterOptions, gradeFilter])
+
+  /**
+   * تغييرُ الصفِّ يصفّر الفصل.
+   *
+   * وهذا العطلُ كان أخطرَ من خلطِ الصفوف: من رشّح «الأول · 5» ثم انتقل إلى
+   * «الثالث» — ولا فصلَ خامسَ فيه — بقي «5» عالقاً في الطلب، فتُخفى عنه ردودٌ
+   * موجودةٌ وتبدو الشاشةُ فارغةً بلا سبب. ردُّ وليِّ أمرٍ لا يُقرأ لأنّ فلتراً
+   * منسيّاً يحجبه.
+   */
+  const handleGradeChange = (value: string) => {
+    setGradeFilter(value)
+    setClassFilter('all')
+  }
 
   const { data, isLoading, error } = useQuery<ParentRepliesResponse>({
     queryKey: ['parent-replies', activeTab, statusFilter, gradeFilter, classFilter, searchQuery],
@@ -187,21 +215,29 @@ export function AdminParentRepliesPage() {
           </WsSelect>
         </WsField>
         <WsField label="الصف" htmlFor="replies-grade">
-          <WsSelect id="replies-grade" value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)}>
+          <WsSelect id="replies-grade" value={gradeFilter} onChange={(e) => handleGradeChange(e.target.value)}>
             <option value="all">الكل</option>
             {filterOptions?.data.grades.map((grade) => (
               <option key={grade} value={grade}>{grade}</option>
             ))}
           </WsSelect>
         </WsField>
-        <WsField label="الفصل" htmlFor="replies-class">
-          <WsSelect id="replies-class" value={classFilter} onChange={(e) => setClassFilter(e.target.value)}>
-            <option value="all">الكل</option>
-            {filterOptions?.data.classes.map((className) => (
-              <option key={className} value={className}>{className}</option>
-            ))}
-          </WsSelect>
-        </WsField>
+        {/* الفصلُ لا يظهر إلّا بعد الصف: رقمُه وحدَه لا يدلّ على أحد */}
+        {gradeFilter !== 'all' ? (
+          <WsField label="الفصل" htmlFor="replies-class">
+            <WsSelect
+              id="replies-class"
+              value={classFilter}
+              onChange={(e) => setClassFilter(e.target.value)}
+              disabled={classOptions.length === 0}
+            >
+              <option value="all">جميع فصول {gradeFilter}</option>
+              {classOptions.map((className) => (
+                <option key={className} value={className}>فصل {className}</option>
+              ))}
+            </WsSelect>
+          </WsField>
+        ) : null}
       </WsToolbar>
 
       <WsLayout>
