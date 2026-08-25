@@ -48,6 +48,7 @@ import {
   WsTextarea,
   WsToolbar,
 } from '@/shared/workspace'
+import { GRADE_ORDER } from './subjects-ui'
 
 type FilterState = {
   date: string
@@ -123,6 +124,7 @@ function LateArrivalFormDialog({
   const [lateDate, setLateDate] = useState<string>(defaultDate || today)
   const [notes, setNotes] = useState('')
   const [search, setSearch] = useState('')
+  const [gradeFilter, setGradeFilter] = useState('')
   const [classFilter, setClassFilter] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [validationError, setValidationError] = useState<string | null>(null)
@@ -145,21 +147,53 @@ function LateArrivalFormDialog({
     setLateDate(defaultDate || today)
     setNotes('')
     setSearch('')
+    setGradeFilter('')
     setClassFilter('')
     setSelectedIds(new Set())
     setValidationError(null)
   }, [defaultDate, open, today])
 
-  const classOptions = useMemo(() => {
+  const gradeOptions = useMemo(() => {
     if (!students) return [] as string[]
-    const unique = new Set(students.map((student) => student.class_name).filter(Boolean) as string[])
-    return Array.from(unique).sort((a, b) => a.localeCompare(b, 'ar'))
+    const unique = new Set(students.map((student) => student.grade).filter(Boolean) as string[])
+    return Array.from(unique).sort(
+      (a, b) => (GRADE_ORDER[a] ?? 99) - (GRADE_ORDER[b] ?? 99) || a.localeCompare(b, 'ar'),
+    )
   }, [students])
+
+  /**
+   * فصولُ الصفِّ المختار وحدَه.
+   *
+   * `class_name` رقمٌ مجرَّد («1»، «2»…) يعيد كلُّ صفٍّ استعمالَه، فالقائمةُ
+   * العامّة كانت خمسةَ خياراتٍ تخصُّ ستّةَ صفوفٍ معاً — يختار الوكيلُ «١»
+   * فيجتمع أمامه أوّلُ ابتدائيٍّ وسادسُه في قائمةٍ واحدة.
+   */
+  const classOptions = useMemo(() => {
+    if (!students || !gradeFilter) return [] as string[]
+    const unique = new Set(
+      students.filter((student) => student.grade === gradeFilter).map((student) => student.class_name).filter(Boolean) as string[],
+    )
+    return Array.from(unique).sort((a, b) => a.localeCompare(b, 'ar', { numeric: true }))
+  }, [students, gradeFilter])
+
+  const handleGradeChange = (value: string) => {
+    setGradeFilter(value)
+    // فصلُ الصفِّ السابق لا معنى له تحت صفٍّ جديد — والرقمُ نفسُه موجودٌ في
+    // الصفَّين فيبقى «مطابقاً» بلا أن يعني شيئاً.
+    setClassFilter('')
+  }
+
+  const handleResetFilters = () => {
+    setGradeFilter('')
+    setClassFilter('')
+    setSearch('')
+  }
 
   const filteredStudents = useMemo(() => {
     if (!students) return []
     const normalizedSearch = search.trim().toLowerCase()
     return students
+      .filter((student) => (gradeFilter ? student.grade === gradeFilter : true))
       .filter((student) => (classFilter ? student.class_name === classFilter : true))
       .filter((student) => {
         if (!normalizedSearch) return true
@@ -167,18 +201,33 @@ function LateArrivalFormDialog({
         return haystack.includes(normalizedSearch)
       })
       .sort((a, b) => a.name.localeCompare(b.name, 'ar'))
-  }, [students, classFilter, search])
+  }, [students, gradeFilter, classFilter, search])
 
+  /**
+   * التجميعُ بالصفِّ والفصل معاً — لا بالفصل وحدَه.
+   *
+   * لعلّةِ تكرارِ الأرقام نفسِها: عنوانُ مجموعةٍ يقول «1» كان يضمّ طلابَ ستّةِ
+   * صفوف، وزرُّ «تحديد الفصل» فوقَه يحدّدهم جميعاً — تأخيرٌ يُسجَّل لمئةِ طالبٍ
+   * أُريد منهم عشرون.
+   */
   const groupedStudents = useMemo(() => {
     const groups = new Map<string, StudentRecord[]>()
     for (const student of filteredStudents) {
-      const groupKey = student.class_name || 'غير محدد'
+      const grade = student.grade || 'صف غير محدد'
+      const className = student.class_name || 'غير محدد'
+      const groupKey = `${grade} · ${className}`
       if (!groups.has(groupKey)) {
         groups.set(groupKey, [])
       }
       groups.get(groupKey)!.push(student)
     }
-    return Array.from(groups.entries()).sort((a, b) => a[0].localeCompare(b[0], 'ar'))
+    return Array.from(groups.entries()).sort(([, a], [, b]) => {
+      const gradeGap = (GRADE_ORDER[a[0].grade] ?? 99) - (GRADE_ORDER[b[0].grade] ?? 99)
+      if (gradeGap !== 0) return gradeGap
+      const gradeName = a[0].grade.localeCompare(b[0].grade, 'ar')
+      if (gradeName !== 0) return gradeName
+      return (a[0].class_name || '').localeCompare(b[0].class_name || '', 'ar', { numeric: true })
+    })
   }, [filteredStudents])
 
   const filteredIds = useMemo(() => filteredStudents.map((student) => student.id), [filteredStudents])
@@ -197,8 +246,9 @@ function LateArrivalFormDialog({
     })
   }
 
-  const handleToggleClass = (className: string) => {
-    const classStudents = groupedStudents.find(([key]) => key === className)?.[1] ?? []
+  // المفتاحُ «صفٌّ · فصل» لا اسمَ الفصل وحدَه — انظر `groupedStudents`
+  const handleToggleClass = (groupKey: string) => {
+    const classStudents = groupedStudents.find(([key]) => key === groupKey)?.[1] ?? []
     if (classStudents.length === 0) return
 
     setSelectedIds((prev) => {
@@ -281,21 +331,40 @@ function LateArrivalFormDialog({
                 />
               </WsField>
 
-              <WsField label="تصفية بالفصل" htmlFor="late-arrival-class-filter">
+              <WsField label="تصفية بالصف" htmlFor="late-arrival-grade-filter">
                 <WsSelect
-                  id="late-arrival-class-filter"
-                  value={classFilter}
-                  onChange={(event) => setClassFilter(event.target.value)}
-                  disabled={isSubmitting || classOptions.length === 0}
+                  id="late-arrival-grade-filter"
+                  value={gradeFilter}
+                  onChange={(event) => handleGradeChange(event.target.value)}
+                  disabled={isSubmitting || gradeOptions.length === 0}
                 >
-                  <option value="">جميع الفصول</option>
-                  {classOptions.map((option) => (
+                  <option value="">جميع الصفوف</option>
+                  {gradeOptions.map((option) => (
                     <option key={option} value={option}>
                       {option}
                     </option>
                   ))}
                 </WsSelect>
               </WsField>
+
+              {/* الفصلُ لا يُعرض إلّا بعد الصف: رقمُه وحدَه لا يدلّ على شيء */}
+              {gradeFilter ? (
+                <WsField label="تصفية بالفصل" htmlFor="late-arrival-class-filter">
+                  <WsSelect
+                    id="late-arrival-class-filter"
+                    value={classFilter}
+                    onChange={(event) => setClassFilter(event.target.value)}
+                    disabled={isSubmitting || classOptions.length === 0}
+                  >
+                    <option value="">جميع فصول {gradeFilter}</option>
+                    {classOptions.map((option) => (
+                      <option key={option} value={option}>
+                        فصل {option}
+                      </option>
+                    ))}
+                  </WsSelect>
+                </WsField>
+              ) : null}
 
               <WsField label="البحث بالاسم أو الهوية" htmlFor="late-arrival-search">
                 <WsInput
@@ -370,25 +439,17 @@ function LateArrivalFormDialog({
                   <WsEmpty icon={Search}>
                     لا توجد نتائج مطابقة للمعايير الحالية.
                     {students && students.length > 0 ? (
-                      <WsBtn
-                        size="sm"
-                        icon={RotateCcw}
-                        onClick={() => {
-                          setClassFilter('')
-                          setSearch('')
-                        }}
-                        disabled={isSubmitting}
-                      >
+                      <WsBtn size="sm" icon={RotateCcw} onClick={handleResetFilters} disabled={isSubmitting}>
                         إعادة تعيين البحث
                       </WsBtn>
                     ) : null}
                   </WsEmpty>
                 ) : (
-                  groupedStudents.map(([className, classStudents]) => {
+                  groupedStudents.map(([groupKey, classStudents]) => {
                     const classSelected =
                       classStudents.length > 0 && classStudents.every((student) => selectedIds.has(student.id))
                     return (
-                      <div key={className} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <div key={groupKey} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         <div
                           style={{
                             display: 'flex',
@@ -403,10 +464,11 @@ function LateArrivalFormDialog({
                           }}
                         >
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                            <WsChip tone="green">{className}</WsChip>
+                            <WsChip tone="green">{classStudents[0].grade || 'صف غير محدد'}</WsChip>
+                            <WsChip>فصل {classStudents[0].class_name || 'غير محدد'}</WsChip>
                             <span className="ws-fact">{classStudents.length.toLocaleString('ar-SA-u-nu-latn')} طالب</span>
                           </span>
-                          <WsBtn size="sm" onClick={() => handleToggleClass(className)} disabled={isSubmitting}>
+                          <WsBtn size="sm" onClick={() => handleToggleClass(groupKey)} disabled={isSubmitting}>
                             {classSelected ? 'إلغاء تحديد الفصل' : 'تحديد الفصل'}
                           </WsBtn>
                         </div>
