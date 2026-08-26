@@ -1891,3 +1891,217 @@ button.ws-chip:disabled {
     background-color: transparent;
     padding-inline-start: 2px;
 }
+
+/* ======================================================
+   المودال على الجوال + عناصره الداخلية
+   ------------------------------------------------------
+   المودال كان مكتبيّاً وحده: لوحٌ يتوسّط الشاشة بحاشية 16px،
+   وجدولٌ ثلاثيّ الأعمدة يفيض أفقياً على شاشةٍ بعرض 360. هنا
+   يصير على الجوال ورقةً صاعدةً من الأسفل (bottom sheet) برأسٍ
+   وذيلٍ لاصقين، والجدولُ يتفكّك إلى بطاقاتٍ مكدّسة.
+   ====================================================== */
+
+/* شبكةُ اختيارٍ تتكيّف مع عدد العناصر بدل عمودين ثابتين */
+.ws-choice-grid--auto {
+    grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
+}
+
+/* شريط الإجراء الجماعي داخل المودال */
+.ws-bulkbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--ws-hairline);
+    border-radius: 8px;
+    background: var(--ws-surface-2);
+}
+
+.ws-bulkbar__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-inline-start: auto;
+}
+
+/* مجموعة اختيار حالة الطالب */
+.ws-statuspick {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+/* حاضنة تمرير داخل جسم المودال (قائمة طويلة) */
+.ws-modal__scroll {
+    max-height: 48vh;
+    overflow-y: auto;
+    border: 1px solid var(--ws-hairline);
+    border-radius: 8px;
+}
+
+/* ملاحظة الذيل تدفع الأزرار إلى الحافة المقابلة */
+.ws-modal__foot-note {
+    margin-inline-end: auto;
+}
+
+/* ── الجوال: المودال ورقةٌ صاعدة ── */
+@media (max-width: 640px) {
+    .ws-modal {
+        align-items: flex-end;
+        padding: 0;
+    }
+
+    .ws-modal__panel {
+        /* max-width المُمرَّر inline يُتجاوز عمداً: على الجوال لا معنى
+           لعرضٍ مكتبيٍّ محفوظ، والورقة تأخذ الشاشة كلَّها */
+        max-width: 100% !important;
+        max-height: 92dvh;
+        display: flex;
+        flex-direction: column;
+        border-radius: 14px 14px 0 0;
+        border-inline: none;
+        border-bottom: none;
+        overflow: hidden;
+    }
+
+    .ws-modal__head {
+        position: relative;
+        flex-shrink: 0;
+        padding-top: 16px;
+    }
+
+    /* مقبضُ السحب: علامةُ الورقةِ الصاعدة المألوفة على الجوال */
+    .ws-modal__head::before {
+        content: '';
+        position: absolute;
+        top: 6px;
+        inset-inline: 0;
+        margin: auto;
+        width: 34px;
+        height: 4px;
+        border-radius: 2px;
+        background: var(--ws-border-strong);
+    }
+
+    .ws-modal__body {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .ws-modal__foot {
+        flex-shrink: 0;
+        flex-wrap: wrap;
+        /* الحاشيةُ السفلى تحترم شريطَ الإيماءات في iOS */
+        padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    }
+
+    .ws-modal__foot .ws-btn {
+        flex: 1;
+        min-width: 96px;
+        height: 38px;
+    }
+
+    .ws-modal__foot-note {
+        width: 100%;
+        margin-inline-end: 0;
+    }
+
+    /* الحاضنة الداخلية تكبر: المساحة الرأسية على الجوال أوفر */
+    .ws-modal__scroll {
+        max-height: none;
+        overflow-y: visible;
+    }
+
+    /* أهدافُ لمسٍ لا نقراتُ فأرة */
+    .ws-choice {
+        min-height: 40px;
+    }
+
+    .ws-choice-grid--auto {
+        grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+    }
+
+    button.ws-chip {
+        min-height: 30px;
+        padding-inline: 10px;
+    }
+
+    .ws-bulkbar__actions {
+        margin-inline-start: 0;
+        width: 100%;
+    }
+
+    .ws-bulkbar__actions > .ws-chip {
+        flex: 1;
+        justify-content: center;
+    }
+
+    /* جدولٌ يتفكّك إلى بطاقات: الرأس يسقط، وكلُّ خليةٍ تحمل تسميتها */
+    .ws-table.ws-mstack {
+        display: block;
+        background: transparent;
+    }
+
+    .ws-table.ws-mstack thead {
+        display: none;
+    }
+
+    .ws-table.ws-mstack tbody,
+    .ws-table.ws-mstack tbody tr,
+    .ws-table.ws-mstack tbody td {
+        display: block;
+        width: auto;
+    }
+
+    .ws-table.ws-mstack tbody tr {
+        padding: 8px 10px;
+        background: var(--ws-surface);
+        border-bottom: 1px solid var(--ws-hairline);
+    }
+
+    .ws-table.ws-mstack tbody tr:hover {
+        background: var(--ws-surface);
+    }
+
+    .ws-table.ws-mstack tbody td {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 3px 0;
+        border-bottom: none;
+    }
+
+    .ws-table.ws-mstack tbody td[data-label]::before {
+        content: attr(data-label);
+        flex-shrink: 0;
+        font-size: 10.5px;
+        font-weight: 700;
+        color: var(--ws-text-2);
+    }
+
+    /* خليةٌ عريضة (مجموعة الحالات): سطرٌ كامل بلا تسمية */
+    .ws-table.ws-mstack tbody td.ws-mstack__wide {
+        display: block;
+        padding-top: 6px;
+    }
+
+    .ws-table.ws-mstack tbody td.ws-mstack__wide .ws-statuspick {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 4px;
+    }
+
+    .ws-table.ws-mstack tbody td.ws-mstack__wide .ws-chip {
+        justify-content: center;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ws-modal__panel {
+        animation: none;
+    }
+}
