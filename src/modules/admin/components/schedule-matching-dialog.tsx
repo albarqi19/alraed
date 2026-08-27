@@ -1,15 +1,17 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   fetchPendingMatches,
   linkTeacher,
   linkSubject,
   createAndLinkSubject,
+  type LinkTeacherResult,
+  type PendingMatchSession,
   type UnmatchedTeacher,
   type UnmatchedSubject,
 } from '../api'
 import { X, Check, Plus, AlertTriangle, User, UserPlus, BookOpen, RefreshCw } from 'lucide-react'
-import { WsBtn, WsChip, WsEmpty, WsInput } from '@/shared/workspace'
+import { WsAlert, WsBtn, WsChip, WsEmpty, WsInput } from '@/shared/workspace'
 
 interface ScheduleMatchingDialogProps {
   isOpen: boolean
@@ -23,6 +25,11 @@ export function ScheduleMatchingDialog({ isOpen, onClose }: ScheduleMatchingDial
   const [selectedSubject, setSelectedSubject] = useState<UnmatchedSubject | null>(null)
   const [newSubjectName, setNewSubjectName] = useState('')
   const [showCreateSubject, setShowCreateSubject] = useState(false)
+  // الحصصُ المنتقاة للاسم المحدَّد — فارغةٌ تعني «كلَّها»
+  const [pickedSessionIds, setPickedSessionIds] = useState<number[]>([])
+  const [linkOutcome, setLinkOutcome] = useState<
+    { tone: 'success' | 'warn' | 'error'; text: string } | null
+  >(null)
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['schedule-matching-pending'],
@@ -30,12 +37,35 @@ export function ScheduleMatchingDialog({ isOpen, onClose }: ScheduleMatchingDial
     enabled: isOpen,
   })
 
+  // تبديلُ الاسم يُعيد الانتقاء إلى «كل الحصص» ويمسح تقرير المحاولة السابقة
+  useEffect(() => {
+    setPickedSessionIds(selectedTeacher?.sessions?.map((session) => session.id) ?? [])
+    setLinkOutcome(null)
+  }, [selectedTeacher])
+
   const linkTeacherMutation = useMutation({
-    mutationFn: ({ chromeName, teacherId }: { chromeName: string; teacherId: number }) =>
-      linkTeacher(chromeName, teacherId),
-    onSuccess: () => {
+    mutationFn: ({
+      chromeName,
+      teacherId,
+      sessionIds,
+    }: {
+      chromeName: string
+      teacherId: number
+      sessionIds?: number[]
+    }) => linkTeacher(chromeName, teacherId, sessionIds),
+    onSuccess: (result: LinkTeacherResult) => {
       queryClient.invalidateQueries({ queryKey: ['schedule-matching-pending'] })
-      setSelectedTeacher(null)
+      setLinkOutcome({
+        tone: result.blocked.length > 0 ? 'warn' : 'success',
+        text: result.message,
+      })
+      // ما بقيت حصصٌ متعذّرة يبقى الاسمُ مفتوحاً ليُعالجها المدير
+      if (result.blocked.length === 0) {
+        setSelectedTeacher(null)
+      }
+    },
+    onError: (error: unknown) => {
+      setLinkOutcome({ tone: 'error', text: readErrorMessage(error) })
     },
   })
 
@@ -128,8 +158,23 @@ export function ScheduleMatchingDialog({ isOpen, onClose }: ScheduleMatchingDial
               available={availableTeachers}
               selected={selectedTeacher}
               onSelect={setSelectedTeacher}
-              onLink={(chromeName, id) => linkTeacherMutation.mutate({ chromeName, teacherId: id })}
+              onLink={(chromeName, id) =>
+                linkTeacherMutation.mutate({
+                  chromeName,
+                  teacherId: id,
+                  // انتقاءُ الكلّ يُرسَل بلا session_ids ليُحفظ الاسمُ للاستيراد القادم
+                  sessionIds:
+                    pickedSessionIds.length === (selectedTeacher?.sessions?.length ?? 0)
+                      ? undefined
+                      : pickedSessionIds,
+                })
+              }
               isLinking={linkTeacherMutation.isPending}
+              sessionPicker={{
+                pickedIds: pickedSessionIds,
+                setPickedIds: setPickedSessionIds,
+                outcome: linkOutcome,
+              }}
             />
           ) : (
             <MatchingPanes
@@ -163,8 +208,31 @@ export function ScheduleMatchingDialog({ isOpen, onClose }: ScheduleMatchingDial
   )
 }
 
-type MatchingItem = { chrome_name: string; sessions_count: number; current_match?: { name: string } | null }
+type MatchingItem = {
+  chrome_name: string
+  sessions_count: number
+  current_match?: { name: string } | null
+  sessions?: PendingMatchSession[]
+  conflicting_slots?: { day: string; period_number: number; classes: string[] }[]
+}
 type AvailableItem = { id: number; name: string }
+
+/** انتقاءُ الحصص — للمعلمين وحدهم؛ المادةُ لا يحرسها فهرسُ خانة. */
+interface SessionPicker {
+  pickedIds: number[]
+  setPickedIds: (ids: number[]) => void
+  outcome: { tone: 'success' | 'warn' | 'error'; text: string } | null
+}
+
+function readErrorMessage(error: unknown): string {
+  if (typeof error === 'object' && error !== null) {
+    const response = (error as { response?: { data?: { message?: string } } }).response
+    if (response?.data?.message) return response.data.message
+    const message = (error as { message?: string }).message
+    if (message) return message
+  }
+  return 'تعذّر الربط'
+}
 
 /** ما يلزم لإنشاء سجلٍ ناقصٍ وربطه من داخل الحوار. */
 interface CreateAffordance {
@@ -190,6 +258,8 @@ interface MatchingPanesProps<TUnmatched extends MatchingItem> {
    * المعلمين ثم يُربط من هنا.
    */
   create?: CreateAffordance
+  /** يُمرَّر للمعلمين وحدهم — انتقاءُ الحصص وتقريرُ نتيجة الربط. */
+  sessionPicker?: SessionPicker
 }
 
 function MatchingPanes<TUnmatched extends MatchingItem>({
@@ -201,9 +271,14 @@ function MatchingPanes<TUnmatched extends MatchingItem>({
   onLink,
   isLinking,
   create,
+  sessionPicker,
 }: MatchingPanesProps<TUnmatched>) {
   const isTeachers = kind === 'teachers'
   const EntityIcon = isTeachers ? User : BookOpen
+  const nothingPicked =
+    sessionPicker != null
+    && (selected?.sessions?.length ?? 0) > 0
+    && sessionPicker.pickedIds.length === 0
 
   if (unmatched.length === 0) {
     return (
@@ -264,6 +339,11 @@ function MatchingPanes<TUnmatched extends MatchingItem>({
                       {isTeachers ? 'مرتبط حالياً بـ' : 'مرتبطة حالياً بـ'}: {item.current_match.name}
                     </WsChip>
                   )}
+                  {(item.conflicting_slots?.length ?? 0) > 0 && (
+                    <WsChip tone="red" icon={AlertTriangle}>
+                      {item.conflicting_slots!.length} خانة مزدحمة
+                    </WsChip>
+                  )}
                 </span>
               </button>
             )
@@ -293,14 +373,38 @@ function MatchingPanes<TUnmatched extends MatchingItem>({
               ربط <b>{selected.chrome_name}</b> مع:
             </div>
 
+            {sessionPicker?.outcome && (
+              <WsAlert
+                tone={
+                  sessionPicker.outcome.tone === 'success'
+                    ? 'success'
+                    : sessionPicker.outcome.tone === 'warn'
+                      ? 'warn'
+                      : 'error'
+                }
+                boxed
+              >
+                {sessionPicker.outcome.text}
+              </WsAlert>
+            )}
+
+            {sessionPicker && selected.sessions && selected.sessions.length > 0 && (
+              <SessionPickerPane
+                sessions={selected.sessions}
+                conflicts={selected.conflicting_slots ?? []}
+                picker={sessionPicker}
+              />
+            )}
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
               {available.map((option) => (
                 <button
                   key={option.id}
                   type="button"
                   onClick={() => onLink(selected.chrome_name, option.id)}
-                  disabled={isLinking}
+                  disabled={isLinking || nothingPicked}
                   style={{
+                    opacity: nothingPicked ? 0.45 : 1,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
@@ -339,6 +443,108 @@ function MatchingPanes<TUnmatched extends MatchingItem>({
         )}
       </div>
     </>
+  )
+}
+
+/**
+ * انتقاءُ الحصص قبل الربط.
+ *
+ * الاسمُ الواحد في «مدرستي» قد يكون شخصين، وقد يكون شخصاً واحداً في
+ * مجموعةٍ مدمجة. وكلاهما لا يُحسم بالاسم بل بالحصة — فهذه اللوحةُ هي
+ * المكانُ الذي يقول فيه المديرُ: هذه له، وتلك لغيره.
+ */
+function SessionPickerPane({
+  sessions,
+  conflicts,
+  picker,
+}: {
+  sessions: PendingMatchSession[]
+  conflicts: { day: string; period_number: number; classes: string[] }[]
+  picker: SessionPicker
+}) {
+  const conflictKeys = useMemo(
+    () => new Set(conflicts.map((slot) => `${slot.day}|${slot.period_number}`)),
+    [conflicts],
+  )
+
+  const allIds = sessions.map((session) => session.id)
+  const allPicked = picker.pickedIds.length === allIds.length
+
+  const toggle = (id: number) => {
+    picker.setPickedIds(
+      picker.pickedIds.includes(id)
+        ? picker.pickedIds.filter((value) => value !== id)
+        : [...picker.pickedIds, id],
+    )
+  }
+
+  return (
+    <div style={{ border: '1px solid var(--ws-hairline)', borderRadius: 8, overflow: 'hidden' }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 8,
+          padding: '6px 10px',
+          background: 'var(--ws-surface-2)',
+          borderBottom: '1px solid var(--ws-hairline)',
+        }}
+      >
+        <span className="ws-label">
+          الحصص المشمولة ({picker.pickedIds.length} من {allIds.length})
+        </span>
+        <WsBtn
+          size="sm"
+          onClick={() => picker.setPickedIds(allPicked ? [] : allIds)}
+        >
+          {allPicked ? 'إلغاء الكل' : 'تحديد الكل'}
+        </WsBtn>
+      </div>
+
+      {conflicts.length > 0 && (
+        <div style={{ padding: '6px 10px', borderBottom: '1px solid var(--ws-hairline)' }}>
+          <WsAlert tone="warn" boxed>
+            خاناتٌ يشغلها هذا الاسم بأكثر من حصة — لا يمكن إسنادُها كلُّها لمعلّمٍ واحد:{' '}
+            {conflicts
+              .map((slot) => `${slot.day} حصة ${slot.period_number} (${slot.classes.join(' + ')})`)
+              .join('، ')}
+          </WsAlert>
+        </div>
+      )}
+
+      <div style={{ maxHeight: 168, overflowY: 'auto', padding: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {sessions.map((session) => {
+          const isPicked = picker.pickedIds.includes(session.id)
+          const isCrowded = conflictKeys.has(`${session.day}|${session.period_number}`)
+
+          return (
+            <label
+              key={session.id}
+              className="ws-pick"
+              style={{
+                borderColor: isPicked ? 'var(--ws-accent-2)' : 'var(--ws-border)',
+                background: isPicked ? 'var(--ws-accent-softer)' : 'var(--ws-surface)',
+              }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+                <input type="checkbox" checked={isPicked} onChange={() => toggle(session.id)} />
+                <span style={{ minWidth: 0 }}>
+                  <span className="ws-pick__name">
+                    {session.grade} / {session.class_name}
+                  </span>
+                  <span className="ws-pick__sub">
+                    {session.day} · الحصة {session.period_number}
+                    {session.subject_name ? ` · ${session.subject_name}` : ''}
+                  </span>
+                </span>
+              </span>
+              {isCrowded && <WsChip tone="red">مزدحمة</WsChip>}
+            </label>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 

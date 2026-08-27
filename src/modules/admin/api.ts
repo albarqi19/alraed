@@ -3554,12 +3554,34 @@ export async function fetchSimulateAbsence(teacherId: number, day: string): Prom
 // Schedule Matching API - المطابقة اليدوية
 // ========================================
 
+/** حصةٌ بعينها تحمل اسم «مدرستي» — وحدةُ الربط الدقيقة. */
+export interface PendingMatchSession {
+  id: number
+  grade: string
+  class_name: string
+  day: string
+  period_number: number
+  subject_name: string | null
+  teacher_id: number | null
+  teacher_name: string | null
+}
+
+/** خانةٌ (يوم + حصة) يشغلها الاسمُ نفسه بأكثر من حصة — لا تُربط جملةً. */
+export interface PendingMatchConflict {
+  day: string
+  period_number: number
+  session_ids: number[]
+  classes: string[]
+}
+
 export interface UnmatchedTeacher {
   chrome_name: string
   current_match: { id: number; name: string } | null
   match_score: number | null
   match_status: string | null
   sessions_count: number
+  sessions?: PendingMatchSession[]
+  conflicting_slots?: PendingMatchConflict[]
 }
 
 export interface UnmatchedSubject {
@@ -3593,12 +3615,46 @@ export async function fetchPendingMatches(): Promise<PendingMatchesData> {
   return unwrapResponse(data, 'تعذر تحميل بيانات المطابقة')
 }
 
-export async function linkTeacher(chromeName: string, teacherId: number): Promise<{ message: string; updated_count: number }> {
-  const { data } = await apiClient.post<ApiResponse<{ message: string; updated_count: number }>>(
-    '/admin/schedule-matching/link-teacher',
-    { chrome_name: chromeName, teacher_id: teacherId }
-  )
-  return unwrapResponse(data, 'تعذر ربط المعلم')
+/** حصةٌ تعذّر إسنادُها لأن خانة المعلّم مشغولة عنده. */
+export interface BlockedLink {
+  session_id: number
+  day: string
+  period_number: number
+  class: string
+  occupied_by: string
+}
+
+export interface LinkTeacherResult {
+  success: boolean
+  message: string
+  updated_count: number
+  blocked: BlockedLink[]
+  mapping_saved: boolean
+}
+
+/**
+ * ربط اسم «مدرستي» بمعلّم — للاسم كلِّه أو لحصصٍ منتقاة.
+ *
+ * الحقول تعود في جذر الاستجابة لا تحت `data`، فلا تمرّ على unwrapResponse.
+ */
+export async function linkTeacher(
+  chromeName: string,
+  teacherId: number,
+  sessionIds?: number[],
+): Promise<LinkTeacherResult> {
+  const { data } = await apiClient.post<LinkTeacherResult>('/admin/schedule-matching/link-teacher', {
+    chrome_name: chromeName,
+    teacher_id: teacherId,
+    ...(sessionIds && sessionIds.length > 0 ? { session_ids: sessionIds } : {}),
+  })
+
+  return {
+    success: data?.success ?? false,
+    message: data?.message ?? '',
+    updated_count: data?.updated_count ?? 0,
+    blocked: data?.blocked ?? [],
+    mapping_saved: data?.mapping_saved ?? false,
+  }
 }
 
 export async function linkSubject(chromeName: string, subjectId: number): Promise<{ message: string; updated_count: number }> {
