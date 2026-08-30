@@ -70,6 +70,8 @@ import {
   rejectAttendanceSession,
   rejectLeaveRequest,
   resetTeacherPassword,
+  fetchCredentialsBroadcastPreview,
+  broadcastTeacherCredentials,
   updateAttendanceStatus,
   sendLateArrivalMessage,
   sendPendingWhatsappMessages,
@@ -157,6 +159,7 @@ import { useToast } from '@/shared/feedback/use-toast'
 import type {
   AttendanceReportFiltersPayload,
   AttendanceSessionDetails,
+  CredentialsBroadcastMode,
   ImportStudentsPayload,
   LeaveRequestFilters,
   LeaveRequestRecord,
@@ -476,18 +479,70 @@ export function useDeleteTeacherMutation() {
 
 export function useResetTeacherPasswordMutation() {
   const toast = useToast()
+  const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: resetTeacherPassword,
-    onSuccess: (credentials) => {
+    onSuccess: (result) => {
+      /* «أُرسلت» تُقال حين تُجدوَل فعلاً لا حين تُطلَب: الجوّالُ غيرُ الصالح
+         يمنع الجدولة، ومَن قرأ «أُرسلت» ينتظر رسالةً لن تصل. */
       toast({
-        type: 'info',
-        title: 'تم إنشاء كلمة مرور جديدة',
-        description: `الهوية: ${credentials.national_id}`,
+        type: result.whatsappQueued ? 'success' : 'info',
+        title: result.whatsappQueued
+          ? 'كلمة مرور جديدة — وأُرسلت بالواتساب'
+          : 'تم إنشاء كلمة مرور جديدة',
+        description: result.whatsappSkippedReason ?? `الهوية: ${result.credentials.national_id}`,
       })
+
+      // `password_changed` انقلبت في القاعدة، وشارةُ «يحتاج تغيير كلمة المرور»
+      // تُقرأ من القائمة — فبلا إبطالٍ تبقى الشاشةُ تقول القديم.
+      void queryClient.invalidateQueries({ queryKey: adminQueryKeys.teachers.all() })
     },
     onError: (error) => {
       toast({ type: 'error', title: getErrorMessage(error, 'تعذر إعادة تعيين كلمة المرور') })
+    },
+  })
+}
+
+/**
+ * معاينةُ بثِّ بيانات الدخول — تُقرأ عند فتح النافذة لا قبلها.
+ *
+ * وتُعاد القراءةُ عند تبديل الوضع لأنّ المستبعَدين يختلفون: مَن غيّر كلمتَه
+ * يخرج من «المحفوظة» ويدخل في «توليدُ جديدة».
+ */
+export function useCredentialsBroadcastPreviewQuery(
+  mode: CredentialsBroadcastMode,
+  options: { enabled?: boolean } = {},
+) {
+  return useQuery({
+    queryKey: [...adminQueryKeys.teachers.all(), 'credentials-broadcast', mode],
+    queryFn: () => fetchCredentialsBroadcastPreview(mode),
+    enabled: options.enabled ?? true,
+    // أرقامُ المعاينة تتغيّر بتغيّر الكادر، ونافذةُ التأكيد يجب أن تقرأ الآن
+    staleTime: 0,
+  })
+}
+
+export function useBroadcastTeacherCredentialsMutation() {
+  const toast = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: broadcastTeacherCredentials,
+    onSuccess: (result) => {
+      toast({
+        type: result.queued > 0 ? 'success' : 'info',
+        title: result.queued > 0 ? `جُدولت ${result.queued} رسالة` : 'لم يُجدوَل أيُّ إرسال',
+        description:
+          result.queued > 0
+            ? `تصل تباعاً خلال ${result.eta_minutes || 1} دقيقة تقريباً حتى لا يُحظر رقم المدرسة`
+            : 'راجع أسباب الاستبعاد في النافذة',
+      })
+
+      void queryClient.invalidateQueries({ queryKey: adminQueryKeys.teachers.all() })
+    },
+    onError: (error) => {
+      toast({ type: 'error', title: getErrorMessage(error, 'تعذر إرسال بيانات الدخول') })
     },
   })
 }

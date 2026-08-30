@@ -4,11 +4,13 @@ import type { FormEvent } from 'react'
 import {
   KeyRound,
   ListChecks,
+  MessageCircle,
   Pause,
   Pencil,
   Play,
   Plus,
   RefreshCw,
+  Send,
   Trash2,
   UserCheck,
   UserRound,
@@ -19,13 +21,22 @@ import {
   Copy,
 } from 'lucide-react'
 import {
+  useBroadcastTeacherCredentialsMutation,
   useCreateTeacherMutation,
+  useCredentialsBroadcastPreviewQuery,
   useDeleteTeacherMutation,
   useResetTeacherPasswordMutation,
   useStaffListQuery,
   useUpdateTeacherMutation,
 } from '../hooks'
-import type { TeacherCredentials, TeacherRecord, TeacherStatus, StaffRole } from '../types'
+import type {
+  CredentialsBroadcastMode,
+  CredentialsBroadcastResult,
+  TeacherCredentials,
+  TeacherRecord,
+  TeacherStatus,
+  StaffRole,
+} from '../types'
 import { useToast } from '@/shared/feedback/use-toast'
 import { ROLE_OPTIONS, getRoleLabel } from '@/modules/auth/constants/roles'
 import {
@@ -47,6 +58,7 @@ import {
   WsPage,
   WsSelect,
   WsSideCol,
+  WsModal,
   WsTable,
   type Tone,
   type WsChipTone,
@@ -347,6 +359,310 @@ function isConfidentialAccount(teacher: { role?: string | null; secondary_role?:
   return confidential.includes(teacher.role ?? '') || confidential.includes(teacher.secondary_role ?? '')
 }
 
+/**
+ * أهذا جوّالٌ يصلح للإرسال؟ — يطابق `User::normalizePhone` في الخادم.
+ *
+ * والواجهةُ تسأله لتُعطّل الزرَّ وتشرح، لا لتحكم: الخادمُ يفحص ثانيةً ولا
+ * يجدول رسالةً لرقمٍ لا يصلح. وبغيره يضغط المديرُ «أرسلها» فيقرأ نجاحاً ثمّ
+ * ينتظر رسالةً لم تُجدوَل أصلاً.
+ */
+function hasSendablePhone(phone?: string | null): boolean {
+  let digits = (phone ?? '').replace(/\D+/g, '')
+  if (digits.startsWith('966')) digits = digits.slice(3)
+  if (digits.startsWith('0')) digits = digits.slice(1)
+
+  return /^5\d{8}$/.test(digits)
+}
+
+interface ResetPasswordDialogProps {
+  teacher: TeacherRecord | null
+  isSubmitting: boolean
+  onClose: () => void
+  onConfirm: (sendWhatsapp: boolean) => void
+}
+
+/**
+ * سؤالُ ما قبل إعادة التعيين: أتُرسَل الكلمةُ الجديدة بالواتساب أم تُعرَض فقط؟
+ *
+ * ولمَ سؤالٌ أصلاً؟ لأن للفعل وجهين لا يُجمعان: مديرٌ يعيد التعيين ليقرأ الكلمةَ
+ * ويسلّمها بيده لمعلّمٍ واقفٍ أمامه لا يريد رسالةً تسبقه، ومديرٌ يعيدها لغائبٍ
+ * لا يبلغه إلّا جوّالُه. وإعادةُ التعيين نفسُها لا رجعةَ فيها: الكلمةُ القديمة
+ * تبطل لحظةَ الضغط، فحقُّها نافذةٌ لا ضغطةٌ عابرة.
+ */
+function ResetPasswordDialog({ teacher, isSubmitting, onClose, onConfirm }: ResetPasswordDialogProps) {
+  if (!teacher) return null
+
+  const confidential = isConfidentialAccount(teacher)
+  const canSend = hasSendablePhone(teacher.phone)
+
+  return (
+    <WsModal
+      open
+      onClose={() => !isSubmitting && onClose()}
+      maxWidth={440}
+      title={`إعادة تعيين كلمة مرور «${teacher.name}»`}
+      sub="كلمته الحالية تبطل فور التأكيد ولن تعمل بعدها"
+      footer={
+        confidential ? (
+          <>
+            <WsBtn onClick={onClose} disabled={isSubmitting}>
+              إلغاء
+            </WsBtn>
+            <WsBtn variant="primary" icon={KeyRound} onClick={() => onConfirm(false)} disabled={isSubmitting}>
+              {isSubmitting ? 'جارٍ...' : 'إعادة التعيين'}
+            </WsBtn>
+          </>
+        ) : (
+          <>
+            <WsBtn onClick={onClose} disabled={isSubmitting}>
+              إلغاء
+            </WsBtn>
+            <WsBtn icon={KeyRound} onClick={() => onConfirm(false)} disabled={isSubmitting}>
+              لا، أظهرها فقط
+            </WsBtn>
+            <WsBtn
+              variant="primary"
+              icon={MessageCircle}
+              onClick={() => onConfirm(true)}
+              disabled={isSubmitting || !canSend}
+              title={canSend ? undefined : 'لا يوجد رقم جوال صالح لهذا الحساب'}
+            >
+              {isSubmitting ? 'جارٍ...' : 'نعم، أرسلها بالواتساب'}
+            </WsBtn>
+          </>
+        )
+      }
+    >
+      {confidential ? (
+        <WsAlert tone="info" boxed>
+          <strong>حسابٌ سرّي.</strong> كلمةُ {getRoleLabel(teacher.role)} لا تُعرَض هنا ولا تُخزَّن —
+          تصله على جوّاله من <strong>رقم النظام</strong> مباشرةً لا من رقم المدرسة، فلا تمرّ بجهازٍ
+          يديره غيرُه.
+        </WsAlert>
+      ) : (
+        <>
+          <p style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--ws-text-2)' }}>
+            هل تُرسَل كلمةُ المرور الجديدة إلى جوّاله عبر <strong>واتساب المدرسة</strong>؟
+            وهي تظهر لك على الشاشة في الحالتين.
+          </p>
+          <WsFactsList>
+            <WsFactRow label="رقم الهوية">
+              <span style={{ fontFamily: 'monospace' }}>{teacher.national_id}</span>
+            </WsFactRow>
+            <WsFactRow label="رقم الجوال">
+              <span style={{ fontFamily: 'monospace' }}>{teacher.phone || '—'}</span>
+            </WsFactRow>
+          </WsFactsList>
+          {!canSend && (
+            <WsAlert tone="warn" boxed icon={AlertTriangle}>
+              لا يوجد رقم جوال صالح لهذا الحساب، فالإرسال غير ممكن. أعِد التعيين واعرض الكلمة، أو
+              أضِف جوّالاً أوّلاً من «تعديل».
+            </WsAlert>
+          )}
+        </>
+      )}
+    </WsModal>
+  )
+}
+
+interface BroadcastDialogProps {
+  open: boolean
+  onClose: () => void
+  onConfirm: (mode: CredentialsBroadcastMode) => void
+  isSubmitting: boolean
+  result: CredentialsBroadcastResult | null
+}
+
+const BROADCAST_MODES: Array<{ value: CredentialsBroadcastMode; label: string; hint: string }> = [
+  {
+    value: 'existing',
+    label: 'الكلمة المحفوظة',
+    hint: 'تُرسَل لمن لم يغيّر كلمته بعد. لا يتغيّر شيء في الحسابات، فتكرار الإرسال بلا ضرر.',
+  },
+  {
+    value: 'reset',
+    label: 'توليد كلمة جديدة للجميع',
+    hint: 'تُبطَل كلمةُ كلِّ من يعمل بها الآن وتُرسَل بديلتُها. لا تختره إلّا حين يفقدها الكادر.',
+  },
+]
+
+/**
+ * نافذةُ بثِّ بيانات الدخول — تُري الرقمَ قبل الفعل لا بعده.
+ *
+ * «هل أنت متأكد؟» بلا عدد لا تؤكّد شيئاً. فالمعاينةُ تُقرأ من الخادم قبل الضغط:
+ * كم سيصلهم، وكم يخرج ولماذا — لأنّ ثلاثةً بلا جوّالٍ وخمسةً غيّروا كلمتَهم
+ * فرقٌ يعرفه المديرُ الآن، لا حين يشتكي المعلّم أنّه لم يصله شيء.
+ */
+function BroadcastCredentialsDialog({ open, onClose, onConfirm, isSubmitting, result }: BroadcastDialogProps) {
+  const [mode, setMode] = useState<CredentialsBroadcastMode>('existing')
+  const preview = useCredentialsBroadcastPreviewQuery(mode, { enabled: open && !result })
+
+  useEffect(() => {
+    if (open) setMode('existing')
+  }, [open])
+
+  if (!open) return null
+
+  const data = preview.data
+  const skipped = result?.skipped ?? data?.skipped ?? []
+  const connected = result?.whatsapp_connected ?? data?.whatsapp_connected ?? true
+
+  return (
+    <WsModal
+      open
+      onClose={() => !isSubmitting && onClose()}
+      maxWidth={520}
+      title={result ? 'تمّت الجدولة' : 'إرسال بيانات الدخول للجميع'}
+      sub={result ? 'الرسائل في الطابور وتخرج تباعاً' : 'عبر رقم واتساب المدرسة، إلى الكادر النشط'}
+      footer={
+        result ? (
+          <WsBtn variant="primary" onClick={onClose}>
+            إغلاق
+          </WsBtn>
+        ) : (
+          <>
+            <WsBtn onClick={onClose} disabled={isSubmitting}>
+              إلغاء
+            </WsBtn>
+            <WsBtn
+              variant={mode === 'reset' ? 'danger' : 'primary'}
+              icon={Send}
+              onClick={() => onConfirm(mode)}
+              disabled={isSubmitting || preview.isLoading || !data || data.ready === 0}
+            >
+              {isSubmitting
+                ? 'جارٍ الجدولة...'
+                : data
+                  ? `إرسال إلى ${data.ready.toLocaleString('ar-SA-u-nu-latn')}`
+                  : 'إرسال'}
+            </WsBtn>
+          </>
+        )
+      }
+    >
+      {!connected && (
+        <WsAlert tone="warn" boxed icon={AlertTriangle}>
+          لا يوجد رقم واتساب مربوط بالمدرسة الآن. اربطه من صفحة الواتساب أوّلاً وإلّا فشلت كلُّ رسالة.
+        </WsAlert>
+      )}
+
+      {result ? (
+        <>
+          <WsAlert tone={result.queued > 0 ? 'success' : 'info'} boxed>
+            جُدولت <strong>{result.queued.toLocaleString('ar-SA-u-nu-latn')}</strong> رسالة، تخرج
+            تباعاً خلال <strong>{(result.eta_minutes || 1).toLocaleString('ar-SA-u-nu-latn')}</strong>{' '}
+            دقيقة تقريباً — التباعدُ مقصود حتى لا يقرأها واتساب اندفاعاً آلياً فيحظر رقم المدرسة.
+          </WsAlert>
+          {result.mode === 'reset' && result.queued > 0 && (
+            <p style={{ margin: '8px 0 0', fontSize: 12.5, color: 'var(--ws-text-2)' }}>
+              كلمات المرور السابقة بطلت الآن؛ الكلمة الجديدة في نصّ الرسالة وحدها.
+            </p>
+          )}
+        </>
+      ) : (
+        <>
+          <div style={{ display: 'grid', gap: 6, marginBottom: 10 }}>
+            {BROADCAST_MODES.map((option) => {
+              const active = mode === option.value
+              return (
+                <label
+                  key={option.value}
+                  style={{
+                    display: 'flex',
+                    gap: 8,
+                    alignItems: 'flex-start',
+                    padding: '8px 10px',
+                    borderRadius: 8,
+                    cursor: isSubmitting ? 'default' : 'pointer',
+                    border: `1px solid ${active ? 'var(--ws-accent)' : 'var(--ws-hairline)'}`,
+                    background: active ? 'var(--ws-surface-2)' : 'transparent',
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="broadcast-mode"
+                    value={option.value}
+                    checked={active}
+                    disabled={isSubmitting}
+                    onChange={() => setMode(option.value)}
+                    style={{ marginTop: 3 }}
+                  />
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>{option.label}</span>
+                    <span style={{ display: 'block', fontSize: 11.5, color: 'var(--ws-text-2)', marginTop: 1 }}>
+                      {option.hint}
+                    </span>
+                  </span>
+                </label>
+              )
+            })}
+          </div>
+
+          {preview.isLoading ? (
+            <WsEmpty loading style={{ padding: 16 }}>
+              جارٍ حساب من ستصلهم الرسالة...
+            </WsEmpty>
+          ) : preview.isError ? (
+            <WsAlert tone="error" boxed icon={AlertTriangle}>
+              تعذّر حساب المعاينة.
+            </WsAlert>
+          ) : data ? (
+            <WsFactsList>
+              <WsFactRow label="الكادر النشط">{data.total.toLocaleString('ar-SA-u-nu-latn')}</WsFactRow>
+              <WsFactRow label="ستصلهم الرسالة">
+                <strong style={{ color: 'var(--ws-green)' }}>
+                  {data.ready.toLocaleString('ar-SA-u-nu-latn')}
+                </strong>
+              </WsFactRow>
+              <WsFactRow label="مستبعَدون">
+                {skipped.length.toLocaleString('ar-SA-u-nu-latn')}
+              </WsFactRow>
+              <WsFactRow label="مدّة الخروج">
+                {data.eta_minutes > 0
+                  ? `${data.eta_minutes.toLocaleString('ar-SA-u-nu-latn')} دقيقة تقريباً`
+                  : 'فوراً'}
+              </WsFactRow>
+            </WsFactsList>
+          ) : null}
+        </>
+      )}
+
+      {skipped.length > 0 && (
+        <div style={{ marginTop: 10 }}>
+          <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700 }}>
+            من لن تصله الرسالة ({skipped.length.toLocaleString('ar-SA-u-nu-latn')})
+          </p>
+          <div
+            style={{
+              maxHeight: 150,
+              overflowY: 'auto',
+              border: '1px solid var(--ws-hairline)',
+              borderRadius: 7,
+            }}
+          >
+            {skipped.map((entry) => (
+              <div
+                key={entry.id}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  gap: 8,
+                  padding: '5px 9px',
+                  fontSize: 12,
+                  borderBottom: '1px solid var(--ws-hairline)',
+                }}
+              >
+                <span style={{ minWidth: 0 }}>{entry.name}</span>
+                <span style={{ color: 'var(--ws-text-2)', whiteSpace: 'nowrap' }}>{entry.reason_label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </WsModal>
+  )
+}
+
 export function AdminTeachersPage() {
   const toast = useToast()
   const [searchTerm, setSearchTerm] = useState('')
@@ -358,6 +674,11 @@ export function AdminTeachersPage() {
   const [editingTeacher, setEditingTeacher] = useState<TeacherRecord | null>(null)
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherRecord | null>(null)
   const [deletingTeacher, setDeletingTeacher] = useState<TeacherRecord | null>(null)
+  /* إعادةُ التعيين تمرّ بنافذةٍ لأنّها لا رجعةَ فيها، والنافذةُ هي التي تسأل
+     عن الإرسال بالواتساب — فالحالةُ هنا تحمل «من نُعيد له» لا «هل نُعيد». */
+  const [resettingTeacher, setResettingTeacher] = useState<TeacherRecord | null>(null)
+  const [isBroadcastOpen, setIsBroadcastOpen] = useState(false)
+  const [broadcastResult, setBroadcastResult] = useState<CredentialsBroadcastResult | null>(null)
   const [credentialsLog, setCredentialsLog] = useState<CredentialsEntry[]>([])
 
   const includeInactive = statusFilter !== 'active'
@@ -369,6 +690,7 @@ export function AdminTeachersPage() {
   const updateTeacherMutation = useUpdateTeacherMutation()
   const deleteTeacherMutation = useDeleteTeacherMutation()
   const resetPasswordMutation = useResetTeacherPasswordMutation()
+  const broadcastMutation = useBroadcastTeacherCredentialsMutation()
 
   const stats = useMemo(() => {
     const active = teachers.filter((teacher) => teacher.status === 'active').length
@@ -487,28 +809,54 @@ export function AdminTeachersPage() {
     updateTeacherMutation.mutate({ id: teacher.id, payload: { status: nextStatus } })
   }
 
+  /** الزرُّ يفتح النافذة، ولا يُبدّل كلمةً قبل أن يُسأل المديرُ عن الإرسال. */
   const handleResetPassword = (teacher: TeacherRecord) => {
-    resetPasswordMutation.mutate(teacher.id, {
-      onSuccess: (credentials) => {
-        /*
-         * الحسابُ السرّيّ لا تُردّ كلمتُه — الخادمُ يرسلها إلى جوّاله من رقم
-         * النظام ويُرجع `null`. وبلا هذا الفرع تُضاف بطاقةٌ فارغةٌ إلى السجلّ
-         * تقول «كلمة المرور: —» فيظنّها المديرُ عطلاً ويعيد التعيينَ مراراً،
-         * وكلُّ إعادةٍ تُبطل الكلمةَ التي وصلت الموجّهَ للتوّ.
-         */
-        if (!credentials?.password) {
-          toast({
-            type: 'success',
-            title: 'أُعيد تعيين كلمة المرور',
-            description: 'أُرسلت إلى جوّال صاحب الحساب من رقم النظام — لا تظهر هنا حفاظاً على سرّية حسابه.',
-          })
+    setResettingTeacher(teacher)
+  }
 
-          return
-        }
+  const confirmResetPassword = (sendWhatsapp: boolean) => {
+    const teacher = resettingTeacher
+    if (!teacher) return
 
-        appendCredentials(teacher.name, credentials)
+    resetPasswordMutation.mutate(
+      { id: teacher.id, sendWhatsapp },
+      {
+        onSuccess: (result) => {
+          setResettingTeacher(null)
+
+          /*
+           * الحسابُ السرّيّ لا تُردّ كلمتُه — الخادمُ يرسلها إلى جوّاله من رقم
+           * النظام ويُرجع `null`. وبلا هذا الفرع تُضاف بطاقةٌ فارغةٌ إلى السجلّ
+           * تقول «كلمة المرور: —» فيظنّها المديرُ عطلاً ويعيد التعيينَ مراراً،
+           * وكلُّ إعادةٍ تُبطل الكلمةَ التي وصلت الموجّهَ للتوّ.
+           */
+          if (!result.credentials.password) {
+            toast({
+              type: 'success',
+              title: 'أُعيد تعيين كلمة المرور',
+              description: 'أُرسلت إلى جوّال صاحب الحساب من رقم النظام — لا تظهر هنا حفاظاً على سرّية حسابه.',
+            })
+
+            return
+          }
+
+          appendCredentials(teacher.name, result.credentials)
+        },
       },
+    )
+  }
+
+  const handleBroadcast = (mode: CredentialsBroadcastMode) => {
+    broadcastMutation.mutate(mode, {
+      // النافذةُ تبقى مفتوحةً على الحصيلة: من لم تصله الرسالةُ ولماذا سؤالٌ
+      // يُطرَح بعد الإرسال لا قبله، وإغلاقُها يدفن الجواب.
+      onSuccess: (result) => setBroadcastResult(result),
     })
+  }
+
+  const closeBroadcast = () => {
+    setIsBroadcastOpen(false)
+    setBroadcastResult(null)
   }
 
   const handleCopyCredentials = async (entry: CredentialsEntry) => {
@@ -540,9 +888,14 @@ export function AdminTeachersPage() {
         title="إدارة المعلمين"
         badge="الحسابات والصلاحيات"
         actions={
-          <WsBtn variant="primary" icon={Plus} onClick={handleAdd}>
-            إضافة معلم
-          </WsBtn>
+          <>
+            <WsBtn icon={Send} onClick={() => setIsBroadcastOpen(true)}>
+              إرسال بيانات الدخول للجميع
+            </WsBtn>
+            <WsBtn variant="primary" icon={Plus} onClick={handleAdd}>
+              إضافة معلم
+            </WsBtn>
+          </>
         }
       >
         {/* البحث والفلاتر في شريط العنوان نفسه — لا شريط منفصل تحته */}
@@ -651,7 +1004,7 @@ export function AdminTeachersPage() {
                       updateTeacherMutation.isPending &&
                       (updateTeacherMutation.variables as { id: number } | undefined)?.id === teacher.id
                     const isResetting =
-                      resetPasswordMutation.isPending && resetPasswordMutation.variables === teacher.id
+                      resetPasswordMutation.isPending && resetPasswordMutation.variables?.id === teacher.id
                     const isSelected = selectedTeacher?.id === teacher.id
 
                     return (
@@ -962,6 +1315,21 @@ export function AdminTeachersPage() {
           </div>
         </div>
       )}
+
+      <ResetPasswordDialog
+        teacher={resettingTeacher}
+        isSubmitting={resetPasswordMutation.isPending}
+        onClose={() => setResettingTeacher(null)}
+        onConfirm={confirmResetPassword}
+      />
+
+      <BroadcastCredentialsDialog
+        open={isBroadcastOpen}
+        onClose={closeBroadcast}
+        onConfirm={handleBroadcast}
+        isSubmitting={broadcastMutation.isPending}
+        result={broadcastResult}
+      />
 
       <TeacherFormDialog
         open={isFormOpen}

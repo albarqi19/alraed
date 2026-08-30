@@ -77,6 +77,46 @@ export interface TeacherCredentials {
   role?: StaffRole
 }
 
+/**
+ * نتيجةُ إعادة تعيين كلمة المرور — الكلمةُ وحدَها لا تكفي.
+ *
+ * الشاشةُ تَعِد المديرَ بأنّ الرسالةَ ذهبت، فيجب أن تعرف: أجُدولت فعلاً؟ فإن
+ * كان الجوّالُ غيرَ صالحٍ لم تُجدوَل — وقولُ «أُرسلت» حينها كذبٌ يجعل المديرَ
+ * ينتظر رسالةً لن تصل بدل أن يسلّم الكلمةَ بيده.
+ */
+export interface ResetPasswordResult {
+  credentials: TeacherCredentials
+  whatsappQueued: boolean
+  whatsappSkippedReason: string | null
+}
+
+/** وضعُ بثِّ بيانات الدخول: المحفوظةُ كما هي، أو كلمةٌ جديدةٌ للجميع. */
+export type CredentialsBroadcastMode = 'existing' | 'reset'
+
+export interface CredentialsBroadcastSkip {
+  id: number
+  name: string
+  reason: 'no_phone' | 'password_changed' | 'confidential'
+  reason_label: string
+}
+
+export interface CredentialsBroadcastPreview {
+  mode: CredentialsBroadcastMode
+  total: number
+  ready: number
+  ready_names: string[]
+  skipped: CredentialsBroadcastSkip[]
+  skipped_counts: Partial<Record<CredentialsBroadcastSkip['reason'], number>>
+  whatsapp_connected: boolean
+  /** دقائقُ خروج آخر رسالةٍ — الرسائل متباعدةٌ عمداً كي لا يُحظر رقم المدرسة. */
+  eta_minutes: number
+}
+
+export interface CredentialsBroadcastResult extends Omit<CredentialsBroadcastPreview, 'ready' | 'ready_names' | 'total'> {
+  queued: number
+  queued_names: string[]
+}
+
 export interface CreateTeacherResponse {
   teacher: TeacherRecord
   login_credentials?: TeacherCredentials

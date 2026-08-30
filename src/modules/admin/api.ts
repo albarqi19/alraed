@@ -42,7 +42,10 @@ import type {
   SubjectRecord,
   SubjectsResult,
   SubjectsMeta,
-  TeacherCredentials,
+  ResetPasswordResult,
+  CredentialsBroadcastMode,
+  CredentialsBroadcastPreview,
+  CredentialsBroadcastResult,
   TeacherRecord,
   TeacherHudoriAttendanceFilters,
   TeacherHudoriAttendanceLoginMethod,
@@ -1511,15 +1514,57 @@ export async function deleteTeacher(id: number): Promise<void> {
   unwrapResponse(data, 'تعذر حذف المعلم')
 }
 
-export async function resetTeacherPassword(id: number): Promise<TeacherCredentials> {
-  const { data } = await apiClient.post<ApiResponse<{ new_password: string; teacher: TeacherRecord }>>(
-    `/admin/teachers/${id}/reset-password`,
-  )
+/**
+ * إعادةُ تعيين كلمة المرور — والإرسالُ بالواتساب خيارٌ يُمرَّر لا افتراضٌ.
+ *
+ * `send_whatsapp` تخصُّ رقمَ **المدرسة**؛ أمّا الحسابُ السرّيّ فالخادمُ يرسل
+ * كلمتَه من رقم النظام دائماً ولا يردّها، مهما كان هذا الوسيط.
+ */
+export async function resetTeacherPassword({
+  id,
+  sendWhatsapp = false,
+}: {
+  id: number
+  sendWhatsapp?: boolean
+}): Promise<ResetPasswordResult> {
+  const { data } = await apiClient.post<
+    ApiResponse<{
+      new_password: string | null
+      teacher: TeacherRecord
+      whatsapp_queued?: boolean
+      whatsapp_skipped_reason?: string | null
+    }>
+  >(`/admin/teachers/${id}/reset-password`, { send_whatsapp: sendWhatsapp })
   const response = unwrapResponse(data, 'تعذر إعادة تعيين كلمة المرور')
   return {
-    national_id: response.teacher.national_id,
-    password: response.new_password,
+    credentials: {
+      national_id: response.teacher.national_id,
+      password: response.new_password,
+    },
+    whatsappQueued: Boolean(response.whatsapp_queued),
+    whatsappSkippedReason: response.whatsapp_skipped_reason ?? null,
   }
+}
+
+/** معاينةُ البثّ قبل الضغط: كم سيصل، ومن سيُستبعَد ولماذا. */
+export async function fetchCredentialsBroadcastPreview(
+  mode: CredentialsBroadcastMode,
+): Promise<CredentialsBroadcastPreview> {
+  const { data } = await apiClient.get<ApiResponse<CredentialsBroadcastPreview>>(
+    '/admin/teachers/credentials-broadcast/preview',
+    { params: { mode } },
+  )
+  return unwrapResponse(data, 'تعذر حساب معاينة الإرسال')
+}
+
+export async function broadcastTeacherCredentials(
+  mode: CredentialsBroadcastMode,
+): Promise<CredentialsBroadcastResult> {
+  const { data } = await apiClient.post<ApiResponse<CredentialsBroadcastResult>>(
+    '/admin/teachers/broadcast-credentials',
+    { mode },
+  )
+  return unwrapResponse(data, 'تعذر إرسال بيانات الدخول')
 }
 
 export interface StudentsListResult {
