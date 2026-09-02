@@ -138,6 +138,8 @@ const AdminSummonsPage = lazyNamed(() => import('@/modules/admin/pages/admin-sum
 
 // ── الأدمن: الإحالات ──
 const AdminReferralsPage = lazyNamed(() => import('@/modules/admin/pages/admin-referrals-page'), 'AdminReferralsPage')
+const LearningDifficultiesPage = lazyNamed(() => import('@/modules/admin/learning-difficulties/pages/learning-difficulties-page'), 'LearningDifficultiesPage')
+const LearningDifficultyFormPage = lazyNamed(() => import('@/modules/admin/learning-difficulties/pages/learning-difficulty-form-page'), 'LearningDifficultyFormPage')
 const AdminReferralDetailPage = lazyNamed(() => import('@/modules/admin/pages/admin-referral-detail-page'), 'AdminReferralDetailPage')
 const AdminParentRepliesPage = lazyNamed(() => import('@/modules/admin/pages/admin-parent-replies-page'), 'AdminParentRepliesPage')
 
@@ -362,6 +364,8 @@ const appRoutes = [
           { path: 'school-tools/academic-calendar', element: <AdminAcademicCalendarPage /> },
           { path: 'activities', element: <AdminActivitiesPage /> },
           { path: 'referrals', element: <AdminReferralsPage /> },
+          { path: 'learning-difficulties', element: <LearningDifficultiesPage /> },
+          { path: 'learning-difficulties/forms/:id', element: <LearningDifficultyFormPage /> },
           { path: 'referrals/guidance', element: <AdminReferralsPage /> },
           { path: 'referrals/behavioral', element: <AdminReferralsPage /> },
           { path: 'referrals/:id', element: <AdminReferralDetailPage /> },

@@ -1,6 +1,6 @@
 // أنواع البيانات لنظام إحالة الطلاب
 
-export type ReferralType = 'academic_weakness' | 'behavioral_violation'
+export type ReferralType = 'academic_weakness' | 'behavioral_violation' | 'learning_difficulty'
 
 export type ReferralTargetRole = 'counselor' | 'vice_principal' | 'committee'
 

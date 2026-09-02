@@ -2,8 +2,45 @@ import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMyStudentsQuery, useCreateReferralMutation } from '../referrals/hooks'
 import type { ReferralType, ReferralPriority, Student } from '../referrals/types'
+import { useTeacherLdFormsQuery, useSubmitLdReferralMutation } from '../learning-difficulty/hooks'
 
-const REFERRAL_TYPES = [
+/**
+ * نبراتُ الأنواع خريطةٌ لا ثنائيّة.
+ *
+ * كان التلوينُ مكتوباً `color === 'amber' ? … : 'red'` في أربعة مواضع، فكلُّ
+ * نوعٍ جديدٍ يرث الأحمرَ صامتاً لمجرّد أنّه ليس كهرمانيّاً.
+ */
+const TYPE_STYLES = {
+  amber: {
+    selected: 'border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-950',
+    iconBg: 'bg-amber-100 dark:bg-amber-950',
+    iconText: 'text-amber-600 dark:text-amber-400',
+    check: 'text-amber-500 dark:text-amber-400',
+  },
+  red: {
+    selected: 'border-red-400 dark:border-red-600 bg-red-50 dark:bg-red-950',
+    iconBg: 'bg-red-100 dark:bg-red-950',
+    iconText: 'text-red-600 dark:text-red-400',
+    check: 'text-red-500 dark:text-red-400',
+  },
+  purple: {
+    selected: 'border-purple-400 dark:border-purple-600 bg-purple-50 dark:bg-purple-950',
+    iconBg: 'bg-purple-100 dark:bg-purple-950',
+    iconText: 'text-purple-600 dark:text-purple-400',
+    check: 'text-purple-500 dark:text-purple-400',
+  },
+} as const
+
+type TypeColor = keyof typeof TYPE_STYLES
+
+const REFERRAL_TYPES: {
+  value: ReferralType
+  label: string
+  description: string
+  icon: string
+  color: TypeColor
+  targetRole: string
+}[] = [
   {
     value: 'academic_weakness' as ReferralType,
     label: 'ضعف دراسي',
@@ -19,6 +56,14 @@ const REFERRAL_TYPES = [
     icon: 'bi-exclamation-triangle',
     color: 'red',
     targetRole: 'إحالة إلى وكالة شؤون الطلاب',
+  },
+  {
+    value: 'learning_difficulty' as ReferralType,
+    label: 'صعوبات التعلم',
+    description: 'فحصٌ مبدئي بأسئلة نعم/لا، يصل معلّم صعوبات التعلم',
+    icon: 'bi-puzzle',
+    color: 'purple',
+    targetRole: 'إحالة إلى معلّم صعوبات التعلم',
   },
 ]
 
@@ -41,6 +86,20 @@ export function NewReferralPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [showStudentPicker, setShowStudentPicker] = useState(false)
 
+  // صعوبات التعلّم
+  const [subjectId, setSubjectId] = useState<number | null>(null)
+  const [formId, setFormId] = useState<number | null>(null)
+  const [answers, setAnswers] = useState<Record<number, boolean>>({})
+  const ldQuery = useTeacherLdFormsQuery(selectedStudent?.id ?? null)
+  const submitLd = useSubmitLdReferralMutation()
+
+  const ldForms = ldQuery.data?.forms ?? []
+  const ldSubjects = ldQuery.data?.teacher_subjects ?? []
+  const ldAvailable = ldForms.length > 0
+  const activeLdForm = ldForms.find((f) => f.id === formId) ?? null
+  const ldQuestions = activeLdForm?.sections.flatMap((section) => section.questions) ?? []
+  const ldAnswered = ldQuestions.filter((q) => answers[q.id] !== undefined).length
+
   const filteredStudents = useMemo(() => {
     if (!students) return []
     if (!searchQuery.trim()) return students
@@ -56,12 +115,54 @@ export function NewReferralPage() {
 
   const selectedType = REFERRAL_TYPES.find((t) => t.value === referralType)
 
-  const canSubmit = selectedStudent && referralType && description.trim().length >= 10
+  const canSubmit = Boolean(
+    selectedStudent &&
+      referralType &&
+      (referralType === 'learning_difficulty'
+        ? subjectId && formId && ldQuestions.length > 0 && ldAnswered === ldQuestions.length
+        : description.trim().length >= 10),
+  )
+
+  /** ما ينقص بالضبط — يُكتب في `title` الزر المعطَّل. */
+  const missingHint = !selectedStudent
+    ? 'اختر الطالب أولاً'
+    : !referralType
+      ? 'اختر نوع الإحالة'
+      : referralType === 'learning_difficulty'
+        ? !subjectId
+          ? 'اختر المادة'
+          : !formId
+            ? 'اختر النموذج'
+            : `بقي ${ldQuestions.length - ldAnswered} سؤالاً بلا إجابة`
+        : 'اكتب وصفاً لا يقل عن عشرة أحرف'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!canSubmit || !selectedStudent || !referralType) return
+
+    if (referralType === 'learning_difficulty') {
+      try {
+        await submitLd.mutateAsync({
+          form_id: formId as number,
+          student_id: selectedStudent.id,
+          subject_id: subjectId as number,
+          answers: Object.entries(answers).map(([questionId, answer]) => ({
+            question_id: Number(questionId),
+            answer,
+          })),
+          teacher_notes: description.trim() || undefined,
+          priority,
+        })
+
+        navigate('/teacher/referrals', { replace: true })
+      } catch (err) {
+        console.error('Error creating learning-difficulty referral:', err)
+        alert('حدث خطأ أثناء إرسال النموذج')
+      }
+
+      return
+    }
 
     try {
       await createMutation.mutateAsync({
@@ -146,24 +247,24 @@ export function NewReferralPage() {
           </h2>
 
           <div className="grid gap-3">
-            {REFERRAL_TYPES.map((type) => (
+            {REFERRAL_TYPES.filter(
+              (type) => type.value !== 'learning_difficulty' || ldAvailable,
+            ).map((type) => (
               <button
                 key={type.value}
                 type="button"
                 onClick={() => setReferralType(type.value)}
                 className={`flex items-start gap-4 p-4 rounded-lg border-2 text-right transition-all ${
                   referralType === type.value
-                    ? type.color === 'amber'
-                      ? 'border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-950'
-                      : 'border-red-400 dark:border-red-600 bg-red-50 dark:bg-red-950'
+                    ? TYPE_STYLES[type.color].selected
                     : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600'
                 }`}
               >
                 <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
-                  type.color === 'amber' ? 'bg-amber-100 dark:bg-amber-950' : 'bg-red-100 dark:bg-red-950'
+                  TYPE_STYLES[type.color].iconBg
                 }`}>
                   <i className={`${type.icon} text-xl ${
-                    type.color === 'amber' ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'
+                    TYPE_STYLES[type.color].iconText
                   }`} />
                 </div>
                 <div className="flex-1">
@@ -172,13 +273,140 @@ export function NewReferralPage() {
                 </div>
                 {referralType === type.value && (
                   <i className={`bi bi-check-circle-fill text-xl ${
-                    type.color === 'amber' ? 'text-amber-500 dark:text-amber-400' : 'text-red-500 dark:text-red-400'
+                    TYPE_STYLES[type.color].check
                   }`} />
                 )}
               </button>
             ))}
           </div>
         </div>
+
+        {/* صعوبات التعلّم: المادة ثم النموذج ثم الأسئلة */}
+        {referralType === 'learning_difficulty' && (
+          <div className="glass-card p-4 space-y-4">
+            <h2 className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-950 text-xs font-bold text-purple-600 dark:text-purple-400">3</span>
+              نموذج الفحص المبدئي
+            </h2>
+
+            {/* المادة — النطاق والاستجابة كلاهما يُمفتحان بها فلا تُخمَّن */}
+            <div>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">عن أي مادة؟</label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {ldSubjects.length === 0 && (
+                  <p className="text-sm text-slate-500 dark:text-slate-400">لا مواد مسجّلة لك مع هذا الطالب</p>
+                )}
+                {ldSubjects.map((subject) => (
+                  <button
+                    key={subject.subject_id}
+                    type="button"
+                    onClick={() => setSubjectId(subject.subject_id)}
+                    className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                      subjectId === subject.subject_id
+                        ? 'border-purple-400 bg-purple-50 text-purple-700 dark:border-purple-600 dark:bg-purple-950 dark:text-purple-300'
+                        : 'border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                    }`}
+                  >
+                    {subject.subject_name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* النموذج */}
+            {subjectId && (
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">النموذج</label>
+                <div className="mt-2 space-y-2">
+                  {ldForms.map((form) => (
+                    <button
+                      key={form.id}
+                      type="button"
+                      onClick={() => {
+                        setFormId(form.id)
+                        setAnswers({})
+                      }}
+                      className={`w-full rounded-lg border p-3 text-right transition-colors ${
+                        formId === form.id
+                          ? 'border-purple-400 bg-purple-50 dark:border-purple-600 dark:bg-purple-950'
+                          : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800'
+                      }`}
+                    >
+                      <p className="font-medium text-slate-900 dark:text-slate-100">{form.title}</p>
+                      {form.description && (
+                        <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{form.description}</p>
+                      )}
+                      {form.existing && form.existing.count > 0 && (
+                        <p className="mt-1.5 text-xs text-amber-700 dark:text-amber-400">
+                          أحاله {form.existing.count} من زملائك على هذا النموذج — إحالتك تُضاف
+                          <strong> كشهادة إضافية</strong> لا كتكرار.
+                        </p>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* الأسئلة: نعم/لا بلا حالة ثالثة، وبلا أي نقاط */}
+            {activeLdForm && (
+              <div className="space-y-4">
+                {activeLdForm.sections.map((section) => {
+                  const answeredInSection = section.questions.filter(
+                    (question) => answers[question.id] !== undefined,
+                  ).length
+
+                  return (
+                    <div key={section.id} className="rounded-lg border border-slate-200 dark:border-slate-700">
+                      <div className="flex items-center justify-between border-b border-slate-200 px-3 py-2 dark:border-slate-700">
+                        <span className="font-medium text-slate-900 dark:text-slate-100">{section.title}</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400">
+                          {answeredInSection}/{section.questions.length}
+                        </span>
+                      </div>
+
+                      <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                        {section.questions.map((question) => (
+                          <div key={question.id} className="flex items-center gap-3 px-3 py-2">
+                            <span className="flex-1 text-sm text-slate-700 dark:text-slate-300">
+                              {question.text}
+                            </span>
+
+                            <div className="flex shrink-0 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+                              {[
+                                { value: true, label: 'نعم' },
+                                { value: false, label: 'لا' },
+                              ].map((option) => (
+                                <button
+                                  key={option.label}
+                                  type="button"
+                                  onClick={() =>
+                                    setAnswers((prev) => ({ ...prev, [question.id]: option.value }))
+                                  }
+                                  className={`px-3 py-1 text-sm transition-colors ${
+                                    answers[question.id] === option.value
+                                      ? 'bg-purple-600 text-white'
+                                      : 'bg-white text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                                  }`}
+                                >
+                                  {option.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  أُجيب {ldAnswered} من {ldQuestions.length} سؤالاً
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Step 3: Priority & Description */}
         <div className="glass-card p-4 space-y-4">
@@ -260,10 +488,11 @@ export function NewReferralPage() {
         {/* Submit Button */}
         <button
           type="submit"
-          disabled={!canSubmit || createMutation.isPending}
+          disabled={!canSubmit || createMutation.isPending || submitLd.isPending}
+          title={canSubmit ? undefined : missingHint}
           className="w-full flex items-center justify-center gap-2 rounded-lg bg-sky-600 px-4 py-3 text-base font-medium text-white hover:bg-sky-700 disabled:bg-slate-300 dark:disabled:bg-slate-600 disabled:cursor-not-allowed transition-colors"
         >
-          {createMutation.isPending ? (
+          {createMutation.isPending || submitLd.isPending ? (
             <>
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
               جاري الإرسال...

@@ -22,6 +22,7 @@ import { chip } from '../pages/dashboard-ui'
 
 // مسارات «النمط الملتصق»: مساحة عمل بملء الشاشة بلا تمرير خارجي (ديسكتوب فقط)
 const WORKSPACE_ROUTES = [
+  '/admin/learning-difficulties',
   '/admin/attendance',
   '/admin/approval',
   '/admin/late-arrivals',
