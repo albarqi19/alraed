@@ -121,6 +121,15 @@ export const USER_ROLES: Record<UserRole, RoleInfo> = {
     portal: 'admin',
     selectable: true,
   },
+  learning_difficulties_teacher: {
+    value: 'learning_difficulties_teacher',
+    label: 'معلم صعوبات التعلم',
+    description: 'تشخيص صعوبات التعلم ومتابعة خططها',
+    color: 'purple',
+    icon: '🧩',
+    portal: 'admin',
+    selectable: true,
+  },
   administrative_staff: {
     value: 'administrative_staff',
     label: 'موظف إداري',
@@ -205,6 +214,7 @@ export const STAFF_ROLES: UserRole[] = [
   'activity_leader',
   'lab_technician',
   'gifted_teacher',
+  'learning_difficulties_teacher',
   'data_registrar',
 ]
 

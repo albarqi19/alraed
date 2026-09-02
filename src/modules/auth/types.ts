@@ -21,6 +21,7 @@ export const USER_ROLE_VALUES = [
   'lab_technician',
   'gifted_teacher',
   'data_registrar',
+  'learning_difficulties_teacher',
 ] as const
 
 export type UserRole = (typeof USER_ROLE_VALUES)[number]
