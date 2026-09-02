@@ -138,7 +138,7 @@ export function LearningDifficultiesPage() {
               type="button"
               role="tab"
               aria-selected={tab === key}
-              className={tab === key ? 'is-active' : ''}
+              className={`ws-seg__btn${tab === key ? ' is-active' : ''}`}
               onClick={() => setTab(key)}
             >
               {label}
@@ -205,7 +205,7 @@ export function LearningDifficultiesPage() {
                   <button
                     key={key}
                     type="button"
-                    className={filters.sort === key ? 'is-active' : ''}
+                    className={`ws-seg__btn${filters.sort === key ? ' is-active' : ''}`}
                     onClick={() => patch({ sort: key })}
                     title={
                       key === 'peak'
