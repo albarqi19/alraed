@@ -96,9 +96,25 @@ export function NewReferralPage() {
   const ldForms = ldQuery.data?.forms ?? []
   const ldSubjects = ldQuery.data?.teacher_subjects ?? []
   const ldAvailable = ldForms.length > 0
-  const activeLdForm = ldForms.find((f) => f.id === formId) ?? null
-  const ldQuestions = activeLdForm?.sections.flatMap((section) => section.questions) ?? []
+
+  // النماذجُ التي تصلح للمادّة المختارة — والمقيَّدُ بمادّةٍ أخرى لا يُعرض أصلاً
+  const ldFormsForSubject = subjectId
+    ? ldForms.filter((f) => f.for_subject_ids === null || f.for_subject_ids.includes(subjectId))
+    : []
+  const activeLdForm = ldFormsForSubject.find((f) => f.id === formId) ?? null
+
+  // أقسامُ النسخة التي يراها هذا المعلّم: العامّة، وما سُمّيت مادّتُه فيه
+  const ldSections = useMemo(
+    () =>
+      (activeLdForm?.sections ?? []).filter(
+        (section) =>
+          section.subject_ids.length === 0 || (subjectId !== null && section.subject_ids.includes(subjectId)),
+      ),
+    [activeLdForm, subjectId],
+  )
+  const ldQuestions = ldSections.flatMap((section) => section.questions)
   const ldAnswered = ldQuestions.filter((q) => answers[q.id] !== undefined).length
+  const ldHiddenSections = (activeLdForm?.sections.length ?? 0) - ldSections.length
 
   const filteredStudents = useMemo(() => {
     if (!students) return []
@@ -147,9 +163,9 @@ export function NewReferralPage() {
           form_id: formId as number,
           student_id: selectedStudent.id,
           subject_id: subjectId as number,
-          answers: Object.entries(answers).map(([questionId, answer]) => ({
-            question_id: Number(questionId),
-            answer,
+          answers: ldQuestions.map((question) => ({
+            question_id: question.id,
+            answer: answers[question.id],
           })),
           teacher_notes: description.trim() || undefined,
           priority,
@@ -300,7 +316,12 @@ export function NewReferralPage() {
                   <button
                     key={subject.subject_id}
                     type="button"
-                    onClick={() => setSubjectId(subject.subject_id)}
+                    onClick={() => {
+                      if (subjectId === subject.subject_id) return
+                      setSubjectId(subject.subject_id)
+                      setFormId(null)
+                      setAnswers({})
+                    }}
                     className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
                       subjectId === subject.subject_id
                         ? 'border-purple-400 bg-purple-50 text-purple-700 dark:border-purple-600 dark:bg-purple-950 dark:text-purple-300'
@@ -318,7 +339,12 @@ export function NewReferralPage() {
               <div>
                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300">النموذج</label>
                 <div className="mt-2 space-y-2">
-                  {ldForms.map((form) => (
+                  {ldFormsForSubject.length === 0 && (
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      لا نموذجَ فحصٍ لهذه المادّة — اختر مادّةً أخرى أو راجع إدارة المدرسة.
+                    </p>
+                  )}
+                  {ldFormsForSubject.map((form) => (
                     <button
                       key={form.id}
                       type="button"
@@ -349,9 +375,20 @@ export function NewReferralPage() {
             )}
 
             {/* الأسئلة: نعم/لا بلا حالة ثالثة، وبلا أي نقاط */}
-            {activeLdForm && (
+            {activeLdForm && ldSections.length === 0 && (
+              <p className="text-sm text-amber-700 dark:text-amber-400">
+                هذا النموذج لا يحوي أسئلةً لهذه المادّة.
+              </p>
+            )}
+
+            {activeLdForm && ldSections.length > 0 && (
               <div className="space-y-4">
-                {activeLdForm.sections.map((section) => {
+                {ldHiddenSections > 0 && (
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    تُعرض الأسئلةُ العامّة وما يخصّ مادّتك؛ و{ldHiddenSections} {ldHiddenSections === 1 ? 'قسمٌ' : 'أقسامٍ'} لموادَّ أخرى لا تُعرض عليك.
+                  </p>
+                )}
+                {ldSections.map((section) => {
                   const answeredInSection = section.questions.filter(
                     (question) => answers[question.id] !== undefined,
                   ).length

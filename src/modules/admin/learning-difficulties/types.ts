@@ -59,6 +59,35 @@ export interface LdTrack {
   peak_ratio: number | null
   teacher_notes: string | null
   cells: LdCell[]
+  /** ورقةُ الإجابات كاملةً — تصل في تفاصيل الطالب وحدها. */
+  answers?: LdAnswerSheetSection[]
+}
+
+export interface LdAnswerSheetSection {
+  section_id: number
+  section_title: string | null
+  questions: {
+    question_id: number
+    text: string | null
+    answer: boolean
+    points_awarded: number
+    points_yes: number | null
+    points_no: number | null
+  }[]
+}
+
+export interface LdHistoryWindow {
+  from: string
+  to: string
+  absence_days: number
+  late_days: number
+  violations: number
+}
+
+export interface LdHistory {
+  current: LdHistoryWindow
+  previous: LdHistoryWindow
+  top_behaviors: { name: string; total: number }[]
 }
 
 export interface LdRail {
@@ -123,10 +152,18 @@ export interface LdRow {
   verdict: LdVerdict
   verdict_label: string
   verdict_reason: string
-  ai: { has_report: boolean; generated_at: string | null; stale: boolean }
+  ai: {
+    has_report: boolean
+    generated_at: string | null
+    stale: boolean
+    /** نصُّ التقرير المحفوظ — يصل في تفاصيل الطالب وحدها. */
+    report_markdown?: string | null
+    report_response_id?: number | null
+  }
   /** يصل في تفاصيل الطالب وحدها. */
   fired?: LdFiredSection[]
   shadow_detail?: LdShadowDetail
+  history?: LdHistory
 }
 
 export interface LdFiredSection {
@@ -208,6 +245,8 @@ export interface LdFormSection {
   id?: number
   title: string
   description: string | null
+  /** فارغٌ = قسمٌ عامّ يظهر لكلّ مادّة؛ ومسمّىً لا يراه إلّا من يُحيل عن إحدى موادّه. */
+  subject_ids: number[]
   display_order?: number
   max_score?: number
   questions: LdQuestion[]
@@ -222,6 +261,7 @@ export interface LdForm {
   teacher_ids: number[]
   is_active: boolean
   accepting_referrals: boolean
+  /** نسبةٌ مئويّة من المدى المقيس (0–100)، لا نقاطٌ مطلقة. */
   threshold_high: number
   threshold_medium: number
   max_score: number
@@ -245,8 +285,10 @@ export interface LdFormPayload {
   threshold_high?: number
   threshold_medium?: number
   sections?: {
+    id?: number
     title: string
     description?: string | null
+    subject_ids?: number[]
     questions: { id?: number; text: string; points_yes: number; points_no: number; is_required?: boolean }[]
   }[]
 }

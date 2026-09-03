@@ -140,6 +140,7 @@ const AdminSummonsPage = lazyNamed(() => import('@/modules/admin/pages/admin-sum
 const AdminReferralsPage = lazyNamed(() => import('@/modules/admin/pages/admin-referrals-page'), 'AdminReferralsPage')
 const LearningDifficultiesPage = lazyNamed(() => import('@/modules/admin/learning-difficulties/pages/learning-difficulties-page'), 'LearningDifficultiesPage')
 const LearningDifficultyFormPage = lazyNamed(() => import('@/modules/admin/learning-difficulties/pages/learning-difficulty-form-page'), 'LearningDifficultyFormPage')
+const LearningDifficultyStudentPage = lazyNamed(() => import('@/modules/admin/learning-difficulties/pages/learning-difficulty-student-page'), 'LearningDifficultyStudentPage')
 const AdminReferralDetailPage = lazyNamed(() => import('@/modules/admin/pages/admin-referral-detail-page'), 'AdminReferralDetailPage')
 const AdminParentRepliesPage = lazyNamed(() => import('@/modules/admin/pages/admin-parent-replies-page'), 'AdminParentRepliesPage')
 
@@ -366,6 +367,7 @@ const appRoutes = [
           { path: 'referrals', element: <AdminReferralsPage /> },
           { path: 'learning-difficulties', element: <LearningDifficultiesPage /> },
           { path: 'learning-difficulties/forms/:id', element: <LearningDifficultyFormPage /> },
+          { path: 'learning-difficulties/students/:id', element: <LearningDifficultyStudentPage /> },
           { path: 'referrals/guidance', element: <AdminReferralsPage /> },
           { path: 'referrals/behavioral', element: <AdminReferralsPage /> },
           { path: 'referrals/:id', element: <AdminReferralDetailPage /> },

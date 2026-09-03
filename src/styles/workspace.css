@@ -2105,3 +2105,433 @@ button.ws-chip:disabled {
         animation: none;
     }
 }
+
+/* ══════════════════════════════════════════════════════════
+   صعوبات التعلّم (ld-*): نطاقُ الأقسام، وشرحُ الصفحة، وملفُّ الطالب
+   ══════════════════════════════════════════════════════════ */
+
+/* صفُّ نطاق القسم في بانِي النموذج: تسمية + شرائح المواد */
+.ld-scope-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+    margin-top: 6px;
+    padding: 6px 8px;
+    border: 1px dashed var(--ws-hairline);
+    border-radius: 8px;
+    background: var(--ws-sunken);
+}
+.ld-scope-row__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-inline-end: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ws-text-2);
+}
+.ld-scope-row__label svg {
+    width: 12px;
+    height: 12px;
+}
+
+/* جدول «بحسب المادة»: صفٌّ لكلّ نسخةٍ يراها معلّمٌ ما */
+.ld-variants {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+.ld-variants th,
+.ld-variants td {
+    padding: 5px 8px;
+    text-align: start;
+    border-bottom: 1px solid var(--ws-hairline);
+}
+.ld-variants th {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--ws-text-2);
+    background: var(--ws-sunken);
+}
+.ld-variants tbody tr:last-child td {
+    border-bottom: 0;
+}
+.ld-variants tr.is-empty td {
+    color: #b42318;
+    background: rgba(180, 35, 24, 0.05);
+}
+
+/* شرحُ الصفحة: خطواتٌ مرقّمة بأيقونةٍ مصبوغة */
+.ld-help {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    font-size: 13px;
+    line-height: 1.75;
+    color: var(--ws-text);
+}
+.ld-help__lead {
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--ws-accent-softer);
+    font-size: 13.5px;
+}
+.ld-help__step {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+.ld-help__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    border: 1px solid;
+    border-radius: 9px;
+}
+.ld-help__title {
+    font-weight: 800;
+    margin-bottom: 1px;
+}
+.ld-help__text {
+    color: var(--ws-text-2);
+}
+.ld-help__note {
+    margin: 0;
+    padding-top: 8px;
+    border-top: 1px dashed var(--ws-hairline);
+    font-size: 12px;
+    color: var(--ws-text-2);
+}
+
+/* تقريرُ الذكاء (ماركداون مصغّر) */
+.ld-md {
+    font-size: 13.5px;
+    line-height: 1.85;
+    color: var(--ws-text);
+    max-width: 78ch;
+}
+.ld-md__h {
+    margin: 14px 0 4px;
+    font-weight: 800;
+    color: var(--ws-text);
+}
+.ld-md__h:first-child {
+    margin-top: 0;
+}
+.ld-md__h--1 {
+    font-size: 16px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--ws-hairline);
+}
+.ld-md__h--2 {
+    font-size: 14.5px;
+    color: var(--ws-accent);
+}
+.ld-md__h--3 {
+    font-size: 13.5px;
+}
+.ld-md__p {
+    margin: 0 0 8px;
+}
+.ld-md__list {
+    margin: 0 0 8px;
+    padding-inline-start: 22px;
+}
+.ld-md__list li {
+    margin-bottom: 2px;
+}
+.ld-md__quote {
+    margin: 8px 0;
+    padding: 6px 12px;
+    border-inline-start: 3px solid var(--ws-accent);
+    border-radius: 6px;
+    background: var(--ws-accent-softer);
+    color: var(--ws-text-2);
+}
+.ld-md__rule {
+    border: 0;
+    border-top: 1px dashed var(--ws-hairline);
+    margin: 12px 0;
+}
+.ld-md__tablewrap {
+    overflow-x: auto;
+    margin: 6px 0 10px;
+}
+.ld-md__table {
+    border-collapse: collapse;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    min-width: 50%;
+}
+.ld-md__table th,
+.ld-md__table td {
+    padding: 4px 10px;
+    border: 1px solid var(--ws-hairline);
+    text-align: start;
+}
+.ld-md__table th {
+    background: var(--ws-sunken);
+    font-weight: 700;
+    color: var(--ws-text-2);
+}
+.ld-md code {
+    padding: 0 4px;
+    border-radius: 4px;
+    background: var(--ws-sunken);
+    font-size: 12px;
+}
+
+/* ملفُّ الطالب: عمودٌ واحد يتنفّس، والذكاءُ في الصدر */
+.ld-student {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+}
+.ld-student__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 12px;
+    align-items: start;
+}
+.ld-student__ai {
+    border-color: var(--ws-accent-soft);
+    background: linear-gradient(180deg, var(--ws-accent-softer), var(--ws-surface) 120px);
+}
+.ld-student__ai-wait {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 4px;
+    font-size: 12.5px;
+    color: var(--ws-text-2);
+}
+.ld-student__ai-empty {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 4px;
+    color: var(--ws-text);
+}
+.ld-student__ai-empty > svg {
+    flex-shrink: 0;
+    color: var(--ws-accent);
+}
+.ld-student__ai-empty > div {
+    flex: 1;
+    min-width: 0;
+}
+.ld-student__foot {
+    padding: 4px 0 8px;
+    text-align: center;
+    font-size: 12px;
+}
+.ld-student__foot a {
+    color: var(--ws-accent);
+}
+
+/* هذا العام مقابل الماضي */
+.ld-history {
+    width: 100%;
+    margin-top: 4px;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+.ld-history th,
+.ld-history td {
+    padding: 4px 6px;
+    text-align: start;
+    border-bottom: 1px solid var(--ws-hairline);
+}
+.ld-history th {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--ws-text-2);
+}
+.ld-history tbody tr:last-child td {
+    border-bottom: 0;
+}
+.ld-history__num {
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+.ld-history__prev {
+    color: var(--ws-text-2);
+}
+
+/* الغياب بالشهر: أعمدةٌ صغيرة */
+.ld-spark {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    height: 56px;
+    padding: 4px 0 0;
+}
+.ld-spark__col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+    height: 100%;
+}
+.ld-spark__bar-wrap {
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    width: 100%;
+}
+.ld-spark__bar {
+    width: 100%;
+    border-radius: 3px 3px 0 0;
+    background: var(--ws-accent);
+    opacity: 0.75;
+}
+.ld-spark__label {
+    font-size: 9.5px;
+    color: var(--ws-text-2);
+    font-variant-numeric: tabular-nums;
+}
+
+/* شهاداتُ المعلّمين: بطاقةٌ لكلّ معلّم، تُطوى ورقةُ إجاباته تحتها */
+.ld-tracks {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.ld-track {
+    border: 1px solid var(--ws-hairline);
+    border-radius: 10px;
+    background: var(--ws-surface);
+    overflow: hidden;
+}
+.ld-track.is-withdrawn {
+    opacity: 0.7;
+    border-style: dashed;
+}
+.ld-track__head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    cursor: pointer;
+}
+.ld-track__head:hover {
+    background: var(--ws-hover);
+}
+.ld-track__head strong {
+    font-size: 13px;
+}
+.ld-track__notes {
+    padding: 0 12px 8px;
+    padding-inline-start: 52px;
+    font-size: 12px;
+    color: var(--ws-text-2);
+    font-style: italic;
+}
+.ld-sheet {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px 12px 10px;
+    border-top: 1px dashed var(--ws-hairline);
+    background: var(--ws-sunken);
+}
+.ld-sheet__title {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--ws-text-2);
+    margin-bottom: 2px;
+}
+.ld-sheet__q {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 0;
+    font-size: 12.5px;
+    color: var(--ws-text-2);
+}
+.ld-sheet__q.is-yes {
+    color: var(--ws-text);
+}
+.ld-sheet__mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1px solid var(--ws-hairline);
+    color: var(--ws-text-3, var(--ws-text-2));
+    background: var(--ws-surface);
+}
+.ld-sheet__q.is-yes .ld-sheet__mark {
+    border-color: #b42318;
+    background: #b42318;
+    color: #fff;
+}
+.ld-sheet__text {
+    flex: 1;
+    min-width: 0;
+}
+.ld-sheet__pts {
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ws-text-2);
+    min-width: 18px;
+    text-align: end;
+}
+
+/* الأسئلة المشتعلة: ما قال عنه شاهدٌ فأكثر «نعم» */
+.ld-fired {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.ld-fired__title {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--ws-text-2);
+    margin-bottom: 4px;
+}
+.ld-fired__q {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 5px 8px;
+    border-inline-start: 3px solid #b42318;
+    border-radius: 6px;
+    background: rgba(180, 35, 24, 0.05);
+    margin-bottom: 4px;
+    font-size: 12.5px;
+}
+.ld-fired__text {
+    flex: 1;
+    min-width: 0;
+}
+.ld-fired__who {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: flex-end;
+}
+
+@media (max-width: 720px) {
+    .ld-student {
+        padding: 8px;
+    }
+    .ld-track__head {
+        flex-wrap: wrap;
+    }
+    .ld-track__notes {
+        padding: 0 12px 8px;
+    }
+}

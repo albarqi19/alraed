@@ -12,6 +12,8 @@ export interface TeacherLdSection {
   id: number
   title: string
   description: string | null
+  /** فارغٌ = قسمٌ عامّ لكلّ مادّة؛ ومسمّىً لا يظهر إلّا حين تكون المادّةُ المختارة فيه. */
+  subject_ids: number[]
   questions: TeacherLdQuestion[]
 }
 
@@ -21,6 +23,8 @@ export interface TeacherLdForm {
   description: string | null
   /** «أحاله ٢ من زملائك» — يقلب الازدواج إلى شهادةٍ تُغذّي خطّ الإجماع. */
   existing: { count: number; latest_at: string | null; teacher_names: string[] } | null
+  /** null = يصلح لأيّ مادّة؛ ومصفوفةٌ = لا يُعرض إلّا حين تكون المادّةُ المختارة فيها. */
+  for_subject_ids: number[] | null
   sections: TeacherLdSection[]
 }
 

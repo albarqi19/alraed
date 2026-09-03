@@ -1,51 +1,40 @@
 import { useMemo, useState } from 'react'
 
 import {
-  BookOpenCheck,
+  ArrowUpLeft,
+  CircleHelp,
   ClipboardList,
   FilePlus,
   Inbox,
   ListChecks,
-  PanelRightOpen,
   RefreshCw,
-  Sparkles,
-  UserSearch,
 } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 import {
   TONES,
-
-  WsAlert,
   WsBlock,
   WsBtn,
   WsChip,
   WsEmpty,
   WsFact,
-  WsFactRow,
-  WsFactsList,
   WsField,
   WsHeader,
   WsIconBtn,
   WsInput,
-  WsLayout,
-  WsMain,
   WsPage,
   WsSelect,
-  WsSideCol,
-  WsSpinner,
   WsTable,
   WsToolbar,
 } from '@/shared/workspace'
 
+import { LdHelpModal } from '../components/LdHelpModal'
 import { ShadowRails, WitnessGrid } from '../components/Touchstone'
 import { SeverityBar, VerdictChip } from '../components/VerdictChip'
 import {
-  useGenerateLdAiReportMutation,
   useLdBoardQuery,
   useLdFormsQuery,
   useLdQuestionAnalyticsQuery,
-  useLdStudentQuery,
   useToggleLdAcceptanceMutation,
 } from '../hooks'
 import type { LdBoardFilters, LdRow, LdSort, LdVerdict } from '../types'
@@ -69,16 +58,15 @@ const VERDICT_FILTERS: { value: LdVerdict | ''; label: string }[] = [
 ]
 
 export function LearningDifficultiesPage() {
+  const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('referrals')
   const [filters, setFilters] = useState<LdBoardFilters>({ sort: 'severity' })
   const [search, setSearch] = useState('')
-  const [selectedStudent, setSelectedStudent] = useState<number | null>(null)
+  const [helpOpen, setHelpOpen] = useState(false)
 
   const query = useLdBoardQuery({ ...filters, search: search || undefined })
   const formsQuery = useLdFormsQuery()
   const questionsQuery = useLdQuestionAnalyticsQuery(undefined, tab === 'questions')
-  const detailQuery = useLdStudentQuery(selectedStudent)
-  const aiMutation = useGenerateLdAiReportMutation()
   const toggleAcceptance = useToggleLdAcceptanceMutation()
 
   const rows = query.data?.rows ?? []
@@ -91,7 +79,7 @@ export function LearningDifficultiesPage() {
     [rows],
   )
 
-  const selectedRow = detailQuery.data ?? rows.find((r) => r.student.student_id === selectedStudent) ?? null
+  const openStudent = (studentId: number) => navigate(`/admin/learning-difficulties/students/${studentId}`)
 
   const patch = (next: Partial<LdBoardFilters>) => setFilters((prev) => ({ ...prev, ...next }))
 
@@ -106,6 +94,9 @@ export function LearningDifficultiesPage() {
         }
         actions={
           <>
+            <WsBtn icon={CircleHelp} onClick={() => setHelpOpen(true)}>
+              ما هذه الصفحة؟
+            </WsBtn>
             <Link to="/admin/learning-difficulties/forms/new">
               <WsBtn variant="primary" icon={FilePlus}>
                 نموذج جديد
@@ -227,64 +218,37 @@ export function LearningDifficultiesPage() {
             </WsChip>
           </WsToolbar>
 
-          <WsLayout>
-            <WsMain>
-              <WsBlock fill scroll>
-                {query.isLoading ? (
-                  <WsEmpty loading>تُقرأ الإحالات…</WsEmpty>
-                ) : rows.length === 0 ? (
-                  <WsEmpty icon={Inbox}>لا إحالات صعوبات في هذا العام</WsEmpty>
-                ) : (
-                  <WsTable className="ws-mstack">
-                    <thead>
-                      <tr>
-                        <th>الطالب</th>
-                        <th>الشهادة</th>
-                        <th>الظِّلّ</th>
-                        <th>الحكم</th>
-                        <th>الشدّة</th>
-                        <th>الحالة</th>
-                        <th />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.map((row) => (
-                        <BoardRow
-                          key={row.student.student_id}
-                          row={row}
-                          selected={selectedStudent === row.student.student_id}
-                          onSelect={() => setSelectedStudent(row.student.student_id)}
-                          thresholds={forms.find((f) => f.id === row.score.severity_form_id)}
-                        />
-                      ))}
-                    </tbody>
-                  </WsTable>
-                )}
-              </WsBlock>
-            </WsMain>
-
-            <WsSideCol
-              title={selectedRow?.student.student_name ?? 'ملفّ الطالب'}
-              icon={UserSearch}
-              storageKey="ws:learning-difficulties:sidecol"
-              collapsedLabel="ملفّ الطالب"
-              width={380}
-            >
-              {!selectedRow ? (
-                <WsEmpty icon={UserSearch}>اختر طالباً من القائمة</WsEmpty>
-              ) : (
-                <StudentPanel
-                  row={selectedRow}
-                  loading={detailQuery.isLoading}
-                  onGenerateAi={(force) =>
-                    aiMutation.mutate({ studentId: selectedRow.student.student_id, force })
-                  }
-                  aiPending={aiMutation.isPending}
-                  aiReport={aiMutation.data?.report_markdown}
-                />
-              )}
-            </WsSideCol>
-          </WsLayout>
+          <WsBlock fill scroll>
+            {query.isLoading ? (
+              <WsEmpty loading>تُقرأ الإحالات…</WsEmpty>
+            ) : rows.length === 0 ? (
+              <WsEmpty icon={Inbox}>لا إحالات صعوبات في هذا العام</WsEmpty>
+            ) : (
+              <WsTable className="ws-mstack">
+                <thead>
+                  <tr>
+                    <th>الطالب</th>
+                    <th>الشهادة</th>
+                    <th>الظِّلّ</th>
+                    <th>الحكم</th>
+                    <th>الشدّة</th>
+                    <th>الحالة</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row) => (
+                    <BoardRow
+                      key={row.student.student_id}
+                      row={row}
+                      onOpen={() => openStudent(row.student.student_id)}
+                      thresholds={forms.find((f) => f.id === row.score.severity_form_id)}
+                    />
+                  ))}
+                </tbody>
+              </WsTable>
+            )}
+          </WsBlock>
         </>
       )}
 
@@ -331,9 +295,9 @@ export function LearningDifficultiesPage() {
                     <td data-label="السقف">{form.max_score}</td>
                     <td data-label="العتبتان">
                       <span style={{ fontSize: 11 }}>
-                        <span style={{ color: TONES.amber.tx }}>{form.threshold_medium}</span>
+                        <span style={{ color: TONES.amber.tx }}>{form.threshold_medium}%</span>
                         {' → '}
-                        <span style={{ color: TONES.red.tx }}>{form.threshold_high}</span>
+                        <span style={{ color: TONES.red.tx }}>{form.threshold_high}%</span>
                       </span>
                     </td>
                     <td data-label="الإحالات">{form.responses_count}</td>
@@ -421,25 +385,25 @@ export function LearningDifficultiesPage() {
           )}
         </WsBlock>
       )}
+
+      <LdHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
     </WsPage>
   )
 }
 
 function BoardRow({
   row,
-  selected,
-  onSelect,
+  onOpen,
   thresholds,
 }: {
   row: LdRow
-  selected: boolean
-  onSelect: () => void
+  onOpen: () => void
   thresholds?: { threshold_high: number; threshold_medium: number }
 }) {
   const statuses = [...new Set(row.tracks.map((t) => t.referral_status).filter(Boolean))] as string[]
 
   return (
-    <tr className={`is-clickable${selected ? ' is-selected' : ''}`} onClick={onSelect}>
+    <tr className="is-clickable" onClick={onOpen}>
       <td data-label="الطالب">
         <strong>{row.student.student_name}</strong>
         <span className="ws-cell-sub">
@@ -487,111 +451,8 @@ function BoardRow({
       </td>
 
       <td data-label="">
-        <WsIconBtn icon={PanelRightOpen} label="فتح الملف" onClick={onSelect} />
+        <WsIconBtn icon={ArrowUpLeft} label="فتح ملفّ الطالب" onClick={onOpen} />
       </td>
     </tr>
-  )
-}
-
-function StudentPanel({
-  row,
-  loading,
-  onGenerateAi,
-  aiPending,
-  aiReport,
-}: {
-  row: LdRow
-  loading: boolean
-  onGenerateAi: (force: boolean) => void
-  aiPending: boolean
-  aiReport?: string
-}) {
-  return (
-    <>
-      <WsBlock title="المِحَكّ الممتدّ" icon={BookOpenCheck} padded>
-        <WitnessGrid
-          sections={row.sections}
-          tracks={row.tracks}
-          consensusSectionIds={row.consensus_section_ids}
-          expanded
-        />
-
-        <WsFactsList style={{ marginTop: 10 }}>
-          {row.tracks.map((track) => (
-            <WsFactRow key={track.response_id} label={track.teacher_name ?? 'معلم'}>
-              {track.subject_name ?? '—'} · {track.total_score}/{track.max_score}
-              {track.withdrawn ? ' · مسحوبة' : ''}
-            </WsFactRow>
-          ))}
-        </WsFactsList>
-      </WsBlock>
-
-      <WsBlock title="الظِّلّ" padded>
-        <ShadowRails shadow={row.shadow} expanded />
-
-        {row.shadow.comparable && (
-          <WsFactsList style={{ marginTop: 8 }}>
-            <WsFactRow label="الأقران">{row.shadow.peers_count}</WsFactRow>
-            <WsFactRow label="أيام الدراسة">{row.shadow.working_days}</WsFactRow>
-            {row.shadow_detail && (
-              <WsFactRow label="غياب بعذر معتمد">{row.shadow_detail.excused_days}</WsFactRow>
-            )}
-          </WsFactsList>
-        )}
-      </WsBlock>
-
-      {loading ? (
-        <WsEmpty loading>يُقرأ الملف…</WsEmpty>
-      ) : (
-        row.fired &&
-        row.fired.length > 0 && (
-          <WsBlock title="الأسئلة المشتعلة" count={row.fired.length} scroll padded>
-            {row.fired.map((section) => (
-              <div key={section.section_id} style={{ marginBottom: 10 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>{section.section_title}</div>
-                {section.questions.map((question) => (
-                  <div key={question.question_id} style={{ fontSize: 12, marginBottom: 3 }}>
-                    · {question.text}
-                    <span style={{ color: 'var(--ws-text-2)', fontSize: 11 }}>
-                      {' — '}
-                      {question.witnesses.map((w) => w.teacher_name).filter(Boolean).join(' · ')}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </WsBlock>
-        )
-      )}
-
-      <WsBlock
-        title="قراءةُ الذكاء"
-        icon={Sparkles}
-        padded
-        tools={
-          row.ai.has_report || aiReport ? (
-            <WsIconBtn icon={RefreshCw} label="أعِد القراءة" onClick={() => onGenerateAi(true)} />
-          ) : undefined
-        }
-      >
-        {row.ai.stale && (
-          <WsAlert tone="warn" boxed>
-            وصلت شهادةٌ جديدة بعد هذه القراءة — التقرير لا يعرفها.
-          </WsAlert>
-        )}
-
-        {aiPending ? (
-          <WsAlert tone="info" icon={null} boxed>
-            <WsSpinner style={{ width: 14, height: 14 }} /> تُقرأ الآن… سنةٌ حالية وسنةٌ سابقة
-          </WsAlert>
-        ) : aiReport ? (
-          <div style={{ fontSize: 12.5, whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>{aiReport}</div>
-        ) : (
-          <WsBtn variant="primary" icon={Sparkles} onClick={() => onGenerateAi(false)}>
-            اقرأ الملفّ
-          </WsBtn>
-        )}
-      </WsBlock>
-    </>
   )
 }

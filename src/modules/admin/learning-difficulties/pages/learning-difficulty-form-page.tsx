@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 
-import { ChevronDown, ChevronUp, Copy, ListPlus, Save, Scale, Trash2 } from 'lucide-react'
+import { BookOpen, ChevronDown, ChevronUp, Copy, ListPlus, Save, Scale, Trash2 } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import {
@@ -44,6 +44,8 @@ interface DraftSection {
   localId: string
   id?: number
   title: string
+  /** فارغٌ = عامّ لكلّ مادّة. */
+  subjectIds: number[]
   questions: DraftQuestion[]
   defaultYes: number
   defaultNo: number
@@ -56,6 +58,7 @@ const nextId = () => `local-${++counter}`
 const emptySection = (): DraftSection => ({
   localId: nextId(),
   title: '',
+  subjectIds: [],
   questions: [],
   defaultYes: 1,
   defaultNo: 0,
@@ -101,6 +104,7 @@ export function LearningDifficultyFormPage() {
         localId: nextId(),
         id: section.id,
         title: section.title,
+        subjectIds: section.subject_ids ?? [],
         defaultYes: 1,
         defaultNo: 0,
         questions: section.questions.map((question) => ({
@@ -155,44 +159,137 @@ export function LearningDifficultyFormPage() {
       0,
     )
 
-    const band = (score: number) =>
-      thresholdHigh > 0 && score >= thresholdHigh
+    // العتبتان نسبةٌ من المدى المقيس، فتُقاس الدرجةُ على مدى النموذج الكامل هنا
+    const span = maxScore - minScore
+    const percentOf = (score: number) => (span > 0 ? ((score - minScore) / span) * 100 : 0)
+    const band = (score: number) => {
+      const percent = percentOf(score)
+
+      return thresholdHigh > 0 && percent >= thresholdHigh
         ? 'high'
-        : thresholdMedium > 0 && score >= thresholdMedium
+        : thresholdMedium > 0 && percent >= thresholdMedium
           ? 'medium'
           : 'low'
+    }
 
     return {
       sectionWeights,
       maxScore,
       minScore,
+      span,
+      percentOf,
       totalWeight,
       heaviest,
       lightest,
       questionsCount: sections.reduce((sum, s) => sum + s.questions.length, 0),
       /** قسمٌ واحد يبلغ العتبة الحمراء وحده = نموذجُ قسمٍ واحد عملياً */
-      soloReachesHigh: heaviest && thresholdHigh > 0 && heaviest.max >= thresholdHigh,
+      soloReachesHigh: !!heaviest && thresholdHigh > 0 && band(onlyHeaviest) === 'high',
       dummies: [
-        { label: 'كل الإجابات «نعم»', score: allYes, band: band(allYes) },
-        { label: 'نعم في أثقل قسم وحده', score: onlyHeaviest, band: band(onlyHeaviest) },
-        { label: 'نصف الإجابات موزّعة', score: halfSpread, band: band(halfSpread) },
+        { label: 'كل الإجابات «نعم»', score: allYes, percent: percentOf(allYes), band: band(allYes) },
+        {
+          label: 'نعم في أثقل قسم وحده',
+          score: onlyHeaviest,
+          percent: percentOf(onlyHeaviest),
+          band: band(onlyHeaviest),
+        },
+        {
+          label: 'نصف الإجابات موزّعة',
+          score: halfSpread,
+          percent: percentOf(halfSpread),
+          band: band(halfSpread),
+        },
       ],
       /** النموذج مقلوب: يكافئ الضعف العام ويعاقب الصعوبة النوعية */
       inverted: band(halfSpread) === 'high' && band(onlyHeaviest) !== 'high',
     }
   }, [sections, thresholdHigh, thresholdMedium])
 
+  const subjectsById = useMemo(
+    () => new Map((scopeQuery.data?.subjects ?? []).map((subject) => [subject.id, subject.name])),
+    [scopeQuery.data],
+  )
+
+  /**
+   * نسخُ النموذج بحسب المادة: معلّمُ كلِّ مادّةٍ يرى العامَّ وما خُصِّص لمادّته،
+   * فلكلّ مادّةٍ سقفٌ ومدىً وعددُ أسئلةٍ قد يختلف عن الآخر.
+   */
+  const variants = useMemo(() => {
+    const scopedAnywhere = sections.some((section) => section.subjectIds.length > 0)
+
+    if (!scopedAnywhere) return []
+
+    const subjectPool = subjectIds.length
+      ? subjectIds
+      : Array.from(new Set(sections.flatMap((section) => section.subjectIds)))
+
+    const measure = (subjectId: number | null) => {
+      const visible = sections.filter(
+        (section) =>
+          section.subjectIds.length === 0 ||
+          (subjectId !== null && section.subjectIds.includes(subjectId)),
+      )
+      const max = visible.reduce(
+        (sum, s) => sum + s.questions.reduce((acc, q) => acc + Math.max(q.pointsYes, q.pointsNo), 0),
+        0,
+      )
+      const min = visible.reduce(
+        (sum, s) => sum + s.questions.reduce((acc, q) => acc + Math.min(q.pointsYes, q.pointsNo), 0),
+        0,
+      )
+
+      return {
+        sections: visible.length,
+        questions: visible.reduce((sum, s) => sum + s.questions.length, 0),
+        max,
+        min,
+        span: max - min,
+      }
+    }
+
+    const rows = subjectPool.map((subjectId) => ({
+      key: String(subjectId),
+      label: subjectsById.get(subjectId) ?? `مادة #${subjectId}`,
+      general: false,
+      ...measure(subjectId),
+    }))
+
+    // نموذجٌ بلا نطاق موادّ يصل لأيّ مادّةٍ أخرى بأقسامه العامّة وحدَها
+    if (!subjectIds.length) {
+      rows.push({ key: 'general', label: 'أيّ مادّة أخرى', general: true, ...measure(null) })
+    }
+
+    return rows
+  }, [sections, subjectIds, subjectsById])
+
   const blockers = useMemo(() => {
     const list: string[] = []
 
     if (!title.trim()) list.push('النموذج بلا عنوان.')
     if (balance.questionsCount === 0) list.push('النموذج بلا أسئلة.')
-    if (thresholdHigh > balance.maxScore) list.push('العتبة الحمراء أعلى من سقف النموذج — لا يبلغها أحد.')
+    if (thresholdHigh > 100 || thresholdMedium > 100) list.push('العتبة نسبةٌ مئويّة — لا تتجاوز 100.')
     if (thresholdMedium >= thresholdHigh && thresholdHigh > 0)
       list.push('العتبة البرتقالية يجب أن تقل عن الحمراء.')
 
+    variants
+      .filter((variant) => !variant.general && variant.questions === 0)
+      .forEach((variant) => list.push(`مادة «${variant.label}» لا ترى أيّ سؤال — لا قسمَ عامّاً ولا قسمَ لها.`))
+
     return list
-  }, [title, balance, thresholdHigh, thresholdMedium])
+  }, [title, balance, thresholdHigh, thresholdMedium, variants])
+
+  const toggleSectionSubject = (localId: string, subjectId: number) =>
+    setSections((prev) =>
+      prev.map((section) =>
+        section.localId === localId
+          ? {
+              ...section,
+              subjectIds: section.subjectIds.includes(subjectId)
+                ? section.subjectIds.filter((id) => id !== subjectId)
+                : [...section.subjectIds, subjectId],
+            }
+          : section,
+      ),
+    )
 
   const patchSection = (localId: string, patch: Partial<DraftSection>) =>
     setSections((prev) => prev.map((s) => (s.localId === localId ? { ...s, ...patch } : s)))
@@ -264,19 +361,21 @@ export function LearningDifficultyFormPage() {
       threshold_medium: thresholdMedium,
     }
 
-    if (!locked) {
-      payload.sections = sections
-        .filter((section) => section.questions.length > 0)
-        .map((section) => ({
-          title: section.title || 'قسم',
-          questions: section.questions.map((question) => ({
-            id: question.id,
-            text: question.text,
-            points_yes: question.pointsYes,
-            points_no: question.pointsNo,
-          })),
-        }))
-    }
+    // تحت القفل تُرسل الأقسامُ بمعرِّفاتها: الخادمُ يقبل الصياغةَ ونطاقَ الموادّ
+    // ويتجاهل النقاط، ويرفض أيَّ تغييرٍ في مجموعة الأسئلة.
+    payload.sections = sections
+      .filter((section) => section.questions.length > 0)
+      .map((section) => ({
+        id: section.id,
+        title: section.title || 'قسم',
+        subject_ids: section.subjectIds,
+        questions: section.questions.map((question) => ({
+          id: question.id,
+          text: question.text,
+          points_yes: question.pointsYes,
+          points_no: question.pointsNo,
+        })),
+      }))
 
     const onDone = () => navigate('/admin/learning-difficulties')
 
@@ -313,8 +412,8 @@ export function LearningDifficultyFormPage() {
 
       {locked && (
         <WsAlert tone="warn">
-          {server?.responses_count} إحالة قِيست بهذا النموذج — أسئلته مقفلة، والتعديل لا يعيد حسابها.
-          العناوين والعتبات والنطاق تبقى قابلة للتعديل.
+          {server?.responses_count} إحالة قِيست بهذا النموذج — أسئلته ونقاطه مقفلة، والتعديل لا يعيد
+          حسابها. العناوين وصياغة الأسئلة والعتبات والنطاق وموادُّ كلِّ قسم تبقى قابلة للتعديل.
         </WsAlert>
       )}
 
@@ -335,10 +434,13 @@ export function LearningDifficultyFormPage() {
                     value={section.title}
                     onChange={(event) => patchSection(section.localId, { title: event.target.value })}
                     placeholder={`القسم ${index + 1}`}
-                    disabled={locked}
                   />
                 }
-                count={`${section.questions.length} سؤال`}
+                count={
+                  section.subjectIds.length
+                    ? `${section.questions.length} سؤال · ${section.subjectIds.length} مادة`
+                    : `${section.questions.length} سؤال · عامّ`
+                }
                 tools={
                   !locked && (
                     <>
@@ -395,6 +497,30 @@ export function LearningDifficultyFormPage() {
                   </div>
                 )}
 
+                <div className="ld-scope-row">
+                  <span className="ld-scope-row__label">
+                    <BookOpen size={12} />
+                    {section.subjectIds.length ? 'يظهر لموادّ:' : 'قسمٌ عامّ — يظهر لكلّ مادّة'}
+                  </span>
+                  {(subjectIds.length
+                    ? (scopeQuery.data?.subjects ?? []).filter((subject) => subjectIds.includes(subject.id))
+                    : scopeQuery.data?.subjects ?? []
+                  ).map((subject) => (
+                    <WsChip
+                      key={subject.id}
+                      tone={section.subjectIds.includes(subject.id) ? 'amber' : undefined}
+                      onClick={() => toggleSectionSubject(section.localId, subject.id)}
+                    >
+                      {subject.name}
+                    </WsChip>
+                  ))}
+                  {section.subjectIds.length > 0 && (
+                    <WsChip onClick={() => patchSection(section.localId, { subjectIds: [] })}>
+                      اجعله عامّاً
+                    </WsChip>
+                  )}
+                </div>
+
                 {!locked && (
                   <div style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'flex-end' }}>
                     <WsField label="نعم افتراضياً">
@@ -435,7 +561,6 @@ export function LearningDifficultyFormPage() {
                         }
                         placeholder="نص السؤال"
                         style={{ flex: 1 }}
-                        disabled={locked}
                       />
                       <WsInput
                         type="number"
@@ -507,7 +632,8 @@ export function LearningDifficultyFormPage() {
             <WsBlock title="النطاق" padded style={{ marginTop: 12 }}>
               <div style={{ fontSize: 11.5, color: 'var(--ws-text-2)', marginBottom: 8, lineHeight: 1.7 }}>
                 ذِكرُ معلّمٍ بعينه <strong>استثناءٌ يُوسِّع</strong> فيتجاوز شرطَي المادة والصف.
-                والمصفوفة الفارغة تعني «الكل» لا «لا أحد».
+                والمصفوفة الفارغة تعني «الكل» لا «لا أحد». ونطاقُ النموذج هنا يحدّد <strong>من يراه</strong>،
+                أمّا موادُّ كلِّ قسمٍ فتحدّد <strong>أيَّ أقسامه</strong> يرى.
               </div>
 
               <div style={{ marginBottom: 8 }}>
@@ -562,13 +688,49 @@ export function LearningDifficultyFormPage() {
         >
           <WsBlock title="العتبتان" padded>
             <ThresholdRuler
-              max={balance.maxScore}
+              span={balance.span}
+              min={balance.minScore}
               high={thresholdHigh}
               medium={thresholdMedium}
               onHigh={setThresholdHigh}
               onMedium={setThresholdMedium}
             />
           </WsBlock>
+
+          {variants.length > 0 && (
+            <WsBlock title="بحسب المادة" icon={BookOpen} padded>
+              <div style={{ fontSize: 11, color: 'var(--ws-text-2)', marginBottom: 6, lineHeight: 1.6 }}>
+                كلُّ مادّةٍ ترى نسختَها: العامَّ وما خُصِّص لها. والعتبةُ نسبةٌ من مدى النسخة نفسِها،
+                فلا تظلم نسخةً أقصر.
+              </div>
+              <table className="ld-variants">
+                <thead>
+                  <tr>
+                    <th>المادة</th>
+                    <th>أقسام</th>
+                    <th>أسئلة</th>
+                    <th>السقف</th>
+                    <th>حمراء عند</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {variants.map((variant) => (
+                    <tr key={variant.key} className={variant.questions === 0 ? 'is-empty' : undefined}>
+                      <td>{variant.label}</td>
+                      <td>{variant.sections}</td>
+                      <td>{variant.questions}</td>
+                      <td>{variant.max}</td>
+                      <td>
+                        {thresholdHigh > 0 && variant.span > 0
+                          ? `≈ ${Math.ceil(variant.min + (variant.span * thresholdHigh) / 100)} نقطة`
+                          : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </WsBlock>
+          )}
 
           <WsBlock title="أوزان الأقسام" padded>
             {balance.totalWeight === 0 ? (
@@ -593,7 +755,7 @@ export function LearningDifficultyFormPage() {
                 {balance.soloReachesHigh && (
                   <WsAlert tone="warn" boxed style={{ marginTop: 8 }}>
                     قسم «{balance.heaviest?.title}» ({balance.heaviest?.max} نقطة) وحده يبلغ العتبة
-                    الحمراء ({thresholdHigh}) — نموذجُك عملياً نموذجُ قسمٍ واحد.
+                    الحمراء ({thresholdHigh}%) — نموذجُك عملياً نموذجُ قسمٍ واحد.
                   </WsAlert>
                 )}
               </>
@@ -616,6 +778,9 @@ export function LearningDifficultyFormPage() {
                     }}
                   >
                     {dummy.score}
+                    <span style={{ fontWeight: 400, color: 'var(--ws-text-3)', marginInlineStart: 4 }}>
+                      ({Math.round(dummy.percent)}%)
+                    </span>
                   </span>
                 </WsFactRow>
               ))}
@@ -646,24 +811,31 @@ export function LearningDifficultyFormPage() {
 }
 
 function ThresholdRuler({
-  max,
+  span,
+  min,
   high,
   medium,
   onHigh,
   onMedium,
 }: {
-  max: number
+  span: number
+  min: number
   high: number
   medium: number
   onHigh: (value: number) => void
   onMedium: (value: number) => void
 }) {
-  const ceiling = Math.max(max, 1)
-  const mediumPercent = Math.min(100, (medium / ceiling) * 100)
-  const highPercent = Math.min(100, (high / ceiling) * 100)
+  const clamp = (value: number) => Math.max(0, Math.min(100, Math.round(value)))
+  const mediumPercent = clamp(medium)
+  const highPercent = clamp(high)
+  const points = (percent: number) => (span > 0 ? Math.ceil(min + (span * percent) / 100) : null)
 
   return (
     <>
+      <div style={{ fontSize: 11, color: 'var(--ws-text-2)', marginBottom: 6, lineHeight: 1.6 }}>
+        نسبةٌ من المدى المقيس، لا نقاطٌ مطلقة — فتصدق على كلِّ نسخةٍ من النموذج مهما اختلف سقفُها.
+      </div>
+
       <div style={{ display: 'flex', height: 12, borderRadius: 3, overflow: 'hidden', marginBottom: 8 }}>
         <div style={{ width: `${mediumPercent}%`, background: TONES.green.bd }} />
         <div style={{ width: `${Math.max(0, highPercent - mediumPercent)}%`, background: TONES.amber.bd }} />
@@ -671,26 +843,34 @@ function ThresholdRuler({
       </div>
 
       <div style={{ display: 'flex', gap: 8 }}>
-        <WsField label="برتقالية من">
+        <WsField label="برتقالية من %">
           <WsInput
             type="number"
+            min={0}
+            max={100}
             value={medium}
-            onChange={(event) => onMedium(Number(event.target.value))}
+            onChange={(event) => onMedium(clamp(Number(event.target.value)))}
             style={{ width: 70 }}
           />
         </WsField>
-        <WsField label="حمراء من">
+        <WsField label="حمراء من %">
           <WsInput
             type="number"
+            min={0}
+            max={100}
             value={high}
-            onChange={(event) => onHigh(Number(event.target.value))}
+            onChange={(event) => onHigh(clamp(Number(event.target.value)))}
             style={{ width: 70 }}
           />
-        </WsField>
-        <WsField label="السقف">
-          <WsInput value={max} readOnly style={{ width: 60 }} />
         </WsField>
       </div>
+
+      {span > 0 && (
+        <div style={{ fontSize: 11, color: 'var(--ws-text-3)', marginTop: 6 }}>
+          على النموذج الكامل ({min + span} نقطة): البرتقالية من {points(mediumPercent)} والحمراء من{' '}
+          {points(highPercent)}.
+        </div>
+      )}
     </>
   )
 }

@@ -65,17 +65,28 @@ export function SeverityBar({
   score: number
   max: number
   severity: 'low' | 'medium' | 'high'
+  /** نسبةٌ مئويّة (0–100) من مدى النسخة — تُرسم علامةً على الشريط لا سقفاً له. */
   thresholdHigh?: number
 }) {
-  const ceiling = Math.max(max, thresholdHigh, 1)
+  const ceiling = Math.max(max, 1)
   const tone = SEVERITY_TONES[severity] ?? TONES.green
+  const marker = thresholdHigh > 0 && thresholdHigh <= 100 ? thresholdHigh : null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       <span style={{ fontSize: 12, fontWeight: 700, color: tone.tx, fontVariantNumeric: 'tabular-nums' }}>
         {score} / {max}
       </span>
-      <div style={{ width: 96, height: 4, background: 'var(--ws-sunken)', borderRadius: 2, overflow: 'hidden' }}>
+      <div
+        style={{
+          position: 'relative',
+          width: 96,
+          height: 4,
+          background: 'var(--ws-sunken)',
+          borderRadius: 2,
+          overflow: 'hidden',
+        }}
+      >
         <div
           style={{
             width: `${Math.min(100, (score / ceiling) * 100)}%`,
@@ -83,6 +94,20 @@ export function SeverityBar({
             background: tone.tx,
           }}
         />
+        {marker !== null && (
+          <span
+            title={`العتبة الحمراء ${marker}%`}
+            style={{
+              position: 'absolute',
+              insetInlineStart: `${marker}%`,
+              top: 0,
+              width: 1,
+              height: '100%',
+              background: TONES.red.tx,
+              opacity: 0.6,
+            }}
+          />
+        )}
       </div>
     </div>
   )
