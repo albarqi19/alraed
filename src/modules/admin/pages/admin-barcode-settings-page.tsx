@@ -14,6 +14,7 @@ import {
   ScanLine,
   Smartphone,
   Sunrise,
+  Timer,
   Trash2,
   Users,
   Wifi,
@@ -99,10 +100,14 @@ export function AdminBarcodeSettingsPage() {
     [scans, draft, dayIso],
   )
 
-  // حرّاس اللغم — الحفظ يُعطَّل عند أيّها
-  const cutBeforeStart = draft ? toMin(draft.barcode_absence_cutoff_time) <= toMin(draft.barcode_school_start_time) : false
+  // «المتأخّرون فقط»: لا قطعَ ولا غيابَ ولا نصاب — كلّ ما يخصّ الغياب يُعتَّم لا يُخفى،
+  // فالمدير يرى ما أُطفئ ولماذا بدل أن يبحث عن خانةٍ اختفت.
+  const lateOnly = draft ? draft.barcode_late_only_mode : false
+
+  // حرّاس اللغم — الحفظ يُعطَّل عند أيّها (وقتُ القطع لا معنى له في وضع المتأخّرين)
+  const cutBeforeStart = draft && !lateOnly ? toMin(draft.barcode_absence_cutoff_time) <= toMin(draft.barcode_school_start_time) : false
   const noWorkingDays = draft ? (draft.barcode_working_days?.length ?? 0) === 0 : false
-  const enabledNoDevice = draft ? draft.barcode_enabled && activeDevices === 0 : false
+  const enabledNoDevice = draft ? draft.barcode_enabled && activeDevices === 0 && !lateOnly : false
   const hasBlockingError = cutBeforeStart || noWorkingDays
 
   // النصابُ كما سيحسبه الخادم: أقلُّ العددِ الثابت والنسبةِ من الطلاب.
@@ -271,8 +276,15 @@ export function AdminBarcodeSettingsPage() {
         <WsMain>
           {/* صف الحراسة */}
           {(cutBeforeStart || noWorkingDays || enabledNoDevice || devicesError ||
-            draft.barcode_test_mode || stats?.auto_absence_blocked) && (
+            draft.barcode_test_mode || lateOnly || stats?.auto_absence_blocked) && (
             <WsBlock padded>
+              {lateOnly && (
+                <WsAlert tone="info" boxed>
+                  وضع «المتأخّرين فقط» مفعّل — البوّابة ترصد التأخّر وحده وتكتبه في سجلّ التأخّر
+                  الصباحيّ، ولا تسجّل حضوراً ولا غياباً: هما من المعلّم أو الإدارة. الغياب التلقائي
+                  والنصاب ووقت القطع متوقّفة.
+                </WsAlert>
+              )}
               {draft.barcode_test_mode && (
                 <WsAlert tone="warn" boxed>
                   وضع الاختبار مفعّل — المسح يُعرض على الشاشة ولا يُسجَّل حضوراً ولا يُرسل رسالة،
@@ -332,6 +344,22 @@ export function AdminBarcodeSettingsPage() {
                 ولكلٍّ مفتاح تشغيل. إدارةُ الأجهزة وسجلُّ البصمات في صفحة «حضور البصمة».
               </p>
             </div>
+
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--ws-hairline)' }}>
+              <WsField label="المتأخّرون فقط">
+                <WsSwitch
+                  checked={draft.barcode_late_only_mode}
+                  onChange={(v) => patch('barcode_late_only_mode', v)}
+                />
+              </WsField>
+              <p style={{ margin: '4px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)', lineHeight: 1.7 }}>
+                <Timer size={11} style={{ display: 'inline', verticalAlign: '-1px', marginInlineEnd: 4 }} />
+                البوّابة — باركوداً وبصمةً — ترصد <strong>التأخّر وحده</strong> وتكتبه في سجلّ التأخّر
+                الصباحيّ نفسِه الذي تكتبه شاشة «تسجيل تأخير»، فيصل وليَّ الأمر ويظهر في التقارير.
+                ولا تكتب حضوراً ولا غياباً: يبقيان للمعلّم أو الإدارة. من مرّ في وقته يظهر على
+                الشاشة ولا يُكتب له شيء.
+              </p>
+            </div>
           </WsBlock>
 
           {/* ★ الصباح المُعاد */}
@@ -371,7 +399,13 @@ export function AdminBarcodeSettingsPage() {
                   type="time"
                   value={draft.barcode_absence_cutoff_time}
                   onChange={(e) => patch('barcode_absence_cutoff_time', e.target.value)}
+                  disabled={lateOnly}
                 />
+                {lateOnly && (
+                  <p style={{ margin: '2px 0 0', fontSize: 10, color: 'var(--ws-text-2)' }}>
+                    لا قطعَ في وضع المتأخّرين فقط
+                  </p>
+                )}
               </WsField>
             </div>
 
@@ -380,10 +414,13 @@ export function AdminBarcodeSettingsPage() {
                 <WsSwitch
                   checked={draft.barcode_auto_absence_enabled}
                   onChange={(v) => patch('barcode_auto_absence_enabled', v)}
+                  disabled={lateOnly}
                 />
               </WsField>
               <p style={{ margin: '4px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)' }}>
-                إطفاؤه يوقف إنشاء سجلات الغياب عند وقت القطع — والمنطقة الحمراء تصير تخطيطاً بلا أثر.
+                {lateOnly
+                  ? 'متوقّف في وضع المتأخّرين فقط — لا غيابَ من البوّابة، مهما كان هذا المفتاح.'
+                  : 'إطفاؤه يوقف إنشاء سجلات الغياب عند وقت القطع — والمنطقة الحمراء تصير تخطيطاً بلا أثر.'}
               </p>
             </div>
           </WsBlock>
@@ -441,6 +478,7 @@ export function AdminBarcodeSettingsPage() {
                   max={1000}
                   value={draft.barcode_min_scans_for_absence}
                   onChange={(e) => patchMinScans(e.target.value)}
+                  disabled={lateOnly}
                 />
               </WsField>
               <WsField label="النصاب: نسبة (%)">
@@ -450,15 +488,18 @@ export function AdminBarcodeSettingsPage() {
                   max={100}
                   value={draft.barcode_min_scans_percent}
                   onChange={(e) => patchMinPercent(e.target.value)}
+                  disabled={lateOnly}
                 />
               </WsField>
             </div>
 
             <p style={{ margin: '6px 0 0', fontSize: 10.5, lineHeight: 1.7,
-              color: quorumPreview === 0 ? TONES.red.tx : 'var(--ws-text-2)' }}>
-              {quorumPreview === 0
-                ? 'الحارس معطَّل — سيُرصد الغياب حتى لو لم يمسح طالبٌ واحد.'
-                : `النصاب اليوم ${quorumPreview} طالباً من ${stats?.total_students ?? 0} — أقلُّ الرقمين: العدد الثابت والنسبة. دونه لا يُرصد غياب، لأنّ صفرَ مسحاتٍ ماسحٌ معطَّلٌ لا مدرسةٌ خالية.`}
+              color: quorumPreview === 0 && !lateOnly ? TONES.red.tx : 'var(--ws-text-2)' }}>
+              {lateOnly
+                ? 'النصاب بلا عمل في وضع المتأخّرين فقط — لا غيابَ يُرصد أصلاً.'
+                : quorumPreview === 0
+                  ? 'الحارس معطَّل — سيُرصد الغياب حتى لو لم يمسح طالبٌ واحد.'
+                  : `النصاب اليوم ${quorumPreview} طالباً من ${stats?.total_students ?? 0} — أقلُّ الرقمين: العدد الثابت والنسبة. دونه لا يُرصد غياب، لأنّ صفرَ مسحاتٍ ماسحٌ معطَّلٌ لا مدرسةٌ خالية.`}
             </p>
             <p style={{ margin: '4px 0 0', fontSize: 10.5, color: 'var(--ws-text-2)', lineHeight: 1.7 }}>
               ونافذةُ المسح سقفٌ للتأخير: مسحةٌ بعدها تُسجَّل حضوراً وتُكتم رسالتُها، فإشعارُ تأخيرٍ

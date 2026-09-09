@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   ClipboardList,
   Clock3,
+  Fingerprint,
   Inbox,
   Info,
   ListChecks,
@@ -21,6 +22,7 @@ import {
   Plus,
   RefreshCw,
   RotateCcw,
+  ScanLine,
   Search,
   Send,
   StickyNote,
@@ -77,6 +79,25 @@ function formatTime(value?: string | null) {
   } catch {
     return date.toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' })
   }
+}
+
+/** من كتب الصفّ — يدويّ لا يحتاج شارة؛ والبوّابة تُسمّى لأنّها ليست وكيلاً بعينه */
+function SourceChip({ source }: { source?: 'manual' | 'barcode' | 'fingerprint' }) {
+  if (source === 'barcode') {
+    return (
+      <WsChip tone="sky" icon={ScanLine}>
+        باركود
+      </WsChip>
+    )
+  }
+  if (source === 'fingerprint') {
+    return (
+      <WsChip tone="sky" icon={Fingerprint}>
+        بصمة
+      </WsChip>
+    )
+  }
+  return <span style={{ color: 'var(--ws-text-2)', fontSize: 11 }}>يدويّ</span>
 }
 
 function MessageStatusChip({ sent, sentAt }: { sent: boolean; sentAt?: string | null }) {
@@ -762,6 +783,7 @@ export function AdminLateArrivalsPage() {
                     <th>الفصل</th>
                     <th>تاريخ التأخر</th>
                     <th>وقت التسجيل</th>
+                    <th>المصدر</th>
                     <th>الملاحظات</th>
                     <th>حالة الرسالة</th>
                     <th>الإجراء</th>
@@ -785,6 +807,9 @@ export function AdminLateArrivalsPage() {
                         <td>{record.student_class}</td>
                         <td style={{ whiteSpace: 'nowrap' }}>{formatDate(record.late_date)}</td>
                         <td style={{ whiteSpace: 'nowrap' }}>{formatTime(record.recorded_at)}</td>
+                        <td>
+                          <SourceChip source={record.source} />
+                        </td>
                         <td style={{ color: 'var(--ws-text-2)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {record.notes ?? '—'}
                         </td>

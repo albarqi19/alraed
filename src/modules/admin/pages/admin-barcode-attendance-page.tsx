@@ -227,15 +227,17 @@ export function AdminBarcodeAttendancePage() {
         }
         facts={
           <>
-            <WsFact icon={UserCheck} label="حاضرون:">
+            <WsFact icon={UserCheck} label={stats?.late_only_mode ? 'مرّوا في وقتهم:' : 'حاضرون:'}>
               {(stats?.present_count ?? 0).toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
             <WsFact icon={Clock3} label="متأخرون:">
               {(stats?.late_count ?? 0).toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>
-            <WsFact icon={UserX} label="غائبون:">
-              {(stats?.absent_count ?? 0).toLocaleString('ar-SA-u-nu-latn')}
-            </WsFact>
+            {!stats?.late_only_mode && (
+              <WsFact icon={UserX} label="غائبون:">
+                {(stats?.absent_count ?? 0).toLocaleString('ar-SA-u-nu-latn')}
+              </WsFact>
+            )}
             <WsFact icon={Users} label="الإجمالي:">
               {(stats?.total_students ?? 0).toLocaleString('ar-SA-u-nu-latn')}
             </WsFact>

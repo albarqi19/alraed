@@ -901,6 +901,8 @@ export interface LateArrivalRecord {
   late_date: string
   recorded_at: string
   notes?: string | null
+  /** من كتب الصفّ: وكيلٌ من الشاشة، أو ماسحُ الباركود، أو جهازُ البصمة */
+  source?: 'manual' | 'barcode' | 'fingerprint'
   whatsapp_sent: boolean
   whatsapp_sent_at?: string | null
 }

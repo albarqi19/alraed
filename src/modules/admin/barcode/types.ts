@@ -44,6 +44,7 @@ export interface BarcodeStatsData {
   auto_absence_blocked?: boolean
   auto_absence_reason?:
     | 'disabled'
+    | 'late_only_mode'
     | 'auto_absence_disabled'
     | 'test_mode'
     | 'non_working_day'
@@ -55,6 +56,8 @@ export interface BarcodeStatsData {
   auto_absence_message?: string | null
   /** النصاب المطلوب من المسحات قبل السماح برصد الغياب */
   required_quorum?: number
+  /** «المتأخّرون فقط»: البوّابة ترصد التأخّر وحده — فالشاشة تقول «مرّ في وقته» لا «حاضر» */
+  late_only_mode?: boolean
 }
 
 export interface BarcodeSettings {
@@ -79,6 +82,8 @@ export interface BarcodeSettings {
   barcode_respect_academic_calendar: boolean
   /** وضع الاختبار: المسح يُعرض على الشاشة ولا يُكتب ولا يُرسل */
   barcode_test_mode: boolean
+  /** البوّابة (باركود وبصمة) ترصد التأخّر وحده في جدول التأخّر الصباحيّ؛ الحضور والغياب من المعلّم أو الإدارة */
+  barcode_late_only_mode: boolean
   /** حضور البصمة: يتقاسم أوقات هذه الصفحة وحرّاسها، وله تشغيلٌ مستقلّ */
   biometric_enabled: boolean
 }
